@@ -101,7 +101,6 @@ public class FabricServerImpl extends FabricServiceImpl implements FabricServer 
       logger.info("Accepting WAITING notification" +
           (message != null ? ": " + message : ""));
     }
-    logger.info("Notify Waiting for " + regionPath);
     if (this.serverstatus != State.WAITING) {
       this.previousServerStatus = this.serverstatus;
     }

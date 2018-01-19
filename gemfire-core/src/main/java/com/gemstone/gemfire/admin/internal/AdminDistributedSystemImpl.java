@@ -2390,11 +2390,9 @@ implements com.gemstone.gemfire.admin.AdminDistributedSystem,
 
     Set<PersistentID> details = getWaitingPersistentMembers(dm);
 
-    System.out.println("The details of waiting persistent member is " + details);
     if (details != null) {
       for (PersistentID id : details) {
         if (id.getUUID().equals(diskStoreID)) {
-          System.out.println("The details of found persistent member is " + id);
           found = true;
           break;
         }

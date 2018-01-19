@@ -82,7 +82,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   protected final Object lock;
   private static PersistenceAdvisorObserver observer = null;
   
-  public static final boolean TRACE = true;//Boolean.getBoolean("gemfire.TRACE_PERSISTENCE_ADVISOR");
+  public static final boolean TRACE = Boolean.getBoolean("gemfire.TRACE_PERSISTENCE_ADVISOR");
   
   public PersistenceAdvisorImpl(CacheDistributionAdvisor advisor, DistributedLockService dl, PersistentMemberView storage, String regionPath, DiskRegionStats diskStats, PersistentMemberManager memberManager) {
     this.advisor = advisor;
@@ -577,25 +577,8 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   }
 
   private void unblockMember() {
-
-    for(PersistentMemberID id : storage.getOfflineMembers()) {
-      //if(pattern.matches(id)) {
-        //storage.memberOfflineAndEqual(id);
-        //memberRemoved(id, true);
-      //}
-    }
     for(PersistentMemberID id : storage.getOnlineMembers()) {
-      //if(pattern.matches(id)) {
-        storage.memberOfflineAndEqual(id);
-
-        //memberRemoved(id, true);
-      //}
-    }
-    for(PersistentMemberID id : storage.getOfflineAndEqualMembers()) {
-      //if(pattern.matches(id)) {
-        //storage.memberOfflineAndEqual(id);
-        //memberRemoved(id, true);
-      //}
+      storage.memberOfflineAndEqual(id);
     }
   }
 
@@ -744,8 +727,6 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   
   public boolean checkMyStateOnMembers(Set<InternalDistributedMember> replicates) throws ReplyException {
     PersistentStateQueryResults remoteStates = getMyStateOnMembers(replicates);
-    advisor.getLogWriter().info(LocalizedStrings.DEBUG, "My state on members " +
-        replicates + " are " + remoteStates.stateOnPeers + " remotestate persistent ids " + remoteStates.persistentIds);
 
     boolean equal = false;
     if (observer != null) {
@@ -763,7 +744,6 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
 
       final PersistentMemberID myId = getPersistentID();
       PersistentMemberState stateOnPeer = entry.getValue();
-      advisor.getLogWriter().info(LocalizedStrings.DEBUG, "Member " + member + " remoteID " + remoteId + " stateOnPeer " + stateOnPeer);
 
       if(PersistentMemberState.REVOKED.equals(stateOnPeer)) {
         throw new RevokedPersistentDataException(
@@ -773,6 +753,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
       
       
       if(myId != null && stateOnPeer == null) {
+        // This can be made as a property to make sure doesn't happen always
         if (true) {
           // There is nothign on remote or remote has same diskId.
           if (remoteId == null || (remoteId.diskStoreId == myId.diskStoreId)) {
@@ -1191,12 +1172,8 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
             checkInterruptedByShutdownAll();
             advisor.getAdvisee().getCancelCriterion().checkCancelInProgress(null);
             this.wait(100);
-            advisor.getLogWriter().info(LocalizedStrings.DEBUG, "WAITING for the offline member.");
             if(!warned && System.nanoTime() > warningTime) {
-              
               logWaitingForMember(allMembersToWaitFor, offlineMembersToWaitFor);
-
-              advisor.getLogWriter().info(LocalizedStrings.DEBUG, "WAITING for the offline member.");
               warned=true;
             }
           }

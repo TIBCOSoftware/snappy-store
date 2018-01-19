@@ -43,9 +43,6 @@ public class WaitingPersistentIDRequest extends AdminRequest {
     }
     Set<PersistentID> results = replyProcessor.waiting;
 
-    GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
-    cache.getLoggerI18n().info(LocalizedStrings.DEBUG, "The waitign memberids are " + results);
-
     WaitingPersistentIDsResponse localResponse = (WaitingPersistentIDsResponse)request.createResponse((DistributionManager)dm);
     results.addAll(localResponse.getWaitingIds());
 
@@ -60,7 +57,6 @@ public class WaitingPersistentIDRequest extends AdminRequest {
     if (cache != null && !cache.isClosed()) {
       PersistentMemberManager mm = cache.getPersistentMemberManager();
       Set<PersistentMemberID> waitingMemberIds = mm.getWaitingIds();
-      cache.getLoggerI18n().info(LocalizedStrings.DEBUG, "The waitign memberids are " + waitingMemberIds);
       for (PersistentMemberID id : waitingMemberIds) {
         waitingIds.add(new PersistentMemberPattern(id));
       }
@@ -76,7 +72,6 @@ public class WaitingPersistentIDRequest extends AdminRequest {
 
   @Override
   protected Object clone() throws CloneNotSupportedException {
-    // TODO Auto-generated method stub
     return super.clone();
   }
 

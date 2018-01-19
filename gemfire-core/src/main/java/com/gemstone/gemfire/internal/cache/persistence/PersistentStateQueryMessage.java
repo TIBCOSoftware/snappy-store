@@ -113,16 +113,6 @@ public class PersistentStateQueryMessage extends
         }
       }
 
-      if (persistenceAdvisor!= null && persistenceAdvisor.getMembershipView() != null) {
-        if(persistenceAdvisor instanceof BucketPersistenceAdvisor) {
-          ((BucketPersistenceAdvisor)persistenceAdvisor).dump(log, "SK ");
-        }
-        log.info(LocalizedStrings.DEBUG, "OFFLINE Members are : " + persistenceAdvisor.getMembershipView().getOfflineMembers());
-        log.info(LocalizedStrings.DEBUG, "ONLINE Members are : " + persistenceAdvisor.getMembershipView().getOnlineMembers());
-        log.info(LocalizedStrings.DEBUG, "REVOKED Members are : " + persistenceAdvisor.getMembershipView().getRevokedMembers());
-        log.info(LocalizedStrings.DEBUG, "EQUAL MEMBERS are : " + persistenceAdvisor.getPersistedOnlineOrEqualMembers());
-      }
-
       if(persistenceAdvisor != null) {
         if(id != null) {
           state = persistenceAdvisor.getPersistedStateOfMember(id);
@@ -132,11 +122,6 @@ public class PersistentStateQueryMessage extends
           state = persistenceAdvisor.getPersistedStateOfMember(initializingId);
         }
 
-        // if state is null check if same diskstore is stored here
-        if (state == null) {
-
-        }
-        log.info(LocalizedStrings.DEBUG, "");
         myId = persistenceAdvisor.getPersistentID();
         myInitializingId = persistenceAdvisor.getInitializingID();
         onlineMembers = persistenceAdvisor.getPersistedOnlineOrEqualMembers();

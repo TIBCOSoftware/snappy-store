@@ -529,7 +529,7 @@ public class SystemAdmin {
       System.out.println(" mcast=" + dsc.getMcastAddress()
           + ":" + dsc.getMcastPort());
     }
-    LocalLogWriter logger = new LocalLogWriter(LogWriterImpl.FINE_LEVEL, System.out);
+    LocalLogWriter logger = new LocalLogWriter(LogWriterImpl.WARNING_LEVEL, System.out);
     InternalDistributedSystem ds = (InternalDistributedSystem) InternalDistributedSystem.connectForAdmin(props, logger);
     Set<?> existingMembers = ds.getDistributionManager()
         .getDistributionManagerIds();
@@ -750,16 +750,12 @@ public class SystemAdmin {
     Set<PersistentID> s1 = AdminDistributedSystemImpl
         .getMissingPersistentMembers(ads.getDistributionManager());
 
-    ads.getLogWriter().info(LocalizedStrings.DEBUG, "The missing persistent members are before unblock " + s1);
-
     AdminDistributedSystemImpl.unblockPersistentMember(ads.getDistributionManager(), uuid);
 
 
     // check that no region using this disk-store should be blocked
     Set<PersistentID> s = AdminDistributedSystemImpl
         .getMissingPersistentMembers(ads.getDistributionManager());
-
-    ads.getLogWriter().info(LocalizedStrings.DEBUG, "The missing persistent members are after unblock " + s);
 
     //Fix for 42607 - wait to see if the revoked member goes way if it is still in the set of
     //missing members. It may take a moment to clear the missing member set after the revoke.
@@ -776,7 +772,7 @@ public class SystemAdmin {
       }
     }
     if (s.isEmpty()) {
-      System.out.println("revocation was successful and no disk stores are now missing");
+      System.out.println("Unblock was successful and no disk stores are now waiting");
     } else {
       System.out.println("The following disk stores are still missing:");
       for (Object o: s) {
@@ -822,7 +818,6 @@ public class SystemAdmin {
   
   private static boolean containsRevokedMember(Set<PersistentID> missing, UUID revokedUUID) {
     for(PersistentID id : missing) {
-      System.out.println("Missing persistent id are " + id);
       if(id.getUUID().equals(revokedUUID)) {
         return true;
       }
