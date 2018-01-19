@@ -182,7 +182,7 @@ public final class DSFIDFactory implements DataSerializableFixedID {
     if (dsfid >= Byte.MIN_VALUE && dsfid <= Byte.MAX_VALUE) {
       dsfidMap[dsfid + Byte.MAX_VALUE + 1] = creator;
     } else {
-      dsfidMap2.put(dsfid, creator);
+      dsfidMap2.justPut(dsfid, creator);
     }
   }
 

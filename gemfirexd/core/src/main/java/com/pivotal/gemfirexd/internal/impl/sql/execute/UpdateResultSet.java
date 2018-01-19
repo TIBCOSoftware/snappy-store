@@ -386,7 +386,7 @@ public final class UpdateResultSet extends DMLWriteResultSet implements OffHeapR
           if (refKeyColID == modColID) {
             // onlyRefUpadtedCols.add(refKeyColID);
             TIntHashSet dependentCols = new TIntHashSet(refKeyCols.length);
-            tempRefColUpdtd2DependentCols.put(refKeyColID, dependentCols);
+            tempRefColUpdtd2DependentCols.justPut(refKeyColID, dependentCols);
             referencedImpactedColsMap.put(refKeyColID, Boolean.TRUE);
             addCompanionRefColsToMap(refKeyColID, referencedImpactedColsMap,
                 dependentCols);

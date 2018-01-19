@@ -30,6 +30,7 @@ import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.distributed.internal.AbstractDistributionConfig;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
+import com.gemstone.gemfire.internal.cache.GemFireSparkConnectorCacheImpl;
 import com.gemstone.gnu.trove.THashMap;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.Property;
@@ -389,6 +390,7 @@ public final class FabricServiceUtils {
           && !propName.startsWith("spark.")
           && !propName.startsWith("jobserver.")
           && !propName.startsWith("zeppelin.")
+          && !propName.startsWith(GemFireSparkConnectorCacheImpl.connectorPrefix)
           && !GfxdConstants.validExtraGFXDProperties.contains(propName)
           && !"BootPassword".equalsIgnoreCase(propName)
           && !"encryptionAlgorithm".equalsIgnoreCase(propName)

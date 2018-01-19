@@ -630,7 +630,7 @@ public class CachePerfStats implements HashingStats {
    * @since 5.0
    */
   public static long getStatTime() {
-    return enableClockStats? NanoTimer.getTime() : 0;
+    return enableClockStats ? NanoTimer.getTime() : 0;
   }
 
   @Override

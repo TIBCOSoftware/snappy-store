@@ -388,7 +388,17 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
   private DiskStoreID diskStoreID;
 
   private volatile Future lastDelayedWrite;
-  
+
+  /**
+   * Currently active disk block sorter used by region iterators for
+   * cross iterator sorting in case multiple concurrent iterators are open.
+   * The iterators will grab hold of currently active sorter and submit their
+   * disk blocks to be sorted and at some point one of those iterators will
+   * open the sorter for reading at which point no new blocks can be added
+   * and a new current sorter will be created.
+   */
+  private final DiskBlockSortManager sortManager;
+
   // ///////////////////// Constructors /////////////////////////
 
   private static int calcCompactionThreshold(int ct) {
@@ -532,6 +542,8 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
 
     // setFirstChild(getSortedOplogs());
 
+    this.sortManager = new DiskBlockSortManager();
+
     // complex init
     if (isCompactionPossible() && !isOfflineCompacting()) {
       this.oplogCompactor = new OplogCompactor();
@@ -639,6 +651,10 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
    */
   public DiskStoreStats getStats() {
     return this.stats;
+  }
+
+  public final DiskBlockSortManager getSortManager() {
+    return this.sortManager;
   }
 
   public Map<Long, AbstractDiskRegion> getAllDiskRegions() {

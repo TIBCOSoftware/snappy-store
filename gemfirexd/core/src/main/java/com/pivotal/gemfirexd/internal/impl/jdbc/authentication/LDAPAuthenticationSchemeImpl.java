@@ -369,9 +369,7 @@ implements CredentialInitializer
 			// plug-ins to be installed and that can be used as authentication
 			// method.
 			//
-			initDirContextEnv.put(Context.SECURITY_AUTHENTICATION,
-									  "simple"
-									  );
+			initDirContextEnv.put(Context.SECURITY_AUTHENTICATION, "simple");
 		}
 
 		// Retrieve and set the search base (root) DN to use on the ldap
@@ -631,6 +629,12 @@ implements CredentialInitializer
 			throw new NameNotFoundException();
 			
 		SearchResult result = (SearchResult)results.next();
+
+		if (GemFireXDUtils.TraceAuthentication) {
+			SanityManager.DEBUG_PRINT(AuthenticationServiceBase
+			.AuthenticationTrace, "First User DN obtained="
+			+ result.getName());
+		}
 		
 // GemStone changes BEGIN
 		boolean hasMoreResults;

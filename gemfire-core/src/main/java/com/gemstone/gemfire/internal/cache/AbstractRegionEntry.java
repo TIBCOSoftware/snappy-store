@@ -434,7 +434,8 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     }
   }
 
-  public boolean isOverflowedToDisk(LocalRegion r, DistributedRegion.DiskPosition dp) {
+  public boolean isOverflowedToDisk(LocalRegion r,
+      DistributedRegion.DiskPosition dp, boolean alwaysFetchPosition) {
     return false;
   }
 

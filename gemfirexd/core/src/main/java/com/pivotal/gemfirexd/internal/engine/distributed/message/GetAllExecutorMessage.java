@@ -586,7 +586,8 @@ public class GetAllExecutorMessage extends RegionMultiKeyExecutorMessage {
       // do internal put so we need to wrap it in GfxdCallbackArg
       callbackArg = GemFireXDUtils.wrapCallbackArgs(routingObject, lcc, false,
           true, true /* cache loaded */, true /* isPkBased */,
-          lcc.isSkipListeners(), false, lcc.isSkipConstraintChecks());
+          lcc != null && lcc.isSkipListeners(), false,
+          lcc != null && lcc.isSkipConstraintChecks());
       final int bucketId = PartitionedRegionHelper.getHashKey(this.pr,
           Operation.GET, this.inKeys[index], null, callbackArg);
 

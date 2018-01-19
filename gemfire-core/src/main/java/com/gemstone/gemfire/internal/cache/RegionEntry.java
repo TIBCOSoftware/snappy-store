@@ -239,7 +239,8 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
    * Returns true if this entry has overflowed to disk.
    * @param dp if overflowed then the position of the value is set in dp
    */
-  public boolean isOverflowedToDisk(LocalRegion r, DistributedRegion.DiskPosition dp);
+  public boolean isOverflowedToDisk(LocalRegion r,
+      DistributedRegion.DiskPosition dp, boolean alwaysFetchPosition);
 
   /**
    * Gets the key for this entry.

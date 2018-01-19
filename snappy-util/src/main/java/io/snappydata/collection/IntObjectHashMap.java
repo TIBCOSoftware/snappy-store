@@ -27,17 +27,13 @@ public abstract class IntObjectHashMap<V> {
     return new KolobokeIntObjectHashMap<>(expectedSize);
   }
 
-  public abstract V put(int key, V value);
-
-  public final void update(int key, V value) {
-    put(key, value);
-  }
+  public abstract void justPut(int key, V value);
 
   public abstract V get(int key);
 
   public abstract boolean contains(int key);
 
-  public abstract V remove(int key);
+  public abstract boolean justRemove(int key);
 
   public abstract boolean forEachWhile(IntObjPredicate<? super V> predicate);
 

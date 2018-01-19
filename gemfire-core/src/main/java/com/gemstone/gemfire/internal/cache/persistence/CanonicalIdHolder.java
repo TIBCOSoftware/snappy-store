@@ -49,7 +49,7 @@ public class CanonicalIdHolder {
    */
   public void addMapping(int id, Object object) {
     //Store the mapping
-    idToObject.put(id, object);
+    idToObject.justPut(id, object);
     objectToID.put(object, id);
     
     //increase the next canonical id the recovered id is higher than it.
@@ -78,7 +78,7 @@ public class CanonicalIdHolder {
     assert !objectToID.containsKey(object);
     int id = ++highestID;
     objectToID.put(object, id);
-    idToObject.put(id, object);
+    idToObject.justPut(id, object);
     return id;
   }
   

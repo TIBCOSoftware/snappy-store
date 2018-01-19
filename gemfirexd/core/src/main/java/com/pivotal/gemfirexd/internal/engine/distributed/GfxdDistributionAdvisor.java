@@ -684,19 +684,19 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
   }
 
   /**
-   * Get the {@link Profile} for the given member's toString().
+   * Get the {@link Profile} for the given member's canonicalString().
    */
   public GfxdProfile getProfile(String memberStr) {
     final Profile[] allProfiles = this.profiles; // volatile read
     final int numProfiles = allProfiles.length;
     for (int i = 0; i < numProfiles; i++) {
       final Profile profile = allProfiles[i];
-      if (profile.getDistributedMember().toString().equals(memberStr)) {
+      if (profile.getDistributedMember().canonicalString().equals(memberStr)) {
         return (GfxdProfile)profile;
       }
     }
     GfxdProfile profile = getMyProfile();
-    if (profile.getDistributedMember().toString().equals(memberStr)) {
+    if (profile.getDistributedMember().canonicalString().equals(memberStr)) {
       return profile;
     } else {
       return null;
