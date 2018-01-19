@@ -254,9 +254,9 @@ public final class GfxdConnectionWrapper {
             } else {
               stmnt = (EmbedStatement)getConnection().prepareCall(sql, stmtId);
             }
-            this.stmntMap.put(stmtId, new StmntWeakReference(stmnt, stmtId,
+            this.stmntMap.justPut(stmtId, new StmntWeakReference(stmnt, stmtId,
                 this.refQueue));
-            this.sqlMap.put(stmtId, sql);
+            this.sqlMap.justPut(stmtId, sql);
             if (GemFireXDUtils.TraceQuery | GemFireXDUtils.TraceNCJ) {
               SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
                   "GfxdConnectionWrapper: cached PreparedStatement with stmtId="
@@ -286,7 +286,7 @@ public final class GfxdConnectionWrapper {
           // cleanup statement map first
           cleanUpStmntMap();
           stmnt = (EmbedStatement)getConnection().createStatement(stmtId);
-          this.stmntMap.put(stmtId, new StmntWeakReference(stmnt, stmtId,
+          this.stmntMap.justPut(stmtId, new StmntWeakReference(stmnt, stmtId,
               this.refQueue));
           if (GemFireXDUtils.TraceQuery) {
             SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,

@@ -90,7 +90,7 @@ public class AbstractStringIdResourceBundle {
          String message = line.substring(equalSign+2).replaceAll("\\\\n", "\n");
          try {
            int id = Integer.parseInt(idAsString);
-           map.put(id, message);
+           map.justPut(id, message);
          } catch(NumberFormatException nfe) {
            //unit tests should prevent this from happening in a customer situation
            throw new InternalGemFireException(nfe);

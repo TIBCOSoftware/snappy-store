@@ -977,7 +977,7 @@ public final class GemFireTransaction extends RawTransaction implements
       if (this.tempCongloms == null) {
         this.tempCongloms = LongObjectHashMap.withExpectedSize(8);
       }
-      this.tempCongloms.put(conglomId, conglom);
+      this.tempCongloms.justPut(conglomId, conglom);
     }
     final GemFireContainer container = conglom.getGemFireContainer();
     if (container != null) {
@@ -3813,7 +3813,7 @@ public final class GemFireTransaction extends RawTransaction implements
     if (this.tempCongloms == null) {
       this.tempCongloms = LongObjectHashMap.withExpectedSize(8);
     }
-    this.tempCongloms.put(conglomId, new FileStreamInputOutput(conglomId, this,
+    this.tempCongloms.justPut(conglomId, new FileStreamInputOutput(conglomId, this,
         rowSource, rwBuffer));
 
     return conglomId;

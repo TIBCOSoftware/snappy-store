@@ -330,7 +330,7 @@ public final class ExtraTableInfo extends ExtraInfo implements Dependent {
           this.autoGenColumns = IntObjectHashMap.withExpectedSize(4);
           this.autoGenColumnNames = new HashMap<>();
         }
-        this.autoGenColumns.put(cd.getPosition(), cd);
+        this.autoGenColumns.justPut(cd.getPosition(), cd);
         this.autoGenColumnNames.put(cd.getColumnName(), cd);
       }
     }

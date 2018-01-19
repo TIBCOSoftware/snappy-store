@@ -1347,7 +1347,8 @@ public final class GfxdTXEntryState extends TXEntryState implements
   }
 
   @Override
-  public boolean isOverflowedToDisk(LocalRegion r, DiskPosition dp) {
+  public boolean isOverflowedToDisk(LocalRegion r, DiskPosition dp,
+      boolean alwaysFetchPosition) {
     return false;
   }
 

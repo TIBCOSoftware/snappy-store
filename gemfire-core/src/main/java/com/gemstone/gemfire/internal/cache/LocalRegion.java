@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.LongBinaryOperator;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 import com.gemstone.gemfire.CancelCriterion;
@@ -151,7 +152,6 @@ import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
 import com.gemstone.gemfire.internal.NanoTimer;
 import com.gemstone.gemfire.internal.cache.CacheDistributionAdvisor.CacheProfile;
 import com.gemstone.gemfire.internal.cache.DiskInitFile.DiskRegionFlag;
-import com.gemstone.gemfire.internal.cache.DistributedRegion.DiskEntryPage;
 import com.gemstone.gemfire.internal.cache.DistributedRegion.DiskSavyIterator;
 import com.gemstone.gemfire.internal.cache.FilterRoutingInfo.FilterInfo;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
@@ -2685,10 +2685,8 @@ public class LocalRegion extends AbstractRegion
     if (includeHDFSResults()) {
       return -1;
     }
-    
-    final DiskRegion dr;
-    if ((dr = getDiskRegion()) != null && !isUsedForMetaRegion()
-        && !isUsedForPartitionedRegionAdmin()) {
+    if (getDiskRegion() != null && isOverflowEnabled() &&
+        !isUsedForMetaRegion() && !isUsedForPartitionedRegionAdmin()) {
       //Wait for the disk region to recover values first.
       // Commenting it as it was causing a distributed deadlock if there is 
       // a GII happpening from remote node in case of gemfireXD
@@ -2697,14 +2695,12 @@ public class LocalRegion extends AbstractRegion
       // latest DISK STORES for two regions then it can cause a distributed deadlock.
       // Bug 52317
       //dr.waitForAsyncRecovery();
-      if (dr.getNumOverflowOnDisk() > 0) {
-        long cacheSize = DistributedRegion.MAX_PENDING_ENTRIES;
+      long cacheSize = DistributedRegion.MAX_PENDING_ENTRIES;
 
-        if (reduceCacheFactor > 0.0 && reduceCacheFactor != 1.0) {
-          cacheSize = (long)(cacheSize / reduceCacheFactor);
-        }
-        return cacheSize;
+      if (reduceCacheFactor > 0.0 && reduceCacheFactor != 1.0) {
+        cacheSize = (long)(cacheSize / reduceCacheFactor);
       }
+      return cacheSize;
     }
     return -1;
   }
@@ -2715,7 +2711,7 @@ public class LocalRegion extends AbstractRegion
         && getPartitionedRegion().includeHDFSResults();
   }
 
-  final long adjustDiskIterCacheSize(long cacheSize, long numEntries) {
+  static long adjustDiskIterCacheSize(long cacheSize, long numEntries) {
     return Math.max(Math.min(cacheSize, numEntries + 256), 8192L);
   }
 
@@ -2728,7 +2724,7 @@ public class LocalRegion extends AbstractRegion
    */
   public Iterator<RegionEntry> getBestLocalIterator(boolean includeValues,
       double reduceCacheFactor, boolean keepDiskMap) {
-    if (includeValues && DiskEntryPage.DISK_PAGE_SIZE > 0) {
+    if (includeValues && DiskBlockSortManager.DISK_PAGE_SIZE > 0) {
       final long cacheSize = getDiskIteratorCacheSize(reduceCacheFactor);
       if (cacheSize >= 0) {
         // if total region size is smaller then reduce the cache size
@@ -2746,9 +2742,9 @@ public class LocalRegion extends AbstractRegion
    * over the entries in disk order (except if the region is an internal one
    * which will always return a hash map iterator).
    */
-  public Iterator<RegionEntry> getBestLocalIterator(boolean includeValues,
+  public Iterator<RegionEntry> getBestLocalIterator(
       final long cacheSize, boolean keepDiskMap) {
-    if (includeValues && DiskEntryPage.DISK_PAGE_SIZE > 0
+    if (DiskBlockSortManager.DISK_PAGE_SIZE > 0
         && getDiskIteratorCacheSize(1.0) >= 0) {
       // if total region size is smaller then reduce the cache size
       return new DiskSavyIterator(this, cacheSize, keepDiskMap);
@@ -3242,7 +3238,7 @@ public class LocalRegion extends AbstractRegion
     }
   }
 
-  protected boolean isOverflowEnabled() {
+  public boolean isOverflowEnabled() {
     EvictionAttributes ea = getAttributes().getEvictionAttributes();
     return ea != null && ea.getAction().isOverflowToDisk();
   }
@@ -5365,7 +5361,22 @@ public class LocalRegion extends AbstractRegion
       }
     }
     else if (interestType == InterestType.FILTER_CLASS) {
-      throw new UnsupportedOperationException(LocalizedStrings.AbstractRegion_INTERESTTYPEFILTER_CLASS_NOT_YET_SUPPORTED.toLocalizedString());
+      // object class must be a Predicate
+      if (interestArg instanceof Predicate<?>) {
+        OpenHashSet<Object> result = new OpenHashSet<>();
+        @SuppressWarnings("unchecked")
+        Predicate<Object> filter = (Predicate<Object>)interestArg;
+        for (Object key : keySet(allowTombstones)) {
+          if (filter.test(key)) {
+            result.add(key);
+          }
+        }
+        return result;
+      } else {
+        throw new UnsupportedOperationException(LocalizedStrings
+            .AbstractRegion_INTERESTTYPEFILTER_CLASS_NOT_YET_SUPPORTED
+            .toLocalizedString());
+      }
     }
     else if (interestType == InterestType.OQL_QUERY) {
       throw new UnsupportedOperationException(LocalizedStrings.AbstractRegion_INTERESTTYPEOQL_QUERY_NOT_YET_SUPPORTED.toLocalizedString());

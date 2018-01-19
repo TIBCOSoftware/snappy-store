@@ -87,8 +87,10 @@ public abstract class AbstractOplogDiskRegionEntry
   }
 
   @Override
-  public final boolean isOverflowedToDisk(LocalRegion r, DistributedRegion.DiskPosition dp) {
-    return Helper.isOverflowedToDisk(this, r.getDiskRegion(), dp, r);
+  public final boolean isOverflowedToDisk(LocalRegion r,
+      DistributedRegion.DiskPosition dp, boolean alwaysFetchPosition) {
+    return Helper.isOverflowedToDisk(this, r.getDiskRegion(),
+        dp, alwaysFetchPosition);
   }
   
   @Retained

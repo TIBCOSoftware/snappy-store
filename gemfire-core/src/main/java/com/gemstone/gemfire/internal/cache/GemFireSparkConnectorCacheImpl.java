@@ -28,8 +28,11 @@ import com.gemstone.gemfire.internal.admin.remote.DistributionLocatorId;
  */
 public class GemFireSparkConnectorCacheImpl extends GemFireCacheImpl {
 
-  public static final String gfeGridNamePrefix = "spark.gemfire-grid";
-  public static final String gfeGridPropsPrefix = "spark.gemfire.grid.";
+  // The properties need to be passed from the lead & servers as
+  // snappydata.store.connector.gemfire-grid-one and snappydata.store.connector.gemfire.pingInterval etc
+  public static final String connectorPrefix = "snappydata.connector.";
+  public static final String gfeGridNamePrefix = connectorPrefix + "gemfire-grid";
+  public static final String gfeGridPropsPrefix = connectorPrefix + "grid.";
   public static final String propFreeConnTimeout = "freeConnectionTimeout";
   public static final String propLoadConditioningInterval = "loadConditioningInterval";
   public static final String propSocketBufferSize = "socketBufferSize";

@@ -88,7 +88,6 @@ import com.gemstone.gemfire.internal.cache.execute.FunctionStats;
 import com.gemstone.gemfire.internal.cache.execute.LocalResultCollector;
 import com.gemstone.gemfire.internal.cache.execute.RegionFunctionContextImpl;
 import com.gemstone.gemfire.internal.cache.execute.ServerToClientFunctionResultSender;
-import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.lru.LRUEntry;
 import com.gemstone.gemfire.internal.cache.persistence.CreatePersistentRegionProcessor;
 import com.gemstone.gemfire.internal.cache.persistence.PersistenceAdvisor;
@@ -104,7 +103,6 @@ import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.cache.wan.AbstractGatewaySenderEventProcessor;
-import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventImpl;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ConcurrentParallelGatewaySenderQueue;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ParallelGatewaySenderImpl;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
@@ -116,10 +114,6 @@ import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.sequencelog.RegionLogger;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.Version;
-import com.gemstone.gemfire.internal.size.ReflectionObjectSizer;
-import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
-import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
-import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.ArraySortedCollection;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableCountDownLatch;
 import com.gemstone.gnu.trove.TObjectIntProcedure;
@@ -3526,7 +3520,7 @@ public class DistributedRegion extends LocalRegion implements
    * Once the regionEntries iterator has nothing more to iterate
    * it starts iterating over, in disk order, the entries on disk.
    */
-  public static final class DiskSavyIterator implements Iterator<RegionEntry> {
+  public static final class DiskSavyIterator implements DiskRegionIterator {
     //private boolean usingIt = true;
     private Iterator<?> it;
     private LocalRegion region;
@@ -3573,10 +3567,11 @@ public class DistributedRegion extends LocalRegion implements
       final int arraySize = Math.max(maxPendingEntries > 1000000 ? 200000
           : ((int)maxPendingEntries / 5), 8192);
       return (this.diskMap = new ArraySortedCollection(
-          new DiskEntryPage.DEPComparator(), null, null, arraySize, 0));
+          DiskEntryPage.DEPComparator.instance, null, null, arraySize, 0));
     }
 
-    final void setRegion(LocalRegion lr) {
+    @Override
+    public void setRegion(LocalRegion lr) {
       this.region = lr;
       this.it = lr.entries.regionEntries().iterator();
     }
@@ -3604,6 +3599,7 @@ public class DistributedRegion extends LocalRegion implements
       }
     }
 
+    @Override
     public boolean initDiskIterator() {
       if (this.it != null) {
         this.it = null;
@@ -3670,7 +3666,7 @@ public class DistributedRegion extends LocalRegion implements
             }
           }
           RegionEntry re = (RegionEntry)this.it.next();
-          if (re.isOverflowedToDisk(this.region, dp)) {
+          if (re.isOverflowedToDisk(this.region, dp, false)) {
             // add dp to sorted list
             // avoid create DiskPage everytime for lookup
             // TODO: SW: Can reduce the intermediate memory and boost
@@ -3680,7 +3676,7 @@ public class DistributedRegion extends LocalRegion implements
             // order at the end. Once done use this iterator for all local
             // entries iterators
             final ArraySortedCollection map = getDiskMap();
-            map.add(new DiskEntryPage(dp, re));
+            map.add(new DiskEntryPage(dp, re, this.region));
             // flush the diskMap if it has reached the max
             if (this.maxPendingEntries > 0
                 && ++this.diskMapSize >= this.maxPendingEntries) {
@@ -3754,6 +3750,14 @@ public class DistributedRegion extends LocalRegion implements
       this.offset = offset;
     }
 
+    public final long getOplogId() {
+      return this.oplogId;
+    }
+
+    public final long getOffset() {
+      return this.offset;
+    }
+
     @Override
     public int hashCode() {
       return Long.valueOf(this.oplogId ^ this.offset).hashCode();
@@ -3770,7 +3774,7 @@ public class DistributedRegion extends LocalRegion implements
       }
     }
 
-    public final int compareTo(DiskPosition o) {
+    public int compareTo(DiskPosition o) {
       final int result = Long.signum(this.oplogId - o.oplogId);
       if (result == 0) {
         return Long.signum(this.offset - o.offset);
@@ -3787,33 +3791,39 @@ public class DistributedRegion extends LocalRegion implements
     }
   }
 
-  public static final class DiskEntryPage extends DiskPosition {
-    public final RegionEntry entry;
-    public int drvId; 
+  public static class DiskEntryPage extends DiskPosition {
+    protected RegionEntry entry;
+    protected final LocalRegion region;
+    final int readerId;
 
-    public static final long DISK_PAGE_SIZE = SystemProperties
-        .getServerInstance().getLong("DISK_PAGE_SIZE", 8 * 1024L);
+    public DiskEntryPage(DiskPosition dp, RegionEntry re, LocalRegion region) {
+      this(dp, re, region, 0);
+    }
 
-    public DiskEntryPage(DiskPosition dp, RegionEntry re) {
-      this.setPosition(dp.oplogId, dp.offset / DISK_PAGE_SIZE);
+    public DiskEntryPage(RegionEntry re, LocalRegion region, int readerId) {
       this.entry = re;
+      this.region = region;
+      this.readerId = readerId;
     }
-    
-    public DiskEntryPage (DiskPosition dp, RegionEntry re, int drvId) {
-      this.setPosition(dp.oplogId, dp.offset / DISK_PAGE_SIZE);
-      this.entry = re;
-      this.drvId = drvId;
+
+    DiskEntryPage(DiskPosition dp, RegionEntry re,
+        LocalRegion region, int readerId) {
+      this(re, region, readerId);
+      this.setPosition(dp.oplogId, dp.offset / DiskBlockSortManager.DISK_PAGE_SIZE);
     }
-    
-    public RegionEntry getRegionEntry() {
+
+    protected Object readEntryValue() {
+      return this.entry.getValue(this.region);
+    }
+
+    public RegionEntry getEntry() {
       return this.entry;
-    }
-    
-    public int getDrvId() {
-      return this.drvId;
     }
 
     public static final class DEPComparator implements Comparator<Object> {
+
+      public static final DEPComparator instance = new DEPComparator();
+
       /**
        * {@inheritDoc}
        */

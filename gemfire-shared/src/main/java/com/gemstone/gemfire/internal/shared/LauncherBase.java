@@ -123,6 +123,8 @@ public abstract class LauncherBase {
   private static final long SHUTDOWN_WAIT_TIME = SystemProperties.getServerInstance()
       .getLong("launcher.SHUTDOWN_WAIT_TIME_MS", 15000L);
 
+  private static final double twoGB = 2.0 * 1024.0 * 1024.0 * 1024.0;
+
   protected final String baseName;
   protected final String defaultLogFileName;
   protected final String startLogFileName;
@@ -237,8 +239,8 @@ public abstract class LauncherBase {
       totalMemory = ((Number)memSize).longValue();
     }
 
-    int evictPercent = 0;
-    int criticalPercent = 0;
+    float evictPercent = 0.0f;
+    float criticalPercent = 0.0f;
     // If either the max heap or initial heap is null, set the one that is null
     // equal to the one that isn't.
     if (this.maxHeapSize == null) {
@@ -276,13 +278,23 @@ public abstract class LauncherBase {
     if (maxHeapStr != null && maxHeapStr.equals(this.initialHeapSize)) {
       String criticalHeapStr = (String)map.get(CRITICAL_HEAP_PERCENTAGE);
       if (criticalHeapStr == null) {
-        // for larger heaps, keep critical as 95% and 90% for smaller ones
-        long heapSize = ClientSharedUtils.parseMemorySize(maxHeapStr, 0L, 0);
-        criticalPercent = heapSize >= (2L * 1024L * 1024L * 1024L) ? 95 : 90;
+        // for larger heaps, keep critical as 95% and 90% for smaller ones;
+        // also limit memory remaining beyond critical to 4GB
+        double heapSize = ClientSharedUtils.parseMemorySize(maxHeapStr, 0L, 0);
+        if (heapSize > (40.0 * 1024.0 * 1024.0 * 1024.0)) {
+          // calculate percent that will leave out at max 4GB
+          criticalPercent = (float)(100.0 * (1.0 - twoGB / heapSize));
+          // don't exceed 98%
+          if (criticalPercent > 98.0f) criticalPercent = 98.0f;
+        } else if (heapSize >= twoGB) {
+          criticalPercent = 95.0f;
+        } else {
+          criticalPercent = 90.0f;
+        }
         map.put(CRITICAL_HEAP_PERCENTAGE, "-" + CRITICAL_HEAP_PERCENTAGE +
             '=' + criticalPercent);
       } else {
-        criticalPercent = Integer.parseInt(criticalHeapStr.substring(
+        criticalPercent = Float.parseFloat(criticalHeapStr.substring(
             criticalHeapStr.indexOf('=') + 1).trim());
       }
 
@@ -290,11 +302,11 @@ public abstract class LauncherBase {
       if (evictHeapStr == null) {
         // reduce the critical-heap-percentage by 10% to get
         // eviction-heap-percentage
-        evictPercent = (criticalPercent * 9) / 10;
+        evictPercent = criticalPercent * 0.9f;
         map.put(EVICTION_HEAP_PERCENTAGE, "-" + EVICTION_HEAP_PERCENTAGE +
             '=' + evictPercent);
       } else {
-        evictPercent = Integer.parseInt(evictHeapStr.substring(
+        evictPercent = Float.parseFloat(evictHeapStr.substring(
             evictHeapStr.indexOf('=') + 1).trim());
       }
     }
@@ -315,7 +327,7 @@ public abstract class LauncherBase {
 
     // If heap and off-heap sizes were both specified, then the critical and
     // eviction values for heap will be used.
-    if (evictPercent != 0) {
+    if (evictPercent != 0.0f) {
       // set the thickness to a more reasonable value than 2%
       float criticalThickness = criticalPercent * 0.05f;
       vmArgs.add("-D" + THRESHOLD_THICKNESS_PROP + '=' + criticalThickness);

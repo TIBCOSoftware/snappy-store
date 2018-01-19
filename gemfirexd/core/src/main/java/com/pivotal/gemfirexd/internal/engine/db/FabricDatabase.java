@@ -1846,7 +1846,7 @@ public final class FabricDatabase implements ModuleControl,
     // check if the user schema is a proper one else create a proper schema for
     // the user on the fly and add to DataDictionary
     if (defaultSchema.getUUID() == null) {
-      setupDefaultSchema(this.dd, lctx, tc, lctx.getAuthorizationId(), false);
+      setupDefaultSchema(this.dd, lctx, tc, lctx.getAuthorizationId().replace('-', '_'), false);
     }
 
     // Need to commit this to release locks gotten in initialize.

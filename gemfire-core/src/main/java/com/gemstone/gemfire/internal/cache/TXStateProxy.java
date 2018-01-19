@@ -457,6 +457,9 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       this.eventsToBePublished = eventsToBePublished;
       if (numRegions > 0) {
         this.viewVersions = new long[numRegions];
+        for (int i = 0; i < numRegions; i++) {
+          this.viewVersions[i] = -1;
+        }
         this.viewAdvisors = new DistributionAdvisor[numRegions];
       }
       else {
@@ -474,7 +477,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       final long[] viewVersions = this.viewVersions;
       final DistributionAdvisor[] advisors;
       LogWriterI18n logger = null;
-      long viewVersion;
+      long viewVersion = -1;
       if (viewVersions != null) {
         advisors = this.viewAdvisors;
         if (LOG_VERSIONS) {
@@ -483,7 +486,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
         int numOps = viewVersions.length;
         while (--numOps >= 0) {
           viewVersion = viewVersions[numOps];
-          if (viewVersion > 0) {
+          if (viewVersion != -1) {
             advisors[numOps].endOperation(viewVersion);
             if (logger != null) {
               logger.info(LocalizedStrings.DEBUG, "TXCommit: "
@@ -1368,7 +1371,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       new TObjectLongProcedure() {
     @Override
     public boolean execute(Object o, long viewVersion) {
-      if (viewVersion > 0) {
+      if (viewVersion != -1) {
         DistributionAdvisor advisor = (DistributionAdvisor)o;
         advisor.endOperation(viewVersion);
         if (LOG_VERSIONS) {
@@ -1497,8 +1500,9 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
             DistributionAdvisor advisor = dataRegion.getDistributionAdvisor();
             int insertionIndex = versions.getInsertionIndex(advisor);
             if (insertionIndex >= 0) {
-              long viewVersion = advisor.startOperation();
-              if (viewVersion > 0) {
+              long viewVersion = -1;
+              viewVersion = advisor.startOperation();
+              if (viewVersion != -1) {
                 versions.putAtIndex(advisor, viewVersion, insertionIndex);
                 if (LOG_VERSIONS) {
                   getTxMgr().getLogger().info(LocalizedStrings.DEBUG,
@@ -2489,7 +2493,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
             if (viewVersions != null) {
               viewVersions[index] = advisor.startOperation();
               viewAdvisors[index] = advisor;
-              if (LOG_VERSIONS && viewVersions[index] > 0) {
+              if (LOG_VERSIONS && viewVersions[index] != -1) {
                 getTxMgr().getLogger().info(LocalizedStrings.DEBUG,
                     "TXCommit: " + getTransactionId().shortToString()
                         + " dispatching operation for " + pbr.getFullPath()
@@ -2514,7 +2518,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
             if (viewVersions != null) {
               viewVersions[index] = advisor.startOperation();
               viewAdvisors[index] = advisor;
-              if (LOG_VERSIONS && viewVersions[index] > 0) {
+              if (LOG_VERSIONS && viewVersions[index] != -1) {
                 getTxMgr().getLogger().info(LocalizedStrings.DEBUG,
                     "TXCommit: " + getTransactionId().shortToString()
                         + " dispatching operation for " + dreg.getFullPath()
@@ -3131,7 +3135,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
               flags);
         }
         // message distribution, if any, is done at this point
-        if (viewVersion > 0) {
+        if (viewVersion != -1) {
           advisor.endOperation(viewVersion);
           if (LOG_VERSIONS) {
             logger.info(LocalizedStrings.DEBUG, "TX: "
@@ -3210,7 +3214,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       }
       throw te;
     } finally {
-      if (viewVersion > 0) {
+      if (viewVersion != -1) {
         advisor.endOperation(viewVersion);
         if (LOG_VERSIONS) {
           logger.info(LocalizedStrings.DEBUG, "TX: " + performOp

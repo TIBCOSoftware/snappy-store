@@ -14,16 +14,12 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-/**
- * 
- */
 package com.gemstone.gemfire.internal.cache;
 
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-import com.gemstone.gemfire.DataSerializable;
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.CacheWriterException;
 import com.gemstone.gemfire.cache.EntryEvent;
@@ -39,6 +35,7 @@ import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallback
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedLockObject;
 import com.gemstone.gemfire.internal.cache.locks.LockMode;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
+import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
@@ -90,6 +87,12 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
       @Released Object v = null;
       if (faultInValue) {
         v = re.getValue(br);
+        // do an additional retain to match the behaviour of
+        // getValueInVMOrDiskWithoutFaultIn
+        if (GemFireCacheImpl.hasNewOffHeap() &&
+            (v instanceof SerializedDiskBuffer)) {
+          ((SerializedDiskBuffer)v).retain();
+        }
       } else {
         v = re.getValueInVMOrDiskWithoutFaultIn(br);
       }
@@ -306,8 +309,9 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
     throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
   }
 
-  public boolean isOverflowedToDisk(LocalRegion r, DistributedRegion.DiskPosition dp) {
-    throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
+  public boolean isOverflowedToDisk(LocalRegion r,
+      DistributedRegion.DiskPosition dp, boolean alwaysFetchPosition) {
+    return false;
   }
 
   public Object getKey() {
@@ -385,7 +389,14 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
 
   @Override
   public Token getValueAsToken() {
-    throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
+    Object v = this.value;
+    if (v == null) {
+      return null;
+    } else if (v instanceof Token) {
+      return (Token)v;
+    } else {
+      return Token.NOT_A_TOKEN;
+    }
   }
   @Override
   public Object _getValueRetain(RegionEntryContext context, boolean decompress) {
@@ -696,7 +707,7 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
 
   @Override
   public boolean isValueNull() {
-    return (null == getValueAsToken());
+    return this.value == null;
   }
 
   @Override

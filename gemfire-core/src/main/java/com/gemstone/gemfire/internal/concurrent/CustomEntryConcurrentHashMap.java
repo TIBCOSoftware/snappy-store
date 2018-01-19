@@ -2110,7 +2110,7 @@ RETRYLOOP:
 
   /* ---------------- Iterator Support -------------- */
 
-  abstract class HashIterator {
+  public abstract class HashIterator {
 
     int currentSegmentIndex;
 
@@ -2135,6 +2135,10 @@ RETRYLOOP:
       this.currentList = new ArrayList<>(4);
       this.currentListIndex = 0;
       advance();
+    }
+
+    public final int getMapTableIndex() {
+      return this.nextTableIndex;
     }
 
     public final boolean hasMoreElements() {
@@ -2267,7 +2271,7 @@ RETRYLOOP:
     }
   }
 
-  final class KeyIterator extends HashIterator implements Iterator<K>,
+  public final class KeyIterator extends HashIterator implements Iterator<K>,
       Enumeration<K> {
 
     public K next() {
@@ -2279,7 +2283,7 @@ RETRYLOOP:
     }
   }
 
-  final class ValueIterator extends HashIterator implements Iterator<V>,
+  public final class ValueIterator extends HashIterator implements Iterator<V>,
       Enumeration<V> {
 
     public V next() {
@@ -2329,7 +2333,7 @@ RETRYLOOP:
     }
   }
 
-  final class EntryIterator extends HashIterator implements
+  public final class EntryIterator extends HashIterator implements
       Iterator<Map.Entry<K, V>> {
 
 // GemStone change
