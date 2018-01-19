@@ -632,8 +632,8 @@ implements CredentialInitializer
 
 		if (GemFireXDUtils.TraceAuthentication) {
 			SanityManager.DEBUG_PRINT(AuthenticationServiceBase
-					.AuthenticationTrace, "First User DN obtained="
-					+ result.getName());
+			.AuthenticationTrace, "First User DN obtained="
+			+ result.getName());
 		}
 		
 // GemStone changes BEGIN
