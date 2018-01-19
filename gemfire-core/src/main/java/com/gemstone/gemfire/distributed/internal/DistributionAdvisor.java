@@ -789,11 +789,9 @@ public class DistributionAdvisor  {
     if (VERBOSE || StateFlushOperation.DEBUG) {
       getLogWriter().info(LocalizedStrings.DEBUG,
           "resetPrevOpcount op count is " + currentVersionOpCount
-              + " in view version " + membershipVersion + " previous op count is " + previousVersionOpCount);
+              + " in view version " + membershipVersion + " previous op count is " + previousVersionOpCount.get());
     }
-    if (this.previousVersionOpCount != 0)
-      this.previousVersionOpCount = 0;
-
+    this.previousVersionOpCount.set(0);
   }
   /**
    * this method must be invoked at the start of every operation
