@@ -138,33 +138,33 @@ public class GenericStatement
             "^\\s*\\{?\\s*(DROP|TRUNCATE)\\s+(TABLE|INDEX)\\s+",
             Pattern.CASE_INSENSITIVE);
 	public static final Pattern DELETE_STMT = Pattern.compile(
-            "^\\s*\\{?\\s*DELETE\\s+FROM\\s+.*", Pattern.CASE_INSENSITIVE);
+            "^\\s*\\{?\\s*DELETE\\s+FROM\\s+", Pattern.CASE_INSENSITIVE);
         private static final Pattern ignoreStmts = Pattern.compile(
             ("\\s.*(\"SYSSTAT\"|SYS.\")"), Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
         //private ProcedureProxy procProxy;
         private final GfxdHeapThresholdListener thresholdListener;
         private THashMap ncjMetaData = null;
         private static final Pattern STREAMING_DDL_PREFIX =
-            Pattern.compile("\\s*STREAMING\\s+.*",
+            Pattern.compile("^\\s*STREAMING\\s+",
                 Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-        private static final Pattern INSERT_INTO_TABLE_SELECT_PATTERN =
-            Pattern.compile(".*INSERT\\s+INTO\\s+(TABLE)?.*\\s+SELECT\\s+.*",
+        private static final Pattern INSERT_OR_PUT_INTO_TABLE_SELECT_PATTERN =
+            Pattern.compile("^\\s*(INSERT|PUT)\\s+INTO\\s+(TABLE)?.*\\s+SELECT\\s+",
                 Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
         private static final Pattern DML_TABLE_PATTERN =
-            Pattern.compile("^\\s*(INSERT|UPDATE|DELETE)\\s+.*",
+            Pattern.compile("^\\s*(INSERT|UPDATE|DELETE|PUT)\\s+",
                 Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-        private static final Pattern PUT_INTO_TABLE_SELECT_PATTERN =
-            Pattern.compile(".*PUT\\s+INTO\\s+(TABLE)?.*\\s+SELECT\\s+.*",
+        private static final Pattern NON_ROUTED_QUERY =
+            Pattern.compile("^\\s*\\{?\\s*(CALL|EXECUTE)\\s+",
                 Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
         private static final Pattern FUNCTION_DDL_PREFIX =
-            Pattern.compile("\\s?(CREATE|DROP)\\s+FUNCTION\\s+.*",
+            Pattern.compile("^\\s?(CREATE|DROP)\\s+FUNCTION\\s+",
                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-    	private static final Pattern ALTER_TABLE_COLUMN =
-			Pattern.compile("\\s*ALTER\\s+TABLE?.*\\s+(ADD|DROP)\\s+.*",
-				Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-    	private static final Pattern ALTER_TABLE_CONSTRAINTS =
-		  Pattern.compile("\\s*ALTER\\s+TABLE?.*\\s+ADD\\s+CONSTRAINT\\s+.*",
-		    Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        private static final Pattern ALTER_TABLE_COLUMN =
+            Pattern.compile("^\\s*ALTER\\s+TABLE?.*\\s+(ADD|DROP)\\s+",
+                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        private static final Pattern ALTER_TABLE_CONSTRAINTS =
+            Pattern.compile("^\\s*ALTER\\s+TABLE?.*\\s+ADD\\s+CONSTRAINT\\s+",
+                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
 	      private static ExecutionEngineArbiter engineArbiter = new ExecutionEngineArbiter();
 // GemStone changes END
@@ -598,43 +598,40 @@ public class GenericStatement
 				try {
 					//Route all "insert/put into tab select .. " queries to spark
 
-					if (routeQuery && (
-							INSERT_INTO_TABLE_SELECT_PATTERN.matcher(source).matches() ||
-							PUT_INTO_TABLE_SELECT_PATTERN.matcher(source).matches() ||
-                      FUNCTION_DDL_PREFIX.matcher(source).matches() ||
-									ALTER_TABLE_COLUMN.matcher(source).matches() &&
-									(! ALTER_TABLE_CONSTRAINTS.matcher(source).matches()))) {
-						if (prepareIsolationLevel == Connection.TRANSACTION_NONE) {
+					boolean isInsertOrPut;
+					if (routeQuery && prepareIsolationLevel == Connection.TRANSACTION_NONE && (
+						(isInsertOrPut = INSERT_OR_PUT_INTO_TABLE_SELECT_PATTERN.matcher(source).find()) ||
+						FUNCTION_DDL_PREFIX.matcher(source).find() ||
+						(ALTER_TABLE_COLUMN.matcher(source).find() &&
+						!ALTER_TABLE_CONSTRAINTS.matcher(source).find()))) {
 							cc.markAsDDLForSnappyUse(true);
 							return getPreparedStatementForSnappy(false, statementContext, lcc,
-                  cc.isMarkedAsDDLForSnappyUse(), checkCancellation,
-                  (PUT_INTO_TABLE_SELECT_PATTERN.matcher(source).matches() ||
-                      INSERT_INTO_TABLE_SELECT_PATTERN.matcher(source).matches()));
-						}
+								cc.isMarkedAsDDLForSnappyUse(), checkCancellation, isInsertOrPut);
 					}
 					qt = p.parseStatement(getQueryStringForParse(lcc), paramDefaults);
 				}
 				catch (StandardException | AssertFailure ex) {
           //wait till the query hint is examined before throwing exceptions or
-          if (routeQuery && !DML_TABLE_PATTERN.matcher(source).matches()) {
-            if (STREAMING_DDL_PREFIX.matcher(source).matches()) {
+          if (routeQuery && !NON_ROUTED_QUERY.matcher(source).find()) {
+            if (STREAMING_DDL_PREFIX.matcher(source).find()) {
               cc.markAsDDLForSnappyUse(true);
             }
             return getPreparedStatementForSnappy(false, statementContext, lcc,
-                cc.isMarkedAsDDLForSnappyUse(), checkCancellation, false);
+                cc.isMarkedAsDDLForSnappyUse(), checkCancellation,
+                DML_TABLE_PATTERN.matcher(source).find());
           }
           throw ex;
 				}
 				checkCancellation = !shouldSkipMemoryChecks(qt);
 				// DDL Route, even if no exception
-				if (routeQuery && cc.isForcedDDLrouting())
+				if (routeQuery && cc.isForcedDDLrouting() && !NON_ROUTED_QUERY.matcher(source).find())
 				{
 					//SanityManager.DEBUG_PRINT("DEBUG","Parse: force routing sql=" + this.getSource());
-                                   if (observer != null) {
-                                     observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
-                                   }
+				    if (observer != null) {
+				      observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
+				    }
 				    return getPreparedStatementForSnappy(false, statementContext, lcc, true,
-                checkCancellation, false);
+				        checkCancellation, DML_TABLE_PATTERN.matcher(source).find());
 				}
 				//GemStone changes END
 				parseTime = getCurrentTimeMillis(lcc);
@@ -701,16 +698,12 @@ public class GenericStatement
 						qt.bindStatement();
 					}
 					catch(StandardException | AssertFailure ex) {
-					  if (routeQuery) {
+					  if (routeQuery && !NON_ROUTED_QUERY.matcher(source).find()) {
 					    if (observer != null) {
 					      observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
 					    }
-					    boolean isUpdateOrDelete = false;
-					    if (DML_TABLE_PATTERN.matcher(source).matches()) {
-					    	isUpdateOrDelete = true;
-					    }
 							return getPreparedStatementForSnappy(true, statementContext, lcc, false,
-							  checkCancellation, isUpdateOrDelete);
+							  checkCancellation, DML_TABLE_PATTERN.matcher(source).find());
 					  }
 					  throw ex;
 					}
@@ -774,12 +767,12 @@ public class GenericStatement
 
 					}
 					catch(StandardException | AssertFailure ex) {
-						if (routeQuery && !DML_TABLE_PATTERN.matcher(source).matches()) {
-                                                       if (observer != null) {
-                                                         observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
-                                                       }
+						if (routeQuery && !NON_ROUTED_QUERY.matcher(source).find()) {
+							if (observer != null) {
+								observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
+							}
 							return getPreparedStatementForSnappy(true, statementContext, lcc, false,
-                  checkCancellation, false);
+								checkCancellation, DML_TABLE_PATTERN.matcher(source).find());
 						}
 						throw ex;
 					}
@@ -938,7 +931,7 @@ public class GenericStatement
 				    cc.setHasOrList(false);
 				    qt = p.parseStatement(getQueryStringForParse(lcc), paramDefaults);
 				    continue;
-          } else if (routeQuery &&
+          } else if (routeQuery && !NON_ROUTED_QUERY.matcher(source).find() &&
             (messgId.equals(SQLState.NOT_COLOCATED_WITH) ||
                 messgId.equals(SQLState.COLOCATION_CRITERIA_UNSATISFIED) ||
                 messgId.equals(SQLState.REPLICATED_PR_CORRELATED_UNSUPPORTED) ||
@@ -948,7 +941,7 @@ public class GenericStatement
               observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
             }
             return getPreparedStatementForSnappy(true, statementContext, lcc, false,
-                checkCancellation, false);
+                checkCancellation, DML_TABLE_PATTERN.matcher(source).find());
           }
 // GemStone changes END
 					lcc.commitNestedTransaction();
