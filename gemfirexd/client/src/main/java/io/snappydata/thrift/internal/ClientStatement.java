@@ -142,7 +142,7 @@ public class ClientStatement extends ClientFetchColumnValue implements
   }
 
   public final void setSnapshotTransactionId(String txId) {
-    if (txId != null && !txId.equals("null")) {
+    if (txId != null && !txId.isEmpty()) {
       this.attrs.setSnapshotTransactionId(txId);
     } else {
       this.attrs.unsetSnapshotTransactionId();

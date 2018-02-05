@@ -1081,11 +1081,10 @@ public final class TXManagerImpl implements CacheTransactionManager,
 
   public final TXManagerImpl.TXContext commit(
       final TXStateInterface tx, final Object callbackArg,
-      final int commitPhase, final TXContext context, boolean isRemoteCommit)
+      final int commitPhase, TXContext ctx, boolean isRemoteCommit)
       throws TransactionException {
     checkClosed();
 
-    TXManagerImpl.TXContext ctx = context;
     if (tx == null) {
       throw new IllegalTransactionStateException(LocalizedStrings
           .TXManagerImpl_THREAD_DOES_NOT_HAVE_AN_ACTIVE_TRANSACTION
@@ -1897,6 +1896,8 @@ public final class TXManagerImpl implements CacheTransactionManager,
     for (TXStateProxy txProxy : txMgr.getHostedTransactionsInProgress()) {
       msg.append(' ');
       txProxy.getTransactionId().appendToString(msg, sys);
+      msg.append(",state=").append(txProxy.state)
+          .append('{').append(txProxy.getIsolationLevel()).append('}');
       msg.append('{').append(txProxy.creatorThread.toString()).append('}');
     }
   }

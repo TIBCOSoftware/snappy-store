@@ -140,7 +140,8 @@ public final class TXId extends ExternalizableDSFID implements TransactionId,
   }
 
   public final String stringFormat() {
-    return "" + this.memberId + ':' + this.uniqId;
+    return new StringBuilder(40)
+        .append(this.memberId).append(':').append(this.uniqId).toString();
   }
 
   @Override

@@ -193,7 +193,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
   /**
    * The current {@link State} of the transaction.
    */
-  private final AtomicReference<State> state;
+  final AtomicReference<State> state;
 
   protected volatile boolean hasCohorts;
 
@@ -206,6 +206,12 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
   private volatile boolean hasReadOps;
 
   private Throwable inconsistentThr;
+
+  /**
+   * Transient flag to indicate that rollover from row buffers to column store
+   * are disabled.
+   */
+  private volatile boolean columnRolloverDisabled;
 
   /**
    * List of any function executions that have not yet invoked a getResult().
@@ -1626,9 +1632,10 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
    * here.
    */
   protected void cleanup() {
+    this.hasCohorts = false;
     this.isDirty = false;
     this.hasReadOps = false;
-    this.hasCohorts = false;
+    this.columnRolloverDisabled = false;
     if (!this.pendingResultCollectors.isEmpty()) {
       this.pendingResultCollectors.clear();
     }
@@ -4782,13 +4789,20 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     }
   }
 
+  public void setColumnRolloverDisabled(boolean disabled) {
+    this.columnRolloverDisabled = disabled;
+  }
+
+  public boolean isColumnRolloverDisabled() {
+    return this.columnRolloverDisabled;
+  }
+
   /**
    * {@inheritDoc}
    */
   @Override
   public int getExecutionSequence() {
-    // TODO Auto-generated method stub
-    return 0;
+    return this.currentExecutionSeq;
   }
   
   public void rollback(int savepoint) {

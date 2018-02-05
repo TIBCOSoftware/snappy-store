@@ -2502,17 +2502,39 @@ public class GfxdSystemProcedures extends SystemProcedures {
         GfxdSystemProcedureMessage.SysProcMethod.setNanoTimerType, false, true);
   }
 
-  public static void COMMIT_SNAPSHOT_TXID(String txId) throws SQLException, StandardException {
+  // register the call backs with the JDBCSource so that
+  // bucket region can insert into the column table
+  public static void flushLocalBuckets(String resolvedName, boolean forceFlush) {
+    PartitionedRegion pr = (PartitionedRegion)Misc.getRegionForTable(
+        resolvedName, false);
+    PartitionedRegionDataStore ds;
+    if (pr != null && (ds = pr.getDataStore()) != null) {
+      TXStateInterface tx = pr.getTXState();
+      for (BucketRegion bucketRegion : ds.getAllLocalPrimaryBucketRegions()) {
+        if (forceFlush || bucketRegion.checkForColumnBatchCreation(null)) {
+          bucketRegion.createAndInsertColumnBatch(tx, forceFlush);
+        }
+      }
+    }
+  }
+
+  public static void COMMIT_SNAPSHOT_TXID(String txId, String rolloverTable)
+      throws SQLException, StandardException {
     TXStateInterface txState = null;
     LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
     GemFireTransaction tc = (GemFireTransaction) lcc.getTransactionExecute();
     TXManagerImpl txManager = tc.getTransactionManager();
 
-    if (!txId.equals("null")) {
+    if (!rolloverTable.isEmpty()) {
+      flushLocalBuckets(rolloverTable, false);
+    }
+    if (!txId.isEmpty()) {
       StringTokenizer st = new StringTokenizer(txId, ":");
       if (GemFireXDUtils.TraceExecution) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-            "in procedure COMMIT_SNAPSHOT_TXID()  " + txId + " for connid " + tc.getConnectionID()
+            "in procedure COMMIT_SNAPSHOT_TXID()  " + txId
+                + " rolloverTable=" + rolloverTable + " for connid "
+                + tc.getConnectionID() + " rolloverTable=" + rolloverTable
                 + " TxManager " + TXManagerImpl.getCurrentTXId()
                 + " snapshot tx : " + TXManagerImpl.getCurrentSnapshotTXState());
       }
@@ -2561,7 +2583,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     GemFireTransaction tc = (GemFireTransaction) lcc.getTransactionExecute();
     TXManagerImpl txManager = tc.getTransactionManager();
 
-    if (!txId.equals("null")) {
+    if (!txId.isEmpty()) {
       StringTokenizer st = new StringTokenizer(txId, ":");
       if (GemFireXDUtils.TraceExecution) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
@@ -2594,23 +2616,26 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
   }
 
-  public static String GET_SNAPSHOT_TXID() throws SQLException, StandardException {
+  public static String GET_SNAPSHOT_TXID(Boolean delayRollover)
+      throws SQLException, StandardException {
     LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
     GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
     TXManagerImpl.TXContext context = TXManagerImpl.currentTXContext();
     TXStateInterface tx = context != null ? context.getSnapshotTXState() : null;
     if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in function GET_SNAPSHOT_TXID()  for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
+          "in function GET_SNAPSHOT_TXID()  for conn " + tc.getConnectionID()
+      + " delayRollover=" + delayRollover + " tc id" + tc.getTransactionIdString()
       + " TxManager " + TXManagerImpl.getCurrentTXId()
       + " snapshot tx : " + tx);
     }
 
     String txId;
     if (tx != null && !tx.isClosed()) {
+      tx.getProxy().setColumnRolloverDisabled(delayRollover);
       txId = tx.getTransactionId().stringFormat();
     } else {
-      txId = "null";
+      txId = "";
     }
     // tc commit will clear all the artifacts but will not commit actual txState
     // that should be committed in COMMIT procedure
@@ -2622,7 +2647,8 @@ public class GfxdSystemProcedures extends SystemProcedures {
     return txId;
   }
 
-  public static void START_SNAPSHOT_TXID(String[] txid) throws SQLException, StandardException {
+  public static void START_SNAPSHOT_TXID(Boolean delayRollover, String[] txid)
+      throws SQLException, StandardException {
     assert(TXManagerImpl.getCurrentSnapshotTXState() == null);
 
     Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
@@ -2633,15 +2659,18 @@ public class GfxdSystemProcedures extends SystemProcedures {
 
     if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in procedure START_SNAPSHOT_TXID()  for conn " + tc.getConnectionID() + " tc id" + tc.getTransactionIdString()
+          "in procedure START_SNAPSHOT_TXID()  for conn " + tc.getConnectionID()
+              + " delayRollover=" + delayRollover
+              + " tc id" + tc.getTransactionIdString()
               + " TxManager " + TXManagerImpl.getCurrentTXId()
               + " snapshot tx : " + tx);
     }
 
     if (tx != null && !tx.isClosed()) {
+      tx.getProxy().setColumnRolloverDisabled(delayRollover);
       txid[0] = tx.getTransactionId().stringFormat();
     } else {
-      txid[0] = "null";
+      txid[0] = "";
     }
     /*// tc commit will clear all the artifacts but will not commit actual txState
     // that should be committed in COMMIT procedure*/

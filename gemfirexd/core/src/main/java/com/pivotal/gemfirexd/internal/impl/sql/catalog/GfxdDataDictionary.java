@@ -1663,43 +1663,55 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
 
     {
       {
-        String[] argNames = new String[]{"txId"};
-        TypeDescriptor[] argTypes = new TypeDescriptor[]{
-            DataTypeDescriptor.getCatalogType(Types.VARCHAR)};
-        super.createSystemProcedureOrFunction("START_SNAPSHOT_TXID", sysUUID,
-            argNames,argTypes, 1, 0, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines,
-            tc, GFXD_SYS_PROC_CLASSNAME, false);
-      }
-
-      {
-        String[] argNames = new String[]{"txId"};
-        TypeDescriptor[] argTypes = new TypeDescriptor[]{
-            DataTypeDescriptor.getCatalogType(Types.VARCHAR)};
-        super.createSystemProcedureOrFunction("COMMIT_SNAPSHOT_TXID", sysUUID,
-            argNames,argTypes, 0, 0, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines,
-            tc, GFXD_SYS_PROC_CLASSNAME, false);
-      }
-      {
-        String[] argNames = new String[]{"txId"};
-        TypeDescriptor[] argTypes = new TypeDescriptor[]{
-            DataTypeDescriptor.getCatalogType(Types.VARCHAR)};
-        super.createSystemProcedureOrFunction("ROLLBACK_SNAPSHOT_TXID", sysUUID,
-            argNames,argTypes, 0, 0, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines,
-            tc, GFXD_SYS_PROC_CLASSNAME, false);
-      }
-      {
-        String[] argNames = new String[] { "txId"};
+        String[] argNames = new String[] { "delayRollover", "txId" };
         TypeDescriptor[] argTypes = new TypeDescriptor[] {
-            DataTypeDescriptor.getCatalogType(Types.VARCHAR)};
+            DataTypeDescriptor.getBuiltInDataTypeDescriptor(
+                Types.BOOLEAN, false).getCatalogType(),
+            DataTypeDescriptor.getBuiltInDataTypeDescriptor(
+                Types.VARCHAR, false).getCatalogType() };
+        super.createSystemProcedureOrFunction("START_SNAPSHOT_TXID", sysUUID,
+            argNames, argTypes, 1, 0, RoutineAliasInfo.NO_SQL, null,
+            newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
+      }
+      {
+        String[] argNames = new String[] { "txId", "rolloverTable" };
+        TypeDescriptor[] argTypes = new TypeDescriptor[] {
+            DataTypeDescriptor.getBuiltInDataTypeDescriptor(
+                Types.VARCHAR, false).getCatalogType(),
+            DataTypeDescriptor.getBuiltInDataTypeDescriptor(
+                Types.VARCHAR, false).getCatalogType() };
+        super.createSystemProcedureOrFunction("COMMIT_SNAPSHOT_TXID", sysUUID,
+            argNames, argTypes, 0, 0, RoutineAliasInfo.NO_SQL,
+            null, newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
+      }
+      {
+        String[] argNames = new String[] { "txId" };
+        TypeDescriptor[] argTypes = new TypeDescriptor[] {
+            DataTypeDescriptor.getBuiltInDataTypeDescriptor(
+                Types.VARCHAR, false).getCatalogType() };
+        super.createSystemProcedureOrFunction("ROLLBACK_SNAPSHOT_TXID", sysUUID,
+            argNames, argTypes, 0, 0, RoutineAliasInfo.NO_SQL, null,
+            newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
+      }
+      {
+        String[] argNames = new String[] { "txId" };
+        TypeDescriptor[] argTypes = new TypeDescriptor[] {
+            DataTypeDescriptor.getBuiltInDataTypeDescriptor(
+                Types.VARCHAR, false).getCatalogType() };
         super.createSystemProcedureOrFunction("USE_SNAPSHOT_TXID", sysUUID,
             argNames, argTypes, 0, 0, RoutineAliasInfo.NO_SQL, null,
             newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
       }
-
-      super.createSystemProcedureOrFunction("GET_SNAPSHOT_TXID", sysUUID,
-          null, null, 0, 0, RoutineAliasInfo.READS_SQL_DATA,
-          DataTypeDescriptor.getCatalogType(Types.VARCHAR), newlyCreatedRoutines,
-          tc, GFXD_SYS_PROC_CLASSNAME, false);
+      {
+        String[] argNames = new String[] { "delayRollover" };
+        TypeDescriptor[] argTypes = new TypeDescriptor[] {
+            DataTypeDescriptor.getBuiltInDataTypeDescriptor(
+                Types.BOOLEAN, false).getCatalogType() };
+        super.createSystemProcedureOrFunction("GET_SNAPSHOT_TXID", sysUUID,
+            argNames, argTypes, 0, 0, RoutineAliasInfo.READS_SQL_DATA,
+            DataTypeDescriptor.getCatalogType(Types.VARCHAR), newlyCreatedRoutines,
+            tc, GFXD_SYS_PROC_CLASSNAME, false);
+      }
     }
 
     {
