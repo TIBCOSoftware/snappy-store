@@ -1108,20 +1108,13 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   public Set<PersistentMemberID> getAllMembersToWaitFor() {
     return allMembersWaitingFor;
   }
-  
-  protected void logWaitingForMember(Set<PersistentMemberID> allMembersToWaitFor, Set<PersistentMemberID> offlineMembersToWaitFor) {
+
+  private void logWaitingForMember(Set<PersistentMemberID> allMembersToWaitFor,
+      Set<PersistentMemberID> offlineMembersToWaitFor) {
     final StaticSystemCallbacks sysCb = GemFireCacheImpl
         .getInternalProductCallbacks();
-    Set<String> membersToWaitForLogEntries = new HashSet<String>();
     if(offlineMembersToWaitFor != null && !offlineMembersToWaitFor.isEmpty()) {
-      TransformUtils.transform(offlineMembersToWaitFor, membersToWaitForLogEntries, TransformUtils.persistentMemberIdToLogEntryTransformer);
-
-      String message = LocalizedStrings
-          .CreatePersistentRegionProcessor_WAITING_FOR_LATEST_MEMBER
-          .toLocalizedString(new Object[] { regionPath,
-              TransformUtils.persistentMemberIdToLogEntryTransformer
-                  .transform(getPersistentID()), membersToWaitForLogEntries,
-              GemFireUtilLauncher.getScriptName() });
+      String message = logMessageForOfflineMembers(offlineMembersToWaitFor);
       StartupStatus.startup(message);
       // also notify GemFireXD layer
       if (sysCb != null) {
@@ -1129,14 +1122,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
             getPersistentID(), message);
       }
     } else {
-      TransformUtils.transform(allMembersToWaitFor, membersToWaitForLogEntries, TransformUtils.persistentMemberIdToLogEntryTransformer);
-
-      String message = LocalizedStrings
-          .CreatePersistentRegionProcessor_WAITING_FOR_ONLINE_LATEST_MEMBER
-          .toLocalizedString(new Object[] { regionPath,
-              TransformUtils.persistentMemberIdToLogEntryTransformer
-                  .transform(getPersistentID()), membersToWaitForLogEntries,
-              GemFireUtilLauncher.getScriptName() });
+      String message = logMessageForOnlineMembers(allMembersToWaitFor);
       StartupStatus.startup(message);
       // also notify GemFireXD layer
       if (sysCb != null) {
@@ -1144,6 +1130,36 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
             getPersistentID(), message);
       }
     }
+  }
+
+  protected boolean logWaitingForMembers() {
+    return true;
+  }
+
+  protected String logMessageForOfflineMembers(
+      Set<PersistentMemberID> offlineMembersToWaitFor) {
+    Set<String> membersToWaitForLogEntries = new HashSet<String>();
+    TransformUtils.transform(offlineMembersToWaitFor, membersToWaitForLogEntries,
+        TransformUtils.persistentMemberIdToLogEntryTransformer);
+    return LocalizedStrings
+        .CreatePersistentRegionProcessor_WAITING_FOR_LATEST_MEMBER
+        .toLocalizedString(regionPath,
+            TransformUtils.persistentMemberIdToLogEntryTransformer
+                .transform(getPersistentID()), membersToWaitForLogEntries,
+            GemFireUtilLauncher.getScriptName());
+  }
+
+  protected String logMessageForOnlineMembers(
+      Set<PersistentMemberID> allMembersToWaitFor) {
+    Set<String> membersToWaitForLogEntries = new HashSet<String>();
+    TransformUtils.transform(allMembersToWaitFor, membersToWaitForLogEntries,
+        TransformUtils.persistentMemberIdToLogEntryTransformer);
+    return LocalizedStrings
+        .CreatePersistentRegionProcessor_WAITING_FOR_ONLINE_LATEST_MEMBER
+        .toLocalizedString(regionPath,
+            TransformUtils.persistentMemberIdToLogEntryTransformer
+                .transform(getPersistentID()), membersToWaitForLogEntries,
+            GemFireUtilLauncher.getScriptName());
   }
 
   protected void checkInterruptedByShutdownAll() {
