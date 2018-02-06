@@ -577,11 +577,12 @@ public class SnapShotTxDUnit extends DistributedSQLTestBase {
         final Region r = cache.getRegion(regionName);
         final int[] keyval = new int[20];
         final AtomicInteger l = new AtomicInteger(0);
+        final AtomicInteger key = new AtomicInteger(1000);
 
         Runnable run = new Runnable() {
           @Override
           public void run() {
-            int i = new Random().nextInt(10000);
+            int i = key.incrementAndGet();
             final Map m = new HashMap();
 
             m.put(i, i);

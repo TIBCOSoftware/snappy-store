@@ -2256,7 +2256,8 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       // if rollback already started due to some reason (e.g. coordinator
       // departed) then wait for it to finish and then return
       if (state == State.ROLLBACK_STARTED) {
-        waitForLocalTXCommit(null, ExclusiveSharedSynchronizer.LOCK_MAX_TIMEOUT);
+        waitForLocalTXCommit(null,
+            Math.max(5000L, ExclusiveSharedSynchronizer.LOCK_MAX_TIMEOUT / 10));
         return;
       }
       if (this.state.compareAndSet(state, State.ROLLBACK_STARTED)) {
