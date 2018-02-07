@@ -31,6 +31,7 @@ import com.gemstone.gemfire.cache.Cache;
 import com.gemstone.gemfire.cache.CacheWriterException;
 import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.cache.EntryEvent;
+import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.asyncqueue.internal.AsyncEventQueueImpl;
 import com.gemstone.gemfire.cache.persistence.PartitionOfflineException;
 import com.gemstone.gemfire.cache.util.CacheWriterAdapter;
@@ -8906,6 +8907,37 @@ public class BugsTest extends JdbcTestBase {
       helper2Bug52352(props, "test", "test");
     } finally {
       TestUtil.shutDown();
+    }
+  }
+
+  public void testSNAP_2202() {
+    String[] regions = new String[] {
+        "/" + GfxdConstants.IDENTITY_REGION_NAME,
+        "/SCHEMA",
+        "/_SCHEMA",
+        "/__SCHEMA",
+        "/__SCHEMA_",
+        "/__SCH_EMA_",
+        "/_SCH__EMA_",
+        "/__SCH__EMA__",
+        "/SCHEMA/TEST",
+        "/_SCHEMA/TEST",
+        "/__SCHEMA/_TEST",
+        "/__SCHE_MA/TEST",
+        "/__SCHEMA/_TE__ST",
+        // the pattern "_/_" is unsupported
+        // "/__SC__HEMA_/_TE_ST__"
+    };
+    int[] bucketIds = new int[] { 0, 1, 23, 101, 1001 };
+    for (String region : regions) {
+      for (int bucketId : bucketIds) {
+        String fullPath = Region.SEPARATOR +
+            PartitionedRegionHelper.PR_ROOT_REGION_NAME + Region.SEPARATOR +
+            PartitionedRegionHelper.getBucketName(region, bucketId);
+        String bucketName = PartitionedRegionHelper.getBucketName(fullPath);
+        assertEquals(region, PartitionedRegionHelper.getPRPath(bucketName));
+        assertEquals(bucketId, PartitionedRegionHelper.getBucketId(bucketName));
+      }
     }
   }
 }

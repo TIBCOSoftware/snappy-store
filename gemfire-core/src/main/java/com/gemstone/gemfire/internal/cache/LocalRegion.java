@@ -743,6 +743,12 @@ public class LocalRegion extends AbstractRegion
         StoreCallbacks.SHADOW_TABLE_SUFFIX);
     this.parentRegion = parentRegion;
     this.fullPath = calcFullPath(regionName, parentRegion);
+    // cannot support patterns like "..._/_..." due to ambiguity in encoding
+    // of bucket regions
+    if (this.fullPath.contains("_/_")) {
+      throw new IllegalArgumentException("Region path " + this.fullPath +
+          " cannot have '_/_' pattern");
+    }
     final GemFireCacheImpl.StaticSystemCallbacks sysCb =
         GemFireCacheImpl.FactoryStatics.systemCallbacks;
     if (sysCb == null) {
