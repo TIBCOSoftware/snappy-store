@@ -1064,13 +1064,21 @@ public final class PartitionedRegionHelper {
     return null;
     
   }
-  
+
+  /**
+   * Encode the partitioned region name to embed within the name that will
+   * be used by its bucket regions ({@link #getBucketName(String, int)}).
+   */
   public static String escapePRPath(String prFullPath) {
     String escaped = prFullPath.replace("_", "__");
     escaped = escaped.replace(LocalRegion.SEPARATOR_CHAR, '_');
     return escaped;
   }
 
+  /**
+   * Decode the result of {@link #escapePRPath(String)} from the bucket region
+   * name to obtain the partitioned region name ({@link #getPRPath(String)}).
+   */
   public static String unescapePRPath(String escapedPath) {
     // below logic is broken if separators are mixed with underscores
     // at the start of region name (e.g. "/__TEST" becomes five underscores
