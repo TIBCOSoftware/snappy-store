@@ -1072,8 +1072,9 @@ public final class PartitionedRegionHelper {
   }
 
   public static String unescapePRPath(String escapedPath) {
-    // below logic is broken if separators are mixed with double underscores
-    // at the start of region name (e.g. "/__TEST" becomes five underscores)
+    // below logic is broken if separators are mixed with underscores
+    // at the start of region name (e.g. "/__TEST" becomes five underscores
+    // and decodes to "__/TEST")
     /*
     String path = escapedPath.replace('_', LocalRegion.SEPARATOR_CHAR);
     path = path.replace(TWO_SEPARATORS, "_");
