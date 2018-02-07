@@ -8927,6 +8927,7 @@ public class BugsTest extends JdbcTestBase {
         "/__SCHEMA/_TE__ST",
         // the pattern "_/_" is unsupported
         // "/__SC__HEMA_/_TE_ST__"
+        "/__SCHEMA/__TE__ST__"
     };
     int[] bucketIds = new int[] { 0, 1, 23, 101, 1001 };
     for (String region : regions) {
