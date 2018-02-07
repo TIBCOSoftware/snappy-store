@@ -8931,6 +8931,7 @@ public class BugsTest extends JdbcTestBase {
     int[] bucketIds = new int[] { 0, 1, 23, 101, 1001 };
     for (String region : regions) {
       for (int bucketId : bucketIds) {
+        // below is same as ProxyBucketRegion.fullPath initialization
         String fullPath = Region.SEPARATOR +
             PartitionedRegionHelper.PR_ROOT_REGION_NAME + Region.SEPARATOR +
             PartitionedRegionHelper.getBucketName(region, bucketId);
