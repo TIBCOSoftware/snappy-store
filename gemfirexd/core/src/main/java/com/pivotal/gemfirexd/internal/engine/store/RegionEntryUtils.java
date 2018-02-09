@@ -812,7 +812,12 @@ public final class RegionEntryUtils {
           break;
         }
       }
-      if (!hasPrefix) {
+      if (hasPrefix) {
+        propValue = PropertyUtil.getSystemProperty(key, null);
+        if (propValue != null) {
+          return propValue;
+        }
+      } else {
         for (String prefix : allPrefixes) {
           propValue = PropertyUtil.getSystemProperty(prefix + key, null);
           if (propValue != null) {

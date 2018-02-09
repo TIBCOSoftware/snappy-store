@@ -133,7 +133,8 @@ public final class SystemProperties {
      */
     public synchronized String getSystemProperty(String key,
         SystemProperties properties) throws PrivilegedActionException {
-      this._propertyName = this.propertyNamePrefix + key;
+      this._propertyName = key.startsWith(this.propertyNamePrefix)
+          ? key : this.propertyNamePrefix + key;
       String value = AccessController.doPrivileged(this);
       this._propertyName = null;
       return value;
