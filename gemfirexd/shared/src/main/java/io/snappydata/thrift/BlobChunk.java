@@ -787,11 +787,22 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
       struct.validate();
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot, BlobChunk struct) throws org.apache.thrift.TException {
-      struct.validate();
+    @Override
+    public void write(org.apache.thrift.protocol.TProtocol oprot, BlobChunk struct)
+        throws org.apache.thrift.TException {
+      try {
+        struct.validate();
+        final ByteBuffer chunk = struct.getCompressedBuffer(oprot);
+        writeData(oprot, struct, chunk);
+      } finally {
+        // free the blob once written
+        struct.free();
+      }
+    }
 
+    private void writeData(org.apache.thrift.protocol.TProtocol oprot,
+        BlobChunk struct, ByteBuffer chunk) throws org.apache.thrift.TException {
       oprot.writeStructBegin(STRUCT_DESC);
-      final ByteBuffer chunk = struct.getCompressedBuffer(oprot);
       if (chunk != null) {
         oprot.writeFieldBegin(CHUNK_FIELD_DESC);
         oprot.writeBinary(chunk);
@@ -817,8 +828,6 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
       }
       oprot.writeFieldStop();
       oprot.writeStructEnd();
-      // free the blob once written
-      struct.free();
     }
 
   }
@@ -832,9 +841,22 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
   private static class BlobChunkTupleScheme extends TupleScheme<BlobChunk> {
 
     @Override
-    public void write(org.apache.thrift.protocol.TProtocol prot, BlobChunk struct) throws org.apache.thrift.TException {
+    public void write(org.apache.thrift.protocol.TProtocol prot,
+        BlobChunk struct) throws org.apache.thrift.TException {
+      try {
+        final ByteBuffer buffer = struct.getCompressedBuffer(prot);
+        writeData(prot, struct,
+            buffer != null ? buffer : ClientSharedData.NULL_BUFFER);
+      } finally {
+        // free the blob once written
+        struct.free();
+      }
+    }
+
+    private void writeData(org.apache.thrift.protocol.TProtocol prot,
+        BlobChunk struct, ByteBuffer buffer) throws org.apache.thrift.TException {
       TTupleProtocol oprot = (TTupleProtocol) prot;
-      oprot.writeBinary(struct.getCompressedBuffer(prot));
+      oprot.writeBinary(buffer);
       oprot.writeBool(struct.last);
       BitSet optionals = new BitSet();
       if (struct.isSetLobId()) {
@@ -856,8 +878,6 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
       if (struct.isSetTotalLength()) {
         oprot.writeI64(struct.totalLength);
       }
-      // free the blob once written
-      struct.free();
     }
 
     @Override
