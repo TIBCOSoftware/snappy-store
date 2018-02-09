@@ -1107,11 +1107,11 @@ public class GfxdServerLauncher extends CacheServerLauncher {
       PersistentMemberID myId, String message) {
     StringBuilder otherMembers = new StringBuilder();
     String tableWithLocation = Misc.getFullTableNameFromRegionPath(regionPath);
+    String myDir = myId != null ? myId.directory : "unknown";
     if (GemFireStore.DDL_STMTS_REGION.equals(tableWithLocation)) {
-      tableWithLocation = "DataDictionary at location " + myId.directory;
-    }
-    else {
-      tableWithLocation = "Table " + tableWithLocation + " at location " + myId.directory;
+      tableWithLocation = "DataDictionary at location " + myDir;
+    } else {
+      tableWithLocation = "Table " + tableWithLocation + " at location " + myDir;
     }
     for (PersistentMemberID otherId : membersToWaitFor) {
       otherMembers.append("\n [" + otherId.host + "]");
