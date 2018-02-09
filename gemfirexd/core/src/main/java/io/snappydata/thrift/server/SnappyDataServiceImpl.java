@@ -79,6 +79,7 @@ import com.pivotal.gemfirexd.internal.iapi.services.io.ApplicationObjectInputStr
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultColumnDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.StatementType;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
+import com.pivotal.gemfirexd.internal.iapi.sql.conn.StatementContext;
 import com.pivotal.gemfirexd.internal.iapi.store.access.xa.XAXactId;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeUtilities;
@@ -1311,8 +1312,9 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         final EmbedResultSet ers = (EmbedResultSet)rs;
         estmt = (EngineStatement)stmt;
         synchronized (conn.getConnectionSynchronization()) {
+          LanguageConnectionContext lcc = conn.getLanguageConnectionContext();
           ers.setupContextStack(false);
-          ers.pushStatementContext(conn.getLanguageConnectionContext(), true);
+          ers.pushStatementContext(lcc, true);
           try {
             // skip the first move in case cursor was already positioned by an
             // explicit call to absolute or relative
@@ -1354,7 +1356,12 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
                   .lightWeightPrevious();
             }
           } finally {
-            ers.popStatementContext();
+            StatementContext context = lcc.getStatementContext();
+            if (lcc.getStatementDepth() > 0) {
+              lcc.popStatementContext(context, null);
+            } else if (context != null && context.inUse()) {
+              context.clearInUse();
+            }
             ers.restoreContextStack();
           }
         }
