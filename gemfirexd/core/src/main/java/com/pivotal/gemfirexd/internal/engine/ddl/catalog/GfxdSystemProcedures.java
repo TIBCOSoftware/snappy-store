@@ -38,6 +38,7 @@ import com.gemstone.gemfire.cache.CacheException;
 import com.gemstone.gemfire.cache.EvictionAttributes;
 import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.Region;
+import com.gemstone.gemfire.cache.TransactionException;
 import com.gemstone.gemfire.cache.control.RebalanceOperation;
 import com.gemstone.gemfire.cache.control.ResourceManager;
 import com.gemstone.gemfire.cache.execute.FunctionService;
@@ -2649,12 +2650,21 @@ public class GfxdSystemProcedures extends SystemProcedures {
 
   public static void START_SNAPSHOT_TXID(Boolean delayRollover, String[] txid)
       throws SQLException, StandardException {
-    assert(TXManagerImpl.getCurrentSnapshotTXState() == null);
-
-    Misc.getGemFireCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    TXManagerImpl txManager = Misc.getGemFireCache().getCacheTransactionManager();
+    TXManagerImpl.TXContext context = TXManagerImpl.getOrCreateTXContext();
+    // rollback any previous transaction (e.g. after task kill)
+    final TXStateInterface oldTX = context.getTXState();
+    if (oldTX != null) {
+      try {
+        txManager.rollback(oldTX, null, false);
+      } catch (TransactionException ignored) {
+      }
+    }
+    context.clearTXStateAll();
+    final TXStateInterface tx = txManager.beginTX(context,
+        IsolationLevel.SNAPSHOT, null, null);
     LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
     GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
-    final TXStateInterface tx = TXManagerImpl.getCurrentSnapshotTXState();
     tc.setActiveTXState(tx, false);
 
     if (GemFireXDUtils.TraceExecution) {
