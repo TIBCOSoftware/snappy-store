@@ -920,9 +920,11 @@ RETRYLOOP:
     }
 
     final void postMemAccount(String path) {
-      CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory(path,
-          this.table.length * ReflectionSingleObjectSizer.REFERENCE_SIZE,
-          null, true, false);
+      long numBytes = this.table.length * ReflectionSingleObjectSizer.REFERENCE_SIZE;
+      if (!CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory(path,
+          numBytes, null, true, false)) {
+        throw LocalRegion.lowMemoryException(null, numBytes);
+      }
     }
 
     final void accountMapOverhead(int oldCapacity) {
@@ -931,9 +933,11 @@ RETRYLOOP:
       // memory manager as this is the last step of a region operation.
       String regionPath = LocalRegion.regionPath.get();
       if (regionPath != null) {
-        CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory(regionPath,
-            oldCapacity * ReflectionSingleObjectSizer.REFERENCE_SIZE,
-            null, true, false);
+        long numBytes = oldCapacity * ReflectionSingleObjectSizer.REFERENCE_SIZE;
+        if (!CallbackFactoryProvider.getStoreCallbacks().acquireStorageMemory(
+            regionPath, numBytes, null, true, false)) {
+          throw LocalRegion.lowMemoryException(null, numBytes);
+        }
         LocalRegion.regionPath.remove();
       }
     }

@@ -18,7 +18,6 @@ package com.gemstone.gemfire.internal.cache;
 
 import com.gemstone.gemfire.cache.hdfs.internal.AbstractBucketRegionQueue;
 import com.gemstone.gemfire.cache.query.internal.IndexUpdater;
-import com.gemstone.gemfire.internal.cache.persistence.DiskRegionView;
 import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
 import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventImpl;
 import com.gemstone.gemfire.internal.cache.wan.serial.SerialGatewaySenderQueue;
@@ -76,8 +75,7 @@ public abstract class AbstractDiskRegionEntry
   protected final void initDiskIdForOffHeap(RegionEntryContext context,
       Object value) {
     // copy DiskId to value if required
-    if (GemFireCacheImpl.hasNewOffHeap() &&
-        value instanceof SerializedDiskBuffer) {
+    if (value instanceof SerializedDiskBuffer) {
       ((SerializedDiskBuffer)value).setDiskLocation(getDiskId(), context);
     }
   }

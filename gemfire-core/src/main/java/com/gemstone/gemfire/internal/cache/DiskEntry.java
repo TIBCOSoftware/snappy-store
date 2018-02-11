@@ -1516,8 +1516,7 @@ public interface DiskEntry extends RegionEntry {
         ((AbstractDiskLRURegionEntry)entry).setDelayedDiskId(region);
         did = entry.getDiskId();
         final Object oldValue;
-        if (GemFireCacheImpl.hasNewOffHeap() &&
-            (oldValue = entry._getValue()) instanceof SerializedDiskBuffer) {
+        if ((oldValue = entry._getValue()) instanceof SerializedDiskBuffer) {
           ((SerializedDiskBuffer)oldValue).setDiskLocation(did, region);
         }
         // add DiskId overhead to change

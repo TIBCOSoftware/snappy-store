@@ -1473,7 +1473,7 @@ public final class GfxdSystemProcedureMessage extends
 
       @Override
       String getSQLStatement(Object[] params) throws StandardException {
-        return "CALL SYS.REPAIR_CATALOG(1)";
+        return "CALL SYS.REPAIR_CATALOG()";
       }
     },
     
