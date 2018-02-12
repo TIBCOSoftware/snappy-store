@@ -14413,10 +14413,8 @@ public class LocalRegion extends AbstractRegion
       synchronized (this) {
         if (!regionOverHeadAccounted) {
           this.regionOverHead = ReflectionSingleObjectSizer.INSTANCE.sizeof(this);
-          if (!callback.acquireStorageMemory(getFullPath(),
-                  regionOverHead, null, true, false)) {
-            throwLowMemoryException(regionOverHead);
-          }
+          callback.acquireStorageMemory(getFullPath(),
+                  regionOverHead, null, true, false);
           regionOverHeadAccounted = true;
         }
       }
