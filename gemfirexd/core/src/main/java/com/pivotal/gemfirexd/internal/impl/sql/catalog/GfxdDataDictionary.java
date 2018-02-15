@@ -65,6 +65,7 @@ import com.pivotal.gemfirexd.internal.engine.diag.DiskStoreIDs;
 import com.pivotal.gemfirexd.internal.engine.diag.HdfsProcedures;
 import com.pivotal.gemfirexd.internal.engine.diag.HiveTablesVTI;
 import com.pivotal.gemfirexd.internal.engine.diag.JSONProcedures;
+import com.pivotal.gemfirexd.internal.engine.diag.SnappyTableStatsVTI;
 import com.pivotal.gemfirexd.internal.engine.diag.SortedCSVProcedures;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.GfxdShutdownAllRequest;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -2123,6 +2124,8 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
 
   public static final String DISKSTOREIDS_TABLENAME = "DISKSTOREIDS";
 
+  public static final String SNAPPY_TABLE_STATS = "SNAPPY_TABLE_STATS";
+
   private static final String[][] VTI_TABLE_CLASSES = {
       { DIAG_MEMBERS_TABLENAME,
           "com.pivotal.gemfirexd.internal.engine.diag.DistributedMembers" },
@@ -2144,6 +2147,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
           "com.pivotal.gemfirexd.internal.engine.diag.SessionsVTI" },
       { HIVETABLES_TABLENAME, HiveTablesVTI.class.getName() },
       { DISKSTOREIDS_TABLENAME, DiskStoreIDs.class.getName() },
+      { SNAPPY_TABLE_STATS, SnappyTableStatsVTI.class.getName() },
   };
 
   private final HashMap<String, TableDescriptor> diagVTIMap =

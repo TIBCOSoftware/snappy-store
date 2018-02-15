@@ -1680,6 +1680,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
   }
 
+  /** Deprecated. To be removed in next release. */
   public static void GET_SNAPPY_TABLE_STATS(Blob[] statsMap) throws SQLException {
     try {
       if (GemFireXDUtils.TraceSysProcedures) {

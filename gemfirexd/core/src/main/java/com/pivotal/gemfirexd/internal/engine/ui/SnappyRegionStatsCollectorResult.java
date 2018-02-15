@@ -19,16 +19,12 @@ package com.pivotal.gemfirexd.internal.engine.ui;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.gemstone.gemfire.DataSerializable;
-import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.pivotal.gemfirexd.internal.engine.GfxdDataSerializable;
-import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
 
 public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
   private transient List<SnappyRegionStats> combinedStats = new ArrayList<>();
@@ -69,7 +65,7 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
   public void toData(final DataOutput out) throws IOException {
     out.writeInt(combinedStats.size());
     for (SnappyRegionStats stats : combinedStats) {
-      InternalDataSerializer.writeString(stats.getRegionName(), out);
+      InternalDataSerializer.writeString(stats.getTableName(), out);
       InternalDataSerializer.writeLong(stats.getTotalSize(), out);
       InternalDataSerializer.writeLong(stats.getSizeInMemory(), out);
       InternalDataSerializer.writeLong(stats.getRowCount(), out);

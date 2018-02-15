@@ -27,21 +27,22 @@ import com.gemstone.gemfire.DataSerializer;
 public class SnappyRegionStats implements DataSerializable {
 
   private boolean isColumnTable = false;
-  private String regionName;
+  private String tableName;
   private long rowCount = 0;
   private long sizeInMemory = 0;
   private long totalSize = 0;
   private Boolean isReplicatedTable = false;
 
-  public SnappyRegionStats() {}
-
-  public SnappyRegionStats(String regionName) {
-    this.regionName = regionName;
+  public SnappyRegionStats() {
   }
 
-  public SnappyRegionStats(String regionName, long totalSize, long sizeInMemory,
+  public SnappyRegionStats(String tableName) {
+    this.tableName = tableName;
+  }
+
+  public SnappyRegionStats(String tableName, long totalSize, long sizeInMemory,
       long rowCount, boolean isColumnTable, boolean isReplicatedTable) {
-    this.regionName = regionName;
+    this.tableName = tableName;
     this.totalSize = totalSize;
     this.sizeInMemory = sizeInMemory;
     this.rowCount = rowCount;
@@ -53,12 +54,12 @@ public class SnappyRegionStats implements DataSerializable {
     this.totalSize = totalSize;
   }
 
-  public String getRegionName() {
-    return regionName;
+  public String getTableName() {
+    return tableName;
   }
 
-  public void setRegionName(String regionName) {
-    this.regionName = regionName;
+  public void setTableName(String tableName) {
+    this.tableName = tableName;
   }
 
   public boolean isColumnTable() {
@@ -99,8 +100,8 @@ public class SnappyRegionStats implements DataSerializable {
   }
 
   public SnappyRegionStats getCombinedStats(SnappyRegionStats stats) {
-    String regionName = this.isColumnTable ? stats.regionName : this.regionName;
-    SnappyRegionStats combinedStats = new SnappyRegionStats(regionName);
+    String tableName = this.isColumnTable ? stats.tableName : this.tableName;
+    SnappyRegionStats combinedStats = new SnappyRegionStats(tableName);
 
     if (this.isReplicatedTable()) {
       combinedStats.setRowCount(stats.rowCount);
@@ -117,7 +118,7 @@ public class SnappyRegionStats implements DataSerializable {
 
   @Override
   public void toData(final DataOutput out) throws IOException {
-    DataSerializer.writeString(regionName, out);
+    DataSerializer.writeString(tableName, out);
     out.writeLong(totalSize);
     out.writeLong(sizeInMemory);
     out.writeLong(rowCount);
@@ -127,7 +128,7 @@ public class SnappyRegionStats implements DataSerializable {
 
   @Override
   public void fromData(DataInput in) throws IOException, ClassNotFoundException {
-    this.regionName = DataSerializer.readString(in);
+    this.tableName = DataSerializer.readString(in);
     this.totalSize = in.readLong();
     this.sizeInMemory = in.readLong();
     this.rowCount = in.readLong();
@@ -137,7 +138,7 @@ public class SnappyRegionStats implements DataSerializable {
 
   @Override
   public String toString() {
-    return "RegionStats for " + regionName + ": totalSize=" + totalSize +
+    return "RegionStats for " + tableName + ": totalSize=" + totalSize +
         " sizeInMemory=" + sizeInMemory + " rowCount=" + rowCount +
         " isColumnTable=" + isColumnTable + " isReplicatedTable=" + isReplicatedTable;
   }

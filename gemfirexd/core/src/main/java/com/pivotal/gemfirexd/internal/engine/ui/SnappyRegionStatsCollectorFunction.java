@@ -85,7 +85,7 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
                 "/" + Misc.SNAPPY_HIVE_METASTORE + '/'))) {
               SnappyRegionStats dataCollector = collectDataFromBean(r, bean);
               if (dataCollector.isColumnTable()) {
-                cachBatchStats.put(dataCollector.getRegionName(), dataCollector);
+                cachBatchStats.put(dataCollector.getTableName(), dataCollector);
               } else {
                 otherStats.add(dataCollector);
               }
@@ -103,9 +103,9 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
 
       if (Misc.reservoirRegionCreated) {
         for (SnappyRegionStats tableStats : otherStats) {
-          String rgnName = tableStats.getRegionName();
+          String rgnName = tableStats.getTableName();
           StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
-          String columnBatchTableName = callback.columnBatchTableName(tableStats.getRegionName());
+          String columnBatchTableName = callback.columnBatchTableName(tableStats.getTableName());
           if (cachBatchStats.containsKey(columnBatchTableName)) {
             String reservoirRegionName = Misc.getReservoirRegionNameForSampleTable("APP", rgnName);
             PartitionedRegion pr = Misc.getReservoirRegionForSampleTable(reservoirRegionName);
@@ -124,7 +124,7 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
       // Create one entry per Column Table by combining the results of row buffer and column table
       for (SnappyRegionStats tableStats : otherStats) {
         StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
-        String columnBatchTableName = callback.columnBatchTableName(tableStats.getRegionName());
+        String columnBatchTableName = callback.columnBatchTableName(tableStats.getTableName());
         if (cachBatchStats.containsKey(columnBatchTableName)) {
           result.addRegionStat(tableStats.getCombinedStats(cachBatchStats.get(columnBatchTableName)));
         } else {
@@ -152,9 +152,9 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
   }
 
   private SnappyRegionStats collectDataFromBeanImpl(LocalRegion lr, RegionMXBean bean, boolean isReservoir) {
-    String regionName = (Misc.getFullTableNameFromRegionPath(bean.getFullPath()));
+    String tableName = (Misc.getFullTableNameFromRegionPath(bean.getFullPath()));
     SnappyRegionStats tableStats =
-        new SnappyRegionStats(regionName);
+        new SnappyRegionStats(tableName);
     boolean isColumnTable = bean.isColumnTable();
     tableStats.setColumnTable(isColumnTable);
     tableStats.setReplicatedTable(isReplicatedTable(lr.getDataPolicy()));
