@@ -2124,7 +2124,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
 
   public static final String DISKSTOREIDS_TABLENAME = "DISKSTOREIDS";
 
-  public static final String SNAPPY_TABLE_STATS = "SNAPPY_TABLE_STATS";
+  public static final String SNAPPY_TABLE_STATS = "TABLESTATS";
 
   private static final String[][] VTI_TABLE_CLASSES = {
       { DIAG_MEMBERS_TABLENAME,
