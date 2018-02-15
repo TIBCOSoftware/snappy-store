@@ -618,7 +618,10 @@ public class GfxdServerLauncher extends CacheServerLauncher {
     }
 
     final ArrayList<String> vmArgs = new ArrayList<String>();
-    setDefaultVMArgs(map, (Properties)map.get(PROPERTIES), vmArgs);
+
+    final boolean hostData = !"false".equalsIgnoreCase(
+        (String)((Properties)map.get(PROPERTIES)).get(HOST_DATA));
+    setDefaultVMArgs(map, hostData, vmArgs);
     vmArgs.addAll(incomingVMArgs);
     processedDefaultGCParams = true;
 

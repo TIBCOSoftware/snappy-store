@@ -220,7 +220,7 @@ public abstract class LauncherBase {
     vmArgs.add(vmArg);
   }
 
-  protected void setDefaultVMArgs(Map<String, Object> map, Map<?, ?> props,
+  protected void setDefaultVMArgs(Map<String, Object> map, boolean hostData,
       List<String> vmArgs) {
 
     // determine the total physical RAM
@@ -248,8 +248,6 @@ public abstract class LauncherBase {
         vmArgs.add("-Xmx" + this.initialHeapSize);
         this.maxHeapSize = this.initialHeapSize;
       } else {
-        final boolean hostData = !"false".equalsIgnoreCase(
-            (String)props.get(HOST_DATA));
         long defaultMemoryMB = getDefaultHeapSizeMB(hostData);
         if (defaultMemoryMB > 0 && totalMemory > 0L) {
           // Try some sane default for heapSize if none specified.
