@@ -1303,7 +1303,8 @@ Guide.
 
             <msg>
                 <name>42000</name>
-                <text>Syntax error or access rule violation; see additional errors for details.</text>
+                <text>Syntax error or analysis exception: {0}</text>
+                <arg>error</arg>
             </msg>
 
             <msg>

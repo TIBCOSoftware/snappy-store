@@ -778,7 +778,7 @@ public interface SQLState {
 	String EXTERNAL_ROUTINE_NO_READS_SQL							   = "38004";
 
 	String LANG_NULL_TO_PRIMITIVE_PARAMETER                            = "39004";
-	String LANG_SYNTAX_OR_ACCESS_VIOLATION                             = "42000";
+	String LANG_SYNTAX_OR_ANALYSIS_EXCEPTION                           = "42000";
 
 	// Fix for Derby-1828 - access rule violations should use SQL state 42
 	String AUTH_NO_TABLE_PERMISSION                                    = "42500";

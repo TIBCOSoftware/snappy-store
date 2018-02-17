@@ -115,6 +115,8 @@ public class SnappyTableStatsVTI extends GfxdVTITemplate
         return this.currentTableStats.getSizeInMemory();
       case 6: // TOTAL_SIZE
         return this.currentTableStats.getTotalSize();
+      case 7: // NUM_BUCKETS
+        return this.currentTableStats.getBucketCount();
       default:
         throw new GemFireXDRuntimeException("unexpected column=" +
             columnNumber + " for SnappyTablesStatsVTI");
@@ -137,6 +139,8 @@ public class SnappyTableStatsVTI extends GfxdVTITemplate
 
   private static final String TOTAL_SIZE = "TOTAL_SIZE";
 
+  private static final String NUM_BUCKETS = "NUM_BUCKETS";
+
   private static final ResultColumnDescriptor[] columnInfo = {
       EmbedResultSetMetaData.getResultColumnDescriptor(TABLE,
           Types.VARCHAR, false, 512),
@@ -149,7 +153,9 @@ public class SnappyTableStatsVTI extends GfxdVTITemplate
       EmbedResultSetMetaData.getResultColumnDescriptor(SIZE_IN_MEMORY,
           Types.BIGINT, false),
       EmbedResultSetMetaData.getResultColumnDescriptor(TOTAL_SIZE,
-          Types.BIGINT, false)
+          Types.BIGINT, false),
+      EmbedResultSetMetaData.getResultColumnDescriptor(NUM_BUCKETS,
+          Types.INTEGER, false),
   };
 
   private static final ResultSetMetaData metadata = new EmbedResultSetMetaData(

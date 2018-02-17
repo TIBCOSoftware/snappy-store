@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.DiskAccessException;
@@ -75,6 +76,9 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   private static final byte IS_PREPARED_STATEMENT = 0x1;
   private static final byte IS_PREPARED_PHASE = 0x2;
   private static final byte IS_UPDATE_OR_DELETE = 0x4;
+
+  private static final Pattern PARSE_EXCEPTION = Pattern.compile(
+      "(Pars[a-zA-Z]*Exception)|(Pars[a-zA-Z]*Error)");
 
   public LeadNodeExecutorMsg(String sql, String schema, LeadNodeExecutionContext ctx,
       GfxdResultCollector<Object> rc, ParameterValueSet inpvs, boolean isPreparedStatement,
@@ -185,9 +189,15 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
         return (Exception)cause;
       }
       String causeName = cause.getClass().getName();
-      if (causeName.contains("AnalysisException")) {
+      if (causeName.contains("parboiled") || PARSE_EXCEPTION.matcher(causeName).find()) {
         return StandardException.newException(
-            SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
+            SQLState.LANG_SYNTAX_ERROR,
+            (!wrapException ? cause : new SparkExceptionWrapper(cause)),
+            cause.getMessage());
+      } else if (causeName.contains("AnalysisException") ||
+          causeName.contains("NoSuch") || causeName.contains("NotFound")) {
+        return StandardException.newException(
+            SQLState.LANG_SYNTAX_OR_ANALYSIS_EXCEPTION,
             (!wrapException ? cause : new SparkExceptionWrapper(cause)),
             cause.getMessage());
       } else if (causeName.contains("apache.spark.storage")) {

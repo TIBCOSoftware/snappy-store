@@ -72,7 +72,7 @@ public final class Version implements Comparable<Version> {
 
   private static final Method getGFEClientCommands;
 
-  public static final int NUM_OF_VERSIONS = 33;
+  public static final int NUM_OF_VERSIONS = 34;
 
   private static final Version[] VALUES = new Version[NUM_OF_VERSIONS];
 
@@ -235,16 +235,19 @@ public final class Version implements Comparable<Version> {
 
   private static final byte GFXD_155_ORDINAL = 32;
 
-  /** GemFire version is at 7.1 for compatibility with external clusters. */
   public static final Version GFXD_155 = new Version("GFXD", "1.5.5",
       (byte)1, (byte)5, (byte)5, (byte)0, GFXD_155_ORDINAL, GFE_80);
 
+  private static final byte STORE_162_ORDINAL = 33;
+
+  public static final Version STORE_162 = new Version("STORE", "1.6.2",
+      (byte)1, (byte)6, (byte)2, (byte)0, STORE_162_ORDINAL, GFE_80);
 
 
   /**
-   * This constant must be set to the most current version of GFE/GFXD.
+   * This constant must be set to the most current version of GFE/GFXD/STORE.
    */
-  public static final Version CURRENT = GFXD_155;
+  public static final Version CURRENT = STORE_162;
   public static final Version CURRENT_GFE = CURRENT.getGemFireVersion();
 
   /**

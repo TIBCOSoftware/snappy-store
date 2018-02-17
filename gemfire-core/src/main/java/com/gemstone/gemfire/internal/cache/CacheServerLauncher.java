@@ -85,7 +85,7 @@ public class CacheServerLauncher extends LauncherBase {
   protected PrintStream oldErr = System.err;
   protected LogWriterI18n logger = null;
   protected String offHeapSize;
-  protected String serverStartupMessage;
+  protected volatile String serverStartupMessage;
   protected final OpenHashSet<String> knownOptions;
 
   protected static CacheServerLauncher instance;
@@ -643,7 +643,9 @@ public class CacheServerLauncher extends LauncherBase {
         stat.dsMsg = null;
         stat.state = stateIfWaiting;
       } else if (stat.state == RUNNING) {
-        return;
+        if (stat.dsMsg != null) {
+          return;
+        }
       } else {
         stat.state = RUNNING;
       }

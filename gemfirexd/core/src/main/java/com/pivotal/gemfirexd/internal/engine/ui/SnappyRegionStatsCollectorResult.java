@@ -34,9 +34,11 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
   public void addRegionStat(SnappyRegionStats stats) {
     combinedStats.add(stats);
   }
+
   public void addIndexStat(SnappyIndexStats stats) {
     indexStats.add(stats);
   }
+
   public void addAllIndexStat(List<SnappyIndexStats> stats) {
     indexStats.addAll(stats);
   }
@@ -47,6 +49,7 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
   public List<SnappyRegionStats> getRegionStats() {
     return combinedStats;
   }
+
   public List<SnappyIndexStats> getIndexStats() {
     return indexStats;
   }
@@ -56,21 +59,22 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
     return SNAPPY_REGION_STATS_RESULT;
   }
 
-  @Override
-  public Version[] getSerializationVersions() {
-    return null;
-  }
+  private static Version[] serializationVersions =
+      new Version[] { Version.GFXD_155 };
 
   @Override
-  public void toData(final DataOutput out) throws IOException {
+  public Version[] getSerializationVersions() {
+    return serializationVersions;
+  }
+
+  private void toData(final DataOutput out, boolean pre155) throws IOException {
     out.writeInt(combinedStats.size());
     for (SnappyRegionStats stats : combinedStats) {
-      InternalDataSerializer.writeString(stats.getTableName(), out);
-      InternalDataSerializer.writeLong(stats.getTotalSize(), out);
-      InternalDataSerializer.writeLong(stats.getSizeInMemory(), out);
-      InternalDataSerializer.writeLong(stats.getRowCount(), out);
-      InternalDataSerializer.writeBoolean(stats.isColumnTable(), out);
-      InternalDataSerializer.writeBoolean(stats.isReplicatedTable(), out);
+      if (pre155) {
+        stats.toDataPre_GFXD_1_5_5_0(out);
+      } else {
+        stats.toData(out);
+      }
     }
     out.writeInt(indexStats.size());
     for (SnappyIndexStats stats : indexStats) {
@@ -80,18 +84,26 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
     }
   }
 
+  public void toDataPre_GFXD_1_5_5_0(final DataOutput out) throws IOException {
+    toData(out, true);
+  }
+
   @Override
-  public void fromData(DataInput in) throws IOException {
+  public void toData(final DataOutput out) throws IOException {
+    toData(out, false);
+  }
+
+  private void fromData(DataInput in, boolean pre155) throws IOException {
     int size = in.readInt();
     while (size > 0) {
       size--;
-      String regionName = InternalDataSerializer.readString(in);
-      long totalSize = InternalDataSerializer.readLong(in);
-      long memorySize = InternalDataSerializer.readLong(in);
-      long count = InternalDataSerializer.readLong(in);
-      boolean isColumnTable = InternalDataSerializer.readBoolean(in);
-      boolean isReplicated = InternalDataSerializer.readBoolean(in);
-      addRegionStat(new SnappyRegionStats(regionName, totalSize, memorySize, count, isColumnTable, isReplicated));
+      SnappyRegionStats stats = new SnappyRegionStats();
+      if (pre155) {
+        stats.fromDataPre_GFXD_1_5_5_0(in);
+      } else {
+        stats.fromData(in);
+      }
+      addRegionStat(stats);
     }
     int numIndex = in.readInt();
     while (numIndex > 0) {
@@ -103,4 +115,12 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
     }
   }
 
+  public void fromDataPre_GFXD_1_5_5_0(DataInput in) throws IOException {
+    fromData(in, true);
+  }
+
+  @Override
+  public void fromData(DataInput in) throws IOException {
+    fromData(in, false);
+  }
 }

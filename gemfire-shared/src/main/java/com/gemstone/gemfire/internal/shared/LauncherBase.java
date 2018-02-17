@@ -131,7 +131,7 @@ public abstract class LauncherBase {
   protected final String pidFileName;
   protected final String statusName;
   protected final String hostName;
-  protected Status status;
+  protected volatile Status status;
 
   /**
    * wait for startup to complete, or exit once region GII wait begins

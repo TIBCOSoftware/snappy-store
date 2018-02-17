@@ -21,17 +21,19 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-import com.gemstone.gemfire.DataSerializable;
 import com.gemstone.gemfire.DataSerializer;
+import com.gemstone.gemfire.internal.VersionedDataSerializable;
+import com.gemstone.gemfire.internal.shared.Version;
 
-public class SnappyRegionStats implements DataSerializable {
+public class SnappyRegionStats implements VersionedDataSerializable {
 
   private boolean isColumnTable = false;
   private String tableName;
   private long rowCount = 0;
   private long sizeInMemory = 0;
   private long totalSize = 0;
-  private Boolean isReplicatedTable = false;
+  private boolean isReplicatedTable = false;
+  private int bucketCount;
 
   public SnappyRegionStats() {
   }
@@ -41,13 +43,15 @@ public class SnappyRegionStats implements DataSerializable {
   }
 
   public SnappyRegionStats(String tableName, long totalSize, long sizeInMemory,
-      long rowCount, boolean isColumnTable, boolean isReplicatedTable) {
+      long rowCount, boolean isColumnTable, boolean isReplicatedTable,
+      int bucketCount) {
     this.tableName = tableName;
     this.totalSize = totalSize;
     this.sizeInMemory = sizeInMemory;
     this.rowCount = rowCount;
     this.isColumnTable = isColumnTable;
     this.isReplicatedTable = isReplicatedTable;
+    this.bucketCount = bucketCount;
   }
 
   public void setTotalSize(long totalSize) {
@@ -99,6 +103,14 @@ public class SnappyRegionStats implements DataSerializable {
     return this.totalSize;
   }
 
+  public int getBucketCount() {
+    return this.bucketCount;
+  }
+
+  public void setBucketCount(int bucketCount) {
+    this.bucketCount = bucketCount;
+  }
+
   public SnappyRegionStats getCombinedStats(SnappyRegionStats stats) {
     String tableName = this.isColumnTable ? stats.tableName : this.tableName;
     SnappyRegionStats combinedStats = new SnappyRegionStats(tableName);
@@ -113,11 +125,18 @@ public class SnappyRegionStats implements DataSerializable {
     combinedStats.setTotalSize(stats.totalSize + this.totalSize);
     combinedStats.setColumnTable(this.isColumnTable || stats.isColumnTable);
     combinedStats.setReplicatedTable(this.isReplicatedTable());
+    combinedStats.setBucketCount(this.bucketCount);
     return combinedStats;
   }
 
+  private static Version[] serializationVersions = new Version[] { Version.GFXD_155 };
+
   @Override
-  public void toData(final DataOutput out) throws IOException {
+  public Version[] getSerializationVersions() {
+    return serializationVersions;
+  }
+
+  public void toDataPre_GFXD_1_5_5_0(final DataOutput out) throws IOException {
     DataSerializer.writeString(tableName, out);
     out.writeLong(totalSize);
     out.writeLong(sizeInMemory);
@@ -127,7 +146,12 @@ public class SnappyRegionStats implements DataSerializable {
   }
 
   @Override
-  public void fromData(DataInput in) throws IOException, ClassNotFoundException {
+  public void toData(final DataOutput out) throws IOException {
+    toDataPre_GFXD_1_5_5_0(out);
+    out.writeInt(bucketCount);
+  }
+
+  public void fromDataPre_GFXD_1_5_5_0(DataInput in) throws IOException {
     this.tableName = DataSerializer.readString(in);
     this.totalSize = in.readLong();
     this.sizeInMemory = in.readLong();
@@ -137,9 +161,16 @@ public class SnappyRegionStats implements DataSerializable {
   }
 
   @Override
+  public void fromData(DataInput in) throws IOException {
+    fromDataPre_GFXD_1_5_5_0(in);
+    this.bucketCount = in.readInt();
+  }
+
+  @Override
   public String toString() {
     return "RegionStats for " + tableName + ": totalSize=" + totalSize +
         " sizeInMemory=" + sizeInMemory + " rowCount=" + rowCount +
-        " isColumnTable=" + isColumnTable + " isReplicatedTable=" + isReplicatedTable;
+        " isColumnTable=" + isColumnTable + " isReplicatedTable=" +
+        isReplicatedTable + " bucketCount=" + bucketCount;
   }
 }

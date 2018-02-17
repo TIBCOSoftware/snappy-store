@@ -142,6 +142,7 @@ public class Status {
       writeString(exceptionStr, out);
       out.flush();
       stream.write(bos.toByteArray());
+      stream.flush();
     }
   }
 

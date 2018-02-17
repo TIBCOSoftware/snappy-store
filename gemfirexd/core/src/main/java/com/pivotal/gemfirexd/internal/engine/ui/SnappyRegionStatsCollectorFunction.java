@@ -158,6 +158,11 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
     boolean isColumnTable = bean.isColumnTable();
     tableStats.setColumnTable(isColumnTable);
     tableStats.setReplicatedTable(isReplicatedTable(lr.getDataPolicy()));
+    if (tableStats.isReplicatedTable()) {
+      tableStats.setBucketCount(1);
+    } else {
+      tableStats.setBucketCount(lr.getPartitionAttributes().getTotalNumBuckets());
+    }
     if (isReservoir) {
       long numLocalEntries = bean.getRowsInReservoir();
       tableStats.setRowCount(numLocalEntries);
