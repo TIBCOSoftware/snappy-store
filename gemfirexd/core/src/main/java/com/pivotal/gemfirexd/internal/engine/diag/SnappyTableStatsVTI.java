@@ -139,7 +139,7 @@ public class SnappyTableStatsVTI extends GfxdVTITemplate
 
   private static final String TOTAL_SIZE = "TOTAL_SIZE";
 
-  private static final String NUM_BUCKETS = "NUM_BUCKETS";
+  private static final String BUCKETS = "BUCKETS";
 
   private static final ResultColumnDescriptor[] columnInfo = {
       EmbedResultSetMetaData.getResultColumnDescriptor(TABLE,
@@ -154,7 +154,7 @@ public class SnappyTableStatsVTI extends GfxdVTITemplate
           Types.BIGINT, false),
       EmbedResultSetMetaData.getResultColumnDescriptor(TOTAL_SIZE,
           Types.BIGINT, false),
-      EmbedResultSetMetaData.getResultColumnDescriptor(NUM_BUCKETS,
+      EmbedResultSetMetaData.getResultColumnDescriptor(BUCKETS,
           Types.INTEGER, false),
   };
 
