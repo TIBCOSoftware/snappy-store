@@ -67,10 +67,10 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
     return serializationVersions;
   }
 
-  private void toData(final DataOutput out, boolean pre155) throws IOException {
+  private void toData(final DataOutput out, boolean use155) throws IOException {
     out.writeInt(combinedStats.size());
     for (SnappyRegionStats stats : combinedStats) {
-      if (pre155) {
+      if (use155) {
         stats.toDataPre_GFXD_1_5_5_0(out);
       } else {
         stats.toData(out);
@@ -93,12 +93,12 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
     toData(out, false);
   }
 
-  private void fromData(DataInput in, boolean pre155) throws IOException {
+  private void fromData(DataInput in, boolean use155) throws IOException {
     int size = in.readInt();
     while (size > 0) {
       size--;
       SnappyRegionStats stats = new SnappyRegionStats();
-      if (pre155) {
+      if (use155) {
         stats.fromDataPre_GFXD_1_5_5_0(in);
       } else {
         stats.fromData(in);
