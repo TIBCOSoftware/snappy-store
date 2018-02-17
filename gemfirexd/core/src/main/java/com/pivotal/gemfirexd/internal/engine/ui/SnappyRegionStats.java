@@ -129,14 +129,14 @@ public class SnappyRegionStats implements VersionedDataSerializable {
     return combinedStats;
   }
 
-  private static Version[] serializationVersions = new Version[] { Version.GFXD_155 };
+  private static Version[] serializationVersions = new Version[] { Version.STORE_162 };
 
   @Override
   public Version[] getSerializationVersions() {
     return serializationVersions;
   }
 
-  public void toDataPre_GFXD_1_5_5_0(final DataOutput out) throws IOException {
+  public void toDataPre_STORE_1_6_2_0(final DataOutput out) throws IOException {
     DataSerializer.writeString(tableName, out);
     out.writeLong(totalSize);
     out.writeLong(sizeInMemory);
@@ -147,11 +147,11 @@ public class SnappyRegionStats implements VersionedDataSerializable {
 
   @Override
   public void toData(final DataOutput out) throws IOException {
-    toDataPre_GFXD_1_5_5_0(out);
+    toDataPre_STORE_1_6_2_0(out);
     out.writeInt(bucketCount);
   }
 
-  public void fromDataPre_GFXD_1_5_5_0(DataInput in) throws IOException {
+  public void fromDataPre_STORE_1_6_2_0(DataInput in) throws IOException {
     this.tableName = DataSerializer.readString(in);
     this.totalSize = in.readLong();
     this.sizeInMemory = in.readLong();
@@ -162,7 +162,7 @@ public class SnappyRegionStats implements VersionedDataSerializable {
 
   @Override
   public void fromData(DataInput in) throws IOException {
-    fromDataPre_GFXD_1_5_5_0(in);
+    fromDataPre_STORE_1_6_2_0(in);
     this.bucketCount = in.readInt();
   }
 

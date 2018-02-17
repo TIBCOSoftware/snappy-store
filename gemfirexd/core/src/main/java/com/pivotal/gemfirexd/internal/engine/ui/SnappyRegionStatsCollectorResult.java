@@ -60,18 +60,18 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
   }
 
   private static Version[] serializationVersions =
-      new Version[] { Version.GFXD_155 };
+      new Version[] { Version.STORE_162 };
 
   @Override
   public Version[] getSerializationVersions() {
     return serializationVersions;
   }
 
-  private void toData(final DataOutput out, boolean use155) throws IOException {
+  private void toData(final DataOutput out, boolean pre162) throws IOException {
     out.writeInt(combinedStats.size());
     for (SnappyRegionStats stats : combinedStats) {
-      if (use155) {
-        stats.toDataPre_GFXD_1_5_5_0(out);
+      if (pre162) {
+        stats.toDataPre_STORE_1_6_2_0(out);
       } else {
         stats.toData(out);
       }
@@ -84,7 +84,7 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
     }
   }
 
-  public void toDataPre_GFXD_1_5_5_0(final DataOutput out) throws IOException {
+  public void toDataPre_STORE_1_6_2_0(final DataOutput out) throws IOException {
     toData(out, true);
   }
 
@@ -93,13 +93,13 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
     toData(out, false);
   }
 
-  private void fromData(DataInput in, boolean use155) throws IOException {
+  private void fromData(DataInput in, boolean pre162) throws IOException {
     int size = in.readInt();
     while (size > 0) {
       size--;
       SnappyRegionStats stats = new SnappyRegionStats();
-      if (use155) {
-        stats.fromDataPre_GFXD_1_5_5_0(in);
+      if (pre162) {
+        stats.fromDataPre_STORE_1_6_2_0(in);
       } else {
         stats.fromData(in);
       }
@@ -115,7 +115,7 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
     }
   }
 
-  public void fromDataPre_GFXD_1_5_5_0(DataInput in) throws IOException {
+  public void fromDataPre_STORE_1_6_2_0(DataInput in) throws IOException {
     fromData(in, true);
   }
 
