@@ -221,7 +221,7 @@ public final class GfxdDDLRegionQueue implements RegionQueue {
       List<QueueValue> conflatedItems) {
     if (GemFireXDUtils.TraceDDLQueue) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLQUEUE, toString()
-          + ": trying to add entry in queue [" + qValue + "]");
+          + ": trying to add entry in queue [" + qValue + "]", new Throwable("SKSK addToQueue"));
     }
     final long itemId = qValue.getKey().longValue();
     // [sumedh] If we happen to get a duplicate from another VM after or

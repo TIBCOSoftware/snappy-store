@@ -831,8 +831,9 @@ implements LogWriterI18n, LogWriter {
      * @return true if "fine" log messages are enabled.
      */
     public boolean fineEnabled() {
-      return this.getLevel() <= FINE_LEVEL
-      /* (bug 29581) && !SmHelper._memorySpaceLow() */;
+      return true;
+      /*return this.getLevel() <= FINE_LEVEL
+      *//* (bug 29581) && !SmHelper._memorySpaceLow() *//*;*/
     }
     /**
      * Writes both a message and exception to this writer.
@@ -840,7 +841,7 @@ implements LogWriterI18n, LogWriter {
      */
     public void fine(String msg, Throwable ex) {
       if (this.fineEnabled()) {
-        this.put(FINE_LEVEL, msg, ex);
+        this.put(CONFIG_LEVEL, msg, ex);
       }
     }
     /**

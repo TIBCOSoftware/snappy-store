@@ -64,6 +64,7 @@ import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.gemfire.internal.GFToSlf4jBridge;
 import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.cache.*;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gnu.trove.THashMap;
@@ -1007,6 +1008,13 @@ public final class FabricDatabase implements ModuleControl,
         List<GfxdDDLQueueEntry> preprocessedQueue = ddlStmtQueue
             .getPreprocessedDDLQueue(currentQueue, skipRegionInit,
                 lastCurrentSchema, pre11TableSchemaVer, traceConflation);
+      for (GfxdDDLQueueEntry entry : preprocessedQueue) {
+        if (logger.infoEnabled()) {
+          logger.info("FabricDatabase: starting initial replay "
+              + "for entry: checking " + entry);
+        }
+      }
+
         for (GfxdDDLQueueEntry entry : preprocessedQueue) {
           qEntry = entry;
           Object qVal = qEntry.getValue();
@@ -1043,10 +1051,10 @@ public final class FabricDatabase implements ModuleControl,
               continue;
             }
           }
-          else if (this.memStore.restrictedDDLStmtQueue()) {
-            continue;
-          }
           else if (qVal instanceof AbstractGfxdReplayableMessage) {
+            if (this.memStore.restrictedDDLStmtQueue()) {
+              continue;
+            }
             final AbstractGfxdReplayableMessage msg =
                 (AbstractGfxdReplayableMessage)qVal;
             try {
@@ -1062,6 +1070,17 @@ public final class FabricDatabase implements ModuleControl,
           }
           else {
             final DDLConflatable conflatable = (DDLConflatable)qVal;
+            logger.info(" the table is but not getting initialized  " + this.memStore.restrictedDDLStmtQueue() + " "
+                + conflatable.getTableName());
+            if (this.memStore.restrictedDDLStmtQueue() &&
+                !Misc.isSnappyHiveMetaTable(conflatable.getSchemaForTable())) {
+              logger.info(LocalizedStrings.DEBUG, "Conitnuing without creating the region for table "
+                  + conflatable.getTableName());
+
+              continue;
+            }
+            logger.info(" Stil in the loop 2  " + this.memStore.restrictedDDLStmtQueue() + " "
+                + conflatable.getTableName());
             // check for any merged DDLs
             final String confTable = conflatable.getRegionToConflate();
             final boolean isCreateTable = conflatable.isCreateTable();
@@ -1118,12 +1137,26 @@ public final class FabricDatabase implements ModuleControl,
             // recovery from disk so that appropriate RowFormatter can be
             // attached when schema matches that from the last version
             // recovered from disk
-            String schema = executeDDL(conflatable, stmt, skipInitialization,
-                embedConn, lastCurrentSchema, lcc, tc, logger);
+            logger.info(" Stil in the loop 3-1  " + this.memStore.restrictedDDLStmtQueue() + " "
+                + conflatable.getTableName());
+            String schema = null;
+            try {
+               schema = executeDDL(conflatable, stmt, skipInitialization,
+                  embedConn, lastCurrentSchema, lcc, tc, logger);
+              logger.info(" Stil in the loop 3-11  " + this.memStore.restrictedDDLStmtQueue() + " "
+                  + conflatable.getTableName() + " " + isCreateTable + " " + skipInitialization);
+            }
+            catch (Exception e) {
+              logger.info(LocalizedStrings.DEBUG, "Caught exception SKKSK " + e);
+              throw e;
+            }
+
             if (isCreateTable && skipInitialization) {
               uninitializedTables.add((GemFireContainer)Misc
                   .getRegionForTableByPath(confTable, true).getUserAttribute());
             }
+            logger.info(" Stil in the loop 3  " + this.memStore.restrictedDDLStmtQueue() + " "
+                + conflatable.getTableName());
             // set the current schema version as pre 1.1 recovery version
             if (pre11SchemaVer > 0) {
               final GemFireContainer container = (GemFireContainer)Misc
@@ -1139,18 +1172,25 @@ public final class FabricDatabase implements ModuleControl,
                 pre11TableSchemaVer.remove(confTable);
               }
             }
+            logger.info(" Stil in the loop 4  " + this.memStore.restrictedDDLStmtQueue() + " "
+                + conflatable.getTableName());
             if (schema != null) {
               lastCurrentSchema = schema;
             }
             else {
+              logger.info(LocalizedStrings.DEBUG, "Conitnuing without creating the region for table : 1154 "
+                  + conflatable.getTableName());
               continue;
             }
+            logger.info(" Stil in the loop 5  " + this.memStore.restrictedDDLStmtQueue() + " "
+                + conflatable.getTableName());
           }
           if (logger.infoEnabled()) {
             logger.info("FabricDatabase: successfully replayed entry "
                 + "having sequenceId=" + qEntry.getSequenceId());
           }
         }
+        logger.info(LocalizedStrings.DEBUG, "Loop break SKSK");
         if (previousLevel != Integer.MAX_VALUE) {
           GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge) logger);
           bridgeLogger.setLevel(previousLevel);
@@ -1193,6 +1233,7 @@ public final class FabricDatabase implements ModuleControl,
 
       // run the pre-initialization at this point before recovering indexes
       for (GemFireContainer container : uninitializedContainers) {
+        logger.info(LocalizedStrings.DEBUG, "preinitializing : " + container.getTableName());
         container.preInitializeRegion();
       }
 
@@ -1242,7 +1283,7 @@ public final class FabricDatabase implements ModuleControl,
 
       // In case of reconnect, same cache is used and many locks are
       // already taken by reconnect thread.
-      // Can't do initlization in different thread.
+      // Can't do initialization in different thread.
       if (Thread.currentThread().getName().equals("ReconnectThread")) {
         for (GemFireContainer container : uninitializedContainers) {
           if (logger.infoEnabled() &&
@@ -1264,8 +1305,8 @@ public final class FabricDatabase implements ModuleControl,
         List<Future<Boolean>> results = new ArrayList<>();
         List<GemFireContainer> failed = new ArrayList<>(1);
         for (GemFireContainer container : uninitializedContainers) {
-          if (logger.infoEnabled() &&
-              !Misc.isSnappyHiveMetaTable(container.getSchemaName())) {
+          if (logger.infoEnabled() /*&&
+              !Misc.isSnappyHiveMetaTable(container.getSchemaName())*/) {
             logger.info("FabricDatabase: start initializing container: "
                 + container);
           }
@@ -1314,8 +1355,8 @@ public final class FabricDatabase implements ModuleControl,
           }
           results.add(f);
 
-          if (logger.infoEnabled() &&
-              !Misc.isSnappyHiveMetaTable(container.getSchemaName())) {
+          if (logger.infoEnabled() //&&
+              /*!Misc.isSnappyHiveMetaTable(container.getSchemaName())*/) {
             logger.info("FabricDatabase: end initializing container: "
                 + container);
           }
@@ -1341,16 +1382,16 @@ public final class FabricDatabase implements ModuleControl,
         // retry failed initializations
         if (!failed.isEmpty()) {
           for (GemFireContainer container : failed) {
-            if (logger.infoEnabled() &&
-                !Misc.isSnappyHiveMetaTable(container.getSchemaName())) {
+            if (logger.infoEnabled() /*&&
+                !Misc.isSnappyHiveMetaTable(container.getSchemaName())*/) {
               logger.info("FabricDatabase: start initializing container: "
                   + container);
             }
 
             container.initializeRegion();
 
-            if (logger.infoEnabled() &&
-                !Misc.isSnappyHiveMetaTable(container.getSchemaName())) {
+            if (logger.infoEnabled() /*&&
+                !Misc.isSnappyHiveMetaTable(container.getSchemaName())*/) {
               logger.info("FabricDatabase: end initializing container: "
                   + container);
             }
@@ -1378,7 +1419,7 @@ public final class FabricDatabase implements ModuleControl,
         container.initNumRows(container.getRegion());
         if (GemFireXDUtils.TraceDDLReplay) {
           logger.info("FabricDatabase: end initializing numRows for "
-              + container);
+              + container + " initialized with total number of rows: " + container.getNumRows());
         }
       }
 
@@ -1386,6 +1427,7 @@ public final class FabricDatabase implements ModuleControl,
         // restore the default schema
         FabricDatabase.setupDefaultSchema(dd, lcc, tc, currentSchema, true);
       }
+
       if (!this.memStore.isHadoopGfxdLonerMode()) {
         SystemProcedures.SET_EXPLAIN_SCHEMA(lcc);
       }
@@ -1658,7 +1700,7 @@ public final class FabricDatabase implements ModuleControl,
       // This is because hive meta store table replay generates hundreds of
       // line of logs which are of no use. Once the hive meta tables are
       // done, restore the logging level.
-      if (previousLevel == Integer.MAX_VALUE &&
+      /*if (previousLevel == Integer.MAX_VALUE &&
           Misc.isSnappyHiveMetaTable(currentSchema)) {
         GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge)logger);
         int currentLevel = bridgeLogger.getLevel();
@@ -1672,7 +1714,7 @@ public final class FabricDatabase implements ModuleControl,
           GFToSlf4jBridge bridgeLogger = ((GFToSlf4jBridge)logger);
           bridgeLogger.setLevel(previousLevel);
           previousLevel = Integer.MAX_VALUE;
-      }
+      }*/
       // set the default schema masquerading as the user
       // temporarily for this DDL
       SanityManager.DEBUG_PRINT("info:" + GfxdConstants.TRACE_DDLREPLAY,
@@ -1712,6 +1754,8 @@ public final class FabricDatabase implements ModuleControl,
         tc.setDDLId(0);
       }
     } catch (Exception ex) {
+
+      logger.info("GOT EXCEPTION .. ", ex);
       boolean ignoreException = false;
       if (ex instanceof SQLException) {
         // #48232: ignore the exception, the schema may have been 
@@ -1749,6 +1793,7 @@ public final class FabricDatabase implements ModuleControl,
 
       }
     }
+    logger.info(LocalizedStrings.DEBUG, "Returning the lastCurrentSchema " + lastCurrentSchema);
     return lastCurrentSchema;
   }
 

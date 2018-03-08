@@ -253,7 +253,8 @@ public final class GfxdDDLMessage extends GfxdMessage implements
     }
 */
     // skip DDL execution on locators/agents/admins
-    if (!GemFireXDUtils.getMyVMKind().isAccessorOrStore()) {
+    if (!GemFireXDUtils.getMyVMKind().isAccessorOrStore() &&
+        !Misc.isSnappyHiveMetaTable(ddl.getCurrentSchema())) {
       if (GemFireXDUtils.TraceDDLQueue) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLQUEUE, toString()
             + " Skipping execution of DDL on " + GemFireXDUtils.getMyVMKind()
@@ -269,7 +270,7 @@ public final class GfxdDDLMessage extends GfxdMessage implements
       }
       return;
     }
-    if (!Misc.isSnappyHiveMetaTable(ddl.getCurrentSchema())) {
+    if (true || !Misc.isSnappyHiveMetaTable(ddl.getCurrentSchema())) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLREPLAY, this.toString()
           + " Starting execution");
     }

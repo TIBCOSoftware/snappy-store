@@ -183,6 +183,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   public PersistentStateQueryResults getMyStateOnMembers(
       Set<InternalDistributedMember> members) throws ReplyException {
 
+    logger.info(LocalizedStrings.DEBUG, "Sending the message PersistentStateQueryMessage to member " + members);
     PersistentStateQueryResults results = PersistentStateQueryMessage
     .send(members, advisor.getDistributionManager(), regionPath, storage
         .getMyPersistentID(), storage.getMyInitializingID());
