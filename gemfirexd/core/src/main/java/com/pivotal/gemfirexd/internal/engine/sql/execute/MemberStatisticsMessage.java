@@ -84,6 +84,9 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     Map<String, Long> memoryStats = this.getMemoryStatistics();
 
     Map memberStatsMap = new HashMap();
+
+    memberStatsMap.put("lastUpdatedOn", System.currentTimeMillis());
+
     memberStatsMap.put("id", memberId);
     memberStatsMap.put("name", ids.getName());
     memberStatsMap.put("host", getHost());
