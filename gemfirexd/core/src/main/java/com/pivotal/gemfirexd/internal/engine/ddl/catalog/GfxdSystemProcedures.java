@@ -2968,6 +2968,8 @@ public class GfxdSystemProcedures extends SystemProcedures {
       params[1] = origMembers;
       publishMessage(params, false, GfxdSystemProcedureMessage.SysProcMethod
           .refreshLdapGroup, false, false);
+      // clear any existing pooled connections to force authentication to happen afresh
+      CallbackFactoryProvider.getStoreCallbacks().clearConnectionPools();
     } catch (StandardException se) {
       throw PublicAPI.wrapStandardException(se);
     } finally {
@@ -3023,42 +3025,15 @@ public class GfxdSystemProcedures extends SystemProcedures {
       Blob filters, ResultSet[] result) throws SQLException {
     try {
       // split the projection into column indexes (1-based)
-      final TIntArrayList columns = new TIntArrayList(4);
-      SharedUtils.splitCSV(projection, projectionAgg, columns, null);
+      final TIntArrayList columnsList = new TIntArrayList(4);
+      SharedUtils.splitCSV(projection, projectionAgg, columnsList, null);
 
       // check authorization for given columns of the table
       LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
-      if (lcc.usesSqlAuthorization()) {
-        final int numColumns = columns.size();
-        ArrayList<StatementPermission> permissions = new ArrayList<>(
-            numColumns + 1);
-        String rowBufferTable = GemFireContainer.getRowBufferTableName(columnTable);
-        GemFireContainer rowContainer = (GemFireContainer)Misc.getRegionForTable(
-            rowBufferTable, true).getUserAttribute();
-        TableDescriptor td = rowContainer.getTableDescriptor();
-        if (td == null) {
-          throw PublicAPI.wrapStandardException(StandardException.newException(
-              SQLState.LANG_TABLE_NOT_FOUND, rowBufferTable));
-        }
-        permissions.add(new StatementTablePermission(td.getUUID(),
-            Authorizer.SELECT_PRIV));
-        if (numColumns > 0) {
-          FormatableBitSet bitSet = new FormatableBitSet(td.getNumberOfColumns());
-          for (int i = 0; i < numColumns; i++) {
-            int col = columns.getQuick(i);
-            ColumnDescriptor cd = td.getColumnDescriptor(col);
-            if (cd == null) {
-              throw PublicAPI.wrapStandardException(StandardException.newException(
-                  SQLState.LANG_COLUMN_NOT_FOUND, rowBufferTable + '.' + col));
-            }
-            bitSet.set(col - 1);
-          }
-          permissions.add(new StatementColumnPermission(td.getUUID(),
-              Authorizer.SELECT_PRIV, bitSet));
-        }
-        lcc.getAuthorizer().authorize(lcc.getLastActivation(), null, permissions,
-            Authorizer.SQL_SELECT_OP);
-      }
+      int[] columns = columnsList.toNativeArray();
+      String rowBufferTable = GemFireContainer.getRowBufferTableName(columnTable);
+      authorizeTableOperation(lcc, rowBufferTable, columns,
+          Authorizer.SELECT_PRIV, Authorizer.SQL_SELECT_OP);
 
       byte[] batchFilters = null;
       if (filters != null) {
@@ -3068,7 +3043,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
       Set<Integer> bucketIds = lcc.getBucketIdsForLocalExecution();
       final CloseableIterator<ColumnTableEntry> iter =
           CallbackFactoryProvider.getStoreCallbacks().columnTableScan(
-              columnTable, columns.toNativeArray(), batchFilters, bucketIds);
+              columnTable, columns, batchFilters, bucketIds);
       if (GemFireXDUtils.TraceExecution) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
             "COLUMN_TABLE_SCAN table=" + columnTable +
@@ -3105,6 +3080,44 @@ public class GfxdSystemProcedures extends SystemProcedures {
       throw se;
     } catch (Throwable t) {
       throw TransactionResourceImpl.wrapInSQLException(t);
+    }
+  }
+
+  /**
+   * Check SELECT authorization for given columns of a column or row table.
+   * The parameter "authType" must be one of the Authorizer.*PRIV types while
+   * "opType" must be one of the Authorizer.*OP types.
+   */
+  public static void authorizeTableOperation(LanguageConnectionContext lcc,
+      String tableName, int[] columns, int authType, int opType)
+      throws StandardException {
+    if (lcc.usesSqlAuthorization()) {
+      final int numColumns = columns.length;
+      ArrayList<StatementPermission> permissions = new ArrayList<>(
+          numColumns + 1);
+      GemFireContainer rowContainer = (GemFireContainer)Misc.getRegionForTable(
+          tableName, true).getUserAttribute();
+      TableDescriptor td = rowContainer.getTableDescriptor();
+      if (td == null) {
+        throw StandardException.newException(SQLState.LANG_TABLE_NOT_FOUND,
+            tableName);
+      }
+      permissions.add(new StatementTablePermission(td.getUUID(), authType));
+      if (numColumns > 0) {
+        FormatableBitSet bitSet = new FormatableBitSet(td.getNumberOfColumns());
+        for (int i = 0; i < numColumns; i++) {
+          int col = columns[i];
+          ColumnDescriptor cd = td.getColumnDescriptor(col);
+          if (cd == null) {
+            throw StandardException.newException(SQLState.LANG_COLUMN_NOT_FOUND,
+                tableName + '.' + col);
+          }
+          bitSet.set(col - 1);
+        }
+        permissions.add(new StatementColumnPermission(td.getUUID(),
+            authType, bitSet));
+      }
+      lcc.getAuthorizer().authorize(null, null, permissions, opType);
     }
   }
 

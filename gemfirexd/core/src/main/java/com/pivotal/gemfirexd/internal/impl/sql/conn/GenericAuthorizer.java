@@ -155,6 +155,9 @@ implements Authorizer
                 StatementContext ctx = this.lcc.getStatementContext();
                 if (ctx != null) {
                   sqlAllowed = ctx.getSQLAllowed();
+                } else if (perms != null && perms.size() > 0) {
+                  // direct call from GfxdSystemProcedures.authorizeColumnTableScan
+                  sqlAllowed = RoutineAliasInfo.READS_SQL_DATA;
                 }
                 /* (original code)
 		int sqlAllowed = lcc.getStatementContext().getSQLAllowed();
@@ -225,8 +228,8 @@ implements Authorizer
 				SanityManager.THROWASSERT("Bad operation code "+operation);
 		}
 // GemStone changes BEGIN
-	if (activation != null && (ps != null || perms != null
-	    || (ps = activation.getPreparedStatement()) != null)) {
+	if (perms != null || (activation != null && (ps != null
+	    || (ps = activation.getPreparedStatement()) != null))) {
 	/* (original code)
         if( activation != null)
         {
@@ -236,7 +239,7 @@ implements Authorizer
             boolean nestedTX = false;
             try {
               // check if ps is uptodate
-              activation.checkStatementValidity();
+              if (activation != null) activation.checkStatementValidity();
               List requiredPermissionsList = perms != null ? perms : ps.getRequiredPermissionsList();
               /*[originally]
                 List requiredPermissionsList = activation.getPreparedStatement().getRequiredPermissionsList();

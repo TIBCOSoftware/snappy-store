@@ -32,6 +32,8 @@ public interface StoreCallbacks {
 
   String SHADOW_TABLE_SUFFIX = SystemProperties.SHADOW_TABLE_SUFFIX;
 
+  String SHADOW_TABLE_BUCKET_TAG = SHADOW_TABLE_SUFFIX.replace("_", "__");
+
   void registerTypes();
 
   Set<Object> createColumnBatch(BucketRegion region, long batchID,
@@ -121,4 +123,10 @@ public interface StoreCallbacks {
    * Initializes different memory manager related stats
    */
   void initMemoryStats(MemoryManagerStats stats);
+
+  /**
+   * Clear any existing connection pools (forced in case of major
+   * authentication service changes, for example).
+   */
+  void clearConnectionPools();
 }

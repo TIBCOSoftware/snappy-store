@@ -182,6 +182,10 @@ public abstract class CallbackFactoryProvider {
     @Override
     public void initMemoryStats(MemoryManagerStats stats) {
     }
+
+    @Override
+    public void clearConnectionPools() {
+    }
   };
 
   public static void setStoreCallbacks(StoreCallbacks cb) {
