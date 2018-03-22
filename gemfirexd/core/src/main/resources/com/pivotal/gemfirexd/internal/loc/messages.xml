@@ -4869,7 +4869,7 @@ ln=lower-case two-letter ISO-639 language code, CO=upper-case two-letter ISO-316
 
             <msg>
                 <name>XJ016.S</name>
-                <text>Method '{0}' not allowed on prepared statement.</text>
+                <text>Method or query '{0}' not allowed on prepared statement.</text>
                 <arg>methodName</arg>
             </msg>
 
