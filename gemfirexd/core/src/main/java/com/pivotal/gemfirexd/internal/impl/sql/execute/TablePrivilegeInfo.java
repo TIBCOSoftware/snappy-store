@@ -226,8 +226,16 @@ public class TablePrivilegeInfo extends PrivilegeInfo
 									List grantees)
 		throws StandardException
 	{
-		doExecuteGrantRevoke(activation, grant, grantees, columnBitSets, actionAllowed, true, td);
+
 		GemFireStore ms = Misc.getMemStore();
+		if (ms.isSnappyStore() && Misc.isSecurityEnabled() &&
+				CallbackFactoryProvider.getStoreCallbacks().isInternalBatchTable(td.getName())) {
+			// do nothing for columm batch tables, they will be handled during the corresponding
+			// main table handling
+		   return;
+		}
+		doExecuteGrantRevoke(activation, grant, grantees, columnBitSets, actionAllowed, true, td);
+
 		if (ms.isSnappyStore() && Misc.isSecurityEnabled()) {
 			String cbTable = CallbackFactoryProvider.getStoreCallbacks().columnBatchTableName(
 					Misc.getFullTableName(td.getSchemaName(), td.getName(),
