@@ -36,11 +36,6 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
-    public boolean isInternalBatchTable(String tableName) {
-      return false;
-    }
-
-    @Override
     public Set<Object> createColumnBatch(BucketRegion region, long batchID,
         int bucketID) {
       return null;
