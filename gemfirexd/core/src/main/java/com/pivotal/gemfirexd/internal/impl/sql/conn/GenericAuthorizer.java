@@ -153,11 +153,12 @@ implements Authorizer
                 checkAccess();
                 int sqlAllowed = RoutineAliasInfo.NO_SQL;
                 StatementContext ctx = this.lcc.getStatementContext();
-                if (ctx != null) {
-                  sqlAllowed = ctx.getSQLAllowed();
-                } else if (perms != null && perms.size() > 0) {
+                if (perms != null && perms.size() > 0) {
                   // direct call from GfxdSystemProcedures.authorizeColumnTableScan
                   sqlAllowed = RoutineAliasInfo.READS_SQL_DATA;
+                }
+                else if (ctx != null) {
+		              sqlAllowed = ctx.getSQLAllowed();
                 }
                 /* (original code)
 		int sqlAllowed = lcc.getStatementContext().getSQLAllowed();
