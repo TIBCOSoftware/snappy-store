@@ -26,7 +26,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
+import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.cache.DiskAccessException;
 import com.gemstone.gemfire.cache.RegionDestroyedException;
 import com.gemstone.gemfire.cache.persistence.ConflictingPersistentDataException;
@@ -34,6 +36,7 @@ import com.gemstone.gemfire.cache.persistence.RevokedPersistentDataException;
 import com.gemstone.gemfire.distributed.DistributedLockService;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisor.Profile;
+import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.MembershipListener;
 import com.gemstone.gemfire.distributed.internal.ProfileListener;
 import com.gemstone.gemfire.distributed.internal.ReplyException;
@@ -44,6 +47,7 @@ import com.gemstone.gemfire.internal.cache.CacheDistributionAdvisor;
 import com.gemstone.gemfire.internal.cache.CacheDistributionAdvisor.CacheProfile;
 import com.gemstone.gemfire.internal.cache.CacheDistributionAdvisor.InitialImageAdvice;
 import com.gemstone.gemfire.internal.cache.DiskRegionStats;
+import com.gemstone.gemfire.internal.cache.DistributedRegion;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
 import com.gemstone.gemfire.internal.cache.ProxyBucketRegion;
@@ -301,6 +305,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
     }
 
     if(!didGII) {
+      trace("didGII : atomimcCreateion " + atomicCreation + " newID " + newId);
       setInitializing(newId);
     }
     
@@ -309,9 +314,12 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
       //Transition any members that are marked as online, but not actually
       //currently running, to offline.
       Set<PersistentMemberID> membersToMarkOffline = new HashSet<PersistentMemberID>(storage.getOnlineMembers());
+      trace("MembersToMarkOffline : " + membersToMarkOffline);
       Map<InternalDistributedMember, PersistentMemberID> onlineMembers;
       if(!atomicCreation) {
+
         onlineMembers = advisor.adviseInitializedPersistentMembers();
+        trace("online members : " + onlineMembers );
       } else {
         //Fix for 41100 - If this is an atomic bucket creation, don't
         //mark our peers, which are concurrently intitializing, as offline
@@ -319,6 +327,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
         //technically "newer," and this avoids a race where both members
         //can think the other is offline ("older").
         onlineMembers = advisor.advisePersistentMembers();
+        trace("online members(atomicCreation true) : " + onlineMembers );
       }
       membersToMarkOffline.removeAll(onlineMembers.values());
       
@@ -349,6 +358,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
         membersToMarkOffline.removeAll(equalMembers);
       }
       for(PersistentMemberID id : membersToMarkOffline) {
+        trace("Marking the member " + id + " as offline ");
         storage.memberOffline(id);
       }
       if(traceOn()) {
@@ -701,9 +711,9 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   
   protected void trace(String string) {
     if(logger.fineEnabled()) { 
-      logger.fine("PersistenceAdvisor " + shortDiskStoreId() + " - " + regionPath + " - " + string);
+      logger.fine("PersistenceAdvisor " + shortDiskStoreId() + " - " + regionPath + " - " + string, new Throwable("SKSK TRACE FINE"));
     } else if(TRACE) {
-      logger.info(LocalizedStrings.DEBUG, "PersistenceAdvisor " + shortDiskStoreId() + " - " + regionPath + " - " + string);
+      logger.info(LocalizedStrings.DEBUG, "PersistenceAdvisor " + shortDiskStoreId() + " - " + regionPath + " - " + string, new Throwable("SKSK TRACE"));
     }
   }
 
@@ -783,7 +793,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
     }
     return equal;
   }
-  
+
   public void finishPendingDestroy() {
   //send a message to peers indicating that they should remove this profile
     long viewVersion = -1;
@@ -827,7 +837,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
     try {
       while(true) {
         Set<PersistentMemberID> previouslyOnlineMembers = getPersistedOnlineOrEqualMembers();
-
+        trace("The previously online members are : " + previouslyOnlineMembers);
         advisor.getAdvisee().getCancelCriterion().checkCancelInProgress(null);
         try {
           InitialImageAdvice advice = advisor.adviseInitialImage(previousAdvice);
@@ -835,7 +845,9 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
           if(!advice.getReplicates().isEmpty()) {
             trace("There are members currently online. Checking for our state on those members and then initializing");
             //We will go ahead and take the other members contents if we ourselves didn't recover from disk.
-            if(recoverFromDisk) {
+            // If we are meta-data table then we need to check with locator if we are the latest guy.
+
+            if (recoverFromDisk) {
               //Check with these members to make sure that they
               //have heard of us
               //If any of them say we have the same data on disk, we don't need to do a GII
@@ -850,20 +862,80 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
                   equalMembers.clear();
                 }
               }
+              return advice;
+            } else {
+              logger.info(LocalizedStrings.DEBUG, "The SKSK advisee are " + advisor.getAdvisee());
+
+              if (advisor.getAdvisee() instanceof DistributedRegion &&
+                  ((DistributedRegion)advisor.getAdvisee()).getRegion().getFullPath().contains("GFXD_PdxTypes")) {
+
+                // if anyone of them is a server then check if they have completed their DDLReplay
+                // if all are Locators, then
+                // send message to locators to check my state
+                // check if locator has any view and atleast one of them is up
+                // if not up then wait
+                // if up then reply
+
+                Set<InternalDistributedMember> s = advice.getReplicates();
+                // check if there are any servers, which are initialized.
+                Set<InternalDistributedMember> onlineLocators = s.stream().filter
+                    (m -> m.getVmKind() == DistributionManager.LOCATOR_DM_TYPE).
+                    collect(Collectors.toSet());
+
+                boolean allUninitialized = s.stream().filter
+                    (m -> (m.getVmKind() == DistributionManager.NORMAL_DM_TYPE) &&
+                        GemFireCacheImpl.getInstance().isSnappyDataStore(m)).
+                    allMatch(m -> GemFireCacheImpl.getInstance().isUnInitializedMember(m));
+
+                logger.info(LocalizedStrings.DEBUG, "The peers are " + s);
+                //TODO: do we need to check with only one locator or all.
+                boolean continueWhileLoop = false;
+                if (allUninitialized) {
+                  for (InternalDistributedMember m : onlineLocators) {
+                    logger.info(LocalizedStrings.DEBUG, "The peers are and vmkind is:  " + m.getVmKind() + " the m is " + m.toString());
+                    if (m.getVmKind() == DistributionManager.LOCATOR_DM_TYPE) {
+                      // send message and check if we have atleast one server with DDLReplay
+                      // which was earlier in locator's view
+                      // TODO: we can also get the list of disk-stores to come up
+                      logger.info(LocalizedStrings.DEBUG, "Checking with the locator " + m);
+
+                      Set<PersistentMemberID> idsToWaitFor =
+                          checkWithLocatorIfIamFirst(Collections.singleton(m));
+
+                      logger.info(LocalizedStrings.DEBUG, "Checking with the locator , if I am first server " + idsToWaitFor);
+                      if (idsToWaitFor != null && !idsToWaitFor.isEmpty()) {
+                        // then wait till new server comesup and check again.
+                        throw new InternalGemFireError("None of the previous persistent node is up.");
+                        /*listener.waitForMembershipChange();
+                        logger.info(LocalizedStrings.DEBUG, "Checking with the locator , " +
+                            "continuing the while loop as some member came online " + idsToWaitFor);
+                        // continue the while loop.
+                        continueWhileLoop = true;*/
+                      } else {
+                        return advice;
+                      }
+                    }
+                  }
+                } else {
+                  return advice;
+                }
+                if (continueWhileLoop) continue;
+              }
+
             }
-            return advice;
           }
 
           //If there are no currently online members, and no
           //previously online members, this member should just go with what's
           //on it's own disk
-          if(previouslyOnlineMembers.isEmpty()) {
+          if (previouslyOnlineMembers.isEmpty()) {
             logger.fine("No previously online members. Recovering with the data from the local disk");
             return advice;
           }
 
 
           Set<PersistentMemberID> offlineMembers = new HashSet<PersistentMemberID>();
+          trace("Previously online: " + previouslyOnlineMembers + " , offline : " + offlineMembers);
           Set<PersistentMemberID> membersToWaitFor = getMembersToWaitFor(previouslyOnlineMembers, offlineMembers);
 
           if(membersToWaitFor.isEmpty()) {
@@ -914,6 +986,13 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
     }
   }
 
+  private Set<PersistentMemberID> checkWithLocatorIfIamFirst(Set<InternalDistributedMember> singleton) {
+    Set<PersistentMemberID> ids =
+        StartupSequenceQueryMesasge.send(singleton, advisor.getDistributionManager(), regionPath);
+
+    return ids;
+  }
+
   /**
    * @param previouslyOnlineMembers the members we have persisted online
    *   in our persistence files
@@ -929,7 +1008,8 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
       Set<PersistentMemberID> offlineMembers) throws ReplyException, InterruptedException {
     PersistentMemberID myPersistentID = getPersistentID();
     PersistentMemberID myInitializingId = getInitializingID();
-    
+
+    trace("My persistetnID " + myPersistentID + " initlaizingID " + myInitializingId);
     //This is the set of members that are currently waiting for this member
     //to come online.
     Set<PersistentMemberID> membersToWaitFor = new HashSet<PersistentMemberID>(previouslyOnlineMembers);
@@ -1217,6 +1297,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
       synchronized(this) {
         this.membershipChanged = true;
         this.notifyAll();
+        GemFireCacheImpl.getInstance().getLoggerI18n().info(LocalizedStrings.DEBUG, "AfterMembershipChanges: ", new Throwable("SKSK Member Listener"));
       }
     }
 
@@ -1245,6 +1326,38 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
     public void memberRemoved(PersistentMemberID id, boolean revoked) {
       afterMembershipChange();
     }
+
+    public void waitForMembershipChange() throws InterruptedException {
+      long waitThreshold = advisor.getDistributionManager().getConfig().getAckWaitThreshold();
+      // reduce the first log time from 15secs so that higher layers can report
+      // sooner to user
+      if (waitThreshold >= 5) {
+        waitThreshold = waitThreshold / 5;
+      }
+      final long warningTime = System.currentTimeMillis() +
+          TimeUnit.SECONDS.toMillis(waitThreshold);
+      boolean warned = false;
+      synchronized (this) {
+        try {
+          while (!membershipChanged && !isClosed && !doNotWait) {
+            checkInterruptedByShutdownAll();
+            advisor.getAdvisee().getCancelCriterion().checkCancelInProgress(null);
+            this.wait(100);
+            if (!warned && System.currentTimeMillis() > warningTime) {
+              //logWaitingForMember(allMembersToWaitFor, offlineMembersToWaitFor);
+              GemFireCacheImpl.getInstance().getLoggerI18n().info(LocalizedStrings.DEBUG,
+                  "waiting for atleast one server to come up.");
+              //logWaitingForMember();
+              warned = true;
+            }
+          }
+          this.membershipChanged = false;
+          doNotWait = false;
+        } finally {
+
+        }
+      }
+    }
   }
 
   private class ProfileChangeListener implements ProfileListener, MemberRevocationListener {
@@ -1266,6 +1379,8 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
 
     public void profileUpdated(Profile profile) {
       CacheProfile cp = (CacheProfile) profile;
+      GemFireCacheImpl.getInstance().getLoggerI18n().info(LocalizedStrings.DEBUG,
+          "The profile we got is " + profile + " cp.pers " + cp.persistentID + " " + cp.persistenceInitialized);
       if(cp.persistentID != null && cp.persistenceInitialized) {
         memberOnline(profile.getDistributedMember(), cp.persistentID);
       }

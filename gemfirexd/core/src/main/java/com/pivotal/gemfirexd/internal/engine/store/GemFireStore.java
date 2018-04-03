@@ -174,6 +174,8 @@ import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
 
+import static com.gemstone.gemfire.distributed.internal.InternalLocator.FORCE_LOCATOR_DM_TYPE;
+
 /**
  * The underlying store implementation that provides methods to create container
  * for tables, schemas while maintaining the mapping from container IDs to their
@@ -1093,6 +1095,10 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         if (this.persistingDD) {
           c.setPdxPersistent(true);
           c.setPdxDiskStore(GfxdConstants.GFXD_DD_DISKSTORE_NAME);
+        }
+
+        if (isLocator) {
+          System.setProperty(FORCE_LOCATOR_DM_TYPE, "true");
         }
 
         this.gemFireCache = (GemFireCacheImpl)c.create();

@@ -90,6 +90,7 @@ public class PersistentStateQueryMessage extends
     int oldLevel =         // Set thread local flag to allow entrance through initialization Latch
       LocalRegion.setThreadInitLevelRequirement(LocalRegion.ANY_INIT);
 
+    log.info(LocalizedStrings.DEBUG, "SKSK Processing PersistentStateQueryMessage ");
     PersistentMemberState state = null;
     PersistentMemberID myId = null;
     PersistentMemberID myInitializingId = null;

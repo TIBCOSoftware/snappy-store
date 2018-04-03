@@ -1614,7 +1614,7 @@ public final class JGroupMembershipManager implements MembershipManager {
           theLogger.info(
               LocalizedStrings.DEBUG,
               "JGroups: initial view is " 
-              + DistributionManager.printView(latestView));
+              + DistributionManager.printView(latestView), new Throwable("SKSK JGROUP"));
 
         if (DistributionManager.VERBOSE) {
           if (theLogger.infoEnabled()) {
@@ -1741,12 +1741,18 @@ public final class JGroupMembershipManager implements MembershipManager {
       directChannel.getConduit().setVmViewID(myAddr.getBirthViewId());
     }
 
+    this.logger.info(LocalizedStrings.DEBUG, "The vmId in address is : " + MemberAttributes.DEFAULT.getVmKind());
+
     myMemberId = new InternalDistributedMember(myAddr.getIpAddress(),
                                                myAddr.getPort(),
                                                myAddr.splitBrainEnabled(),
                                                myAddr.preferredForCoordinator(),
                                                MemberAttributes.DEFAULT);
-    
+
+    this.logger.info(LocalizedStrings.DEBUG, "The internal distributed member is : " + myMemberId +
+        " and its vmKind is " + myMemberId.getVmKind()
+    + "myAddr vmKind is " + myAddr.getVmKind());
+
     // in order to debug startup issues it we need to announce the membership
     // ID as soon as we know it
     logger.info(LocalizedStrings.JGroupMembershipManager_entered_into_membership_in_group_0_with_id_1,

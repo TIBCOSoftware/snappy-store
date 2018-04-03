@@ -502,47 +502,7 @@ public final class FabricDatabase implements ModuleControl,
         GemFireXDUtils.executeSQLScripts(embedConn, postScriptPaths, false,
             logger, null, null, false);
       }
-
-      // Initialize the catalog
-      // Lead is always started with ServerGroup hence for lead LeadGroup will never be null.
-      /**
-       * In LeadImpl server group is always  set to using following code:
-       * changeOrAppend(Constant * .STORE_PROPERTY_PREFIX +com.pivotal.gemfirexd.Attribute.
-       * SERVER_GROUPS, LeadImpl.LEADER_SERVERGROUP)
-       */
-      HashSet<String> leadGroup = CallbackFactoryProvider.getClusterCallbacks().getLeaderGroup();
-      final boolean isLead = this.memStore.isSnappyStore() && (leadGroup != null && leadGroup
-          .size() > 0) && (ServerGroupUtils.isGroupMember(leadGroup)
-          || Misc.getDistributedSystem().isLoner());
-      Set<?> servers = GemFireXDUtils.getGfxdAdvisor().adviseDataStores(null);
-      if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
-          GemFireStore.VMKind.DATASTORE || (isLead && servers.size() > 0))) {
-        this.memStore.initExternalCatalog();
-        if (isLead && servers.size() > 0) {
-          // submit the task to check for catalog consistency
-          this.memStore.setExternalCatalogInit(cache.getDistributionManager()
-              .getFunctionExcecutor().submit(() -> {
-                // don't wait for self in catalog initialization
-                GemFireStore.externalCatalogInitThread.set(Boolean.TRUE);
-                EmbedConnection embedConnection = null;
-                try {
-                  GemFireXDUtils.waitForNodeInitialization();
-                  embedConnection = GemFireXDUtils.createNewInternalConnection(
-                      false);
-                  checkSnappyCatalogConsistency(embedConnection);
-                } catch (StandardException | SQLException e) {
-                  throw new GemFireXDRuntimeException(e);
-                } finally {
-                  if (embedConnection != null) {
-                    try {
-                      embedConnection.close();
-                    } catch (Exception ignore) {
-                    }
-                  }
-                }
-              }));
-        }
-      }
+      initializeCatalog();
     } catch (Throwable t) {
       try {
         LogWriter logger = Misc.getCacheLogWriter();
@@ -586,6 +546,50 @@ public final class FabricDatabase implements ModuleControl,
           ds.getDiskDirs()[0].getAbsolutePath());
       dd.addDescriptor(dsd, null, DataDictionary.SYSDISKSTORES_CATALOG_NUM,
           false, dd.getTransactionExecute());
+    }
+  }
+
+  public void initializeCatalog() throws Exception {
+    // Initialize the catalog
+    // Lead is always started with ServerGroup hence for lead LeadGroup will never be null.
+    /**
+     * In LeadImpl server group is always  set to using following code:
+     * changeOrAppend(Constant * .STORE_PROPERTY_PREFIX +com.pivotal.gemfirexd.Attribute.
+     * SERVER_GROUPS, LeadImpl.LEADER_SERVERGROUP)
+     */
+    final GemFireCacheImpl cache = GemFireCacheImpl.getExisting();
+    HashSet<String> leadGroup = CallbackFactoryProvider.getClusterCallbacks().getLeaderGroup();
+    final boolean isLead = this.memStore.isSnappyStore() && (leadGroup != null && leadGroup
+        .size() > 0) && (ServerGroupUtils.isGroupMember(leadGroup)
+        || Misc.getDistributedSystem().isLoner());
+    Set<?> servers = GemFireXDUtils.getGfxdAdvisor().adviseDataStores(null);
+    if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
+        GemFireStore.VMKind.DATASTORE || (isLead /*&& servers.size() > 0*/))) {
+      this.memStore.initExternalCatalog();
+      if (isLead /*&& servers.size() > 0*/) {
+        // submit the task to check for catalog consistency
+        this.memStore.setExternalCatalogInit(cache.getDistributionManager()
+            .getFunctionExcecutor().submit(() -> {
+              // don't wait for self in catalog initialization
+              GemFireStore.externalCatalogInitThread.set(Boolean.TRUE);
+              EmbedConnection embedConnection = null;
+              try {
+                GemFireXDUtils.waitForNodeInitialization();
+                embedConnection = GemFireXDUtils.createNewInternalConnection(
+                    false);
+                checkSnappyCatalogConsistency(embedConnection);
+              } catch (StandardException | SQLException e) {
+                throw new GemFireXDRuntimeException(e);
+              } finally {
+                if (embedConnection != null) {
+                  try {
+                    embedConnection.close();
+                  } catch (Exception ignore) {
+                  }
+                }
+              }
+            }));
+      }
     }
   }
 

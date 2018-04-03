@@ -626,7 +626,9 @@ public final class DistributionManager
     DistributionManager dm = null;
     
     try {
-
+      /*PropertyUtil.getBooleanProperty(Attribute.STAND_ALONE_LOCATOR,
+          GfxdConstants.GFXD_STAND_ALONE_LOCATOR, props, false, null);
+*/
       if (Boolean.getBoolean(InternalLocator.FORCE_LOCATOR_DM_TYPE)) {
         // if this DM is starting for a locator, set it to be a locator DM
         setDistributionManagerType(LOCATOR_DM_TYPE);
@@ -3355,8 +3357,8 @@ public final class DistributionManager
         int managerType = member.getVmKind();
         if (managerType == ADMIN_ONLY_DM_TYPE)
           continue;
-        if (managerType == LOCATOR_DM_TYPE) // DARREL TODO: is it now ok for the locator to be the elder?
-          continue;
+        /*if (managerType == LOCATOR_DM_TYPE) // DARREL TODO: is it now ok for the locator to be the elder?
+          continue;*/
         
         // Fix for #45566.  Using a surprise member as the elder can cause a
         // deadlock.
@@ -3379,8 +3381,8 @@ public final class DistributionManager
       int managerType = member.getVmKind();
       if (managerType == ADMIN_ONLY_DM_TYPE)
         continue;
-      if (managerType == LOCATOR_DM_TYPE) // DARREL TODO: is it now ok for the locator to be the elder?
-        continue;
+/*      if (managerType == LOCATOR_DM_TYPE) // DARREL TODO: is it now ok for the locator to be the elder?
+        continue;*/
 
       // Fix for #45566.  Using a surprise member as the elder can cause a
       // deadlock.
