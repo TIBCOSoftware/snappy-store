@@ -511,7 +511,6 @@ public class CacheDistributionAdvisor extends DistributionAdvisor  {
     public Set<String> activeSerialGatewaySenderIds = null;
     public Set<String> activeSerialAsyncQueueIds = null;
     public boolean hasDBSynchOrAsyncEventListener = false;
-    public boolean isLocator = false;
 
     /**
      * Will be null if the profile doesn't need to have the attributes
@@ -618,7 +617,6 @@ public class CacheDistributionAdvisor extends DistributionAdvisor  {
       if (this.inRecovery) s |= IN_RECOVERY_MASK;
       if (this.isPartitioned) s |= IS_PARTITIONED_MASK;
       if (this.isGatewayEnabled) s |= IS_GATEWAY_ENABLED_MASK;
-      if (this.isLocator) s |= IS_LOCATOR_MASK;
       if (this.isPersistent) s |= PERSISTENT_MASK;
       if (this.regionInitialized) s|= REGION_INITIALIZED_MASK;
       if (this.memberUnInitialized) s |= MEMBER_UNINITIALIZED_MASK;
@@ -701,7 +699,6 @@ public class CacheDistributionAdvisor extends DistributionAdvisor  {
       this.inRecovery = (s & IN_RECOVERY_MASK) != 0;
       this.isPartitioned = (s & IS_PARTITIONED_MASK) != 0;
       this.isGatewayEnabled = (s & IS_GATEWAY_ENABLED_MASK) != 0;
-      this.isLocator = (s & IS_LOCATOR_MASK) != 0;
       this.isPersistent = (s & PERSISTENT_MASK) != 0;
       this.regionInitialized = ( (s & REGION_INITIALIZED_MASK) != 0 );
       this.memberUnInitialized = (s & MEMBER_UNINITIALIZED_MASK) != 0;
@@ -907,7 +904,6 @@ public class CacheDistributionAdvisor extends DistributionAdvisor  {
       sb.append("; subcription=" + this.subscriptionAttributes);
       sb.append("; isPartitioned=" + this.isPartitioned);
       sb.append("; isGatewayEnabled=" + this.isGatewayEnabled);
-      sb.append("; isLocator=" + this.isLocator);
       sb.append("; isPersistent=" + this.isPersistent);
       sb.append("; persistentID=" + this.persistentID);
       sb.append("; persistenceInitialized=")

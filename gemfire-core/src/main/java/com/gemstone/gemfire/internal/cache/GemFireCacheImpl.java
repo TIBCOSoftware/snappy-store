@@ -5839,8 +5839,6 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     /** If this node is booted as a SnappyStore node */
     public boolean isSnappyStore();
 
-    public boolean isLocator();
-
     /** If this node is booted as a Accessor node */
     public boolean isAccessor();
 

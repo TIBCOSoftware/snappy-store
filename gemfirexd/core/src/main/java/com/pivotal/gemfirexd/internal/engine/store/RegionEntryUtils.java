@@ -1548,12 +1548,6 @@ public final class RegionEntryUtils {
     }
 
     @Override
-    public boolean isLocator() {
-      GemFireStore.VMKind myVMKind = GemFireXDUtils.getMyVMKind();
-      return myVMKind != null && myVMKind.isLocator();
-    }
-
-    @Override
     public boolean isSnappyStore() {
       return Misc.getMemStoreBooting().isSnappyStore();
     }

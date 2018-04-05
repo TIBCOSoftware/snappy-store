@@ -5513,7 +5513,6 @@ public class PartitionedRegion extends LocalRegion implements
     profile.setSubscriptionAttributes(getSubscriptionAttributes());
     profile.isGatewayEnabled = this.enableGateway;
     StaticSystemCallbacks sysCb = GemFireCacheImpl.getInternalProductCallbacks();
-    profile.isLocator = (sysCb != null) && sysCb.isLocator();
     // fillInProfile MUST set serialNumber
     profile.serialNumber = getSerialNumber();
     //TODO - prpersist - this is a bit of a hack, but we're
