@@ -301,8 +301,12 @@ public abstract class UnsafeHolder {
    * this directly rather use BufferAllocator.allocate/release where possible.
    */
   public static void releaseIfDirectBuffer(ByteBuffer buffer) {
-    if (buffer != null && buffer.isDirect()) {
-      releaseDirectBuffer(buffer);
+    if (buffer != null) {
+      if (buffer.isDirect()) {
+        releaseDirectBuffer(buffer);
+      } else {
+        buffer.rewind().limit(0);
+      }
     }
   }
 
@@ -312,6 +316,7 @@ public abstract class UnsafeHolder {
       cleaner.clean();
       cleaner.clear();
     }
+    buffer.rewind().limit(0);
   }
 
   public static void releasePendingReferences() {

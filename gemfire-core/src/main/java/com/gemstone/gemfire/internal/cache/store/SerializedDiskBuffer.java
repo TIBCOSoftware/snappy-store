@@ -20,11 +20,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import javax.annotation.concurrent.GuardedBy;
 
-import com.gemstone.gemfire.internal.cache.DiskId;
+import com.gemstone.gemfire.internal.cache.AbstractOplogDiskRegionEntry;
 import com.gemstone.gemfire.internal.cache.RegionEntryContext;
 import com.gemstone.gemfire.internal.shared.BufferAllocator;
 import com.gemstone.gemfire.internal.shared.ByteBufferReference;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import com.gemstone.gemfire.internal.shared.FetchRequest;
 import com.gemstone.gemfire.internal.shared.OutputStreamChannel;
 
 /**
@@ -135,11 +136,7 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
   }
 
   @Override
-  public SerializedDiskBuffer getValueRetain(boolean decompress,
-      boolean compress) throws IllegalArgumentException {
-    if (decompress && compress) {
-      throw new IllegalArgumentException("both decompress and compress true");
-    }
+  public SerializedDiskBuffer getValueRetain(FetchRequest fetchRequest) {
     return retain() ? this : null;
   }
 
@@ -148,7 +145,8 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
   /**
    * For buffers which are stored in region, set its DiskId.
    */
-  public void setDiskLocation(DiskId id, RegionEntryContext context) {
+  public void setDiskEntry(AbstractOplogDiskRegionEntry entry,
+      RegionEntryContext context) {
   }
 
   /**

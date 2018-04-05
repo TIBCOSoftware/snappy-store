@@ -2044,6 +2044,18 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
           newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
 
     }
+    {
+      // COLUMN_TABLE_SCAN(String,String,String,Blob,ResultSet[])
+      String[] arg_names = new String[] { "TABLE", "PROJECTION", "FILTERS" };
+      TypeDescriptor[] arg_types = new TypeDescriptor[] {
+          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
+          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
+          DataTypeDescriptor.getCatalogType(Types.BLOB)
+      };
+      super.createSystemProcedureOrFunction("COLUMN_TABLE_SCAN", sysUUID,
+          arg_names, arg_types, 0, 1, RoutineAliasInfo.READS_SQL_DATA, null,
+          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
+    }
   }
 
   @SuppressWarnings({ "unchecked", "rawtypes" })

@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Random;
 
+import com.gemstone.gemfire.admin.internal.FinishBackupRequest;
 import junit.framework.TestCase;
 
 import com.gemstone.gemfire.cache.CacheFactory;
@@ -187,7 +188,7 @@ public class BackupJUnitTest extends TestCase {
     
     BackupManager backup = cache.startBackup(cache.getDistributedSystem().getDistributedMember());
     backup.prepareBackup();
-    backup.finishBackup(backupDir,null);
+    backup.finishBackup(backupDir,null, FinishBackupRequest.DISKSTORE_ALL);
     
     //Put another key to make sure we restore
     //from a backup that doesn't contain this key
@@ -234,7 +235,7 @@ public class BackupJUnitTest extends TestCase {
 
     BackupManager backup = cache.startBackup(cache.getDistributedSystem().getDistributedMember());
     backup.prepareBackup();
-    backup.finishBackup(backupDir,null);
+    backup.finishBackup(backupDir,null, FinishBackupRequest.DISKSTORE_ALL);
     assertEquals("No backup files should have been created", Collections.emptyList(), Arrays.asList(backupDir.list()));
   }
   
@@ -247,7 +248,7 @@ public class BackupJUnitTest extends TestCase {
 
     BackupManager backup = cache.startBackup(cache.getDistributedSystem().getDistributedMember());
     backup.prepareBackup();
-    backup.finishBackup(backupDir,null);
+    backup.finishBackup(backupDir,null, FinishBackupRequest.DISKSTORE_ALL);
     
     
     assertEquals("No backup files should have been created", Collections.emptyList(), Arrays.asList(backupDir.list()));
@@ -302,7 +303,7 @@ public class BackupJUnitTest extends TestCase {
 
     BackupManager backup = cache.startBackup(cache.getDistributedSystem().getDistributedMember());
     backup.prepareBackup();
-    backup.finishBackup(backupDir,null);
+    backup.finishBackup(backupDir,null, FinishBackupRequest.DISKSTORE_ALL);
     File cacheXmlBackup = FileUtil.find(backupDir, ".*config.cache.xml");
     assertTrue(cacheXmlBackup.exists());
     byte[] expectedBytes = getBytes(CACHE_XML_FILE);

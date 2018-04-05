@@ -3345,6 +3345,11 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     if (state == State.OPEN || state == State.COMMIT_PHASE2_STARTED) {
       return;
     }
+    if (state == State.ROLLBACK_STARTED) {
+      throw new IllegalTransactionStateException(LocalizedStrings
+          .TransactionManagerImpl_TRANSACTIONMANAGERIMPL_COMMIT_TRANSACTION_ROLLED_BACK_BECAUSE_A_USER_MARKED_IT_FOR_ROLLBACK
+          .toLocalizedString());
+    }
     if (state == State.CLOSED) {
       throw new IllegalTransactionStateException(LocalizedStrings
           .TXManagerImpl_THREAD_DOES_NOT_HAVE_AN_ACTIVE_TRANSACTION

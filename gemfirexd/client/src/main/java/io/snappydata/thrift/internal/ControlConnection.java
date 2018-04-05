@@ -38,12 +38,12 @@ package io.snappydata.thrift.internal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
 import com.gemstone.gnu.trove.THashSet;
-import com.gemstone.gnu.trove.TObjectProcedure;
 import com.pivotal.gemfirexd.internal.client.net.NetConnection;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
@@ -73,50 +73,12 @@ final class ControlConnection {
   private final SocketParameters socketParams;
   private final boolean framedTransport;
   private final Set<ServerType> snappyServerTypeSet;
-  private final List<HostAddress> locators;
+  private ArrayList<HostAddress> locators;
   private HostAddress controlHost;
   private LocatorService.Client controlLocator;
-  private final ArrayList<HostAddress> controlHosts;
-  private final THashSet controlHostSet;
+  private final LinkedHashSet<HostAddress> controlHostSet;
 
-  public static final class SearchRandomServer implements TObjectProcedure {
-
-    private final ServerType searchServerType;
-    private final Set<HostAddress> failedServers;
-    private HostAddress foundServer;
-    private int searchIndex;
-
-    public static final Random rand = new Random();
-
-    SearchRandomServer(ServerType searchServerType, int setSize,
-        Set<HostAddress> failedServers) {
-      this.searchServerType = searchServerType;
-      this.failedServers = failedServers != null ? failedServers : Collections
-          .<HostAddress> emptySet();
-      this.searchIndex = rand.nextInt(setSize);
-    }
-
-    public HostAddress getRandomServer() {
-      return this.foundServer;
-    }
-
-    @Override
-    public boolean execute(Object o) {
-      if (this.searchIndex > 0) {
-        this.searchIndex--;
-      }
-      else if (this.foundServer != null) {
-        return false;
-      }
-
-      HostAddress hostAddr = (HostAddress)o;
-      if (hostAddr.getServerType() == this.searchServerType
-          && !this.failedServers.contains(hostAddr)) {
-        this.foundServer = hostAddr;
-      }
-      return true;
-    }
-  }
+  private final Random rand = new Random();
 
   /**
    * Since one DS is supposed to have one ControlConnection, so we expect the
@@ -129,16 +91,15 @@ final class ControlConnection {
     this.socketParams = service.socketParams;
     this.framedTransport = service.framedTransport;
     this.snappyServerTypeSet = Collections.singleton(getServerType());
-    this.locators = service.connHosts;
-    this.controlHosts = new ArrayList<>(service.connHosts);
-    this.controlHostSet = new THashSet(service.connHosts);
+    this.locators = new ArrayList<>(service.connHosts);
+    this.controlHostSet = new LinkedHashSet<>(service.connHosts);
   }
 
   final ServerType getServerType() {
     return this.socketParams.getServerType();
   }
 
-  static ControlConnection getOrCreateControlConnection(HostAddress hostAddr,
+  static ControlConnection getOrCreateControlConnection(List<HostAddress> hostAddrs,
       ClientService service, Throwable failure) throws SnappyException {
     // loop through all ControlConnections since size of this global list is
     // expected to be in single digit (total number of distributed systems)
@@ -147,12 +108,13 @@ final class ControlConnection {
       while (--index >= 0) {
         ControlConnection controlService = allControlConnections.get(index);
         synchronized (controlService) {
-          if (controlService.controlHostSet.contains(hostAddr)) {
+          final ArrayList<HostAddress> locators = controlService.locators;
+          for (HostAddress hostAddr : hostAddrs) {
+            if (!locators.contains(hostAddr)) continue;
             // we expect the serverType to match
             if (controlService.getServerType() == service.getServerType()) {
               return controlService;
-            }
-            else {
+            } else {
               throw ThriftExceptionUtil.newSnappyException(
                   SQLState.DRDA_CONNECTION_TERMINATED, null,
                   hostAddr != null ? hostAddr.toString() : null,
@@ -167,6 +129,17 @@ final class ControlConnection {
       // if we reached here, then need to create a new ControlConnection
       ControlConnection controlService = new ControlConnection(service);
       controlService.getPreferredServer(null, null, true, failure);
+      // check again if new control host already exists
+      HostAddress controlHost = controlService.controlHost;
+      if (controlHost != null) {
+        for (final ControlConnection existing : allControlConnections) {
+          synchronized (existing) {
+            if (existing.locators.contains(controlHost)) {
+              return existing;
+            }
+          }
+        }
+      }
       allControlConnections.add(controlService);
       return controlService;
     }
@@ -322,22 +295,26 @@ final class ControlConnection {
 
   HostAddress searchRandomServer(Set<HostAddress> failedServers,
       Throwable failure) throws SnappyException {
-    HostAddress preferredServer;
-    SearchRandomServer search = new SearchRandomServer(getServerType(),
-        this.controlHostSet.size(), failedServers);
-    this.controlHostSet.forEach(search);
-    if ((preferredServer = search.getRandomServer()) != null) {
-      return preferredServer;
-    } else {
-      throw failoverExhausted(failedServers, failure);
+    ServerType searchServerType = getServerType();
+    ArrayList<HostAddress> searchServers = new ArrayList<>(this.controlHostSet);
+    if (searchServers.size() > 2) {
+      Collections.shuffle(searchServers, rand);
     }
+    for (HostAddress host : searchServers) {
+      if (host.getServerType() == searchServerType &&
+          !(failedServers != null && failedServers.size() > 0 &&
+              failedServers.contains(host))) {
+        return host;
+      }
+    }
+    throw failoverExhausted(failedServers, failure);
   }
 
   private synchronized Set<HostAddress> failoverToAvailableHost(
       Set<HostAddress> failedServers, boolean checkFailedControlHosts,
       Throwable failure) throws SnappyException {
 
-    NEXT_SERVER: for (HostAddress controlAddr : this.controlHosts) {
+    NEXT_SERVER: for (HostAddress controlAddr : this.controlHostSet) {
       if (checkFailedControlHosts && failedServers != null &&
           failedServers.contains(controlAddr)) {
         continue;
@@ -429,19 +406,29 @@ final class ControlConnection {
   }
 
   private void refreshAllHosts(List<HostAddress> allHosts) {
+    // refresh the locator list first (keep old but push current to front)
+    final ArrayList<HostAddress> locators = this.locators;
+    final ArrayList<HostAddress> newLocators = new ArrayList<>(locators.size());
+    for (HostAddress host : allHosts) {
+      if (host.getServerType().isThriftLocator() || locators.contains(host)) {
+        newLocators.add(host);
+      }
+    }
+    for (HostAddress host : locators) {
+      if (!newLocators.contains(host)) {
+        newLocators.add(host);
+      }
+    }
+    this.locators = newLocators;
+
     // refresh the new server list
 
     // we remove all from the set and re-populate since we would like
     // to prefer the ones coming as "allServers" with "isServer" flag
     // correctly set rather than the ones in "secondary-locators"
     this.controlHostSet.clear();
-    this.controlHosts.subList(this.locators.size(), this.controlHosts.size())
-        .clear();
-
+    this.controlHostSet.addAll(newLocators);
     this.controlHostSet.addAll(allHosts);
-    this.controlHostSet.addAll(this.controlHosts);
-
-    this.controlHosts.addAll(allHosts);
   }
 
   private SnappyException unexpectedError(Throwable t, HostAddress host) {
@@ -456,13 +443,14 @@ final class ControlConnection {
 
   private SnappyException failoverExhausted(Set<HostAddress> failedServers,
       Throwable cause) {
+    final ArrayList<HostAddress> locators = this.locators;
     return ThriftExceptionUtil.newSnappyException(
         SQLState.DATA_CONTAINER_CLOSED, cause,
         failedServers != null ? failedServers.toString() : null,
-        this.locators.get(0), " {failed after trying all available servers: "
-            + controlHostSet + (this.locators.size() > 1
-            ? ", secondary-locators=" + this.locators.subList(
-            1, this.locators.size()) : "")
+        locators.get(0), " {failed after trying all available servers: "
+            + controlHostSet + (locators.size() > 1
+            ? ", secondary-locators=" + locators.subList(
+            1, locators.size()) : "")
             + (cause instanceof TException ? " with: "
             + ThriftExceptionUtil.getExceptionString(cause) + '}' : "}"));
   }

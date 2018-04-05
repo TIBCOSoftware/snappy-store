@@ -1089,7 +1089,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
               serverSB.append(',');
             }
             if (s instanceof HostAddress) {
-              serverSB.append(((HostAddress)s).getHostString());
+              serverSB.append(((HostAddress)s).getHostAddressString());
             } else {
               serverSB.append(s);
             }

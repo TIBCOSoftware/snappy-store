@@ -20,17 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.StringTokenizer;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -2478,9 +2468,12 @@ implements com.gemstone.gemfire.admin.AdminDistributedSystem,
     FlushToDiskRequest.send(dm, recipients);
     Map<DistributedMember, Set<PersistentID>> existingDataStores 
         = PrepareBackupRequest.send(dm, recipients);
-    Map<DistributedMember, Set<PersistentID>> successfulMembers 
-        = FinishBackupRequest.send(dm, recipients, targetDir, baselineDir);
-    
+    Map<DistributedMember, Set<PersistentID>> successfulMembers1
+        = FinishBackupRequest.send(dm, recipients, targetDir, baselineDir, FinishBackupRequest.DISKSTORE_DD);
+    Map<DistributedMember, Set<PersistentID>> successfulMembers2
+        = FinishBackupRequest.send(dm, recipients, targetDir, baselineDir, FinishBackupRequest.DISKSTORE_ALL_BUT_DD);
+    Map<DistributedMember, Set<PersistentID>> successfulMembers =
+        getAllSuccessfulMembers(successfulMembers1, successfulMembers2);
     // It's possible that when calling getMissingPersistentMembers, some members are 
     // still creating/recovering regions, and at FinishBackupRequest.send, the 
     // regions at the members are ready. Logically, since the members in successfulMembers
@@ -2496,7 +2489,19 @@ implements com.gemstone.gemfire.admin.AdminDistributedSystem,
     
     return new BackupStatusImpl(successfulMembers, missingMembers);
   }
-  
+
+  private static Map<DistributedMember, Set<PersistentID>> getAllSuccessfulMembers(
+      final Map<DistributedMember, Set<PersistentID>> first, final Map<DistributedMember, Set<PersistentID>> second) {
+    second.forEach((dm, idset) -> {
+      Set<PersistentID> val1 = first.get(dm);
+      if (val1 != null) {
+        idset.addAll(val1);
+      }
+      first.put(dm, idset);
+    } );
+    return first;
+  }
+
   public Map<DistributedMember, Set<PersistentID>> compactAllDiskStores() throws AdminException {
     connectAdminDS();
     DM dm = getDistributionManager();

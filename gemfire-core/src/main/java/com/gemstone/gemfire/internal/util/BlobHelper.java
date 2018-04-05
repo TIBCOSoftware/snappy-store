@@ -42,13 +42,14 @@ import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.distributed.internal.DMStats;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.ByteArrayDataInput;
-import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.ByteBufferDataInput;
 import com.gemstone.gemfire.internal.ByteBufferDataOutput;
+import com.gemstone.gemfire.internal.DSCODE;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
 import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
+import com.gemstone.gemfire.internal.shared.FetchRequest;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.pdx.internal.PdxInputStream;
 
@@ -110,7 +111,8 @@ public class BlobHelper {
     SerializedDiskBuffer result;
     if (!(obj instanceof SerializedDiskBuffer) ||
         // compress buffer if possible to reduce disk size
-        (result = ((SerializedDiskBuffer)obj).getValueRetain(false, true)) == null) {
+        (result = ((SerializedDiskBuffer)obj).getValueRetain(
+            FetchRequest.COMPRESS)) == null) {
       // serialize into an expanding direct ByteBuffer
       result = new ByteBufferDataOutput(version).serialize(obj);
     }

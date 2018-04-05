@@ -336,6 +336,10 @@ public class DummyCachePerfStats extends CachePerfStats {
   }
 
   @Override
+  public void incDecompressedReplaced() {
+  }
+
+  @Override
   public void incDecompressedReplaceSkipped() {
   }
 

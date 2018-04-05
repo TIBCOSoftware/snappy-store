@@ -18,7 +18,6 @@ package com.gemstone.gemfire.internal.cache;
 
 import com.gemstone.gemfire.cache.hdfs.internal.AbstractBucketRegionQueue;
 import com.gemstone.gemfire.cache.query.internal.IndexUpdater;
-import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
 import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventImpl;
 import com.gemstone.gemfire.internal.cache.wan.serial.SerialGatewaySenderQueue;
 
@@ -72,13 +71,8 @@ public abstract class AbstractDiskRegionEntry
    * Set the RegionEntry DiskId into SerializedDiskBuffer value, if present,
    * so that the value can access data from disk when required independently.
    */
-  protected final void initDiskIdForOffHeap(RegionEntryContext context,
-      Object value) {
-    // copy DiskId to value if required
-    if (value instanceof SerializedDiskBuffer) {
-      ((SerializedDiskBuffer)value).setDiskLocation(getDiskId(), context);
-    }
-  }
+  protected abstract void initDiskIdForOffHeap(RegionEntryContext context,
+      Object value);
 
   @Override
   public void handleValueOverflow(RegionEntryContext context) {

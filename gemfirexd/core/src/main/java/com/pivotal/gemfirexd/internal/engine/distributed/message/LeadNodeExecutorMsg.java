@@ -160,6 +160,8 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   }
 
   private static class SparkExceptionWrapper extends Exception {
+    private static final long serialVersionUID = -4668836542769295434L;
+
     public SparkExceptionWrapper(Throwable ex) {
       super(ex.getClass().getName() + ": " + ex.getMessage(), ex.getCause());
       this.setStackTrace(ex.getStackTrace());

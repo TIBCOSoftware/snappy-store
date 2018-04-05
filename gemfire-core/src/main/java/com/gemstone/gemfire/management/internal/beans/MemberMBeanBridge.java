@@ -42,6 +42,7 @@ import javax.management.ObjectName;
 
 import com.gemstone.gemfire.Statistics;
 import com.gemstone.gemfire.StatisticsType;
+import com.gemstone.gemfire.admin.internal.FinishBackupRequest;
 import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.DiskStore;
 import com.gemstone.gemfire.cache.Region;
@@ -1118,7 +1119,7 @@ public class MemberMBeanBridge {
         Set<PersistentID> existingDataStores = manager.prepareBackup();
 
         Set<PersistentID> successfulDataStores = manager
-          .finishBackup(targetDir, null/* TODO rishi */);
+          .finishBackup(targetDir, null/* TODO rishi */, FinishBackupRequest.DISKSTORE_ALL);
         diskBackUpResult = new DiskBackupResult[existingDataStores.size()];
         int j = 0;
 

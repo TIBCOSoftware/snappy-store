@@ -47,13 +47,13 @@ public class MBeanUpdateScheduler {
   }
 
   static int getConfiguredUpdateRate() {
-    int configuredUpdateRate = ManagementUtils.DEFAULT_MBEAN_UPDATE_RATE_MILLIS;
+    int configuredUpdateRate = 0;
     GemFireCacheImpl cache = Misc.getGemFireCacheNoThrow();
     if (cache != null) {
       configuredUpdateRate = cache.getDistributedSystem().getConfig().getJmxManagerUpdateRate();
     }
 
-    return configuredUpdateRate != 0 ? configuredUpdateRate : ManagementUtils.DEFAULT_MBEAN_UPDATE_RATE_MILLIS;
+    return configuredUpdateRate > 0 ? configuredUpdateRate : ManagementUtils.DEFAULT_MBEAN_UPDATE_RATE_MILLIS;
   }
 
   // NOTE: Currently only for testing

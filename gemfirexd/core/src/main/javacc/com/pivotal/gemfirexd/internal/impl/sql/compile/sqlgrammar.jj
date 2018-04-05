@@ -5267,7 +5267,7 @@ LOBType() throws StandardException :
 			throw StandardException.newException(SQLState.NOT_IMPLEMENTED, type);
 		}
 	|
-		<BINARY> <LARGE> <OBJECT> [ length = lengthAndModifier() ]
+		<BINARY> [ <LARGE> <OBJECT> ] [ length = lengthAndModifier() ]
 		{
 			type = TypeId.BLOB_NAME;
 		}

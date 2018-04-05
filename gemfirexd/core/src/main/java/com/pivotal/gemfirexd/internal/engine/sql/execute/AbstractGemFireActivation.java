@@ -89,7 +89,7 @@ public abstract class AbstractGemFireActivation extends BaseActivation {
       this.row = new ExecRow[2];
     }
     // check authorization
-    lcc.getAuthorizer().authorize(this, ps, Authorizer.SQL_SKIP_OP + (this.qInfo
+    lcc.getAuthorizer().authorize(this, ps, null, Authorizer.SQL_SKIP_OP + (this.qInfo
         .isSelect() ? Authorizer.SQL_SELECT_OP : Authorizer.SQL_WRITE_OP));
 
     final int paramCnt = this.qInfo.getParameterCount();

@@ -2523,7 +2523,6 @@ public class PartitionedRegion extends LocalRegion implements
 
 
   private volatile Boolean columnBatching;
-  private volatile Boolean columnStoreTable;
   public boolean needsBatching() {
     final Boolean columnBatching = this.columnBatching;
     if (columnBatching != null) {
@@ -2543,22 +2542,6 @@ public class PartitionedRegion extends LocalRegion implements
       this.columnBatching = needsBatching;
       return needsBatching;
     }
-  }
-
-  public boolean columnTable() {
-    final Boolean columnTable = this.columnStoreTable;
-    if (columnTable != null) {
-      return columnTable;
-    }
-    // Find all the child region and see if they anyone of them has name ending
-    // with _SHADOW_
-    if (this.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
-      this.columnStoreTable = true;
-      return true;
-    } else {
-      this.columnStoreTable = false;
-    }
-    return false;
   }
 
   private void handleSendOrWaitException(Exception ex,
@@ -7345,6 +7328,7 @@ public class PartitionedRegion extends LocalRegion implements
                 }
               }
               // no more buckets need to be visited
+              close();
               this.bucketEntriesIter = null;
               this.moveNext = false;
               return false;

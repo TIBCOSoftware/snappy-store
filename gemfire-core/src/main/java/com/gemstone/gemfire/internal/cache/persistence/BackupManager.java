@@ -20,15 +20,12 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.stream.Stream;
 
 import com.gemstone.gemfire.InternalGemFireError;
+import com.gemstone.gemfire.admin.internal.FinishBackupRequest;
 import com.gemstone.gemfire.cache.persistence.PersistentID;
 import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.distributed.internal.DM;
@@ -61,6 +58,7 @@ public class BackupManager implements MembershipListener {
   private GemFireCacheImpl cache;
   private CountDownLatch allowDestroys = new CountDownLatch(1);
   private volatile boolean isCancelled = false;
+  private volatile RestoreScript incompleteRestoreScript;
 
   public BackupManager(InternalDistributedMember sender,
       GemFireCacheImpl gemFireCache) {
@@ -82,6 +80,7 @@ public class BackupManager implements MembershipListener {
   private void cleanup() {
     isCancelled = true;
     allowDestroys.countDown();
+    this.incompleteRestoreScript = null;
     Collection<DiskStoreImpl> diskStores = cache.listDiskStoresIncludingRegionOwned();
     for(DiskStoreImpl store : diskStores) {
       store.releaseBackupLock();
@@ -165,8 +164,29 @@ public class BackupManager implements MembershipListener {
     
     return baselineDir;
   }
-  
-  public HashSet<PersistentID> finishBackup(File targetDir, File baselineDir) throws IOException {
+
+  private Collection<DiskStoreImpl> getDiskStoresToBackUp(byte diskStoresToBackup) {
+    Collection<DiskStoreImpl> allDses = cache.listDiskStoresIncludingRegionOwned();
+    switch (diskStoresToBackup) {
+      case FinishBackupRequest.DISKSTORE_ALL:
+        return allDses;
+
+      case FinishBackupRequest.DISKSTORE_ALL_BUT_DD:
+        allDses.removeIf(ds -> ds.getName().equals("GFXD-DD-DISKSTORE"));
+        return allDses;
+
+      case FinishBackupRequest.DISKSTORE_DD:
+        Optional<DiskStoreImpl> ods = allDses.stream().filter
+            (ds -> ds.getName().equals("GFXD-DD-DISKSTORE")).findFirst();
+        if (ods.isPresent()) {
+          return Collections.singletonList(ods.get());
+        }
+    }
+    return Collections.emptyList();
+  }
+
+  public HashSet<PersistentID> finishBackup(File targetDir,
+      File baselineDir, byte diskStoresToBackup) throws IOException {
     try {
       File backupDir = getBackupDir(targetDir);
       
@@ -177,16 +197,22 @@ public class BackupManager implements MembershipListener {
       BackupInspector inspector = (baselineDir == null ? null : BackupInspector.createInspector(baselineDir));
             
       File storesDir = new File(backupDir, DATA_STORES);
-      RestoreScript restoreScript = new RestoreScript();
+      RestoreScript restoreScript =
+          this.incompleteRestoreScript == null ? new RestoreScript() : this.incompleteRestoreScript;
       HashSet<PersistentID> persistentIds = new HashSet<PersistentID>();
-      Collection<DiskStoreImpl> diskStores = new ArrayList<DiskStoreImpl>(cache.listDiskStoresIncludingRegionOwned());
+      // Collection<DiskStoreImpl> diskStores = new ArrayList<DiskStoreImpl>(cache.listDiskStoresIncludingRegionOwned());
+      Collection<DiskStoreImpl> diskStores = getDiskStoresToBackUp(diskStoresToBackup);
 
       boolean foundPersistentData = false;
       for(Iterator<DiskStoreImpl> itr = diskStores.iterator(); itr.hasNext();) {
         DiskStoreImpl store = itr.next();
         if(store.hasPersistedData()) {
-          if(!foundPersistentData) {
+          if(!foundPersistentData &&
+              ((diskStoresToBackup == FinishBackupRequest.DISKSTORE_ALL) ||
+                  (diskStoresToBackup == FinishBackupRequest.DISKSTORE_DD))) {
             createBackupDir(backupDir);
+          }
+          if (!foundPersistentData) {
             foundPersistentData = true;
           }
           File diskStoreDir = new File(storesDir, store.getBackupDirName());
@@ -198,7 +224,11 @@ public class BackupManager implements MembershipListener {
         store.releaseBackupLock();
       }
 
-      allowDestroys.countDown();
+      if (diskStoresToBackup == FinishBackupRequest.DISKSTORE_ALL_BUT_DD
+          || diskStoresToBackup == FinishBackupRequest.DISKSTORE_ALL) {
+        allowDestroys.countDown();
+        this.incompleteRestoreScript = null;
+      }
 
       for(DiskStoreImpl store : diskStores) {
         store.finishBackup(this);
@@ -206,22 +236,28 @@ public class BackupManager implements MembershipListener {
         persistentIds.add(store.getPersistentID());
       }
 
-      if(foundPersistentData) {
+      if (foundPersistentData && (diskStoresToBackup == FinishBackupRequest.DISKSTORE_ALL
+          || diskStoresToBackup == FinishBackupRequest.DISKSTORE_ALL_BUT_DD)) {
         backupConfigFiles(restoreScript, backupDir);
         backupUserFiles(restoreScript, backupDir);
         backupDeployedJars(restoreScript, backupDir);
         restoreScript.generate(backupDir);
         File incompleteFile = new File(backupDir, INCOMPLETE_BACKUP);
-        if(!incompleteFile.delete()) {
+        if (!incompleteFile.delete()) {
           throw new IOException("Could not delete file " + INCOMPLETE_BACKUP);
         }
       }
 
-
+      if (diskStoresToBackup == FinishBackupRequest.DISKSTORE_DD) {
+        incompleteRestoreScript = restoreScript;
+      }
       return persistentIds;
 
     } finally {
-      cleanup();
+      if (diskStoresToBackup == FinishBackupRequest.DISKSTORE_ALL_BUT_DD
+          || diskStoresToBackup == FinishBackupRequest.DISKSTORE_ALL) {
+        cleanup();
+      }
     }
   }
   

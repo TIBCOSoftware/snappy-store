@@ -48,8 +48,11 @@ import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedM
 import com.gemstone.gemfire.internal.NanoTimer;
 import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
+import com.gemstone.gemfire.internal.cache.persistence.query.CloseableIterator;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.ColumnTableEntry;
 import com.gemstone.gnu.trove.THashSet;
+import com.gemstone.gnu.trove.TIntArrayList;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.auth.callback.UserAuthenticator;
 import com.pivotal.gemfirexd.internal.catalog.AliasInfo;
@@ -87,17 +90,13 @@ import com.pivotal.gemfirexd.internal.iapi.error.PublicAPI;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.jdbc.AuthenticationService;
 import com.pivotal.gemfirexd.internal.iapi.reference.Property;
+import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableBitSet;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultColumnDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.sql.conn.Authorizer;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.ConnectionUtil;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.AliasDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ConglomerateDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ReferencedKeyConstraintDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.StatementRoutinePermission;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.*;
 import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.HarmonySerialBlob;
@@ -121,6 +120,7 @@ import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.snappy.LeadNodeSmartConnectorOpContext;
 import com.pivotal.gemfirexd.load.Import;
 import io.snappydata.thrift.ServerType;
+import io.snappydata.thrift.internal.ClientBlob;
 
 /**
  * GemFireXD built-in system procedures that will get executed on every
@@ -1455,9 +1455,9 @@ public class GfxdSystemProcedures extends SystemProcedures {
     // get partitioning columns
     GfxdPartitionByExpressionResolver resolver =
         (GfxdPartitionByExpressionResolver)region.getPartitionResolver();
-    StringBuffer stringBuffer = new StringBuffer();
+    StringBuilder stringBuffer = new StringBuilder();
     for (String col : resolver.getColumnNames()) {
-      stringBuffer.append(col + ":");
+      stringBuffer.append(col).append(':');
     }
     partColumns[0] = stringBuffer.toString();
 
@@ -1474,7 +1474,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     Map<InternalDistributedMember, String> mbrToServerMap = GemFireXDUtils
         .getGfxdAdvisor().getAllNetServersWithMembers();
 
-    StringBuffer stringBuffer = new StringBuffer();
+    StringBuilder stringBuffer = new StringBuilder();
     if (GemFireXDUtils.getMyVMKind().isStore()) {
       owners.add(Misc.getGemFireCache().getMyId());
     }
@@ -1482,7 +1482,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     for (InternalDistributedMember node : owners) {
       String netServer = mbrToServerMap.get(node);
       if ( netServer != null) {
-        stringBuffer.append(netServer + ";");
+        stringBuffer.append(netServer).append(';');
       }
     }
     if (stringBuffer.length() > 0) {
@@ -1504,16 +1504,15 @@ public class GfxdSystemProcedures extends SystemProcedures {
       throws StandardException {
     GemFireContainer container = (GemFireContainer)region.getUserAttribute();
     TableDescriptor td = container.getTableDescriptor();
-    String cols = null;
+    StringBuilder cols = new StringBuilder();
     if (td != null) {
       String[] baseColumns = td.getColumnNamesArray();
       GfxdIndexManager im = container.getIndexManager();
-      if ((im != null) && (im.getIndexConglomerateDescriptors() != null)) {
-        Iterator<ConglomerateDescriptor> itr = im.getIndexConglomerateDescriptors().iterator();
-        while (itr.hasNext()) {
+      if (im != null && im.getIndexConglomerateDescriptors() != null) {
+        for (ConglomerateDescriptor cd : im.getIndexConglomerateDescriptors()) {
           // first column of index has to be present in filter to be usable
-          int[] indexCols = itr.next().getIndexDescriptor().baseColumnPositions();
-          cols += baseColumns[indexCols[0] - 1] + ":";
+          int[] indexCols = cd.getIndexDescriptor().baseColumnPositions();
+          cols.append(baseColumns[indexCols[0] - 1]).append(':');
         }
       }
       // also add primary key
@@ -1522,11 +1521,16 @@ public class GfxdSystemProcedures extends SystemProcedures {
         // first column of primary key has to be present in filter to be usable
         int[] pkCols = primaryKey.getKeyColumns();
         if (pkCols != null && pkCols.length > 0) {
-          cols += baseColumns[pkCols[0] - 1];
+          cols.append(baseColumns[pkCols[0] - 1]);
         }
       }
     }
-    indexColumns[0] = cols;
+    int len = cols.length();
+    if (len > 0 && cols.charAt(len - 1) == ':') {
+      indexColumns[0] = cols.substring(0, len - 1);
+    } else {
+      indexColumns[0] = cols.toString();
+    }
   }
 
   public static void getPKColumns(String[] pkColumns,
@@ -2964,6 +2968,8 @@ public class GfxdSystemProcedures extends SystemProcedures {
       params[1] = origMembers;
       publishMessage(params, false, GfxdSystemProcedureMessage.SysProcMethod
           .refreshLdapGroup, false, false);
+      // clear any existing pooled connections to force authentication to happen afresh
+      CallbackFactoryProvider.getStoreCallbacks().clearConnectionPools();
     } catch (StandardException se) {
       throw PublicAPI.wrapStandardException(se);
     } finally {
@@ -2999,6 +3005,120 @@ public class GfxdSystemProcedures extends SystemProcedures {
           "GET_COLUMN_TABLE_SCHEMA table=" + table + " schema=" + schemaString);
     }
     schemaAsJson[0] = new HarmonySerialClob(schemaString);
+  }
+
+  private static final SharedUtils.CSVVisitor<TIntArrayList, Void> projectionAgg =
+      (str, projection, context) -> projection.add(Integer.parseInt(str.trim()));
+
+  private static final ResultColumnDescriptor[] columnScanInfo = {
+      EmbedResultSetMetaData.getResultColumnDescriptor("UUID",
+          Types.BIGINT, false),
+      EmbedResultSetMetaData.getResultColumnDescriptor("BUCKETID",
+          Types.INTEGER, false),
+      EmbedResultSetMetaData.getResultColumnDescriptor("COLUMNPOSITION",
+          Types.INTEGER, false),
+      EmbedResultSetMetaData.getResultColumnDescriptor("DATA",
+          Types.BLOB, false)
+  };
+
+  public static void COLUMN_TABLE_SCAN(String columnTable, String projection,
+      Blob filters, ResultSet[] result) throws SQLException {
+    try {
+      // split the projection into column indexes (1-based)
+      final TIntArrayList columnsList = new TIntArrayList(4);
+      SharedUtils.splitCSV(projection, projectionAgg, columnsList, null);
+
+      // check authorization for given columns of the table
+      LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+      int[] columns = columnsList.toNativeArray();
+      String rowBufferTable = GemFireContainer.getRowBufferTableName(columnTable);
+      authorizeTableOperation(lcc, rowBufferTable, columns,
+          Authorizer.SELECT_PRIV, Authorizer.SQL_SELECT_OP);
+
+      byte[] batchFilters = null;
+      if (filters != null) {
+        batchFilters = filters.getBytes(1, (int)filters.length());
+        filters.free();
+      }
+      Set<Integer> bucketIds = lcc.getBucketIdsForLocalExecution();
+      final CloseableIterator<ColumnTableEntry> iter =
+          CallbackFactoryProvider.getStoreCallbacks().columnTableScan(
+              columnTable, columns, batchFilters, bucketIds);
+      if (GemFireXDUtils.TraceExecution) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+            "COLUMN_TABLE_SCAN table=" + columnTable +
+                " projection=" + projection);
+      }
+      result[0] = new CustomRowsResultSet(new CustomRowsResultSet.FetchDVDRows() {
+        @Override
+        public boolean getNext(DataValueDescriptor[] template)
+            throws SQLException, StandardException {
+          if (iter.hasNext()) {
+            ColumnTableEntry entry = iter.next();
+            template[0].setValue(entry.uuid);
+            template[1].setValue(entry.bucketId);
+            template[2].setValue(entry.columnPosition);
+            ClientBlob blob = new ClientBlob(entry.columnValue);
+            // mark chunk as having a reference set from outside (columnTableScan)
+            if (!blob.getCurrentChunk().initChunkFromReference()) {
+              throw StandardException.newException(SQLState.DATA_UNEXPECTED_EXCEPTION,
+                  new IllegalStateException("failed to initialize chunk with buffer"));
+            }
+            template[3].setValue(blob);
+            return true;
+          } else {
+            return false;
+          }
+        }
+
+        @Override
+        public void close() throws SQLException {
+          iter.close();
+        }
+      }, columnScanInfo);
+    } catch (SQLException se) {
+      throw se;
+    } catch (Throwable t) {
+      throw TransactionResourceImpl.wrapInSQLException(t);
+    }
+  }
+
+  /**
+   * Check SELECT authorization for given columns of a column or row table.
+   * The parameter "authType" must be one of the Authorizer.*PRIV types while
+   * "opType" must be one of the Authorizer.*OP types.
+   */
+  public static void authorizeTableOperation(LanguageConnectionContext lcc,
+      String tableName, int[] columns, int authType, int opType)
+      throws StandardException {
+    if (lcc.usesSqlAuthorization()) {
+      final int numColumns = columns.length;
+      ArrayList<StatementPermission> permissions = new ArrayList<>(
+          numColumns + 1);
+      GemFireContainer rowContainer = (GemFireContainer)Misc.getRegionForTable(
+          tableName, true).getUserAttribute();
+      TableDescriptor td = rowContainer.getTableDescriptor();
+      if (td == null) {
+        throw StandardException.newException(SQLState.LANG_TABLE_NOT_FOUND,
+            tableName);
+      }
+      permissions.add(new StatementTablePermission(td.getUUID(), authType));
+      if (numColumns > 0) {
+        FormatableBitSet bitSet = new FormatableBitSet(td.getNumberOfColumns());
+        for (int i = 0; i < numColumns; i++) {
+          int col = columns[i];
+          ColumnDescriptor cd = td.getColumnDescriptor(col);
+          if (cd == null) {
+            throw StandardException.newException(SQLState.LANG_COLUMN_NOT_FOUND,
+                tableName + '.' + col);
+          }
+          bitSet.set(col - 1);
+        }
+        permissions.add(new StatementColumnPermission(td.getUUID(),
+            authType, bitSet));
+      }
+      lcc.getAuthorizer().authorize(null, null, permissions, opType);
+    }
   }
 
   /**

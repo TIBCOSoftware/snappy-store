@@ -31,6 +31,7 @@ import javax.annotation.Generated;
 
 import com.gemstone.gemfire.internal.shared.ByteBufferReference;
 import com.gemstone.gemfire.internal.shared.ClientSharedData;
+import com.gemstone.gemfire.internal.shared.FetchRequest;
 import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import io.snappydata.thrift.common.SocketTimeout;
 import io.snappydata.thrift.common.TProtocolDirectBinary;
@@ -77,12 +78,28 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
 
   public BlobChunk(ByteBufferReference reference, boolean last) {
     this();
-    // Increment the reference immediately. Release should be done
-    // by holder once done (ClientBlob or ThriftRow).
-    this.chunk = reference.getBufferRetain();
-    this.chunkReference = reference;
+    assignChunkReference(reference);
     this.last = last;
     setLastIsSet(true);
+  }
+
+  private void assignChunkReference(ByteBufferReference reference) {
+    // chunkReference will be incremented and released at the time of write
+    this.chunk = ClientSharedData.NULL_BUFFER;
+    this.chunkReference = reference;
+  }
+
+  /**
+   * Mark the ByteBufferReference refCount as having been already incremented.
+   */
+  public boolean initChunkFromReference() {
+    ByteBufferReference reference = this.chunkReference;
+    if (reference != null && this.chunk == ClientSharedData.NULL_BUFFER) {
+      this.chunk = reference.getBuffer();
+      return true;
+    } else {
+      return false;
+    }
   }
 
   public int size() {
@@ -92,7 +109,9 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
   public void free() {
     final ByteBufferReference reference = this.chunkReference;
     if (reference != null) {
-      reference.release();
+      if (this.chunk != ClientSharedData.NULL_BUFFER) {
+        reference.release();
+      }
       this.chunkReference = null;
     } else {
       UnsafeHolder.releaseIfDirectBuffer(this.chunk);
@@ -214,8 +233,7 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
     __isset_bitfield = other.__isset_bitfield;
     ByteBufferReference reference = other.chunkReference;
     if (reference != null) {
-      this.chunk = reference.getBufferRetain();
-      this.chunkReference = reference;
+      assignChunkReference(reference);
     } else if (other.chunk != null) {
       // always own the chunk
       if (other.chunk.isDirect()) {
@@ -236,6 +254,7 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
 
   @Override
   public void clear() {
+    free();
     this.chunk = null;
     setLastIsSet(false);
     this.last = false;
@@ -252,12 +271,14 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
   }
 
   public BlobChunk setChunk(byte[] chunk) {
+    free();
     this.chunk = chunk == null ? (ByteBuffer)null : ByteBuffer.wrap(Arrays.copyOf(chunk, chunk.length));
     return this;
   }
 
   public BlobChunk setChunk(ByteBuffer chunk) {
-    this.chunk = ByteBuffer.wrap(ThriftUtils.toBytes(chunk));
+    free();
+    this.chunk = chunk != null ? ByteBuffer.wrap(ThriftUtils.toBytes(chunk)) : null;
     return this;
   }
 
@@ -276,6 +297,7 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
 
   public void setChunkIsSet(boolean value) {
     if (!value) {
+      free();
       this.chunk = null;
     }
   }
@@ -459,17 +481,47 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
     throw new IllegalStateException();
   }
 
-  private ByteBuffer getCompressedBuffer(org.apache.thrift.protocol.TProtocol oprot) {
-    // compress if sending to remote else send as is
-    if (isSetChunkReference()) {
+  /**
+   * Compress if sending to remote or else decompress if the blob can be
+   * stored in memory (so future reads will not need to decompress)
+   * else send as is.
+   */
+  private ByteBuffer getBufferForWrite(org.apache.thrift.protocol.TProtocol oprot) {
+    final ByteBufferReference reference = this.chunkReference;
+    if (reference != null) {
       TTransport transport = oprot.getTransport();
-      if (!(transport instanceof SocketTimeout) ||
-          !((SocketTimeout)transport).isSocketToSameHost()) {
-        ByteBufferReference compressed = this.chunkReference.getValueRetain(
-            false, true);
-        this.chunkReference.release();
-        this.chunkReference = compressed;
-        this.chunk = compressed.getBuffer();
+      if (transport instanceof SocketTimeout) {
+        // check if a reference is already held
+        boolean hasOldReference = this.chunk != ClientSharedData.NULL_BUFFER;
+        if (((SocketTimeout)transport).isSocketToSameHost()) {
+          // try to decompress only if the value can be stored in region else
+          // avoid decompression overhead on server rather do on client/connector
+          if (hasOldReference) {
+            // release reference upfront if this not the only remaining reference
+            // (under the lock on value to ensure atomicity of check and release)
+            synchronized (reference) {
+              if (reference.referenceCount() > 1) {
+                reference.release();
+                hasOldReference = false;
+              }
+              this.chunkReference = reference.getValueRetain(
+                  FetchRequest.DECOMPRESS_IF_IN_MEMORY);
+            }
+          } else {
+            this.chunkReference = reference.getValueRetain(
+                FetchRequest.DECOMPRESS_IF_IN_MEMORY);
+          }
+          if (this.chunkReference == null) {
+            this.chunkReference = reference.getValueRetain(FetchRequest.ORIGINAL);
+          }
+        } else {
+          // always send compressed to remote node
+          this.chunkReference = reference.getValueRetain(FetchRequest.COMPRESS);
+        }
+        this.chunk = this.chunkReference.getBuffer();
+        if (hasOldReference) reference.release();
+      } else if (this.chunk == ClientSharedData.NULL_BUFFER) {
+        this.chunk = reference.getBufferRetain();
       }
     }
     return this.chunk;
@@ -790,9 +842,9 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
     @Override
     public void write(org.apache.thrift.protocol.TProtocol oprot, BlobChunk struct)
         throws org.apache.thrift.TException {
+      struct.validate();
+      final ByteBuffer chunk = struct.getBufferForWrite(oprot);
       try {
-        struct.validate();
-        final ByteBuffer chunk = struct.getCompressedBuffer(oprot);
         writeData(oprot, struct, chunk);
       } finally {
         // free the blob once written
@@ -843,8 +895,8 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
     @Override
     public void write(org.apache.thrift.protocol.TProtocol prot,
         BlobChunk struct) throws org.apache.thrift.TException {
+      final ByteBuffer buffer = struct.getBufferForWrite(prot);
       try {
-        final ByteBuffer buffer = struct.getCompressedBuffer(prot);
         writeData(prot, struct,
             buffer != null ? buffer : ClientSharedData.NULL_BUFFER);
       } finally {

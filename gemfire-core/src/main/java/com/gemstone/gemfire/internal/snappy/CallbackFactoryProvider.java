@@ -17,6 +17,7 @@
 
 package com.gemstone.gemfire.internal.snappy;
 
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -24,6 +25,7 @@ import java.util.Set;
 import com.gemstone.gemfire.internal.cache.BucketRegion;
 import com.gemstone.gemfire.internal.cache.EntryEventImpl;
 import com.gemstone.gemfire.internal.cache.lru.LRUEntry;
+import com.gemstone.gemfire.internal.cache.persistence.query.CloseableIterator;
 import com.gemstone.gemfire.internal.snappy.memory.MemoryManagerStats;
 
 public abstract class CallbackFactoryProvider {
@@ -75,6 +77,14 @@ public abstract class CallbackFactoryProvider {
 
     @Override
     public String columnBatchTableName(String tableName) {
+      throw new UnsupportedOperationException("unexpected invocation for "
+          + toString());
+    }
+
+    @Override
+    public CloseableIterator<ColumnTableEntry> columnTableScan(
+        String columnTable, int[] projection, byte[] serializedFilters,
+        Set<Integer> bucketIds) throws SQLException {
       throw new UnsupportedOperationException("unexpected invocation for "
           + toString());
     }
@@ -171,6 +181,10 @@ public abstract class CallbackFactoryProvider {
 
     @Override
     public void initMemoryStats(MemoryManagerStats stats) {
+    }
+
+    @Override
+    public void clearConnectionPools() {
     }
   };
 

@@ -109,7 +109,7 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
           if (cachBatchStats.containsKey(columnBatchTableName)) {
             String reservoirRegionName = Misc.getReservoirRegionNameForSampleTable("APP", tableName);
             PartitionedRegion pr = Misc.getReservoirRegionForSampleTable(reservoirRegionName);
-            if (pr != null) {
+            if (managementService != null && pr != null) {
               RegionMXBean reservoirBean = managementService.getLocalRegionMBean(pr.getFullPath());
               if (reservoirBean != null) {
                 SnappyRegionStats rStats = collectDataFromBeanImpl(pr, reservoirBean, true);
