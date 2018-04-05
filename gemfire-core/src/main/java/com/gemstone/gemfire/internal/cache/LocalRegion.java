@@ -1292,8 +1292,6 @@ public class LocalRegion extends AbstractRegion
       RegionAttributes regionAttributes) throws RegionExistsException,
       TimeoutException
   {
-    getLogWriterI18n().info(LocalizedStrings.DEBUG, "Create subregion " + subregionName, new Throwable("SKSK"));
-
     try {
       return createSubregion(subregionName, regionAttributes,
           new InternalRegionArguments().setDestroyLockFlag(true)
@@ -1371,7 +1369,6 @@ public class LocalRegion extends AbstractRegion
       InternalRegionArguments internalRegionArgs, boolean skipInitialization)
       throws RegionExistsException, TimeoutException, IOException,
       ClassNotFoundException {
-    getLogWriterI18n().info(LocalizedStrings.DEBUG, "Createing subregion container ", new Throwable("SKSKSK"));
     checkReadiness();
     LocalRegion newRegion = null;
     final InputStream snapshotInputStream = internalRegionArgs

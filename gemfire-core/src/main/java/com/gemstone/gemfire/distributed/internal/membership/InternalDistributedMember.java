@@ -30,7 +30,6 @@ import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.SocketCreator;
-import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.ClientResolverUtils;
@@ -781,7 +780,7 @@ public final class InternalDistributedMember
   }
 
   public String toString(final String vmKindStr) {
-    String result = null;//cachedToString;
+    String result = cachedToString;
     if (result == null || vmKindStr != null) {
       String host;
 
@@ -795,8 +794,6 @@ public final class InternalDistributedMember
       final StringBuilder sb = new StringBuilder();
 
       sb.append(host);
-      sb.append("vmKind : " + vmKind);
-      sb.append("vmPid : " + vmPid);
 
       String myName = getName();
       if (vmPid > 0 || vmKind != DistributionManager.NORMAL_DM_TYPE
@@ -816,7 +813,7 @@ public final class InternalDistributedMember
         String vmStr = "";
         switch (vmKind) {
         case DistributionManager.NORMAL_DM_TYPE:
-          vmStr = ":normal"; // let this be silent
+  //        vmStr = ":local"; // let this be silent
           break;
         case DistributionManager.LOCATOR_DM_TYPE:
           vmStr = ":locator";
@@ -1087,12 +1084,7 @@ public final class InternalDistributedMember
 
     this.dcPort = in.readInt();
     this.vmPid = in.readInt();
-
     this.vmKind = in.readUnsignedByte();
-    if(GemFireCacheImpl.getInstance() != null) {
-      GemFireCacheImpl.getInstance().getLoggerI18n().info(LocalizedStrings.DEBUG, "The vmKind is : " + vmKind);
-    }
-
     this.groups = DataSerializer.readStringArray(in);
 
     this.name = DataSerializer.readString(in);

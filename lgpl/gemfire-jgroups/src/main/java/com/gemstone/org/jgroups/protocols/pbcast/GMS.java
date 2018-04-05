@@ -1803,9 +1803,8 @@ public class GMS extends Protocol  {
               }
               else if (warning && log.getLogWriter().fineEnabled()) {
                 log.getLogWriter().fine(
-                    "This VM hosts a locator and is preferred as membership coordinator.", new Throwable("SKSK LOCATOR"));
+                    "This VM hosts a locator and is preferred as membership coordinator.");
               }
-                //((IpAddress)local_addr).setVmKind(.LOCATOR_DM_TYPE);
               return;
               
             case Event.ENABLE_NETWORK_PARTITION_DETECTION:

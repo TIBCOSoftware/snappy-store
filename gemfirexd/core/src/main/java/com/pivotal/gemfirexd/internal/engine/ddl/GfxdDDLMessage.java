@@ -252,7 +252,7 @@ public final class GfxdDDLMessage extends GfxdMessage implements
       }
     }
 */
-    // skip DDL execution on locators/agents/admins
+    // skip DDL execution on locators/agents/admins (not for HiveMetaTable
     if (!GemFireXDUtils.getMyVMKind().isAccessorOrStore() &&
         !Misc.isSnappyHiveMetaTable(ddl.getCurrentSchema())) {
       if (GemFireXDUtils.TraceDDLQueue) {
@@ -270,7 +270,7 @@ public final class GfxdDDLMessage extends GfxdMessage implements
       }
       return;
     }
-    if (true || !Misc.isSnappyHiveMetaTable(ddl.getCurrentSchema())) {
+    if (!Misc.isSnappyHiveMetaTable(ddl.getCurrentSchema())) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLREPLAY, this.toString()
           + " Starting execution");
     }

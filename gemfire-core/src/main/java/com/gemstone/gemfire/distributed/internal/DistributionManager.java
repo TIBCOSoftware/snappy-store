@@ -626,9 +626,7 @@ public final class DistributionManager
     DistributionManager dm = null;
     
     try {
-      /*PropertyUtil.getBooleanProperty(Attribute.STAND_ALONE_LOCATOR,
-          GfxdConstants.GFXD_STAND_ALONE_LOCATOR, props, false, null);
-*/
+
       if (Boolean.getBoolean(InternalLocator.FORCE_LOCATOR_DM_TYPE)) {
         // if this DM is starting for a locator, set it to be a locator DM
         setDistributionManagerType(LOCATOR_DM_TYPE);

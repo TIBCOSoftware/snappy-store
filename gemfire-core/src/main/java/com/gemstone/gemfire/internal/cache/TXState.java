@@ -4025,9 +4025,6 @@ public final class TXState implements TXStateInterface {
           }
           // Should we wait more before throwing exception? Make it a property.
           if (numtimes > 50) {
-            //fix the snapshot vs region anomaly.
-            // will have to take write lock and then copy the region rvv to snapshot.
-            // Could there be uncommitted entries in region after write lock? Need to verify.
             throw new TransactionInDoubtException("The entry corresponding to snapshot could not be found.");
           }
         } catch (InterruptedException e) {
