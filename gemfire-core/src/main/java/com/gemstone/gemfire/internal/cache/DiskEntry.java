@@ -71,6 +71,7 @@ import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.shared.ClientSharedData;
+import com.gemstone.gemfire.internal.shared.FetchRequest;
 import com.gemstone.gemfire.internal.shared.OutputStreamChannel;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
@@ -1058,7 +1059,7 @@ public interface DiskEntry extends RegionEntry {
       @Retained Object v = entry._getValueRetain(context, true);
       if (rawValue && GemFireCacheImpl.hasNewOffHeap() &&
           (v instanceof SerializedDiskBuffer)) {
-        ((SerializedDiskBuffer)v).retain();
+        return ((SerializedDiskBuffer)v).getValueRetain(FetchRequest.ORIGINAL);
       }
       return v;
     }
@@ -1515,10 +1516,6 @@ public interface DiskEntry extends RegionEntry {
       if (did == null) {
         ((AbstractDiskLRURegionEntry)entry).setDelayedDiskId(region);
         did = entry.getDiskId();
-        final Object oldValue;
-        if ((oldValue = entry._getValue()) instanceof SerializedDiskBuffer) {
-          ((SerializedDiskBuffer)oldValue).setDiskLocation(did, region);
-        }
         // add DiskId overhead to change
         diskIDOverhead += region.calculateDiskIdOverhead(did);
       }

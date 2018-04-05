@@ -242,6 +242,7 @@ public class PersistenceRecoveryOrderDUnit extends DistributedSQLTestBase {
     VM server1 = this.serverVMs.get(0);
     VM server2 = this.serverVMs.get(1);
 
+    st1.execute("DROP TABLE IF EXISTS T1");
     st1.execute("CREATE TABLE T1 (COL1 int, COL2 int) partition by column (COL1) persistent redundancy 1 buckets 1");
 
     st1.execute("INSERT INTO T1 values(1,1)");
@@ -280,6 +281,7 @@ public class PersistenceRecoveryOrderDUnit extends DistributedSQLTestBase {
     VM server1 = this.serverVMs.get(0);
     VM server2 = this.serverVMs.get(1);
 
+    st1.execute("DROP TABLE IF EXISTS T1");
     st1.execute("CREATE TABLE T1 (COL1 int, COL2 int) partition by column (COL1) persistent redundancy 1 buckets 1");
 
     st1.execute("INSERT INTO T1 values(1,1)");

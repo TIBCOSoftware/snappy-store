@@ -3049,4 +3049,16 @@ public class DiskInitFile implements DiskInitFileInterpreter {
   public Set<String> getDeletedIndexIds() {
     return this.deletedIndexIds;
   }
+
+  // This will be set only when DiskInitFile is
+  // created during validation of disk store
+  private transient String inconsistencyReport = null;
+
+  public void setInconsistent(String ir) {
+    this.inconsistencyReport = ir;
+  }
+
+  public String getInconsistencyReport() {
+    return this.inconsistencyReport;
+  }
 }

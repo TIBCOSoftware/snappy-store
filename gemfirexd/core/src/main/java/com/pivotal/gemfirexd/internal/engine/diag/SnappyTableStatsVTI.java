@@ -75,8 +75,8 @@ public class SnappyTableStatsVTI extends GfxdVTITemplate
         throw PublicAPI.wrapStandardException(se);
       } catch (RuntimeException re) {
         String message;
-        if ((re instanceof FunctionException) ||
-            (re instanceof FunctionExecutionException) &&
+        if (((re instanceof FunctionException) ||
+            (re instanceof FunctionExecutionException)) &&
                 re.getCause() != null) {
           message = re.getCause().getMessage();
         } else {

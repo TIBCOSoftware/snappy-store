@@ -505,8 +505,8 @@ public final class GfxdCBArgForSynchPrms extends GfxdDataSerializable implements
   @Override
   public ResultSet getNewRowsAsResultSet() {
     if (this.isBulkInsert) {
-      return new RawStoreResultSet(this.bulkInsertRows, getExtraTableInfo()
-          .getRowFormatter());
+      return new RawStoreResultSet(this.bulkInsertRows.iterator(), null,
+          getExtraTableInfo().getRowFormatter());
     }
     else if (this.params != null) {
       return new DVDStoreResultSet(this.params, this.params.length, null, null,
@@ -530,7 +530,7 @@ public final class GfxdCBArgForSynchPrms extends GfxdDataSerializable implements
       final ExtraTableInfo tableInfo = getExtraTableInfo();
       final int[] pkCols = tableInfo.getPrimaryKeyColumns();
       if (pkCols != null) {
-        return new RawStoreResultSet(this.bulkInsertRows,
+        return new RawStoreResultSet(this.bulkInsertRows.iterator(),
             tableInfo.getRowFormatter(), pkCols, tableInfo
                 .getPrimaryKeyFormatter().getMetaData());
       }

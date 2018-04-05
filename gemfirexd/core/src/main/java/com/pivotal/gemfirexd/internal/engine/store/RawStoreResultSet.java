@@ -22,18 +22,10 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
-import java.sql.Blob;
-import java.sql.Clob;
-import java.sql.Date;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Time;
-import java.sql.Timestamp;
-import java.sql.Types;
+import java.sql.*;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
-import java.util.List;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedData;
 import com.pivotal.gemfirexd.callbacks.TableMetaData;
@@ -43,6 +35,9 @@ import com.pivotal.gemfirexd.internal.iapi.services.io.NewByteArrayInputStream;
 import com.pivotal.gemfirexd.internal.impl.jdbc.ReaderToAscii;
 import com.pivotal.gemfirexd.internal.impl.jdbc.TransactionResourceImpl;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
+import io.snappydata.ResultSetWithNull;
+
+import static com.pivotal.gemfirexd.internal.engine.store.RowFormatter.OFFSET_AND_WIDTH_IS_NULL;
 
 /**
  * Encapsulates a set of one or more rows in raw underlying storage format that
@@ -52,7 +47,7 @@ import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
  * @since 7.0
  */
 public final class RawStoreResultSet extends NonUpdatableRowsResultSet
-    implements ResultSet, ResultWasNull {
+    implements ResultSet, ResultWasNull, ResultSetWithNull {
 
   private byte[] currentRowBytes;
 
@@ -62,7 +57,9 @@ public final class RawStoreResultSet extends NonUpdatableRowsResultSet
 
   private final int numColumns;
 
-  private final RowFormatter formatter;
+  private final GemFireContainer container;
+
+  private RowFormatter formatter;
 
   private int[] changedColumns;
 
@@ -74,6 +71,7 @@ public final class RawStoreResultSet extends NonUpdatableRowsResultSet
 
   public RawStoreResultSet(final byte[] row, final RowFormatter rf) {
     this.currentRowBytes = row;
+    this.container = null;
     this.formatter = rf;
     this.numColumns = rf.getNumColumns();
   }
@@ -81,6 +79,7 @@ public final class RawStoreResultSet extends NonUpdatableRowsResultSet
   public RawStoreResultSet(final byte[] row, final RowFormatter rf,
       final int[] changedColumns, final TableMetaData metadata) {
     this.currentRowBytes = row;
+    this.container = null;
     this.formatter = rf;
     this.metadata = metadata;
     this.changedColumns = changedColumns;
@@ -89,6 +88,7 @@ public final class RawStoreResultSet extends NonUpdatableRowsResultSet
 
   public RawStoreResultSet(final byte[][] row, final RowFormatter rf) {
     this.currentRowByteArrays = row;
+    this.container = null;
     this.formatter = rf;
     this.numColumns = rf.getNumColumns();
   }
@@ -96,21 +96,25 @@ public final class RawStoreResultSet extends NonUpdatableRowsResultSet
   public RawStoreResultSet(final byte[][] row, final RowFormatter rf,
       final int[] changedColumns, final TableMetaData metadata) {
     this.currentRowByteArrays = row;
+    this.container = null;
     this.formatter = rf;
     this.metadata = metadata;
     this.changedColumns = changedColumns;
     this.numColumns = changedColumns.length;
   }
 
-  public RawStoreResultSet(final List<Object> rows, final RowFormatter rf) {
-    this.rows = rows.iterator();
+  public RawStoreResultSet(final Iterator<Object> rows,
+      final GemFireContainer container, final RowFormatter rf) {
+    this.rows = rows;
+    this.container = container;
     this.formatter = rf;
     this.numColumns = rf.getNumColumns();
   }
 
-  public RawStoreResultSet(final List<Object> rows, final RowFormatter rf,
+  public RawStoreResultSet(final Iterator<Object> rows, final RowFormatter rf,
       final int[] changedColumns, final TableMetaData metadata) {
-    this.rows = rows.iterator();
+    this.rows = rows;
+    this.container = null;
     this.formatter = rf;
     this.metadata = metadata;
     this.changedColumns = changedColumns;
@@ -124,12 +128,19 @@ public final class RawStoreResultSet extends NonUpdatableRowsResultSet
   public boolean next() throws SQLException {
     if (this.rows != null) {
       if (this.rows.hasNext()) {
+        final GemFireContainer container = this.container;
         final Object next = this.rows.next();
         if (next.getClass() == byte[].class) {
           this.currentRowBytes = (byte[])next;
+          if (container != null) {
+            this.formatter = container.getRowFormatter(currentRowBytes);
+          }
         }
         else {
           this.currentRowByteArrays = (byte[][])next;
+          if (container != null) {
+            this.formatter = container.getRowFormatter(currentRowByteArrays);
+          }
         }
         return true;
       }
@@ -1086,6 +1097,39 @@ public final class RawStoreResultSet extends NonUpdatableRowsResultSet
       }
     }
     else {
+      throw invalidColumnException(columnIndex);
+    }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean isNull(int columnIndex) throws SQLException {
+    if (columnIndex > 0 && columnIndex <= this.numColumns) {
+      try {
+        if (this.currentRowBytes != null) {
+          if (this.changedColumns == null) {
+            return this.formatter.getOffsetAndWidth(columnIndex,
+                this.currentRowBytes) == OFFSET_AND_WIDTH_IS_NULL;
+          } else {
+            return this.formatter.getOffsetAndWidth(
+                this.changedColumns[columnIndex - 1], this.currentRowBytes) ==
+                OFFSET_AND_WIDTH_IS_NULL;
+          }
+        } else {
+          CompactExecRowWithLobs execRow = new CompactExecRowWithLobs(
+              this.currentRowByteArrays, this.formatter);
+          if (this.changedColumns == null) {
+            return execRow.isNull(columnIndex) == OFFSET_AND_WIDTH_IS_NULL;
+          } else {
+            return execRow.isNull(columnIndex) == OFFSET_AND_WIDTH_IS_NULL;
+          }
+        }
+      } catch (StandardException se) {
+        throw Util.generateCsSQLException(se);
+      }
+    } else {
       throw invalidColumnException(columnIndex);
     }
   }

@@ -30,6 +30,7 @@ import java.util.Properties;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gnu.trove.THashMap;
 import com.koloboke.function.LongObjPredicate;
@@ -256,12 +257,15 @@ public final class GfxdConnectionWrapper {
             }
             this.stmntMap.justPut(stmtId, new StmntWeakReference(stmnt, stmtId,
                 this.refQueue));
-            this.sqlMap.justPut(stmtId, sql);
+            if (!(defaultSchema != null &&
+                defaultSchema.equalsIgnoreCase(SystemProperties.SNAPPY_HIVE_METASTORE))) {
+              this.sqlMap.justPut(stmtId, sql);
+            }
             if (GemFireXDUtils.TraceQuery | GemFireXDUtils.TraceNCJ) {
               SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
                   "GfxdConnectionWrapper: cached PreparedStatement with stmtId="
                       + stmtId + " for connId=" + this.incomingConnId
-                      + " SQL: " + sql + ", for " + this);
+                      + " SQL: " + sql + ", for " + this  + " SQLMapSize = "+ sqlMap.size());
             }
           }
         }

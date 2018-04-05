@@ -49,21 +49,28 @@ import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
  *
  */
 public class FinishBackupRequest  extends AdminRequest {
-  
+
+  public static final byte DISKSTORE_DD = 1;
+  public static final byte DISKSTORE_ALL_BUT_DD = 2;
+  public static final byte DISKSTORE_ALL = 3;
+
   private File targetDir;
   private File baselineDir;
-  
+  private byte diskstoresToBackup;
+
   public FinishBackupRequest() {
     super();
   }
 
-  public FinishBackupRequest(File targetDir,File baselineDir) {
+  public FinishBackupRequest(File targetDir, File baselineDir, byte dses) {
     this.targetDir = targetDir;
     this.baselineDir = baselineDir;
+    this.diskstoresToBackup = dses;
   }
   
-  public static Map<DistributedMember, Set<PersistentID>> send(DM dm, Set recipients, File targetDir, File baselineDir) {
-    FinishBackupRequest request = new FinishBackupRequest(targetDir,baselineDir);
+  public static Map<DistributedMember, Set<PersistentID>> send(DM dm,
+      Set recipients, File targetDir, File baselineDir, byte diskstores) {
+    FinishBackupRequest request = new FinishBackupRequest(targetDir, baselineDir, diskstores);
     request.setRecipients(recipients);
 
     FinishBackupReplyProcessor replyProcessor = new FinishBackupReplyProcessor(dm, recipients);
@@ -92,7 +99,7 @@ public class FinishBackupRequest  extends AdminRequest {
       persistentIds = new HashSet<PersistentID>();
     } else {
       try {
-        persistentIds = cache.getBackupManager().finishBackup(targetDir, baselineDir);
+        persistentIds = cache.getBackupManager().finishBackup(targetDir, baselineDir, diskstoresToBackup);
       } catch (IOException e) {
         return AdminFailureResponse.create(dm, getSender(), e);
       }
@@ -109,6 +116,7 @@ public class FinishBackupRequest  extends AdminRequest {
     super.fromData(in);
     targetDir = DataSerializer.readFile(in);
     baselineDir = DataSerializer.readFile(in);
+    this.diskstoresToBackup = in.readByte();
   }
 
   @Override
@@ -116,6 +124,7 @@ public class FinishBackupRequest  extends AdminRequest {
     super.toData(out);
     DataSerializer.writeFile(targetDir, out);
     DataSerializer.writeFile(baselineDir, out);
+    out.writeByte(diskstoresToBackup);
   }
 
   private static class FinishBackupReplyProcessor extends AdminMultipleReplyProcessor {

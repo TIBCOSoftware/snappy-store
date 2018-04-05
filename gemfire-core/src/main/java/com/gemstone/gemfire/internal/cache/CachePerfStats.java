@@ -171,6 +171,7 @@ public class CachePerfStats implements HashingStats {
   protected static final int compressionSkippedId;
   protected static final int compressionSkippedTimeId;
   protected static final int compressionSkippedBytesId;
+  protected static final int compressionDecompressedReplacedId;
   protected static final int compressionDecompressedReplaceSkippedId;
   protected static final int compressionCompressedReplaceSkippedId;
 
@@ -297,6 +298,8 @@ public class CachePerfStats implements HashingStats {
     final String compressionSkippedDesc = "The total number of compressions skipped (due to < 25% reduction).";
     final String compressionSkippedTimeDesc = "The total time spent in compressions that were skipped.";
     final String compressionSkippedBytesDesc = "The total number bytes skipped in compression.";
+    final String compressionDecompressedReplacedDesc = "The total number times storage " +
+        "replaced buffer after decompression.";
     final String compressionDecompressedReplaceSkippedDesc = "The total number times storage " +
         "skipped replacing buffer after decompression due to active usage.";
     final String compressionCompressedReplaceSkippedDesc = "The total number times storage " +
@@ -444,6 +447,8 @@ public class CachePerfStats implements HashingStats {
             compressionSkippedTimeDesc, "nanoseconds"),
         f.createLongCounter("compressSkippedBytes",
             compressionSkippedBytesDesc, "bytes"),
+        f.createLongCounter("decompressedReplaced",
+            compressionDecompressedReplacedDesc, "operations"),
         f.createLongCounter("decompressedReplaceSkipped",
             compressionDecompressedReplaceSkippedDesc, "operations"),
         f.createLongCounter("compressedReplaceSkipped",
@@ -590,6 +595,7 @@ public class CachePerfStats implements HashingStats {
     compressionSkippedId = type.nameToId("compressionsSkipped");
     compressionSkippedTimeId = type.nameToId("compressSkippedTime");
     compressionSkippedBytesId = type.nameToId("compressSkippedBytes");
+    compressionDecompressedReplacedId = type.nameToId("decompressedReplaced");
     compressionDecompressedReplaceSkippedId = type.nameToId("decompressedReplaceSkipped");
     compressionCompressedReplaceSkippedId = type.nameToId("compressedReplaceSkipped");
 
@@ -857,6 +863,10 @@ public class CachePerfStats implements HashingStats {
      }
      stats.incLong(compressionSkippedId, 1);
      stats.incLong(compressionSkippedBytesId, startSize);
+   }
+
+   public void incDecompressedReplaced() {
+     stats.incLong(compressionDecompressedReplacedId, 1);
    }
 
    public void incDecompressedReplaceSkipped() {

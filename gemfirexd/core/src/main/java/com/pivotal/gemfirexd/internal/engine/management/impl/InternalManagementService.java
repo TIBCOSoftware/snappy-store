@@ -33,7 +33,6 @@ import java.util.logging.Level;
 import javax.management.ObjectName;
 
 import com.gemstone.gemfire.LogWriter;
-import com.gemstone.gemfire.distributed.DistributedSystemDisconnectedException;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
@@ -191,16 +190,6 @@ public class InternalManagementService {
 
     this.gfManagementService = null;
     this.logger              = null;
-  }
-
-  public static boolean isGfManagementDisabled() {
-    try {
-      return Misc.getDistributedSystem().isManagementDisabled();
-    } catch (DistributedSystemDisconnectedException e) {
-      // NOTE: Not catching NPE - Misc.getDistributedSystem() throws
-      // DistributedSystemDisconnectedException if InternalDS is null
-      return true; // Indicate management as disabled when DS is not connected.
-    }
   }
 
   //**************** Event handler methods start *************
@@ -781,10 +770,6 @@ public class InternalManagementService {
       return wrapper != null ? wrapper.getConnectionOrNull() : null;
     }
 
-    /**
-     * @param connection
-     *          the connection to set
-     */
     public void setConnectionWrapper(GfxdConnectionWrapper wrapper) {
       this.wrapper = wrapper;
     }

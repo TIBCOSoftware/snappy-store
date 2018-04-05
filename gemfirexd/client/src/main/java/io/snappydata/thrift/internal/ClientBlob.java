@@ -323,6 +323,10 @@ public final class ClientBlob extends ClientLobBase implements BufferedBlob {
     }
   }
 
+  public BlobChunk getCurrentChunk() {
+    return this.currentChunk;
+  }
+
   /**
    * {@inheritDoc}
    */
@@ -336,12 +340,11 @@ public final class ClientBlob extends ClientLobBase implements BufferedBlob {
       int nbytes = readBytes(offset, result, 0, length);
       if (nbytes == length) {
         return result;
-      } else {
+      } else if (nbytes > 0) {
         return Arrays.copyOf(result, nbytes);
       }
-    } else {
-      return ClientSharedData.ZERO_ARRAY;
     }
+    return ClientSharedData.ZERO_ARRAY;
   }
 
   /**

@@ -521,6 +521,14 @@ public final class HostAddress extends HostLocationBase<HostAddress> implements
     return super.toString();
   }
 
+  public String getHostAddressString() {
+    if (this.ipAddress == null) {
+      return this.hostName + '[' + this.port + ']';
+    } else {
+      return this.hostName + '/' + this.ipAddress + '[' + this.port + ']';
+    }
+  }
+
   @Override
   public String toString() {
     ServerType serverType = this.serverType;

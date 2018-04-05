@@ -17,18 +17,22 @@
 
 package com.gemstone.gemfire.internal.snappy;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Set;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
 import com.gemstone.gemfire.internal.cache.EntryEventImpl;
 import com.gemstone.gemfire.internal.cache.lru.LRUEntry;
+import com.gemstone.gemfire.internal.cache.persistence.query.CloseableIterator;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.snappy.memory.MemoryManagerStats;
 
 public interface StoreCallbacks {
 
   String SHADOW_TABLE_SUFFIX = SystemProperties.SHADOW_TABLE_SUFFIX;
+
+  String SHADOW_TABLE_BUCKET_TAG = SHADOW_TABLE_SUFFIX.replace("_", "__");
 
   void registerTypes();
 
@@ -48,6 +52,14 @@ public interface StoreCallbacks {
   int getHashCodeSnappy(Object dvds[], int numPartitions);
 
   String columnBatchTableName(String tableName);
+
+  /**
+   * Scan the entries of a column table. The returned value in ColumnTableEntry
+   * will have reference count incremented, so caller should decrement once done.
+   */
+  CloseableIterator<ColumnTableEntry> columnTableScan(String qualifiedTable,
+      int[] projection, byte[] serializedFilters,
+      Set<Integer> bucketIds) throws SQLException;
 
   void registerRelationDestroyForHiveStore();
 
@@ -111,4 +123,10 @@ public interface StoreCallbacks {
    * Initializes different memory manager related stats
    */
   void initMemoryStats(MemoryManagerStats stats);
+
+  /**
+   * Clear any existing connection pools (forced in case of major
+   * authentication service changes, for example).
+   */
+  void clearConnectionPools();
 }

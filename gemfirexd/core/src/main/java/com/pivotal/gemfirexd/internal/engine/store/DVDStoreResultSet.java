@@ -961,7 +961,9 @@ public class DVDStoreResultSet extends NonUpdatableRowsResultSet implements
         }
         if (dvd != null && !dvd.isNull()) {
           this.wasNull = false;
-          return HarmonySerialBlob.wrapBytes(dvd.getBytes());
+          Object result = dvd.getObject();
+          return result instanceof byte[]
+              ? HarmonySerialBlob.wrapBytes((byte[])result) : (Blob)result;
         }
         else {
           this.wasNull = true;

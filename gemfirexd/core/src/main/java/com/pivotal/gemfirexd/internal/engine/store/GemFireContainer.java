@@ -6503,7 +6503,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       return false;
     }
     LocalRegion baseRegion = getBaseRegion();
-    if (!baseRegion.reservedTable()) {
+    if (baseRegion != null && !baseRegion.reservedTable()) {
       return true;
     } else {
       return false;

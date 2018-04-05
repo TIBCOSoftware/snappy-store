@@ -47,7 +47,7 @@ public abstract class ByteBufferReference {
 
   /**
    * Return the data as a ByteBuffer. Should be invoked only after a
-   * {@link #retain()} or {@link #getValueRetain(boolean, boolean)} call.
+   * {@link #retain()} or {@link #getValueRetain} call.
    */
   public abstract ByteBuffer getBuffer();
 
@@ -55,17 +55,11 @@ public abstract class ByteBufferReference {
    * Get a compressed/decompressed/original version of the underlying value
    * after a {@link #retain()}
    *
-   * @param decompress decompress the underlying data and return a new value
-   *                   if compressed
-   * @param compress   compress the underlying data and return a new value
-   *                   if decompressed
+   * @param fetchRequest one of the {@link FetchRequest} values
    *
-   * @return a decompressed version of data if compressed when decompress is true
-   * or vice-versa if compress is true or else return as is if both are false
-   * @throws IllegalArgumentException if both decompress and compress are true
+   * @return possibly transformed data as per @{@link FetchRequest}
    */
-  public abstract ByteBufferReference getValueRetain(boolean decompress,
-      boolean compress) throws IllegalArgumentException;
+  public abstract ByteBufferReference getValueRetain(FetchRequest fetchRequest);
 
   /**
    * An optional explicit release of the underlying data. The buffer may no

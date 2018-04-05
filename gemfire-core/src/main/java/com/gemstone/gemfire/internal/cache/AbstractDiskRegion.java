@@ -42,6 +42,7 @@ import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import joptsimple.internal.Strings;
 
 /**
@@ -279,6 +280,14 @@ public abstract class AbstractDiskRegion implements DiskRegionView {
 
   public final DiskStoreImpl getDiskStore() {
     return this.ds;
+  }
+
+  public boolean isInternalColumnTable() {
+    if (isBucket) {
+      return getName().contains(StoreCallbacks.SHADOW_TABLE_BUCKET_TAG);
+    } else {
+      return getName().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
+    }
   }
 
   abstract void beginDestroyRegion(LocalRegion region);

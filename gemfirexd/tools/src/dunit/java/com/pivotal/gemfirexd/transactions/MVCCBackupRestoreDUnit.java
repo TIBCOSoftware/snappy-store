@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
 
+import com.gemstone.gemfire.admin.internal.FinishBackupRequest;
 import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.persistence.PersistentID;
@@ -90,7 +91,7 @@ public class MVCCBackupRestoreDUnit extends DistributedSQLTestBase {
         try {
           BackupManager backup = Misc.getGemFireCache().startBackup(Misc.getGemFireCache().getDistributedSystem().getDistributedMember());
           backup.prepareBackup();
-          HashSet<PersistentID> set = backup.finishBackup(getBackupDir(), null);
+          HashSet<PersistentID> set = backup.finishBackup(getBackupDir(), null, FinishBackupRequest.DISKSTORE_ALL);
           File incompleteBackup = FileUtil.find(getBackupDir(), ".*INCOMPLETE.*");
           assertNull(incompleteBackup);
           return set;

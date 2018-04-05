@@ -33,6 +33,7 @@ import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.distributed.DVDIOUtil;
@@ -144,7 +145,9 @@ public final class PrepStatementExecutorMessage<T> extends
   @Override
   protected void setArgsForMember(final DistributedMember member,
       final Set<DistributedMember> messageAwareMembers) {
-    if (messageAwareMembers != null) {
+    if ((!(this.defaultSchema != null
+        && this.defaultSchema.equalsIgnoreCase(SystemProperties.SNAPPY_HIVE_METASTORE))
+        && messageAwareMembers != null)) {
       synchronized (messageAwareMembers) {
         if (messageAwareMembers.contains(member)) {
           if (GemFireXDUtils.TraceQuery | GemFireXDUtils.TraceNCJ) {
