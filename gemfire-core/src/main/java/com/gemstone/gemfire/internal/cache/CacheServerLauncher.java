@@ -774,7 +774,11 @@ public class CacheServerLauncher extends LauncherBase {
     serverConnector.start();
     
     while(true) {
-      serverConnector.join(500);
+      try {
+        serverConnector.join(500);
+      } catch (InterruptedException ie) {
+        //ignore
+      }
       if (serverConnector.isAlive()) {
         Status s = readStatus();
         if (s.state == SHUTDOWN_PENDING || s.state == SHUTDOWN) {
@@ -1090,6 +1094,7 @@ public class CacheServerLauncher extends LauncherBase {
         this.status = createStatus(SHUTDOWN_PENDING, this.status.pid);
         writeStatus(this.status);
       }
+     ;
 
       // poll the Cache Server for a response to our shutdown request (passes through if the Cache Server
       // has already shutdown)...
