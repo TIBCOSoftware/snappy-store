@@ -52,6 +52,8 @@ public class ClusterStatistics {
   private CircularFifoQueue<Double> offHeapExecutionPoolUsageTrend =
       new CircularFifoQueue(MAX_SAMPLE_SIZE);
 
+  private CircularFifoQueue<Double> aggrMemoryUsageTrend = new CircularFifoQueue(MAX_SAMPLE_SIZE);
+
   public static final int TREND_TIMELINE = 0;
   public static final int TREND_CPU_USAGE = 1;
   public static final int TREND_JVM_HEAP_USAGE = 2;
@@ -61,6 +63,7 @@ public class ClusterStatistics {
   public static final int TREND_OFFHEAP_USAGE = 6;
   public static final int TREND_OFFHEAP_STORAGE_USAGE = 7;
   public static final int TREND_OFFHEAP_EXECUTION_USAGE = 8;
+  public static final int TREND_AGGR_MEMORY_USAGE = 9;
 
   public void updateClusterStatistics(Map<String, MemberStatistics> memberStatsMap) {
 
@@ -70,24 +73,27 @@ public class ClusterStatistics {
 
     int totalCpuActive = 0;
 
-    long aggrJvmMaxMemory = 0;
-    long aggrJvmFreeMemory = 0;
-    long aggrJvmTotalMemory = 0;
-    long aggrJvmUsedMemory = 0;
+    long sumJvmMaxMemory = 0;
+    long sumJvmFreeMemory = 0;
+    long sumJvmTotalMemory = 0;
+    long sumJvmUsedMemory = 0;
 
-    long aggrHeapStoragePoolUsed = 0;
-    long aggrHeapStoragePoolSize = 0;
-    long aggrHeapExecutionPoolUsed = 0;
-    long aggrHeapExecutionPoolSize = 0;
-    long aggrHeapMemoryUsed = 0;
-    long aggrHeapMemorySize = 0;
+    long sumHeapStoragePoolUsed = 0;
+    long sumHeapStoragePoolSize = 0;
+    long sumHeapExecutionPoolUsed = 0;
+    long sumHeapExecutionPoolSize = 0;
+    long sumHeapMemoryUsed = 0;
+    long sumHeapMemorySize = 0;
 
-    long aggrOffHeapStoragePoolUsed = 0;
-    long aggrOffHeapStoragePoolSize = 0;
-    long aggrOffHeapExecutionPoolUsed = 0;
-    long aggrOffHeapExecutionPoolSize = 0;
-    long aggrOffHeapMemoryUsed = 0;
-    long aggrOffHeapMemorySize = 0;
+    long sumOffHeapStoragePoolUsed = 0;
+    long sumOffHeapStoragePoolSize = 0;
+    long sumOffHeapExecutionPoolUsed = 0;
+    long sumOffHeapExecutionPoolSize = 0;
+    long sumOffHeapMemoryUsed = 0;
+    long sumOffHeapMemorySize = 0;
+
+    long sumAggrMemoryUsed = 0;
+    long sumAggrMemorySize = 0;
 
     for (MemberStatistics ms : memberStatsMap.values()) {
 
@@ -95,77 +101,87 @@ public class ClusterStatistics {
 
       totalCpuActive += ms.getCpuActive();
 
-      aggrJvmMaxMemory += ms.getJvmMaxMemory();
-      aggrJvmFreeMemory += ms.getJvmFreeMemory();
-      aggrJvmTotalMemory += ms.getJvmTotalMemory();
-      aggrJvmUsedMemory += ms.getJvmUsedMemory();
+      sumJvmMaxMemory += ms.getJvmMaxMemory();
+      sumJvmFreeMemory += ms.getJvmFreeMemory();
+      sumJvmTotalMemory += ms.getJvmTotalMemory();
+      sumJvmUsedMemory += ms.getJvmUsedMemory();
 
-      aggrHeapStoragePoolUsed += ms.getHeapStoragePoolUsed();
-      aggrHeapStoragePoolSize += ms.getHeapStoragePoolSize();
-      aggrHeapExecutionPoolUsed += ms.getHeapExecutionPoolUsed();
-      aggrHeapExecutionPoolSize += ms.getHeapExecutionPoolSize();
-      aggrHeapMemoryUsed += ms.getHeapMemoryUsed();
-      aggrHeapMemorySize += ms.getHeapMemorySize();
+      sumHeapStoragePoolUsed += ms.getHeapStoragePoolUsed();
+      sumHeapStoragePoolSize += ms.getHeapStoragePoolSize();
+      sumHeapExecutionPoolUsed += ms.getHeapExecutionPoolUsed();
+      sumHeapExecutionPoolSize += ms.getHeapExecutionPoolSize();
+      sumHeapMemoryUsed += ms.getHeapMemoryUsed();
+      sumHeapMemorySize += ms.getHeapMemorySize();
 
-      aggrOffHeapStoragePoolUsed += ms.getOffHeapStoragePoolUsed();
-      aggrOffHeapStoragePoolSize += ms.getOffHeapStoragePoolSize();
-      aggrOffHeapExecutionPoolUsed += ms.getOffHeapExecutionPoolUsed();
-      aggrOffHeapExecutionPoolSize += ms.getOffHeapExecutionPoolSize();
-      aggrOffHeapMemoryUsed += ms.getOffHeapMemoryUsed();
-      aggrOffHeapMemorySize += ms.getOffHeapMemorySize();
+      sumOffHeapStoragePoolUsed += ms.getOffHeapStoragePoolUsed();
+      sumOffHeapStoragePoolSize += ms.getOffHeapStoragePoolSize();
+      sumOffHeapExecutionPoolUsed += ms.getOffHeapExecutionPoolUsed();
+      sumOffHeapExecutionPoolSize += ms.getOffHeapExecutionPoolSize();
+      sumOffHeapMemoryUsed += ms.getOffHeapMemoryUsed();
+      sumOffHeapMemorySize += ms.getOffHeapMemorySize();
 
     }
+
+    sumAggrMemoryUsed = sumHeapMemoryUsed + sumOffHeapMemoryUsed;
+    sumAggrMemorySize = sumHeapMemorySize + sumOffHeapMemorySize;
 
     this.timeLine.add(lastMemberUpdatedTime);
 
     this.cpuUsageTrend.add(totalCpuActive / membersCount);
 
-    if (aggrJvmTotalMemory > 0) {
-      this.jvmUsageTrend.add(((double)aggrJvmUsedMemory * 100) / aggrJvmTotalMemory);
+    if (sumJvmTotalMemory > 0) {
+      this.jvmUsageTrend.add(((double)sumJvmUsedMemory * 100) / sumJvmTotalMemory);
     } else {
       this.jvmUsageTrend.add(0.0);
     }
 
-    if (aggrHeapStoragePoolSize > 0) {
+    if (sumHeapStoragePoolSize > 0) {
       this.heapStoragePoolUsageTrend.add(
-          ((double)aggrHeapStoragePoolUsed * 100) / aggrHeapStoragePoolSize);
+          ((double)sumHeapStoragePoolUsed * 100) / sumHeapStoragePoolSize);
     } else {
       this.heapStoragePoolUsageTrend.add(0.0);
     }
 
-    if (aggrHeapExecutionPoolSize > 0) {
+    if (sumHeapExecutionPoolSize > 0) {
       this.heapExecutionPoolUsageTrend.add(
-          ((double)aggrHeapExecutionPoolUsed * 100) / aggrHeapExecutionPoolSize);
+          ((double)sumHeapExecutionPoolUsed * 100) / sumHeapExecutionPoolSize);
     } else {
       this.heapExecutionPoolUsageTrend.add(0.0);
     }
 
-    if (aggrHeapMemorySize > 0) {
+    if (sumHeapMemorySize > 0) {
       this.heapUsageTrend.add(
-          ((double)aggrHeapMemoryUsed * 100) / aggrHeapMemorySize);
+          ((double)sumHeapMemoryUsed * 100) / sumHeapMemorySize);
     } else {
       this.heapUsageTrend.add(0.0);
     }
 
-    if (aggrOffHeapStoragePoolSize > 0) {
+    if (sumOffHeapStoragePoolSize > 0) {
       this.offHeapStoragePoolUsageTrend.add(
-          ((double)aggrOffHeapStoragePoolUsed * 100) / aggrOffHeapStoragePoolSize);
+          ((double)sumOffHeapStoragePoolUsed * 100) / sumOffHeapStoragePoolSize);
     } else {
       this.offHeapStoragePoolUsageTrend.add(0.0);
     }
 
-    if (aggrOffHeapExecutionPoolSize > 0) {
+    if (sumOffHeapExecutionPoolSize > 0) {
       this.offHeapExecutionPoolUsageTrend.add(
-          ((double)aggrOffHeapExecutionPoolUsed * 100) / aggrOffHeapExecutionPoolSize);
+          ((double)sumOffHeapExecutionPoolUsed * 100) / sumOffHeapExecutionPoolSize);
     } else {
       this.offHeapExecutionPoolUsageTrend.add(0.0);
     }
 
-    if (aggrOffHeapMemorySize > 0) {
+    if (sumOffHeapMemorySize > 0) {
       this.offHeapUsageTrend.add(
-          ((double)aggrOffHeapMemoryUsed * 100) / aggrOffHeapMemorySize);
+          ((double)sumOffHeapMemoryUsed * 100) / sumOffHeapMemorySize);
     } else {
       this.offHeapUsageTrend.add(0.0);
+    }
+
+    if (sumAggrMemorySize > 0) {
+      this.aggrMemoryUsageTrend.add(
+          ((double)sumAggrMemoryUsed * 100) / sumAggrMemorySize);
+    } else {
+      this.aggrMemoryUsageTrend.add(0.0);
     }
 
   }
@@ -216,6 +232,11 @@ public class ClusterStatistics {
       case TREND_OFFHEAP_EXECUTION_USAGE:
         synchronized (this.offHeapExecutionPoolUsageTrend) {
           returnArray = this.offHeapExecutionPoolUsageTrend.toArray();
+        }
+        break;
+      case TREND_AGGR_MEMORY_USAGE:
+        synchronized (this.aggrMemoryUsageTrend) {
+          returnArray = this.aggrMemoryUsageTrend.toArray();
         }
         break;
     }

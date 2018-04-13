@@ -82,6 +82,8 @@ public class MemberStatistics {
   private CircularFifoQueue<Double> offHeapExecutionPoolUsageTrend =
       new CircularFifoQueue(MAX_SAMPLE_SIZE);
 
+  private CircularFifoQueue<Double> aggrMemoryUsageTrend = new CircularFifoQueue(MAX_SAMPLE_SIZE);
+
   public static final int TREND_TIMELINE = 0;
   public static final int TREND_CPU_USAGE = 1;
   public static final int TREND_JVM_HEAP_USAGE = 2;
@@ -91,6 +93,7 @@ public class MemberStatistics {
   public static final int TREND_OFFHEAP_USAGE = 6;
   public static final int TREND_OFFHEAP_STORAGE_USAGE = 7;
   public static final int TREND_OFFHEAP_EXECUTION_USAGE = 8;
+  public static final int TREND_AGGR_MEMORY_USAGE = 9;
 
 
   public MemberStatistics(String id, String name, String diskStoreName, UUID diskStoreUUID) {
@@ -215,6 +218,16 @@ public class MemberStatistics {
       this.offHeapUsageTrend.add(((double)offHeapMemoryUsed * 100) / offHeapMemorySize);
     } else {
       this.offHeapUsageTrend.add(0.0);
+    }
+
+    long aggrMemoryUsed = heapMemoryUsed + offHeapMemoryUsed;
+    long aggrMemorySize = heapMemorySize + offHeapMemorySize;
+
+    if (aggrMemorySize > 0) {
+      this.aggrMemoryUsageTrend.add(
+          ((double)aggrMemoryUsed * 100) / aggrMemorySize);
+    } else {
+      this.aggrMemoryUsageTrend.add(0.0);
     }
 
   }
@@ -521,6 +534,11 @@ public class MemberStatistics {
       case TREND_OFFHEAP_EXECUTION_USAGE:
         synchronized (this.offHeapExecutionPoolUsageTrend) {
           returnArray = this.offHeapExecutionPoolUsageTrend.toArray();
+        }
+        break;
+      case TREND_AGGR_MEMORY_USAGE:
+        synchronized (this.aggrMemoryUsageTrend) {
+          returnArray = this.aggrMemoryUsageTrend.toArray();
         }
         break;
     }
