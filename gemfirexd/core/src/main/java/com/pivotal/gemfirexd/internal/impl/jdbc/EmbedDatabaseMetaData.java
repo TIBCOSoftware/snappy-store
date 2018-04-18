@@ -1849,6 +1849,13 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 		return s.executeQuery();
 	}
 
+
+	public ResultSet getTableSchemas() throws SQLException {
+		PreparedStatement s = getPreparedQuery("getTableSchemas");
+		return s.executeQuery();
+	}
+
+
     /**
      * Get the schema names available in this database.  The results
      * are ordered by schema name.

@@ -4218,7 +4218,13 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           if (tableTypes != null && !tableTypes.isEmpty()) {
             types = tableTypes.toArray(new String[tableTypes.size()]);
           }
-          rs = dmd.getTables(null, args.getSchema(), args.getTable(), types);
+          // check for schema fetch with ODBC SQLTables('', '%', '')
+          if (isODBC && "%".equals(args.getSchema()) &&
+              args.getTable() != null && args.getTable().isEmpty()) {
+            rs = dmd.getTableSchemas();
+          } else {
+            rs = dmd.getTables(null, args.getSchema(), args.getTable(), types);
+          }
           break;
         case TABLETYPES:
           rs = dmd.getTableTypes();
