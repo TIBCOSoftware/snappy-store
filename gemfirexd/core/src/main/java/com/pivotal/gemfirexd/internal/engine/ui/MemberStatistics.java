@@ -146,11 +146,8 @@ public class MemberStatistics {
     this.jvmMaxMemory = (long)memberStatsMap.get("maxMemory");
     this.jvmFreeMemory = (long)memberStatsMap.get("freeMemory");
 
-    if(jvmTotalMemory > 0) {
-      this.jvmUsageTrend.add(((double)jvmUsedMemory * 100) / jvmTotalMemory);
-    } else {
-      this.jvmUsageTrend.add(0.0);
-    }
+    this.jvmUsageTrend.add(
+        SnappyUtils.bytesToGivenUnits(jvmUsedMemory, SnappyUtils.StorageSizeUnits.GB));
 
     long heapStoragePoolUsed = (long)memberStatsMap.get("heapStoragePoolUsed");
     long heapStoragePoolSize = (long)memberStatsMap.get("heapStoragePoolSize");
@@ -166,25 +163,14 @@ public class MemberStatistics {
     this.heapMemoryUsed = heapMemoryUsed;
     this.heapMemorySize = heapMemorySize;
 
-    if (heapStoragePoolSize > 0) {
-      this.heapStoragePoolUsageTrend.add(
-          ((double)heapStoragePoolUsed * 100) / heapStoragePoolSize);
-    } else {
-      this.heapStoragePoolUsageTrend.add(0.0);
-    }
+    this.heapStoragePoolUsageTrend.add(
+        SnappyUtils.bytesToGivenUnits(heapStoragePoolUsed, SnappyUtils.StorageSizeUnits.GB));
 
-    if (heapExecutionPoolSize > 0) {
-      this.heapExecutionPoolUsageTrend.add(
-          ((double)heapExecutionPoolUsed * 100) / heapExecutionPoolSize);
-    } else {
-      this.heapExecutionPoolUsageTrend.add(0.0);
-    }
+    this.heapExecutionPoolUsageTrend.add(
+        SnappyUtils.bytesToGivenUnits(heapExecutionPoolUsed, SnappyUtils.StorageSizeUnits.GB));
 
-    if (heapMemorySize > 0) {
-      this.heapUsageTrend.add(((double)heapMemoryUsed * 100) / heapMemorySize);
-    } else {
-      this.heapUsageTrend.add(0.0);
-    }
+    this.heapUsageTrend.add(
+        SnappyUtils.bytesToGivenUnits(heapMemoryUsed, SnappyUtils.StorageSizeUnits.GB));
 
     long offHeapStoragePoolUsed = (long)memberStatsMap.get("offHeapStoragePoolUsed");
     long offHeapStoragePoolSize = (long)memberStatsMap.get("offHeapStoragePoolSize");
@@ -200,35 +186,20 @@ public class MemberStatistics {
     this.offHeapMemoryUsed = offHeapMemoryUsed;
     this.offHeapMemorySize = offHeapMemorySize;
 
-    if (offHeapStoragePoolSize > 0) {
-      this.offHeapStoragePoolUsageTrend.add(
-          ((double)offHeapStoragePoolUsed * 100) / offHeapStoragePoolSize);
-    } else {
-      this.offHeapStoragePoolUsageTrend.add(0.0);
-    }
+    this.offHeapStoragePoolUsageTrend.add(
+        SnappyUtils.bytesToGivenUnits(offHeapStoragePoolUsed, SnappyUtils.StorageSizeUnits.GB));
 
-    if (offHeapExecutionPoolSize > 0) {
-      this.offHeapExecutionPoolUsageTrend.add(
-          ((double)offHeapExecutionPoolUsed * 100) / offHeapExecutionPoolSize);
-    } else {
-      this.offHeapExecutionPoolUsageTrend.add(0.0);
-    }
+    this.offHeapExecutionPoolUsageTrend.add(
+        SnappyUtils.bytesToGivenUnits(offHeapExecutionPoolUsed, SnappyUtils.StorageSizeUnits.GB));
 
-    if (offHeapMemorySize > 0) {
-      this.offHeapUsageTrend.add(((double)offHeapMemoryUsed * 100) / offHeapMemorySize);
-    } else {
-      this.offHeapUsageTrend.add(0.0);
-    }
+    this.offHeapUsageTrend.add(
+        SnappyUtils.bytesToGivenUnits(offHeapMemoryUsed, SnappyUtils.StorageSizeUnits.GB));
 
     long aggrMemoryUsed = heapMemoryUsed + offHeapMemoryUsed;
     long aggrMemorySize = heapMemorySize + offHeapMemorySize;
 
-    if (aggrMemorySize > 0) {
-      this.aggrMemoryUsageTrend.add(
-          ((double)aggrMemoryUsed * 100) / aggrMemorySize);
-    } else {
-      this.aggrMemoryUsageTrend.add(0.0);
-    }
+    this.aggrMemoryUsageTrend.add(
+        SnappyUtils.bytesToGivenUnits(aggrMemoryUsed, SnappyUtils.StorageSizeUnits.GB));
 
   }
 

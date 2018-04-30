@@ -129,60 +129,29 @@ public class ClusterStatistics {
 
     this.cpuUsageTrend.add(totalCpuActive / membersCount);
 
-    if (sumJvmTotalMemory > 0) {
-      this.jvmUsageTrend.add(((double)sumJvmUsedMemory * 100) / sumJvmTotalMemory);
-    } else {
-      this.jvmUsageTrend.add(0.0);
-    }
+    this.jvmUsageTrend.add(
+        SnappyUtils.bytesToGivenUnits(sumJvmUsedMemory, SnappyUtils.StorageSizeUnits.GB));
 
-    if (sumHeapStoragePoolSize > 0) {
-      this.heapStoragePoolUsageTrend.add(
-          ((double)sumHeapStoragePoolUsed * 100) / sumHeapStoragePoolSize);
-    } else {
-      this.heapStoragePoolUsageTrend.add(0.0);
-    }
+    this.heapStoragePoolUsageTrend.add(
+        SnappyUtils.bytesToGivenUnits(sumHeapStoragePoolUsed, SnappyUtils.StorageSizeUnits.GB));
 
-    if (sumHeapExecutionPoolSize > 0) {
-      this.heapExecutionPoolUsageTrend.add(
-          ((double)sumHeapExecutionPoolUsed * 100) / sumHeapExecutionPoolSize);
-    } else {
-      this.heapExecutionPoolUsageTrend.add(0.0);
-    }
+    this.heapExecutionPoolUsageTrend.add(
+        SnappyUtils.bytesToGivenUnits(sumHeapExecutionPoolUsed, SnappyUtils.StorageSizeUnits.GB));
 
-    if (sumHeapMemorySize > 0) {
-      this.heapUsageTrend.add(
-          ((double)sumHeapMemoryUsed * 100) / sumHeapMemorySize);
-    } else {
-      this.heapUsageTrend.add(0.0);
-    }
+    this.heapUsageTrend.add(
+        SnappyUtils.bytesToGivenUnits(sumHeapMemoryUsed, SnappyUtils.StorageSizeUnits.GB));
 
-    if (sumOffHeapStoragePoolSize > 0) {
-      this.offHeapStoragePoolUsageTrend.add(
-          ((double)sumOffHeapStoragePoolUsed * 100) / sumOffHeapStoragePoolSize);
-    } else {
-      this.offHeapStoragePoolUsageTrend.add(0.0);
-    }
+    this.offHeapStoragePoolUsageTrend.add(
+        SnappyUtils.bytesToGivenUnits(sumOffHeapStoragePoolUsed, SnappyUtils.StorageSizeUnits.GB));
 
-    if (sumOffHeapExecutionPoolSize > 0) {
-      this.offHeapExecutionPoolUsageTrend.add(
-          ((double)sumOffHeapExecutionPoolUsed * 100) / sumOffHeapExecutionPoolSize);
-    } else {
-      this.offHeapExecutionPoolUsageTrend.add(0.0);
-    }
+    this.offHeapExecutionPoolUsageTrend.add(
+        SnappyUtils.bytesToGivenUnits(sumOffHeapExecutionPoolUsed, SnappyUtils.StorageSizeUnits.GB));
 
-    if (sumOffHeapMemorySize > 0) {
-      this.offHeapUsageTrend.add(
-          ((double)sumOffHeapMemoryUsed * 100) / sumOffHeapMemorySize);
-    } else {
-      this.offHeapUsageTrend.add(0.0);
-    }
+    this.offHeapUsageTrend.add(
+        SnappyUtils.bytesToGivenUnits(sumOffHeapMemoryUsed, SnappyUtils.StorageSizeUnits.GB));
 
-    if (sumAggrMemorySize > 0) {
-      this.aggrMemoryUsageTrend.add(
-          ((double)sumAggrMemoryUsed * 100) / sumAggrMemorySize);
-    } else {
-      this.aggrMemoryUsageTrend.add(0.0);
-    }
+    this.aggrMemoryUsageTrend.add(
+        SnappyUtils.bytesToGivenUnits(sumAggrMemoryUsed, SnappyUtils.StorageSizeUnits.GB));
 
   }
 
