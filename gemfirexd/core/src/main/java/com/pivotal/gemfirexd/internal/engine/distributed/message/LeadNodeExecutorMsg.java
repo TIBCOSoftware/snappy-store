@@ -36,6 +36,7 @@ import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.pivotal.gemfirexd.FabricServiceManager;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.DVDIOUtil;
@@ -131,6 +132,8 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
 
   @Override
   protected void execute() throws Exception {
+    ClassLoader origLoader = Thread.currentThread().getContextClassLoader();
+    CallbackFactoryProvider.getClusterCallbacks().setLeadClassLoader();
     try {
       if (isPreparedStatement() && !isPreparedPhase()) {
         getParams();
@@ -156,6 +159,8 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
       }
     } catch (Exception ex) {
       throw getExceptionToSendToServer(ex);
+    } finally {
+      Thread.currentThread().setContextClassLoader(origLoader);
     }
   }
 

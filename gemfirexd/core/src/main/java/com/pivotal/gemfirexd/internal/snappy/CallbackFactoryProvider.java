@@ -85,6 +85,9 @@ public abstract class CallbackFactoryProvider {
       return "";
     }
 
+    @Override
+    public void setLeadClassLoader() {
+    }
   };
 
   public static ClusterCallbacks getClusterCallbacks() {

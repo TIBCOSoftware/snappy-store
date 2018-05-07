@@ -53,6 +53,7 @@ import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
 import com.gemstone.gemfire.CancelException;
+import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.StatisticsFactory;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.*;
@@ -10800,6 +10801,10 @@ public class PartitionedRegion extends LocalRegion implements
         final GemFireCacheImpl.StaticSystemCallbacks sysCb =
             GemFireCacheImpl.FactoryStatics.systemCallbacks;
         if (sysCb != null && sysCb.destroyExistingRegionInCreate(dsi, this)) {
+          LogWriter logger = getCache().getLogger();
+          if (logger.infoEnabled()) {
+            logger.info("Destroying existing region: " + this + " in create");
+          }
           dsi.destroyRegion(getFullPath(), false);
         }
       }

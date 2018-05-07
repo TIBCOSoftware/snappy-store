@@ -616,8 +616,10 @@ public class GenericStatement
             if (STREAMING_DDL_PREFIX.matcher(source).find()) {
               cc.markAsDDLForSnappyUse(true);
             }
+            boolean isDDL = cc.isMarkedAsDDLForSnappyUse()
+              || source.toLowerCase().startsWith("deploy") || source.toLowerCase().startsWith("undeploy");
             return getPreparedStatementForSnappy(false, statementContext, lcc,
-                cc.isMarkedAsDDLForSnappyUse(), checkCancellation,
+                isDDL, checkCancellation,
                 DML_TABLE_PATTERN.matcher(source).find());
           }
           throw ex;

@@ -387,6 +387,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
   public static final ThreadLocal<Boolean> externalCatalogInitThread =
       new ThreadLocal<>();
 
+  private Region<String, String> snappyGlobalCmdRgn;
+
   /**
    *************************************************************************
    * Public Methods implementing AccessFactory Interface
@@ -3049,5 +3051,13 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         return true;
       }
     }
+  }
+
+  public void setGlobalCmdRgn(Region gcr) {
+    this.snappyGlobalCmdRgn = gcr;
+  }
+
+  public Region<String, String> getGlobalCmdRgn() {
+    return this.snappyGlobalCmdRgn;
   }
 }
