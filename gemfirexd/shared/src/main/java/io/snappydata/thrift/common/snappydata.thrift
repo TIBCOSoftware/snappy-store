@@ -458,7 +458,7 @@ exception SnappyException {
 }
 
 // default batch size
-const i32 DEFAULT_RESULTSET_BATCHSIZE                      = 1024
+const i32 DEFAULT_RESULTSET_BATCHSIZE                      = 262144
 // default LOB chunk size
 const i32 DEFAULT_LOB_CHUNKSIZE                            = 2097152 // 2MB
 

@@ -154,7 +154,8 @@ public abstract class ThriftUtils {
     // sun.misc.VM.maxDirectMemory()
     ByteBuffer buffer;
     try {
-      buffer = DirectBufferAllocator.instance().allocate(length, "THRIFT");
+      buffer = DirectBufferAllocator.instance().allocateWithFallback(
+          length, "THRIFT");
     } catch (OutOfMemoryError | RuntimeException ignored) {
       // fallback to heap buffer
       buffer = ByteBuffer.allocate(length);

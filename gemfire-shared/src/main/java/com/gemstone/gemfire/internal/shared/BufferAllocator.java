@@ -39,6 +39,14 @@ public abstract class BufferAllocator implements Closeable {
   public abstract ByteBuffer allocate(int size, String owner);
 
   /**
+   * Allocate using the default allocator and fallback to base JDK one in case
+   * allocation fails due to some reason (e.g. system stop).
+   */
+  public ByteBuffer allocateWithFallback(int size, String owner) {
+    return allocate(size, owner);
+  }
+
+  /**
    * Allocate a new ByteBuffer of given size for storage in a Region.
    */
   public abstract ByteBuffer allocateForStorage(int size);

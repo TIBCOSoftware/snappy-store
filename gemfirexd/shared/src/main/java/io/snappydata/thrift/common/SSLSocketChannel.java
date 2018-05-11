@@ -54,7 +54,9 @@ import javax.net.ssl.SSLEngineResult.Status;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
 
+import com.gemstone.gemfire.internal.shared.BufferAllocator;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import com.gemstone.gemfire.internal.shared.HeapBufferAllocator;
 import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -152,16 +154,14 @@ public final class SSLSocketChannel
    * starts sslEngine handshake process
    */
   protected void startHandshake() throws IOException {
-    if (this.useDirectBuffers) {
-      final DirectBufferAllocator allocator = DirectBufferAllocator.instance();
-      this.netReadBuffer = allocator.allocate(netReadBufferSize(), BUFFER_OWNER);
-      this.netWriteBuffer = allocator.allocate(netWriteBufferSize(), BUFFER_OWNER);
-      this.appReadBuffer = allocator.allocate(applicationBufferSize(), BUFFER_OWNER);
-    } else {
-      this.netReadBuffer = ByteBuffer.allocate(netReadBufferSize());
-      this.netWriteBuffer = ByteBuffer.allocate(netWriteBufferSize());
-      this.appReadBuffer = ByteBuffer.allocate(applicationBufferSize());
-    }
+    final BufferAllocator allocator = this.useDirectBuffers
+        ? DirectBufferAllocator.instance() : HeapBufferAllocator.instance();
+    this.netReadBuffer = allocator.allocateWithFallback(netReadBufferSize(),
+        BUFFER_OWNER);
+    this.netWriteBuffer = allocator.allocateWithFallback(netWriteBufferSize(),
+        BUFFER_OWNER);
+    this.appReadBuffer = allocator.allocateWithFallback(applicationBufferSize(),
+        BUFFER_OWNER);
 
     // clear & set netRead & netWrite buffers
     netWriteBuffer.position(0);
