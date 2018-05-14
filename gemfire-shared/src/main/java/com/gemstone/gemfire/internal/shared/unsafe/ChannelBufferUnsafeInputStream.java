@@ -101,7 +101,7 @@ public class ChannelBufferUnsafeInputStream extends InputStreamChannel {
 
   protected ByteBuffer allocateBuffer(int bufferSize) {
     // use allocator which will restrict total allocated size
-    ByteBuffer buffer = DirectBufferAllocator.instance().allocate(
+    ByteBuffer buffer = DirectBufferAllocator.instance().allocateWithFallback(
         bufferSize, "CHANNELINPUT");
     // set the order to native explicitly to skip any byte order conversions
     buffer.order(ByteOrder.nativeOrder());

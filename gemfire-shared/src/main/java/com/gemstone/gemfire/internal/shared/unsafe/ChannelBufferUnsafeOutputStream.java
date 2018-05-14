@@ -113,7 +113,7 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
               + " too small (minimum " + MIN_BUFFER_SIZE + ')');
     }
     // use allocator which will restrict total allocated size
-    final ByteBuffer buffer = DirectBufferAllocator.instance().allocate(
+    final ByteBuffer buffer = DirectBufferAllocator.instance().allocateWithFallback(
         bufferSize, "CHANNELOUTPUT");
     // set the order to native explicitly to skip any byte order conversions
     buffer.order(ByteOrder.nativeOrder());

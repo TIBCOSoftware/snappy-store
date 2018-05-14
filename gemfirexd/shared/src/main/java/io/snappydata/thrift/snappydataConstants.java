@@ -58,7 +58,7 @@ public class snappydataConstants {
 
   public static final int DEFAULT_SESSION_TOKEN_SIZE = 16;
 
-  public static final int DEFAULT_RESULTSET_BATCHSIZE = 1024;
+  public static final int DEFAULT_RESULTSET_BATCHSIZE = 262144;
 
   public static final int DEFAULT_LOB_CHUNKSIZE = 2097152;
 

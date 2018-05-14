@@ -83,6 +83,19 @@ public class DirectBufferAllocator extends BufferAllocator {
   }
 
   @Override
+  public ByteBuffer allocateWithFallback(int size, String owner) {
+    try {
+      return allocateForStorage(size);
+    } catch (RuntimeException re) {
+      if (instance() != globalInstance) {
+        return globalInstance.allocateForStorage(size);
+      } else {
+        throw re;
+      }
+    }
+  }
+
+  @Override
   public ByteBuffer allocateForStorage(int size) {
     ByteBuffer buffer = ByteBuffer.allocateDirect(size);
     if (MemoryAllocator.MEMORY_DEBUG_FILL_ENABLED) {

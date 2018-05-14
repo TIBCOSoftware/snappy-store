@@ -540,6 +540,7 @@ public final class ProductVersionHolder implements java.security.PrivilegedActio
 		Properties p = new Properties();
 		try {
 			p.load(is);
+			is.close();
 			return p;
 		}
 		catch (IOException ioe) {
