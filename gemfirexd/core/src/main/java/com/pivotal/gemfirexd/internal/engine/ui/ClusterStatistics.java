@@ -17,7 +17,9 @@
 
 package com.pivotal.gemfirexd.internal.engine.ui;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.collections4.queue.CircularFifoQueue;
 
@@ -71,11 +73,7 @@ public class ClusterStatistics {
 
   public void updateClusterStatistics(Map<String, MemberStatistics> memberStatsMap) {
 
-    int membersCount = memberStatsMap.size();
-
     long lastMemberUpdatedTime = 0;
-
-    int totalCpuActive = 0;
 
     long sumJvmMaxMemory = 0;
     long sumJvmFreeMemory = 0;
@@ -101,11 +99,21 @@ public class ClusterStatistics {
 
     long sumDiskStoreDiskSpace = 0;
 
+    Set<String> hostsList = new HashSet<>();
+    int totalCpuActive = 0;
+    int cpuCount = 0;
+
     for (MemberStatistics ms : memberStatsMap.values()) {
 
       lastMemberUpdatedTime = ms.getLastUpdatedOn();
 
-      totalCpuActive += ms.getCpuActive();
+      // CPU Usage
+      String host = ms.getHost();
+      if(!hostsList.contains(host) && !ms.isLocator()){
+        hostsList.add(host);
+        totalCpuActive += ms.getCpuActive();
+        cpuCount++;
+      }
 
       sumJvmMaxMemory += ms.getJvmMaxMemory();
       sumJvmFreeMemory += ms.getJvmFreeMemory();
@@ -135,7 +143,7 @@ public class ClusterStatistics {
 
     this.timeLine.add(lastMemberUpdatedTime);
 
-    this.cpuUsageTrend.add(totalCpuActive / membersCount);
+    this.cpuUsageTrend.add(totalCpuActive / cpuCount);
 
     this.jvmUsageTrend.add(
         SnappyUtils.bytesToGivenUnits(sumJvmUsedMemory, SnappyUtils.StorageSizeUnits.GB));
