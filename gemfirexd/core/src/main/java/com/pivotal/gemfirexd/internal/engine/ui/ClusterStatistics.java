@@ -54,6 +54,9 @@ public class ClusterStatistics {
 
   private CircularFifoQueue<Double> aggrMemoryUsageTrend = new CircularFifoQueue(MAX_SAMPLE_SIZE);
 
+  private CircularFifoQueue<Double> diskStoreDiskSpaceTrend =
+      new CircularFifoQueue(MAX_SAMPLE_SIZE);
+
   public static final int TREND_TIMELINE = 0;
   public static final int TREND_CPU_USAGE = 1;
   public static final int TREND_JVM_HEAP_USAGE = 2;
@@ -64,6 +67,7 @@ public class ClusterStatistics {
   public static final int TREND_OFFHEAP_STORAGE_USAGE = 7;
   public static final int TREND_OFFHEAP_EXECUTION_USAGE = 8;
   public static final int TREND_AGGR_MEMORY_USAGE = 9;
+  public static final int TREND_DISKSTORE_DISKSPACE_USAGE = 10;
 
   public void updateClusterStatistics(Map<String, MemberStatistics> memberStatsMap) {
 
@@ -95,6 +99,8 @@ public class ClusterStatistics {
     long sumAggrMemoryUsed = 0;
     long sumAggrMemorySize = 0;
 
+    long sumDiskStoreDiskSpace = 0;
+
     for (MemberStatistics ms : memberStatsMap.values()) {
 
       lastMemberUpdatedTime = ms.getLastUpdatedOn();
@@ -119,6 +125,8 @@ public class ClusterStatistics {
       sumOffHeapExecutionPoolSize += ms.getOffHeapExecutionPoolSize();
       sumOffHeapMemoryUsed += ms.getOffHeapMemoryUsed();
       sumOffHeapMemorySize += ms.getOffHeapMemorySize();
+
+      sumDiskStoreDiskSpace += ms.getDiskStoreDiskSpace();
 
     }
 
@@ -152,6 +160,9 @@ public class ClusterStatistics {
 
     this.aggrMemoryUsageTrend.add(
         SnappyUtils.bytesToGivenUnits(sumAggrMemoryUsed, SnappyUtils.StorageSizeUnits.GB));
+
+    this.diskStoreDiskSpaceTrend.add(
+        SnappyUtils.bytesToGivenUnits(sumDiskStoreDiskSpace, SnappyUtils.StorageSizeUnits.GB));
 
   }
 
@@ -206,6 +217,11 @@ public class ClusterStatistics {
       case TREND_AGGR_MEMORY_USAGE:
         synchronized (this.aggrMemoryUsageTrend) {
           returnArray = this.aggrMemoryUsageTrend.toArray();
+        }
+        break;
+      case TREND_DISKSTORE_DISKSPACE_USAGE:
+        synchronized (this.diskStoreDiskSpaceTrend) {
+          returnArray = this.diskStoreDiskSpaceTrend.toArray();
         }
         break;
     }

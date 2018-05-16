@@ -37,6 +37,7 @@ public class MemberStatistics {
   private String processId;
   private String diskStoreName;
   private UUID diskStoreUUID;
+  private long diskStoreDiskSpace;
 
   private boolean isLocator;
   private boolean isLead;
@@ -84,6 +85,9 @@ public class MemberStatistics {
 
   private CircularFifoQueue<Double> aggrMemoryUsageTrend = new CircularFifoQueue(MAX_SAMPLE_SIZE);
 
+  private CircularFifoQueue<Double> diskStoreDiskSpaceTrend =
+      new CircularFifoQueue(MAX_SAMPLE_SIZE);
+
   public static final int TREND_TIMELINE = 0;
   public static final int TREND_CPU_USAGE = 1;
   public static final int TREND_JVM_HEAP_USAGE = 2;
@@ -94,6 +98,7 @@ public class MemberStatistics {
   public static final int TREND_OFFHEAP_STORAGE_USAGE = 7;
   public static final int TREND_OFFHEAP_EXECUTION_USAGE = 8;
   public static final int TREND_AGGR_MEMORY_USAGE = 9;
+  public static final int TREND_DISKSTORE_DISKSPACE_USAGE = 10;
 
 
   public MemberStatistics(String id, String name, String diskStoreName, UUID diskStoreUUID) {
@@ -196,10 +201,14 @@ public class MemberStatistics {
         SnappyUtils.bytesToGivenUnits(offHeapMemoryUsed, SnappyUtils.StorageSizeUnits.GB));
 
     long aggrMemoryUsed = heapMemoryUsed + offHeapMemoryUsed;
-    long aggrMemorySize = heapMemorySize + offHeapMemorySize;
+    // long aggrMemorySize = heapMemorySize + offHeapMemorySize;
 
     this.aggrMemoryUsageTrend.add(
         SnappyUtils.bytesToGivenUnits(aggrMemoryUsed, SnappyUtils.StorageSizeUnits.GB));
+
+    this.diskStoreDiskSpace = (long)memberStatsMap.get("diskStoreDiskSpace");
+    this.diskStoreDiskSpaceTrend.add(
+        SnappyUtils.bytesToGivenUnits(this.diskStoreDiskSpace, SnappyUtils.StorageSizeUnits.GB));
 
   }
 
@@ -273,6 +282,14 @@ public class MemberStatistics {
 
   public void setDiskStoreUUID(UUID diskStoreUUID) {
     this.diskStoreUUID = diskStoreUUID;
+  }
+
+  public long getDiskStoreDiskSpace() {
+    return diskStoreDiskSpace;
+  }
+
+  public void setDiskStoreDiskSpace(long diskStoreDiskSpace) {
+    this.diskStoreDiskSpace = diskStoreDiskSpace;
   }
 
   public boolean isLocator() {
@@ -510,6 +527,11 @@ public class MemberStatistics {
       case TREND_AGGR_MEMORY_USAGE:
         synchronized (this.aggrMemoryUsageTrend) {
           returnArray = this.aggrMemoryUsageTrend.toArray();
+        }
+        break;
+      case TREND_DISKSTORE_DISKSPACE_USAGE:
+        synchronized (this.diskStoreDiskSpaceTrend) {
+          returnArray = this.diskStoreDiskSpaceTrend.toArray();
         }
         break;
     }
