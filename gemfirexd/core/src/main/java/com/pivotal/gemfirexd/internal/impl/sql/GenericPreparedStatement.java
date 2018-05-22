@@ -679,6 +679,10 @@ recompileOutOfDatePlan:
 		return resultDesc;
 	}
 
+	public void	setResultDescription(ResultDescription rd)	{
+		resultDesc = rd;
+	}
+
 	public DataTypeDescriptor[]	getParameterTypes()	{
 		return paramTypeDescriptors;
 	}
