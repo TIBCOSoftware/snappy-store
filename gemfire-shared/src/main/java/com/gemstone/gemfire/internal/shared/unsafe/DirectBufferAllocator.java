@@ -166,16 +166,6 @@ public class DirectBufferAllocator extends BufferAllocator {
   }
 
   @Override
-  public void release(ByteBuffer buffer) {
-    if (MemoryAllocator.MEMORY_DEBUG_FILL_ENABLED) {
-      buffer.rewind();
-      fill(buffer, MemoryAllocator.MEMORY_DEBUG_FILL_FREED_VALUE);
-    }
-    // reserved bytes will be decremented via FreeMemory implementations
-    UnsafeHolder.releaseDirectBuffer(buffer);
-  }
-
-  @Override
   public boolean isDirect() {
     return true;
   }
