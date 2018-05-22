@@ -1330,7 +1330,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
               }
               rows.add(eachRow);
               if (((++nrows) % GemFireXDUtils.DML_SAMPLE_INTERVAL) == 0) {
-                // throttle the processing and sends
+                // throttle the processing and sends if CRITICAL_UP has been reached
                 if (throttleIfCritical()) {
                   isLastBatch = false;
                   break;
@@ -1377,7 +1377,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
           }
           rows.add(eachRow);
           if (((++nrows) % GemFireXDUtils.DML_SAMPLE_INTERVAL) == 0) {
-            // throttle the processing and sends
+            // throttle the processing and sends if CRITICAL_UP has been reached
             if (throttleIfCritical()) {
               isLastBatch = false;
               break;
@@ -2914,7 +2914,7 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       ByteBuffer token) throws SnappyException {
     ConnectionHolder connHolder = null;
     Statement stmt = null;
-    StatementAttrs attrs = null;
+    StatementAttrs attrs;
     RowSet rowSet = null;
     try {
       StatementHolder stmtHolder = getStatementForResultSet(token,

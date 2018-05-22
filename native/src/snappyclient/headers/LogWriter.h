@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -176,13 +176,13 @@ namespace client {
    * A utility class to write text log-files for debugging, tracing,
    * etc using {@link LogLevel}s to control the output.
    * <p>
-   * A convience global instance is provided (globalInstance) that
+   * A convenience global instance is provided (globalInstance) that
    * can be used by convenience SEVERE, WARNING and other such static
    * methods in the class. The generic log(LogLevel) instance method
    * of the class can be used for other non-global instances.
    * <p>
    * All the calls in the code of INFO(), WARNING(), SEVERE etc should
-   * be preceeded by check for corresponding INFO_ENABLED() etc. The
+   * be preceded by check for corresponding INFO_ENABLED() etc. The
    * static INFO(), WARNING() and such methods return a reference to
    * std::ostream which can then be chained using "<<" operator calls
    * as usual. An end of line should be indicated using

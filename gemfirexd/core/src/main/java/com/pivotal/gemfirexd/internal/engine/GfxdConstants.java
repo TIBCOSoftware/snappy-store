@@ -311,7 +311,7 @@ public interface GfxdConstants {
    * default number of iterations after which a sample of ResultHolder timings
    * is taken
    */
-  final int DML_SAMPLE_INTERVAL_DEFAULT = 15;
+  final int DML_SAMPLE_INTERVAL_DEFAULT = 16;
 
   /**
    * property to set whether DAP should send results in order from execution

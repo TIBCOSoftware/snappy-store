@@ -760,6 +760,11 @@ public final class FabricDatabase implements ModuleControl,
       if (!(storeTableList == null || storeTableList.isEmpty())) {
         hiveTableList.removeAll(storeTableList);
       }
+      // remove SYSIBM.SYSDUMMY1 which can get created in hive meta-store
+      // implicitly due to some queries
+      if (hiveEntry.getKey().equalsIgnoreCase("SYSIBM")) {
+        hiveTableList.remove("SYSDUMMY1");
+      }
 
       if (!hiveTableList.isEmpty()) {
         SanityManager.DEBUG_PRINT("info",
