@@ -152,11 +152,6 @@ public class DistributedSQLTestBase extends DistributedTestBase {
   public static final char fileSeparator = System.getProperty("file.separator")
       .charAt(0);
 
-  /** this indicates whether beforeClass has been executed for current class */
-  protected static boolean beforeClassDone;
-  /** this stores the last test method in the current class for afterClass */
-  protected static String lastTest;
-
   private static transient DistributedSQLTestBase testInstance = null;
   
   private volatile boolean configureDefaultOffHeap = false;
