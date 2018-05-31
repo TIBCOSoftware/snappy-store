@@ -85,8 +85,11 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   private volatile Set<PersistentMemberID> offlineMembersWaitingFor;
   protected final Object lock;
   private static PersistenceAdvisorObserver observer = null;
-  
-  public static final boolean TRACE = Boolean.getBoolean("gemfire.TRACE_PERSISTENCE_ADVISOR");
+
+  private boolean DISALLOW_CLUSTER_RESTART_CHECK = Boolean.getBoolean(
+      "gemfire.DISALLOW_CLUSTER_RESTART_CHECK");
+
+  public static final boolean TRACE = true;//Boolean.getBoolean("gemfire.TRACE_PERSISTENCE_ADVISOR");
   
   public PersistenceAdvisorImpl(CacheDistributionAdvisor advisor, DistributedLockService dl, PersistentMemberView storage, String regionPath, DiskRegionStats diskStats, PersistentMemberManager memberManager) {
     this.advisor = advisor;
@@ -710,10 +713,10 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   }
   
   protected void trace(String string) {
-    if(logger.fineEnabled()) { 
-      logger.fine("PersistenceAdvisor " + shortDiskStoreId() + " - " + regionPath + " - " + string, new Throwable("SKSK TRACE FINE"));
+    if (logger.fineEnabled()) {
+      logger.fine("PersistenceAdvisor " + shortDiskStoreId() + " - " + regionPath + " - " + string/*, new Throwable("SKSK TRACE FINE")*/);
     } else if(TRACE) {
-      logger.info(LocalizedStrings.DEBUG, "PersistenceAdvisor " + shortDiskStoreId() + " - " + regionPath + " - " + string, new Throwable("SKSK TRACE"));
+      logger.info(LocalizedStrings.DEBUG, "PersistenceAdvisor " + shortDiskStoreId() + " - " + regionPath + " - " + string/*, new Throwable("SKSK TRACE")*/);
     }
   }
 
@@ -863,11 +866,13 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
                 }
               }
               return advice;
-            } else {
-              logger.info(LocalizedStrings.DEBUG, "The SKSK advisee are " + advisor.getAdvisee());
-
-              if (advisor.getAdvisee() instanceof DistributedRegion &&
-                  ((DistributedRegion)advisor.getAdvisee()).getRegion().getFullPath().contains("GFXD_PdxTypes")) {
+            }
+            else {
+              // check the system properties.
+              trace("Disalow culster restart " + DISALLOW_CLUSTER_RESTART_CHECK);
+              if (!DISALLOW_CLUSTER_RESTART_CHECK && advisor.getAdvisee() instanceof DistributedRegion &&
+                  ((DistributedRegion)advisor.getAdvisee()).getRegion().
+                      getFullPath().contains("GFXD_PdxTypes")) {
 
                 // if anyone of them is a server then check if they have completed their DDLReplay
                 // if all are Locators, then
@@ -892,17 +897,13 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
                 boolean continueWhileLoop = false;
                 if (allUninitialized) {
                   for (InternalDistributedMember m : onlineLocators) {
-                    logger.info(LocalizedStrings.DEBUG, "The peers are and vmkind is:  " + m.getVmKind() + " the m is " + m.toString());
                     if (m.getVmKind() == DistributionManager.LOCATOR_DM_TYPE) {
                       // send message and check if we have atleast one server with DDLReplay
                       // which was earlier in locator's view
                       // TODO: we can also get the list of disk-stores to come up
-                      logger.info(LocalizedStrings.DEBUG, "Checking with the locator " + m);
-
                       Set<PersistentMemberID> idsToWaitFor =
                           checkWithLocatorIfIamFirst(Collections.singleton(m));
 
-                      logger.info(LocalizedStrings.DEBUG, "Checking with the locator , if I am first server " + idsToWaitFor);
                       if (idsToWaitFor != null && !idsToWaitFor.isEmpty()) {
                         // then wait till new server comesup and check again.
                         throw new InternalGemFireError("None of the previous persistent node is up.");
@@ -919,7 +920,9 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
                 } else {
                   return advice;
                 }
-                if (continueWhileLoop) continue;
+                /*if (continueWhileLoop) continue;*/
+              } else {
+                return advice;
               }
 
             }

@@ -260,7 +260,7 @@ public final class PartitionedRegionHelper {
       factory.setScope(Scope.DISTRIBUTED_ACK);
       factory.setDataPolicy(DataPolicy.REPLICATE);
       factory.addCacheListener(new FixedPartitionAttributesListener());
-      if (Boolean.getBoolean("gemfire.PRDebug")) {
+      if (true || Boolean.getBoolean("gemfire.PRDebug")) {
         factory.addCacheListener( new CacheListenerAdapter() {
           @Override
           public void afterCreate(EntryEvent event)
