@@ -66,10 +66,6 @@ public class StartupSequenceQueryMesasge extends
     int oldLevel =         // Set thread local flag to allow entrance through initialization Latch
         LocalRegion.setThreadInitLevelRequirement(LocalRegion.ANY_INIT);
 
-    log.info(LocalizedStrings.DEBUG, "SKSK Processing StartupSequenceQueryMesasge ");
-    PersistentMemberState state = null;
-    PersistentMemberID myId = null;
-    PersistentMemberID myInitializingId = null;
     Set<DiskStoreID> diskStoreId = new HashSet<>();
     Set<PersistentMemberID> offlineMembers = null;
     //HashSet<PersistentMemberID> onlineMembers = null;
@@ -88,26 +84,12 @@ public class StartupSequenceQueryMesasge extends
         // find out a member whose DDLReplay is completed.
         Map<InternalDistributedMember, PersistentMemberID> onlineMembers = view.getOnlineMembers();
 
-        /*Stream<InternalDistributedMember> onlineMembers = view.
-            getOnlineMembers().entrySet().stream().map(map -> map.getKey()).
-            filter(key -> key.getVmKind() == DistributionManager.NORMAL_DM_TYPE);
-
-        // If there are online members then wait
-        // else return saying no online members.
-        if (onlineMembers.count() == 0) {
-
-        } else {
-          // wait on initialization
-          cache.wait
-        }*/
         boolean isInitialized = false;
         // Check how many online members
         for (InternalDistributedMember m : onlineMembers.keySet()) {
           if ((m.getVmKind() == DistributionManager.NORMAL_DM_TYPE) && cache.isSnappyDataStore(m)) {
             isInitialized = !cache.isUnInitializedMember(m);
           }
-          dm.getLoggerI18n().info(LocalizedStrings.DEBUG, "Member: " + m + " isSnappyDataStore " + cache.isSnappyDataStore(m));
-          //dm.getLoggerI18n().info(LocalizedStrings.DEBUG, "PersistentMemberID: " + id);
           if (isInitialized)
             break;
         }
@@ -116,37 +98,13 @@ public class StartupSequenceQueryMesasge extends
           // check which are offline members
           offlineMembers = view.getOfflineMembers();
           offlineMembers.forEach(pId -> {
-            dm.getLoggerI18n().info(LocalizedStrings.DEBUG, "Offline PersistentID: " + pId);
             diskStoreId.add(pId.diskStoreId);
           });
-
-          //view.getRevokedMembers();
         }
       } else if (region == null) {
-
         dm.getLoggerI18n().info(LocalizedStrings.DEBUG, "This shouldn't have happened. ");
-
-        /*Bucket proxy = PartitionedRegionHelper.getProxyBucketRegion
-            (GemFireCacheImpl.getInstance(), this.regionPath, false);
-        if (proxy != null) {
-          persistenceAdvisor = proxy.getPersistenceAdvisor();
-        }*/
       }
-
-      /*if (persistenceAdvisor != null) {
-        if (id != null) {
-          state = persistenceAdvisor.getPersistedStateOfMember(id);
-        }
-        if (initializingId != null && state == null) {
-          state = persistenceAdvisor.getPersistedStateOfMember(initializingId);
-        }
-
-        myId = persistenceAdvisor.getPersistentID();
-        myInitializingId = persistenceAdvisor.getInitializingID();
-        onlineMembers = persistenceAdvisor.getPersistedOnlineOrEqualMembers();
-        diskStoreId = persistenceAdvisor.getDiskStoreID();
-        */
-        successfulReply = true;
+      successfulReply = true;
 
     } catch (RegionDestroyedException e) {
       log.fine("<RegionDestroyed> " + this);
@@ -223,16 +181,12 @@ public class StartupSequenceQueryMesasge extends
     public void process(DistributionMessage msg) {
       if (msg instanceof StartupSequenceQueryMesasge.StartupSequenceQueryReplyMesasge) {
         StartupSequenceQueryMesasge.StartupSequenceQueryReplyMesasge reply = (StartupSequenceQueryMesasge.StartupSequenceQueryReplyMesasge)msg;
-        GemFireCacheImpl.getInstance().getLoggerI18n().info(LocalizedStrings.DEBUG, "The persistentMembers in reply are " +
-            ": " + reply.persistentMemberIDS);
 
         if (reply.diskStoreId != null)
           results.add(reply.diskStoreId);
         if (reply.persistentMemberIDS != null)
           offlinePersistentMember.addAll(reply.persistentMemberIDS);
       }
-      GemFireCacheImpl.getInstance().getLoggerI18n().info(LocalizedStrings.DEBUG, "The offlinePersistentMembers are " +
-          ": " + offlinePersistentMember);
       super.process(msg);
     }
   }

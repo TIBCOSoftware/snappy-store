@@ -591,6 +591,7 @@ public class DistributedSQLTestBase extends DistributedTestBase {
    */
   protected void setOtherCommonProperties(Properties props, int mcastPort,
       String serverGroups) {
+    System.setProperty("gemfire.DISALLOW_CLUSTER_RESTART_CHECK", "true");
   }
 
   public static DistributedMember _startNewLocator(String className,
