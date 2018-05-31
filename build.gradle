@@ -500,9 +500,12 @@ subprojects {
         environment 'GEMFIREXD'                           : productDir.getAbsolutePath(),
                     'JUNIT_JAR'                           : sourceSets.test.output.classesDir
 
-        int numTestClasses = test.getCandidateClassFiles().getFiles().size()
+        int numTestClasses = 0
         def testCount = new java.util.concurrent.atomic.AtomicInteger(0)
 
+        doFirst {
+          numTestClasses = test.getCandidateClassFiles().getFiles().size()
+        }
         beforeSuite { desc ->
           if (desc.className != null) {
             def count = testCount.incrementAndGet()

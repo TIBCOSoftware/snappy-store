@@ -20,7 +20,9 @@ import java.io.Closeable;
 import java.nio.ByteBuffer;
 
 import com.gemstone.gemfire.internal.shared.unsafe.FreeMemory;
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import org.apache.spark.unsafe.Platform;
+import org.apache.spark.unsafe.memory.MemoryAllocator;
 
 /**
  * Allocate, release and expand ByteBuffers (in-place if possible).
@@ -30,13 +32,23 @@ public abstract class BufferAllocator implements Closeable {
   public static final String STORE_DATA_FRAME_OUTPUT =
       "STORE_DATA_FRAME_OUTPUT";
 
-  /** special owner indicating execution pool memory */
+  /**
+   * Special owner indicating execution pool memory.
+   */
   public static final String EXECUTION = "EXECUTION";
 
   /**
    * Allocate a new ByteBuffer of given size.
    */
   public abstract ByteBuffer allocate(int size, String owner);
+
+  /**
+   * Allocate using the default allocator and fallback to base JDK one in case
+   * allocation fails due to some reason (e.g. system stop).
+   */
+  public ByteBuffer allocateWithFallback(int size, String owner) {
+    return allocate(size, owner);
+  }
 
   /**
    * Allocate a new ByteBuffer of given size for storage in a Region.
@@ -117,7 +129,39 @@ public abstract class BufferAllocator implements Closeable {
    * For direct ByteBuffers the release method is preferred to eagerly release
    * the memory instead of depending on heap GC which can be delayed.
    */
-  public abstract void release(ByteBuffer buffer);
+  public final void release(ByteBuffer buffer) {
+    releaseBuffer(buffer);
+  }
+
+  /**
+   * For direct ByteBuffers the release method is preferred to eagerly release
+   * the memory instead of depending on heap GC which can be delayed.
+   */
+  public static boolean releaseBuffer(ByteBuffer buffer) {
+    final boolean hasArray = buffer.hasArray();
+    if (MemoryAllocator.MEMORY_DEBUG_FILL_ENABLED) {
+      Object baseObject;
+      long baseOffset;
+      if (hasArray) {
+        baseObject = buffer.array();
+        baseOffset = Platform.BYTE_ARRAY_OFFSET + buffer.arrayOffset();
+      } else {
+        baseObject = null;
+        baseOffset = UnsafeHolder.getDirectBufferAddress(buffer);
+      }
+      Platform.setMemory(baseObject, baseOffset, buffer.capacity(),
+          MemoryAllocator.MEMORY_DEBUG_FILL_FREED_VALUE);
+    }
+    // Actual release should depend on buffer type and not allocator type.
+    // Reserved off-heap space will be decremented by FreeMemory implementation.
+    if (hasArray) {
+      buffer.rewind().limit(0);
+      return false;
+    } else {
+      UnsafeHolder.releaseDirectBuffer(buffer);
+      return true;
+    }
+  }
 
   /**
    * Indicates if this allocator will produce direct ByteBuffers.

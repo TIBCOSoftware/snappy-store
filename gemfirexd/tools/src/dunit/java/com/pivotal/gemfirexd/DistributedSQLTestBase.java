@@ -33,7 +33,13 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 
 import com.gemstone.gemfire.LogWriter;
-import com.gemstone.gemfire.cache.*;
+import com.gemstone.gemfire.cache.Cache;
+import com.gemstone.gemfire.cache.CacheException;
+import com.gemstone.gemfire.cache.CacheListener;
+import com.gemstone.gemfire.cache.DiskAccessException;
+import com.gemstone.gemfire.cache.PartitionAttributesFactory;
+import com.gemstone.gemfire.cache.Region;
+import com.gemstone.gemfire.cache.RegionAttributes;
 import com.gemstone.gemfire.cache.asyncqueue.AsyncEventQueue;
 import com.gemstone.gemfire.cache.hdfs.internal.HDFSStoreImpl;
 import com.gemstone.gemfire.cache.wan.GatewayReceiver;
@@ -48,7 +54,6 @@ import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionAttributesImpl;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentHashSet;
 import com.pivotal.gemfirexd.NetworkInterface.ConnectionListener;
-import com.pivotal.gemfirexd.ddl.IndexPersistenceDUnit;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverAdapter;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
@@ -151,11 +156,6 @@ public class DistributedSQLTestBase extends DistributedTestBase {
 
   public static final char fileSeparator = System.getProperty("file.separator")
       .charAt(0);
-
-  /** this indicates whether beforeClass has been executed for current class */
-  protected static boolean beforeClassDone;
-  /** this stores the last test method in the current class for afterClass */
-  protected static String lastTest;
 
   private static transient DistributedSQLTestBase testInstance = null;
   
@@ -347,7 +347,54 @@ public class DistributedSQLTestBase extends DistributedTestBase {
   @Override
   public void setUp() throws Exception {
     baseSetUp();
-    IndexPersistenceDUnit.deleteAllOplogFiles();
+    deleteAllOplogFiles();
+  }
+
+  public static void deleteAllOplogFiles() throws IOException {
+    try {
+      File currDir = new File(".");
+      File[] files = currDir.listFiles();
+      getGlobalLogger().info("current dir is: " + currDir.getCanonicalPath());
+
+      if (files != null) {
+        for (File f : files) {
+          if (f.getAbsolutePath().contains("BACKUPGFXD-DEFAULT-DISKSTORE")) {
+            getGlobalLogger().info("deleting file: " + f + " from dir: " + currDir);
+            f.delete();
+          }
+          if (f.isDirectory()) {
+            File newDir = new File(f.getCanonicalPath());
+            File[] newFiles = newDir.listFiles();
+            for (File nf : newFiles) {
+              if (nf.getAbsolutePath().contains("BACKUPGFXD-DEFAULT-DISKSTORE")) {
+                getGlobalLogger().info(
+                    "deleting file: " + nf + " from dir: " + newDir);
+                nf.delete();
+              }
+            }
+          }
+        }
+        for (File f : files) {
+          if (f.getAbsolutePath().contains("GFXD-DD-DISKSTORE")) {
+            getGlobalLogger().info("deleting file: " + f + " from dir: " + currDir);
+            f.delete();
+          }
+          if (f.isDirectory()) {
+            File newDir = new File(f.getCanonicalPath());
+            File[] newFiles = newDir.listFiles();
+            for (File nf : newFiles) {
+              if (nf.getAbsolutePath().contains("GFXD-DD-DISKSTORE")) {
+                getGlobalLogger().info(
+                    "deleting file: " + nf + " from dir: " + newDir);
+                nf.delete();
+              }
+            }
+          }
+        }
+      }
+    } catch (IOException e) {
+      // ignore ...
+    }
   }
 
   protected void reduceLogLevelForTest(String logLevel) {

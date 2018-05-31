@@ -196,7 +196,7 @@ public class BugsTest extends JdbcTestBase {
       rs = st.executeQuery("select st, cty, client_id from ODS.POSTAL_ADDRESS "
           + "where ST='ST" + (i + 20) + "' AND CLIENT_ID=" + (i + 20));
       if (i >= 0 && i < 150) {
-        assertTrue(rs.next());
+        assertTrue("failed to find result for " + i, rs.next());
         assertEquals("ST" + (i + 20), rs.getString(1));
         if (i < 100) {
           assertEquals("CTY" + (i + 20), rs.getString(2));

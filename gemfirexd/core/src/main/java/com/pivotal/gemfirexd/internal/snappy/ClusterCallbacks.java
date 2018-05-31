@@ -56,4 +56,6 @@ public interface ClusterCallbacks {
   void publishColumnTableStats();
 
   String getClusterType();
+
+  void setLeadClassLoader();
 }

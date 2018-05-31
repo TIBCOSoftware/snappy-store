@@ -56,7 +56,7 @@ public abstract class AbstractOplogDiskRegionEntry
   protected abstract void setDiskId(RegionEntry oldRe);
 
   @Override
-  protected final void initDiskIdForOffHeap(RegionEntryContext context,
+  protected final void initDiskIdForDiskBuffer(RegionEntryContext context,
       Object value) {
     // copy self to value if required
     if (value instanceof SerializedDiskBuffer) {
@@ -64,10 +64,11 @@ public abstract class AbstractOplogDiskRegionEntry
     }
   }
 
-  public final void setDiskIdForRegion(RegionEntry oldRe) {
+  public final void setDiskIdForRegion(RegionEntryContext context,
+      RegionEntry oldRe) {
     setDiskId(oldRe);
-    if (GemFireCacheImpl.hasNewOffHeap()) {
-      initDiskIdForOffHeap(null, getValueField());
+    if (!isOffHeap()) {
+      initDiskIdForDiskBuffer(context, getValueField());
     }
   }
 

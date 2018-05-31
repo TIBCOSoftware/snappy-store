@@ -83,6 +83,19 @@ public class DirectBufferAllocator extends BufferAllocator {
   }
 
   @Override
+  public ByteBuffer allocateWithFallback(int size, String owner) {
+    try {
+      return allocateForStorage(size);
+    } catch (RuntimeException re) {
+      if (instance() != globalInstance) {
+        return globalInstance.allocateForStorage(size);
+      } else {
+        throw re;
+      }
+    }
+  }
+
+  @Override
   public ByteBuffer allocateForStorage(int size) {
     ByteBuffer buffer = ByteBuffer.allocateDirect(size);
     if (MemoryAllocator.MEMORY_DEBUG_FILL_ENABLED) {
@@ -150,16 +163,6 @@ public class DirectBufferAllocator extends BufferAllocator {
     } else {
       return super.transfer(buffer, owner);
     }
-  }
-
-  @Override
-  public void release(ByteBuffer buffer) {
-    if (MemoryAllocator.MEMORY_DEBUG_FILL_ENABLED) {
-      buffer.rewind();
-      fill(buffer, MemoryAllocator.MEMORY_DEBUG_FILL_FREED_VALUE);
-    }
-    // reserved bytes will be decremented via FreeMemory implementations
-    UnsafeHolder.releaseDirectBuffer(buffer);
   }
 
   @Override

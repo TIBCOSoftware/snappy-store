@@ -638,7 +638,7 @@ Guide.
             </msg>
             <msg>
                 <name>0A000.S.19</name>
-                <text>Only TYPE_FORWARD_ONLY resultsets supported in this version of GemFireXD.</text>
+                <text>Only TYPE_FORWARD_ONLY resultsets supported for this query.</text>
             </msg>
             <msg>
             	<name>0A000.S.20</name>

@@ -83,14 +83,22 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     super(name);
   }
 
+  // static lists to transfer clientVMs/serverVMs between tests since each test
+  // creates a new test object
   private static List<VM> globalClientVMs;
   private static List<VM> globalServerVMs;
 
   @Override
   public void beforeClass() throws Exception {
+    globalClientVMs = null;
+    globalServerVMs = null;
     super.beforeClass();
     super.baseShutDownAll();
+    deleteAllOplogFiles();
+    getLogWriter().info(getClass() + ".beforeClass: starting 1+3 VMs");
     startVMs(1, 3);
+    getLogWriter().info(getClass() + ".beforeClass: started 1+3 VMs: " +
+        clientVMs + " ; " + serverVMs);
   }
 
   @Override
@@ -109,6 +117,8 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     setupConnection(userName);
     invokeInEveryVM(TransactionDUnit.class, "setupConnection",
         new Object[]{userName});
+    getLogWriter().info(getClass() + "." + getTestName() + ".setUp VMs: " +
+        clientVMs + " ; " + serverVMs);
   }
 
   public static void setupConnection(String userName) throws SQLException {
@@ -130,6 +140,8 @@ public class TransactionDUnit extends DistributedSQLTestBase {
 
   @Override
   public void afterClass() throws Exception {
+    globalClientVMs = null;
+    globalServerVMs = null;
     super.baseShutDownAll();
     super.afterClass();
   }

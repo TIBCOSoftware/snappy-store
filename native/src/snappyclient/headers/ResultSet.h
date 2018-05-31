@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -511,6 +511,11 @@ namespace client {
         return *this;
       }
 
+      int32_t position() {
+        return m_currentRow != NULL ? static_cast<int32_t>(
+            (thrift::Row*)m_currentRow - &m_rows->rows[0]) : -1;
+      }
+
       TRow* getInsertRow() {
         checkUpdatable("getInsertRow");
 
@@ -534,27 +539,21 @@ namespace client {
         // TODO: handle SCROLL_SENSITIVE for insertRow/updateRow/deleteRow
         // but first need to add that to server-side
 
-        const int32_t position = static_cast<int32_t>(
-            (thrift::Row*)m_currentRow - &m_rows->rows[0]);
-        m_resultSet->insertRow(m_insertRow, position);
+        m_resultSet->insertRow(m_insertRow, position());
         m_operation = thrift::CursorUpdateOperation::INSERT_OP;
       }
 
       void updateRow() {
         checkUpdatable("updateRow");
 
-        const int32_t position = static_cast<int32_t>(
-            (thrift::Row*)m_currentRow - &m_rows->rows[0]);
-        m_resultSet->updateRow(m_currentRow, position);
+        m_resultSet->updateRow(m_currentRow, position());
         m_operation = thrift::CursorUpdateOperation::UPDATE_OP;
       }
 
       void deleteRow() {
         checkUpdatable("deleteRow");
 
-        const int32_t position = static_cast<int32_t>(
-            (thrift::Row*)m_currentRow - &m_rows->rows[0]);
-        m_resultSet->deleteRow(m_currentRow, position);
+        m_resultSet->deleteRow(m_currentRow, position());
         m_operation = thrift::CursorUpdateOperation::DELETE_OP;
       }
 

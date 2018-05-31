@@ -297,19 +297,9 @@ public abstract class UnsafeHolder {
   }
 
   /**
-   * Release explicitly if the passed ByteBuffer is a direct one. Avoid using
+   * Release explicitly assuming passed ByteBuffer is a direct one. Avoid using
    * this directly rather use BufferAllocator.allocate/release where possible.
    */
-  public static void releaseIfDirectBuffer(ByteBuffer buffer) {
-    if (buffer != null) {
-      if (buffer.isDirect()) {
-        releaseDirectBuffer(buffer);
-      } else {
-        buffer.rewind().limit(0);
-      }
-    }
-  }
-
   public static void releaseDirectBuffer(ByteBuffer buffer) {
     sun.misc.Cleaner cleaner = ((sun.nio.ch.DirectBuffer)buffer).cleaner();
     if (cleaner != null) {

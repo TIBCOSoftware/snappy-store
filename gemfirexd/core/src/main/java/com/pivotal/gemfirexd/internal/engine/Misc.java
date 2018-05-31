@@ -660,33 +660,6 @@ public abstract class Misc {
     return sw.toString();
   }
 
-  public static String serializeXMLAsString(Element el, String xsltFileName) {
-    try {
-      TransformerFactory tFactory = TransformerFactory.newInstance();
-      StringWriter sw = new StringWriter();
-      DOMSource source = new DOMSource(el);
-
-      ClassLoader cl = InternalDistributedSystem.class.getClassLoader();
-      // fix for bug 33274 - null classloader in Sybase app server
-      if (cl == null) {
-        cl = ClassLoader.getSystemClassLoader();
-      }
-      InputStream is = cl
-          .getResourceAsStream("com/pivotal/gemfirexd/internal/impl/tools/planexporter/resources/"
-              + xsltFileName);
-
-      Transformer transformer = tFactory
-          .newTransformer(new javax.xml.transform.stream.StreamSource(is));
-      StreamResult result = new StreamResult(sw);
-
-      transformer.transform(source, result);
-      return sw.toString();
-    } catch (TransformerException te) {
-      throw GemFireXDRuntimeException.newRuntimeException(
-          "serializeXMLAsString: unexpected exception", te);
-    }
-  }
-
   public static char[] serializeXMLAsCharArr(List<Element> el,
       String xsltFileName) {
     try {
@@ -723,8 +696,9 @@ public abstract class Misc {
         transformer.transform(source, result);
       }
 
+      is.close();
       return cw.toCharArray();
-    } catch (TransformerException te) {
+    } catch (Exception te) {
       throw GemFireXDRuntimeException.newRuntimeException(
           "serializeXMLAsCharArr: unexpected exception", te);
     }

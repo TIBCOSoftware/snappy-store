@@ -1808,7 +1808,7 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 			typeParams[i] = null;
 		
 		for (int i = 0; i<types.length; i++){
-			if ("TABLE".equals(types[i]) || "ROW TABLE".equals(types[i]))
+			if ("TABLE".equals(types[i]) || "ROW TABLE".equals(types[i]) || "ROW_TABLE".equals(types[i]))
 				typeParams[0] = "T";
 			else if ("VIEW".equals(types[i])) {
 				typeParams[1] = "V";
@@ -1823,13 +1823,13 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 			else if ("COLUMN TABLE".equals(types[i]) ||
 			    "COLUMN_TABLE".equals(types[i])) // In case we treat it like SYSTEM_TABLE
 			    typeParams[4] = "COLUMN";
-			else if ("EXTERNAL TABLE".equals(types[i]))
+			else if ("EXTERNAL TABLE".equals(types[i]) || "EXTERNAL_TABLE".equals(types[i]) )
 			    typeParams[5] = "EXTERNAL";
-			else if ("STREAM TABLE".equals(types[i]))
+			else if ("STREAM TABLE".equals(types[i]) || "STREAM_TABLE".equals(types[i]) )
 			    typeParams[6] = "STREAM";
-			else if ("SAMPLE TABLE".equals(types[i]))
+			else if ("SAMPLE TABLE".equals(types[i]) || "SAMPLE_TABLE".equals(types[i]))
 			    typeParams[7] = "SAMPLE";
-			else if ("TOPK TABLE".equals(types[i]))
+			else if ("TOPK TABLE".equals(types[i]) || "TOPK_TABLE".equals(types[i]))
 			    typeParams[8] = "TOPK";
 			//GemStone changes END
 			// If user puts in other types we simply ignore.
@@ -1848,6 +1848,13 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 		s.setString(numberOfTableTypesInDerby + 5, swapNull(tableNamePattern));
 		return s.executeQuery();
 	}
+
+
+	public ResultSet getTableSchemas() throws SQLException {
+		PreparedStatement s = getPreparedQuery("getTableSchemas");
+		return s.executeQuery();
+	}
+
 
     /**
      * Get the schema names available in this database.  The results

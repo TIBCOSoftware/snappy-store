@@ -184,6 +184,7 @@ public class GemFireVersion {
     else {
       try {
         props.load(is);
+        is.close();
       } 
       catch (Exception ex) {
         props.put(ERROR_PROPERTY, LocalizedStrings.GemFireVersion_COULD_NOT_READ_PROPERTIES_FROM_RESOURCE_COM_GEMSTONE_GEMFIRE_INTERNAL_0_BECAUSE_1.toLocalizedString(new Object[] {resourceName, ex}));
