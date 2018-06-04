@@ -21,14 +21,18 @@ import java.util.Locale;
 
 public class SnappyUtils {
 
-  public enum StorageSizeUnits {
-    B, KB, MB, GB, TB, PB, ANY
-  }
+  public static String STORAGE_SIZE_UNIT_ANY = "ANY";
+  public static String STORAGE_SIZE_UNIT_B   = "B";
+  public static String STORAGE_SIZE_UNIT_KB  = "KB";
+  public static String STORAGE_SIZE_UNIT_MB  = "MB";
+  public static String STORAGE_SIZE_UNIT_GB  = "GB";
+  public static String STORAGE_SIZE_UNIT_TB  = "TB";
+  public static String STORAGE_SIZE_UNIT_PB  = "PB";
 
   /**
    * Convert a quantity in bytes to a human-readable string in specified units.
    */
-  public static double bytesToGivenUnits(long size, StorageSizeUnits expectedUnit) {
+  public static double bytesToGivenUnits(long size, String expectedUnit) {
     long PB = 1L << 50;
     long TB = 1L << 40;
     long GB = 1L << 30;
@@ -37,15 +41,15 @@ public class SnappyUtils {
 
     double value;
 
-    if (expectedUnit == StorageSizeUnits.PB) {
+    if (expectedUnit.equalsIgnoreCase(SnappyUtils.STORAGE_SIZE_UNIT_PB)) {
       value = (double) size / PB;
-    } else if (expectedUnit == StorageSizeUnits.TB) {
+    } else if (expectedUnit.equalsIgnoreCase(SnappyUtils.STORAGE_SIZE_UNIT_TB)) {
       value = (double) size / TB;
-    } else if (expectedUnit == StorageSizeUnits.GB) {
+    } else if (expectedUnit.equalsIgnoreCase(SnappyUtils.STORAGE_SIZE_UNIT_GB)) {
       value = (double) size / GB;
-    } else if (expectedUnit == StorageSizeUnits.MB) {
+    } else if (expectedUnit.equalsIgnoreCase(SnappyUtils.STORAGE_SIZE_UNIT_MB)) {
       value = (double) size / MB;
-    } else if (expectedUnit == StorageSizeUnits.KB) {
+    } else if (expectedUnit.equalsIgnoreCase(SnappyUtils.STORAGE_SIZE_UNIT_KB)) {
       value = (double) size / KB;
     } else {
       value = (double) size;
@@ -58,7 +62,7 @@ public class SnappyUtils {
    * Convert a quantity in bytes to a human-readable string such as "4.0 MB".
    * Optionally, units for conversion can be specified.
    */
-  public static String bytesToString(long size,  StorageSizeUnits expectedUnit ) {
+  public static String bytesToString(long size,  String expectedUnit ) {
     long PB = 1L << 50;
     long TB = 1L << 40;
     long GB = 1L << 30;
@@ -68,29 +72,29 @@ public class SnappyUtils {
     double value;
     String unit;
 
-    if (expectedUnit == StorageSizeUnits.PB ||
-        (size >= 2*PB && expectedUnit == StorageSizeUnits.ANY)) {
+    if (expectedUnit.equalsIgnoreCase(SnappyUtils.STORAGE_SIZE_UNIT_PB) ||
+        (size >= 2*PB && expectedUnit.equalsIgnoreCase(SnappyUtils.STORAGE_SIZE_UNIT_ANY))) {
       value = (double) size / PB;
-      unit = "PB";
-    } else if (expectedUnit == StorageSizeUnits.TB ||
-        (size >= 2*TB && expectedUnit == StorageSizeUnits.ANY)) {
+      unit = SnappyUtils.STORAGE_SIZE_UNIT_PB;
+    } else if (expectedUnit.equalsIgnoreCase(SnappyUtils.STORAGE_SIZE_UNIT_TB) ||
+        (size >= 2*TB && expectedUnit.equalsIgnoreCase(SnappyUtils.STORAGE_SIZE_UNIT_ANY))) {
       value = (double) size / TB;
-      unit = "TB";
-    } else if (expectedUnit == StorageSizeUnits.GB ||
-        (size >= 2*GB && expectedUnit == StorageSizeUnits.ANY)) {
+      unit = SnappyUtils.STORAGE_SIZE_UNIT_TB;
+    } else if (expectedUnit.equalsIgnoreCase(SnappyUtils.STORAGE_SIZE_UNIT_GB) ||
+        (size >= 2*GB && expectedUnit.equalsIgnoreCase(SnappyUtils.STORAGE_SIZE_UNIT_ANY))) {
       value = (double) size / GB;
-      unit = "GB";
-    } else if (expectedUnit == StorageSizeUnits.MB ||
-        (size >= 2*MB && expectedUnit == StorageSizeUnits.ANY)) {
+      unit = SnappyUtils.STORAGE_SIZE_UNIT_GB;
+    } else if (expectedUnit.equalsIgnoreCase(SnappyUtils.STORAGE_SIZE_UNIT_MB) ||
+        (size >= 2*MB && expectedUnit.equalsIgnoreCase(SnappyUtils.STORAGE_SIZE_UNIT_ANY))) {
       value = (double) size / MB;
-      unit = "MB";
-    } else if (expectedUnit == StorageSizeUnits.KB ||
-        (size >= 2*KB && expectedUnit == StorageSizeUnits.ANY)) {
+      unit = SnappyUtils.STORAGE_SIZE_UNIT_MB;
+    } else if (expectedUnit.equalsIgnoreCase(SnappyUtils.STORAGE_SIZE_UNIT_KB) ||
+        (size >= 2*KB && expectedUnit.equalsIgnoreCase(SnappyUtils.STORAGE_SIZE_UNIT_ANY))) {
       value = (double) size / KB;
-      unit = "KB";
+      unit = SnappyUtils.STORAGE_SIZE_UNIT_KB;
     } else {
       value = (double) size;
-      unit = "B";
+      unit = SnappyUtils.STORAGE_SIZE_UNIT_B;
     }
 
     return String.format(Locale.getDefault(), "%.1f %s", value, unit);

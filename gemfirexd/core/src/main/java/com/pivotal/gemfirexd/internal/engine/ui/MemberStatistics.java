@@ -152,7 +152,7 @@ public class MemberStatistics {
     this.jvmFreeMemory = (long)memberStatsMap.get("freeMemory");
 
     this.jvmUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(jvmUsedMemory, SnappyUtils.StorageSizeUnits.GB));
+        SnappyUtils.bytesToGivenUnits(jvmUsedMemory, SnappyUtils.STORAGE_SIZE_UNIT_GB));
 
     long heapStoragePoolUsed = (long)memberStatsMap.get("heapStoragePoolUsed");
     long heapStoragePoolSize = (long)memberStatsMap.get("heapStoragePoolSize");
@@ -169,13 +169,13 @@ public class MemberStatistics {
     this.heapMemorySize = heapMemorySize;
 
     this.heapStoragePoolUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(heapStoragePoolUsed, SnappyUtils.StorageSizeUnits.GB));
+        SnappyUtils.bytesToGivenUnits(heapStoragePoolUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
 
     this.heapExecutionPoolUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(heapExecutionPoolUsed, SnappyUtils.StorageSizeUnits.GB));
+        SnappyUtils.bytesToGivenUnits(heapExecutionPoolUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
 
     this.heapUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(heapMemoryUsed, SnappyUtils.StorageSizeUnits.GB));
+        SnappyUtils.bytesToGivenUnits(heapMemoryUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
 
     long offHeapStoragePoolUsed = (long)memberStatsMap.get("offHeapStoragePoolUsed");
     long offHeapStoragePoolSize = (long)memberStatsMap.get("offHeapStoragePoolSize");
@@ -192,23 +192,23 @@ public class MemberStatistics {
     this.offHeapMemorySize = offHeapMemorySize;
 
     this.offHeapStoragePoolUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(offHeapStoragePoolUsed, SnappyUtils.StorageSizeUnits.GB));
+        SnappyUtils.bytesToGivenUnits(offHeapStoragePoolUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
 
     this.offHeapExecutionPoolUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(offHeapExecutionPoolUsed, SnappyUtils.StorageSizeUnits.GB));
+        SnappyUtils.bytesToGivenUnits(offHeapExecutionPoolUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
 
     this.offHeapUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(offHeapMemoryUsed, SnappyUtils.StorageSizeUnits.GB));
+        SnappyUtils.bytesToGivenUnits(offHeapMemoryUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
 
     long aggrMemoryUsed = heapMemoryUsed + offHeapMemoryUsed;
     // long aggrMemorySize = heapMemorySize + offHeapMemorySize;
 
     this.aggrMemoryUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(aggrMemoryUsed, SnappyUtils.StorageSizeUnits.GB));
+        SnappyUtils.bytesToGivenUnits(aggrMemoryUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
 
     this.diskStoreDiskSpace = (long)memberStatsMap.get("diskStoreDiskSpace");
     this.diskStoreDiskSpaceTrend.add(
-        SnappyUtils.bytesToGivenUnits(this.diskStoreDiskSpace, SnappyUtils.StorageSizeUnits.GB));
+        SnappyUtils.bytesToGivenUnits(this.diskStoreDiskSpace, SnappyUtils.STORAGE_SIZE_UNIT_GB));
 
   }
 

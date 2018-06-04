@@ -146,31 +146,31 @@ public class ClusterStatistics {
     this.cpuUsageTrend.add(totalCpuActive / cpuCount);
 
     this.jvmUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(sumJvmUsedMemory, SnappyUtils.StorageSizeUnits.GB));
+        SnappyUtils.bytesToGivenUnits(sumJvmUsedMemory, SnappyUtils.STORAGE_SIZE_UNIT_GB));
 
     this.heapStoragePoolUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(sumHeapStoragePoolUsed, SnappyUtils.StorageSizeUnits.GB));
+        SnappyUtils.bytesToGivenUnits(sumHeapStoragePoolUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
 
     this.heapExecutionPoolUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(sumHeapExecutionPoolUsed, SnappyUtils.StorageSizeUnits.GB));
+        SnappyUtils.bytesToGivenUnits(sumHeapExecutionPoolUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
 
     this.heapUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(sumHeapMemoryUsed, SnappyUtils.StorageSizeUnits.GB));
+        SnappyUtils.bytesToGivenUnits(sumHeapMemoryUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
 
     this.offHeapStoragePoolUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(sumOffHeapStoragePoolUsed, SnappyUtils.StorageSizeUnits.GB));
+        SnappyUtils.bytesToGivenUnits(sumOffHeapStoragePoolUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
 
     this.offHeapExecutionPoolUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(sumOffHeapExecutionPoolUsed, SnappyUtils.StorageSizeUnits.GB));
+        SnappyUtils.bytesToGivenUnits(sumOffHeapExecutionPoolUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
 
     this.offHeapUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(sumOffHeapMemoryUsed, SnappyUtils.StorageSizeUnits.GB));
+        SnappyUtils.bytesToGivenUnits(sumOffHeapMemoryUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
 
     this.aggrMemoryUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(sumAggrMemoryUsed, SnappyUtils.StorageSizeUnits.GB));
+        SnappyUtils.bytesToGivenUnits(sumAggrMemoryUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
 
     this.diskStoreDiskSpaceTrend.add(
-        SnappyUtils.bytesToGivenUnits(sumDiskStoreDiskSpace, SnappyUtils.StorageSizeUnits.GB));
+        SnappyUtils.bytesToGivenUnits(sumDiskStoreDiskSpace, SnappyUtils.STORAGE_SIZE_UNIT_GB));
 
   }
 
