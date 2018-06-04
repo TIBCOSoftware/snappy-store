@@ -127,7 +127,9 @@ public class MemberStatistics {
 
     long lastUpdatedOn = (long)memberStatsMap.get("lastUpdatedOn");
     this.lastUpdatedOn = lastUpdatedOn;
-    this.timeLine.add(lastUpdatedOn);
+    synchronized (this.timeLine) {
+      this.timeLine.add(lastUpdatedOn);
+    }
 
     this.host = (String)memberStatsMap.get("host");
     this.userDir = (String)memberStatsMap.get("userDir");
@@ -142,7 +144,9 @@ public class MemberStatistics {
 
     int cpuActive = (int)memberStatsMap.get("cpuActive");
     this.cpuActive = cpuActive;
-    this.cpuUsageTrend.add(cpuActive);
+    synchronized (this.cpuUsageTrend) {
+      this.cpuUsageTrend.add(cpuActive);
+    }
 
     long jvmTotalMemory = (long)memberStatsMap.get("totalMemory");
     long jvmUsedMemory = (long)memberStatsMap.get("usedMemory");
@@ -151,8 +155,10 @@ public class MemberStatistics {
     this.jvmMaxMemory = (long)memberStatsMap.get("maxMemory");
     this.jvmFreeMemory = (long)memberStatsMap.get("freeMemory");
 
-    this.jvmUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(jvmUsedMemory, SnappyUtils.STORAGE_SIZE_UNIT_GB));
+    synchronized (this.jvmUsageTrend) {
+      this.jvmUsageTrend.add(
+          SnappyUtils.bytesToGivenUnits(jvmUsedMemory, SnappyUtils.STORAGE_SIZE_UNIT_GB));
+    }
 
     long heapStoragePoolUsed = (long)memberStatsMap.get("heapStoragePoolUsed");
     long heapStoragePoolSize = (long)memberStatsMap.get("heapStoragePoolSize");
@@ -168,14 +174,20 @@ public class MemberStatistics {
     this.heapMemoryUsed = heapMemoryUsed;
     this.heapMemorySize = heapMemorySize;
 
-    this.heapStoragePoolUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(heapStoragePoolUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
+    synchronized (this.heapStoragePoolUsageTrend) {
+      this.heapStoragePoolUsageTrend.add(
+          SnappyUtils.bytesToGivenUnits(heapStoragePoolUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
+    }
 
-    this.heapExecutionPoolUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(heapExecutionPoolUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
+    synchronized (this.heapExecutionPoolUsageTrend) {
+      this.heapExecutionPoolUsageTrend.add(
+          SnappyUtils.bytesToGivenUnits(heapExecutionPoolUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
+    }
 
-    this.heapUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(heapMemoryUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
+    synchronized (this.heapUsageTrend) {
+      this.heapUsageTrend.add(
+          SnappyUtils.bytesToGivenUnits(heapMemoryUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
+    }
 
     long offHeapStoragePoolUsed = (long)memberStatsMap.get("offHeapStoragePoolUsed");
     long offHeapStoragePoolSize = (long)memberStatsMap.get("offHeapStoragePoolSize");
@@ -191,24 +203,34 @@ public class MemberStatistics {
     this.offHeapMemoryUsed = offHeapMemoryUsed;
     this.offHeapMemorySize = offHeapMemorySize;
 
-    this.offHeapStoragePoolUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(offHeapStoragePoolUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
+    synchronized (this.offHeapStoragePoolUsageTrend) {
+      this.offHeapStoragePoolUsageTrend.add(
+          SnappyUtils.bytesToGivenUnits(offHeapStoragePoolUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
+    }
 
-    this.offHeapExecutionPoolUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(offHeapExecutionPoolUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
+    synchronized (this.offHeapExecutionPoolUsageTrend) {
+      this.offHeapExecutionPoolUsageTrend.add(
+          SnappyUtils.bytesToGivenUnits(offHeapExecutionPoolUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
+    }
 
-    this.offHeapUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(offHeapMemoryUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
+    synchronized (this.offHeapUsageTrend) {
+      this.offHeapUsageTrend.add(
+          SnappyUtils.bytesToGivenUnits(offHeapMemoryUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
+    }
 
     long aggrMemoryUsed = heapMemoryUsed + offHeapMemoryUsed;
     // long aggrMemorySize = heapMemorySize + offHeapMemorySize;
 
-    this.aggrMemoryUsageTrend.add(
-        SnappyUtils.bytesToGivenUnits(aggrMemoryUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
+    synchronized (this.aggrMemoryUsageTrend) {
+      this.aggrMemoryUsageTrend.add(
+          SnappyUtils.bytesToGivenUnits(aggrMemoryUsed, SnappyUtils.STORAGE_SIZE_UNIT_GB));
+    }
 
     this.diskStoreDiskSpace = (long)memberStatsMap.get("diskStoreDiskSpace");
-    this.diskStoreDiskSpaceTrend.add(
-        SnappyUtils.bytesToGivenUnits(this.diskStoreDiskSpace, SnappyUtils.STORAGE_SIZE_UNIT_GB));
+    synchronized (this.diskStoreDiskSpaceTrend) {
+      this.diskStoreDiskSpaceTrend.add(
+          SnappyUtils.bytesToGivenUnits(this.diskStoreDiskSpace, SnappyUtils.STORAGE_SIZE_UNIT_GB));
+    }
 
   }
 
@@ -480,59 +502,37 @@ public class MemberStatistics {
     Object[] returnArray = null;
     switch (trendType) {
       case TREND_TIMELINE:
-        synchronized (this.timeLine) {
           returnArray = this.timeLine.toArray();
-        }
         break;
       case TREND_CPU_USAGE:
-        synchronized (this.cpuUsageTrend) {
           returnArray = this.cpuUsageTrend.toArray();
-        }
         break;
       case TREND_JVM_HEAP_USAGE:
-        synchronized (this.jvmUsageTrend) {
           returnArray = this.jvmUsageTrend.toArray();
-        }
         break;
       case TREND_HEAP_USAGE:
-        synchronized (this.heapUsageTrend) {
           returnArray = this.heapUsageTrend.toArray();
-        }
         break;
       case TREND_HEAP_STORAGE_USAGE:
-        synchronized (this.heapStoragePoolUsageTrend) {
           returnArray = this.heapStoragePoolUsageTrend.toArray();
-        }
         break;
       case TREND_HEAP_EXECUTION_USAGE:
-        synchronized (this.heapExecutionPoolUsageTrend) {
           returnArray = this.heapExecutionPoolUsageTrend.toArray();
-        }
         break;
       case TREND_OFFHEAP_USAGE:
-        synchronized (this.offHeapUsageTrend) {
           returnArray = this.offHeapUsageTrend.toArray();
-        }
         break;
       case TREND_OFFHEAP_STORAGE_USAGE:
-        synchronized (this.offHeapStoragePoolUsageTrend) {
           returnArray = this.offHeapStoragePoolUsageTrend.toArray();
-        }
         break;
       case TREND_OFFHEAP_EXECUTION_USAGE:
-        synchronized (this.offHeapExecutionPoolUsageTrend) {
           returnArray = this.offHeapExecutionPoolUsageTrend.toArray();
-        }
         break;
       case TREND_AGGR_MEMORY_USAGE:
-        synchronized (this.aggrMemoryUsageTrend) {
           returnArray = this.aggrMemoryUsageTrend.toArray();
-        }
         break;
       case TREND_DISKSTORE_DISKSPACE_USAGE:
-        synchronized (this.diskStoreDiskSpaceTrend) {
           returnArray = this.diskStoreDiskSpaceTrend.toArray();
-        }
         break;
     }
 
