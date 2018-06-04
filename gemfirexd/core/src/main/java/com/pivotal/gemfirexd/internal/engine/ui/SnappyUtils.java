@@ -22,13 +22,14 @@ import java.util.Locale;
 public class SnappyUtils {
 
   public enum StorageSizeUnits {
-    B, KB, MB, GB, TB, ANY
+    B, KB, MB, GB, TB, PB, ANY
   }
 
   /**
    * Convert a quantity in bytes to a human-readable string in specified units.
    */
   public static double bytesToGivenUnits(long size, StorageSizeUnits expectedUnit) {
+    long PB = 1L << 50;
     long TB = 1L << 40;
     long GB = 1L << 30;
     long MB = 1L << 20;
@@ -36,18 +37,17 @@ public class SnappyUtils {
 
     double value;
 
-    if (expectedUnit == StorageSizeUnits.TB) {
+    if (expectedUnit == StorageSizeUnits.PB) {
+      value = (double) size / PB;
+    } else if (expectedUnit == StorageSizeUnits.TB) {
       value = (double) size / TB;
     } else if (expectedUnit == StorageSizeUnits.GB) {
       value = (double) size / GB;
     } else if (expectedUnit == StorageSizeUnits.MB) {
-      System.out.println("in MB");
       value = (double) size / MB;
     } else if (expectedUnit == StorageSizeUnits.KB) {
-      System.out.println("in KB");
       value = (double) size / KB;
     } else {
-      System.out.println("in ELSE");
       value = (double) size;
     }
 
@@ -59,6 +59,7 @@ public class SnappyUtils {
    * Optionally, units for conversion can be specified.
    */
   public static String bytesToString(long size,  StorageSizeUnits expectedUnit ) {
+    long PB = 1L << 50;
     long TB = 1L << 40;
     long GB = 1L << 30;
     long MB = 1L << 20;
@@ -67,7 +68,11 @@ public class SnappyUtils {
     double value;
     String unit;
 
-    if (expectedUnit == StorageSizeUnits.TB ||
+    if (expectedUnit == StorageSizeUnits.PB ||
+        (size >= 2*PB && expectedUnit == StorageSizeUnits.ANY)) {
+      value = (double) size / PB;
+      unit = "PB";
+    } else if (expectedUnit == StorageSizeUnits.TB ||
         (size >= 2*TB && expectedUnit == StorageSizeUnits.ANY)) {
       value = (double) size / TB;
       unit = "TB";
@@ -88,7 +93,7 @@ public class SnappyUtils {
       unit = "B";
     }
 
-    return String.format(Locale.US, "%.1f %s", value, unit);
+    return String.format(Locale.getDefault(), "%.1f %s", value, unit);
   }
 
 }
