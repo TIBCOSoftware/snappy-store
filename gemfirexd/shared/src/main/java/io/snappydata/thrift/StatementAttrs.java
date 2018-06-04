@@ -286,7 +286,7 @@ public class StatementAttrs implements org.apache.thrift.TBase<StatementAttrs, S
   }
 
   public StatementAttrs() {
-    this.batchSize = 262144;
+    this.batchSize = 8192;
 
   }
 
@@ -364,7 +364,7 @@ public class StatementAttrs implements org.apache.thrift.TBase<StatementAttrs, S
     this.requireAutoIncCols = false;
     this.autoIncColumns = null;
     this.autoIncColumnNames = null;
-    this.batchSize = 262144;
+    this.batchSize = 8192;
 
     setFetchReverseIsSet(false);
     this.fetchReverse = false;

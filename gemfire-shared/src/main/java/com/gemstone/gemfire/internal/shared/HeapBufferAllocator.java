@@ -126,14 +126,6 @@ public final class HeapBufferAllocator extends BufferAllocator {
   }
 
   @Override
-  public void release(ByteBuffer buffer) {
-    if (MemoryAllocator.MEMORY_DEBUG_FILL_ENABLED) {
-      buffer.rewind();
-      fill(buffer, MemoryAllocator.MEMORY_DEBUG_FILL_FREED_VALUE);
-    }
-  }
-
-  @Override
   public boolean isDirect() {
     return false;
   }
