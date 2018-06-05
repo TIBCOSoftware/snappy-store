@@ -869,7 +869,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
             }
             else {
               // check the system properties.
-              trace("Disalow culster restart " + DISALLOW_CLUSTER_RESTART_CHECK);
+              trace("Disalow cluster restart " + DISALLOW_CLUSTER_RESTART_CHECK);
               if (!DISALLOW_CLUSTER_RESTART_CHECK && advisor.getAdvisee() instanceof DistributedRegion &&
                   ((DistributedRegion)advisor.getAdvisee()).getRegion().
                       getFullPath().contains("GFXD_PdxTypes")) {

@@ -2686,6 +2686,7 @@ public void testPartitionHDFSStore() throws Exception {
   public void deleteMiniClusterDir() throws Exception {
     File clusterDir = new File("hdfs-test-cluster");
     delete(clusterDir);
+    System.clearProperty("test.build.data");
   }
   
   public void testStats() throws Exception {

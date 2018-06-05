@@ -2288,6 +2288,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       selfMemId = null;
       GlobalIndexCacheWithLocalRegion.setCacheToNull();
       this.externalCatalog = null;
+      System.clearProperty(FORCE_LOCATOR_DM_TYPE);
     }
   }
 

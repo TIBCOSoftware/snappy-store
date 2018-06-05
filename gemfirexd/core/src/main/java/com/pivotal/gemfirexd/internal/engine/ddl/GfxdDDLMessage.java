@@ -253,8 +253,9 @@ public final class GfxdDDLMessage extends GfxdMessage implements
     }
 */
     // skip DDL execution on locators/agents/admins (not for HiveMetaTable
+    String schemaForTable = ddl.getSchemaForTableNoThrow();
     if (!GemFireXDUtils.getMyVMKind().isAccessorOrStore() &&
-        !Misc.isSnappyHiveMetaTable(ddl.getCurrentSchema())) {
+        !(schemaForTable != null && Misc.isSnappyHiveMetaTable(schemaForTable))) {
       if (GemFireXDUtils.TraceDDLQueue) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLQUEUE, toString()
             + " Skipping execution of DDL on " + GemFireXDUtils.getMyVMKind()
