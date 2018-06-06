@@ -74,29 +74,14 @@ public class ClusterStatistics {
   public void updateClusterStatistics(Map<String, MemberStatistics> memberStatsMap) {
 
     long lastMemberUpdatedTime = 0;
-
-    long sumJvmMaxMemory = 0;
-    long sumJvmFreeMemory = 0;
-    long sumJvmTotalMemory = 0;
     long sumJvmUsedMemory = 0;
-
     long sumHeapStoragePoolUsed = 0;
-    long sumHeapStoragePoolSize = 0;
     long sumHeapExecutionPoolUsed = 0;
-    long sumHeapExecutionPoolSize = 0;
     long sumHeapMemoryUsed = 0;
-    long sumHeapMemorySize = 0;
-
     long sumOffHeapStoragePoolUsed = 0;
-    long sumOffHeapStoragePoolSize = 0;
     long sumOffHeapExecutionPoolUsed = 0;
-    long sumOffHeapExecutionPoolSize = 0;
     long sumOffHeapMemoryUsed = 0;
-    long sumOffHeapMemorySize = 0;
-
     long sumAggrMemoryUsed = 0;
-    long sumAggrMemorySize = 0;
-
     long sumDiskStoreDiskSpace = 0;
 
     Set<String> hostsList = new HashSet<>();
@@ -115,31 +100,17 @@ public class ClusterStatistics {
         cpuCount++;
       }
 
-      sumJvmMaxMemory += ms.getJvmMaxMemory();
-      sumJvmFreeMemory += ms.getJvmFreeMemory();
-      sumJvmTotalMemory += ms.getJvmTotalMemory();
       sumJvmUsedMemory += ms.getJvmUsedMemory();
-
       sumHeapStoragePoolUsed += ms.getHeapStoragePoolUsed();
-      sumHeapStoragePoolSize += ms.getHeapStoragePoolSize();
       sumHeapExecutionPoolUsed += ms.getHeapExecutionPoolUsed();
-      sumHeapExecutionPoolSize += ms.getHeapExecutionPoolSize();
       sumHeapMemoryUsed += ms.getHeapMemoryUsed();
-      sumHeapMemorySize += ms.getHeapMemorySize();
-
       sumOffHeapStoragePoolUsed += ms.getOffHeapStoragePoolUsed();
-      sumOffHeapStoragePoolSize += ms.getOffHeapStoragePoolSize();
       sumOffHeapExecutionPoolUsed += ms.getOffHeapExecutionPoolUsed();
-      sumOffHeapExecutionPoolSize += ms.getOffHeapExecutionPoolSize();
       sumOffHeapMemoryUsed += ms.getOffHeapMemoryUsed();
-      sumOffHeapMemorySize += ms.getOffHeapMemorySize();
-
       sumDiskStoreDiskSpace += ms.getDiskStoreDiskSpace();
-
     }
 
     sumAggrMemoryUsed = sumHeapMemoryUsed + sumOffHeapMemoryUsed;
-    sumAggrMemorySize = sumHeapMemorySize + sumOffHeapMemorySize;
 
     synchronized (this.timeLine) {
       this.timeLine.add(lastMemberUpdatedTime);
