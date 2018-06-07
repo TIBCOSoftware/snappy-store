@@ -7117,6 +7117,7 @@ public class PartitionedRegion extends LocalRegion implements
     private final boolean includeValues;
 
     private Iterator<RegionEntry> bucketEntriesIter;
+    private DiskRegionIterator diskRegionIterator;
     private boolean remoteEntryFetched;
 
     private Object currentEntry;
@@ -7271,6 +7272,10 @@ public class PartitionedRegion extends LocalRegion implements
       if (bucketEntriesIter instanceof CloseableIterator<?>) {
         ((CloseableIterator<?>)bucketEntriesIter).close();
       }
+      if (diskRegionIterator != bucketEntriesIter &&
+          diskRegionIterator instanceof CloseableIterator<?>) {
+        ((CloseableIterator<?>)diskRegionIterator).close();
+      }
     }
 
     // For snapshot isolation, Get the iterator on the txRegionstate maps entry iterator too
@@ -7321,9 +7326,9 @@ public class PartitionedRegion extends LocalRegion implements
           for (;;) {
             if (!this.bucketIdsIter.hasNext()) {
               // check for an open disk iterator
-              if (bucketEntriesIter instanceof DiskRegionIterator) {
-                if (((DiskRegionIterator)bucketEntriesIter)
-                    .initDiskIterator()) {
+              if (this.diskRegionIterator != null) {
+                if (this.diskRegionIterator.initDiskIterator()) {
+                  this.bucketEntriesIter = this.diskRegionIterator;
                   this.diskIteratorInitialized = true;
                   break;
                 }
@@ -7331,6 +7336,7 @@ public class PartitionedRegion extends LocalRegion implements
               // no more buckets need to be visited
               close();
               this.bucketEntriesIter = null;
+              this.diskRegionIterator = null;
               this.moveNext = false;
               return false;
             }
@@ -7380,7 +7386,7 @@ public class PartitionedRegion extends LocalRegion implements
     private void setLocalBucketEntryIterator(BucketRegion br, int bucketId) {
       this.currentBucketId = bucketId;
       this.currentBucketRegion = br;
-      if (this.bucketEntriesIter == null) {
+      if (this.diskRegionIterator == null) {
         if (this.includeValues) {
           this.bucketEntriesIter = this.createIterator.apply(br, numEntries);
         } else {
@@ -7394,20 +7400,14 @@ public class PartitionedRegion extends LocalRegion implements
             ((HDFSIterator)bucketEntriesIter).setTXState(this.txState);
           }
         }
-      } else if (this.bucketEntriesIter instanceof DiskRegionIterator) {
+        if (this.bucketEntriesIter instanceof DiskRegionIterator) {
+          this.diskRegionIterator = (DiskRegionIterator)this.bucketEntriesIter;
+        }
+      } else {
         // wait for region recovery etc.
         br.getDiskIteratorCacheSize(1.0);
-        ((DiskRegionIterator)this.bucketEntriesIter).setRegion(br);
-      } else {
-        this.bucketEntriesIter = br.entries.regionEntries().iterator();
-        if (this.bucketEntriesIter instanceof HDFSIterator) {
-          if (this.forUpdate) {
-            ((HDFSIterator)bucketEntriesIter).setForUpdate();
-          }
-          if (this.txState != null) {
-            ((HDFSIterator)bucketEntriesIter).setTXState(this.txState);
-          }
-        }
+        this.diskRegionIterator.setRegion(br);
+        this.bucketEntriesIter = this.diskRegionIterator;
       }
     }
 

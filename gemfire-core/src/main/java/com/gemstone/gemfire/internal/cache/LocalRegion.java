@@ -3150,14 +3150,15 @@ public class LocalRegion extends AbstractRegion
    */
   public int getRegionSize() {
     int result;
+    final boolean includeHDFSResults = includeHDFSResults();
     final ReentrantLock regionLock = getSizeGuard();
     if (regionLock == null) {
-      result = getRegionSizeNoLock();
+      result = getRegionSizeNoLock(includeHDFSResults);
     }
     else {
       regionLock.lock();
       try {
-        result = getRegionSizeNoLock();
+        result = getRegionSizeNoLock(includeHDFSResults);
       } finally {
         regionLock.unlock();
       }
@@ -3165,10 +3166,9 @@ public class LocalRegion extends AbstractRegion
     // decrement the uncommitted entries that have been created for TX locking
     // in case of HDFS, size operation the iterator doesn't consider
     // tx created entries anyway
-    if(!includeHDFSResults()) {
+    if (!includeHDFSResults) {
       result -= this.txLockCreateCount.get();
     }
-    
     if (result > 0) {
       return result;
     }
@@ -3177,14 +3177,14 @@ public class LocalRegion extends AbstractRegion
     }
   }
 
-  private int getRegionSizeNoLock() {
+  private int getRegionSizeNoLock(boolean includeHDFSResults) {
     int result = getRegionMap().size();
     // if this is a client with no tombstones then we subtract the number
     // of entries being affected by register-interest refresh
     if (this.imageState.isClient() && !this.concurrencyChecksEnabled) {
       result -= this.imageState.getDestroyedEntriesCount();
     }
-    if (includeHDFSResults()) {
+    if (includeHDFSResults) {
       return result;
     }
     else {

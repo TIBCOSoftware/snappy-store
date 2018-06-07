@@ -309,8 +309,7 @@ public class PartitionedRegionBridge<K, V>  extends RegionMBeanBridge<K, V> {
       Set<BucketRegion> localPrimaryBucketRegions = parRegion.getDataStore().getAllLocalPrimaryBucketRegions();
       if (localPrimaryBucketRegions != null && localPrimaryBucketRegions.size() > 0) {
         for (BucketRegion br : localPrimaryBucketRegions) {
-          numLocalEntries += br.getRegionMap().sizeInVM() - br.getTombstoneCount();
-
+          numLocalEntries += br.getRegionSize();
         }
       }
       return numLocalEntries;
@@ -341,6 +340,8 @@ public class PartitionedRegionBridge<K, V>  extends RegionMBeanBridge<K, V> {
   
   @Override
   public long getRowsInReservoir() {
+    // TODO: this needs to be made efficient and PRStats must be updated during
+    // creation rather than iterate in every call
     if (parRegion.isDataStore()) {
       int numLocalEntries = 0;
       Iterator itr = parRegion.localEntriesIterator((InternalRegionFunctionContext)null, true, false, true, null);

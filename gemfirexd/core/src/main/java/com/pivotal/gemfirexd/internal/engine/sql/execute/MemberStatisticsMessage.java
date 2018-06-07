@@ -22,6 +22,7 @@ import com.gemstone.gemfire.internal.PureJavaMode;
 import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.SolarisSystemStats;
 import com.gemstone.gemfire.internal.WindowsSystemStats;
+import com.gemstone.gemfire.internal.cache.DirectoryHolder;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
@@ -52,6 +53,7 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
   private Statistics systemStat;
   private java.util.UUID diskStoreUUID;
   private String diskStoreName;
+  private long diskStoreDiskSpace;
 
 
   /** Default constructor for deserialization. Not to be invoked directly. */
@@ -84,6 +86,9 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     Map<String, Long> memoryStats = this.getMemoryStatistics();
 
     Map memberStatsMap = new HashMap();
+
+    memberStatsMap.put("lastUpdatedOn", System.currentTimeMillis());
+
     memberStatsMap.put("id", memberId);
     memberStatsMap.put("name", ids.getName());
     memberStatsMap.put("host", getHost());
@@ -105,6 +110,7 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     memberStatsMap.put("clients", clientConnectionStats.getConnectionsOpen());
     memberStatsMap.put("diskStoreUUID", getDiskStoreUUID());
     memberStatsMap.put("diskStoreName", getDiskStoreName());
+    memberStatsMap.put("diskStoreDiskSpace", getDiskStoreDiskSpace());
 
     memberStatsMap.put("heapStoragePoolUsed", memoryStats.get("heapStoragePoolUsed"));
     memberStatsMap.put("heapStoragePoolSize", memoryStats.get("heapStoragePoolSize"));
@@ -161,13 +167,21 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
 
       // update disk store details
       Collection<DiskStoreImpl> diskStores = this.gemFireCache.listDiskStores();
-
+      long totalDiskSpace = 0;
       for (DiskStoreImpl dsi : diskStores) {
         if (dsi.getName().equals(GemFireCacheImpl.getDefaultDiskStoreName())) {
           this.diskStoreUUID = dsi.getDiskStoreUUID();
           this.diskStoreName = dsi.getName();
         }
+
+        long diskSpace = 0;
+        DirectoryHolder[] directoryHolders = dsi.getDirectoryHolders();
+        for (DirectoryHolder dr : directoryHolders) {
+          diskSpace += dr.getDiskDirectoryStats().getDiskSpace();
+        }
+        totalDiskSpace += diskSpace;
       }
+      this.diskStoreDiskSpace = totalDiskSpace;
     }
   }
 
@@ -274,6 +288,10 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
 
   public String getDiskStoreName() {
     return this.diskStoreName;
+  }
+
+  public long getDiskStoreDiskSpace() {
+    return diskStoreDiskSpace;
   }
 
   public long getStoragePoolUsed() {

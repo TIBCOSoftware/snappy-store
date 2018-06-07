@@ -372,10 +372,7 @@ abstract class AbstractRegionMap implements RegionMap {
       // [sumedh] indexes are now updated by IndexRecoveryTask
     }
     // iterate over the entries of the map to call setOwner for each RegionEntry
-    final Iterator<RegionEntry> iter = r.getRegionMap().regionEntries()
-        .iterator();
-    while (iter.hasNext()) {
-      final RegionEntry re = iter.next();
+    for (RegionEntry re : r.getRegionMap().regionEntries()) {
       re.setOwner(r, currentOwner);
     }
   }
