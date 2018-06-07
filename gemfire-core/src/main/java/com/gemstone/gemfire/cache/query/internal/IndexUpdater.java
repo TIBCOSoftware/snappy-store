@@ -109,8 +109,6 @@ public interface IndexUpdater {
    *          the {@link DiskRegion} to be used; normally is the DiskRegion of
    *          the "region", but can be different in case a bucket region has not
    *          yet been created in a failed GII when destroying the disk data
-   * @param lockForGII
-   *          if true then also acquire the {@link #lockForGII()}
    * @param holdIndexLock
    *          if true then hold on to the index level lock acquired by
    *          {@link #lockForGII()} at the end of this method which will block
@@ -125,12 +123,12 @@ public interface IndexUpdater {
    *
    * @return returns whether write lock was acquired by clearIndex or not
    */
-  boolean clearIndexes(LocalRegion region, DiskRegion dr, boolean lockForGII,
+  boolean clearIndexes(LocalRegion region, DiskRegion dr,
       boolean holdIndexLock, Iterator<?> bucketEntriesIter, int bucketId);
 
   /**
    * should be invoked if "holdIndexLock" argument was true in
-   * {@link #clearIndexes(LocalRegion, DiskRegion, boolean, boolean, Iterator, int)}
+   * {@link #clearIndexes}
    */
   public void releaseIndexLock(LocalRegion region);
 

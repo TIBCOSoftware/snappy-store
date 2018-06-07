@@ -173,6 +173,7 @@ public class CachePerfStats implements HashingStats {
   protected static final int compressionSkippedBytesId;
   protected static final int compressionDecompressedReplacedId;
   protected static final int compressionDecompressedReplaceSkippedId;
+  protected static final int compressionCompressedReplacedId;
   protected static final int compressionCompressedReplaceSkippedId;
 
   protected static final int evictByCriteria_evictionsId;// total actual evictions (entries evicted)
@@ -302,6 +303,8 @@ public class CachePerfStats implements HashingStats {
         "replaced buffer after decompression.";
     final String compressionDecompressedReplaceSkippedDesc = "The total number times storage " +
         "skipped replacing buffer after decompression due to active usage.";
+    final String compressionCompressedReplacedDesc = "The total number times storage " +
+        "replaced buffer after compression.";
     final String compressionCompressedReplaceSkippedDesc = "The total number times storage " +
         "skipped replacing buffer after compression due to active usage.";
     final String evictByCriteria_evictionsDesc = "The total number of entries evicted";// total actual evictions (entries evicted)
@@ -451,6 +454,8 @@ public class CachePerfStats implements HashingStats {
             compressionDecompressedReplacedDesc, "operations"),
         f.createLongCounter("decompressedReplaceSkipped",
             compressionDecompressedReplaceSkippedDesc, "operations"),
+        f.createLongCounter("compressedReplaced",
+            compressionCompressedReplacedDesc, "operations"),
         f.createLongCounter("compressedReplaceSkipped",
             compressionCompressedReplaceSkippedDesc, "operations"),
 
@@ -597,6 +602,7 @@ public class CachePerfStats implements HashingStats {
     compressionSkippedBytesId = type.nameToId("compressSkippedBytes");
     compressionDecompressedReplacedId = type.nameToId("decompressedReplaced");
     compressionDecompressedReplaceSkippedId = type.nameToId("decompressedReplaceSkipped");
+    compressionCompressedReplacedId = type.nameToId("compressedReplaced");
     compressionCompressedReplaceSkippedId = type.nameToId("compressedReplaceSkipped");
 
     evictByCriteria_evictionsId = type.nameToId("evictByCriteria_evictions");
@@ -872,6 +878,10 @@ public class CachePerfStats implements HashingStats {
    public void incDecompressedReplaceSkipped() {
      stats.incLong(compressionDecompressedReplaceSkippedId, 1);
    }
+
+  public void incCompressedReplaced() {
+    stats.incLong(compressionCompressedReplacedId, 1);
+  }
 
    public void incCompressedReplaceSkipped() {
      stats.incLong(compressionCompressedReplaceSkippedId, 1);
