@@ -2,6 +2,7 @@ package com.pivotal.gemfirexd.recovery;
 
 import java.io.File;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Map;
@@ -83,8 +84,15 @@ public class PersistenceRecoveryOrderDUnit extends DistributedSQLTestBase {
 
     stopVMNum(-1);
     for (int i = 1; i < 9; i++) {
-      for (int j = 1; j < 100000; j++)
-        st1.execute("INSERT INTO T" + i + " values(" + 2 * j + "," + 3 * j + ")");
+      PreparedStatement pst1 = conn.prepareStatement(
+          "INSERT INTO T" + i + " values(?,?)");
+      for (int j = 1; j < 40000; j++) {
+        pst1.setInt(1, 2 * j);
+        pst1.setInt(2, 3 * j);
+        pst1.addBatch();
+      }
+      pst1.executeBatch();
+      pst1.close();
     }
 
     stopVMNum(-2);
@@ -121,7 +129,6 @@ public class PersistenceRecoveryOrderDUnit extends DistributedSQLTestBase {
     } catch (Exception e) {
 
     }
-    stopVMNums(-1,-2);
     //restartVMNums(-2);
 
     /*t = new Thread(new SerializableRunnable("Create persistent table ") {
@@ -146,6 +153,11 @@ public class PersistenceRecoveryOrderDUnit extends DistributedSQLTestBase {
       }
       assertEquals(2, count);
     }*/
+
+    for (int i = 8; i >= 1; i--) {
+      st1.execute("DROP TABLE T" + i);
+    }
+    stopVMNums(-1,-2);
   }
 
   public void testParallelInitializationColocatedTable2() throws Exception {
@@ -180,8 +192,15 @@ public class PersistenceRecoveryOrderDUnit extends DistributedSQLTestBase {
 
     stopVMNum(-1);
     for (int i = 1; i < 9; i++) {
-      for (int j = 1; j < 100000; j++)
-        st1.execute("INSERT INTO T" + i + " values(" + 2 * j + "," + 3 * j + ")");
+      PreparedStatement pst1 = conn.prepareStatement(
+          "INSERT INTO T" + i + " values(?,?)");
+      for (int j = 1; j < 40000; j++) {
+        pst1.setInt(1, 2 * j);
+        pst1.setInt(2, 3 * j);
+        pst1.addBatch();
+      }
+      pst1.executeBatch();
+      pst1.close();
     }
 
     stopVMNum(-2);
@@ -227,7 +246,11 @@ public class PersistenceRecoveryOrderDUnit extends DistributedSQLTestBase {
       while (rs.next()) {
         count++;
       }
-      assertEquals(100000, count);
+      assertEquals(40000, count);
+    }
+
+    for (int i = 8; i >= 1; i--) {
+      st1.execute("DROP TABLE T" + i);
     }
   }
 

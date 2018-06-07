@@ -136,8 +136,11 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   
   protected AbstractRegionEntry(RegionEntryContext context,
       @Retained(ABSTRACT_REGION_ENTRY_PREPARE_VALUE_FOR_CACHE) Object value) {
-    
-    setValue(context,this.prepareValueForCache(context, value, false, false),false);
+
+    value = prepareValueForCache(context, value, false, false);
+    // no stats if initialized with null or token value
+    setValue(value != null && !(value instanceof Token) ? context : null,
+        value,false);
 //    setLastModified(System.currentTimeMillis()); [bruce] this must be set later so we can use ==0 to know this is a new entry in checkForConflicts
   }
 
