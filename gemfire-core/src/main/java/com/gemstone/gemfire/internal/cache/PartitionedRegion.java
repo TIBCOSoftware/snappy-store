@@ -11923,8 +11923,7 @@ public class PartitionedRegion extends LocalRegion implements
           } catch (Exception e) {
             // log any other exception
             getLogWriterI18n().warning(LocalizedStrings.ONE_ARG,
-                "GemFireContainer#clear: exception "
-                    + "in bucket lock acquire", e);
+                "GemFireContainer#clear: exception in bucket lock acquire", e);
             done = false;
             getCancelCriterion().checkCancelInProgress(e);
             break;
