@@ -855,7 +855,7 @@ public final class TXRegionState extends ReentrantLock {
       unCommittedEntryReference = new ArrayDeque<>(4);
       committedEntryReference = new ArrayDeque<>(4);
     }
-    // add at front so will be rolled back in reverse from tail
+    // add at front so will be rolled back in reverse order (LIFO)
     unCommittedEntryReference.addFirst(newRe);
     committedEntryReference.addFirst(re);
   }
