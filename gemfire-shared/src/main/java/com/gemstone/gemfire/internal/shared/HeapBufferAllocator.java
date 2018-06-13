@@ -18,7 +18,6 @@ package com.gemstone.gemfire.internal.shared;
 
 import java.nio.ByteBuffer;
 
-import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
 import org.apache.spark.unsafe.Platform;
 import org.apache.spark.unsafe.memory.MemoryAllocator;
 
@@ -116,11 +115,7 @@ public final class HeapBufferAllocator extends BufferAllocator {
     } else {
       ByteBuffer newBuffer = super.transfer(buffer, owner);
       // release the incoming direct buffer eagerly
-      if (buffer.isDirect()) {
-        DirectBufferAllocator.instance().release(buffer);
-      } else {
-        release(buffer);
-      }
+      releaseBuffer(buffer);
       return newBuffer;
     }
   }

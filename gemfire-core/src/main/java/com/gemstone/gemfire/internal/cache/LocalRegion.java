@@ -2439,7 +2439,7 @@ public class LocalRegion extends AbstractRegion
    * this region as long as it does not overflow.
    * 
    * @throws IllegalStateException
-   *           thrown when UUIDs have been exhaused in the distributed system;
+   *           thrown when UUIDs have been exhausted in the distributed system;
    *           note that it is not necessary that all possible integer values
    *           would have been used by someone (e.g. a VM goes down without
    *           using its "block" of IDs)
@@ -9006,14 +9006,14 @@ public class LocalRegion extends AbstractRegion
     }
   }
 
-  protected boolean clearIndexes(IndexUpdater indexUpdater, boolean lockForGII,
+  protected boolean clearIndexes(IndexUpdater indexUpdater,
       boolean setIsDestroyed) {
     // by default need to clear indexes only if this is not the case of region
     // being destroyed (i.e. after GII failure) otherwise the region as well as
     // complete index is going to be blown away; bucket region will need to
     // override to clear in every case
     if (!setIsDestroyed) {
-      return indexUpdater.clearIndexes(this, getDiskRegion(), lockForGII,
+      return indexUpdater.clearIndexes(this, getDiskRegion(),
           true, null, KeyInfo.UNKNOWN_BUCKET);
     }
     return false;
@@ -9070,7 +9070,7 @@ public class LocalRegion extends AbstractRegion
     IndexUpdater indexUpdater = this.getIndexUpdater();
     if (indexUpdater != null) {
       if (forInitFailure || event.getDiskException() != null) {
-        indexGiiLockTaken = this.clearIndexes(indexUpdater, true, setIsDestroyed);
+        indexGiiLockTaken = this.clearIndexes(indexUpdater, setIsDestroyed);
       }
       else if (isExplicitRegionDestroy(event)) {
         // In OffHeap Gfxd race can happen between GII thread inserting an
@@ -9078,7 +9078,7 @@ public class LocalRegion extends AbstractRegion
         // the failed initialization bucket, in which case index may contain
         // entry which has been released by the resource manager thread.
         // The lock below should prevent that situation.
-        indexGiiLockTaken = this.clearIndexes(indexUpdater, true, setIsDestroyed);
+        indexGiiLockTaken = this.clearIndexes(indexUpdater, setIsDestroyed);
       }
     }
     // for the case of restarting GII, reset the profile exchanged flag
@@ -13568,6 +13568,12 @@ public class LocalRegion extends AbstractRegion
     }
 
     @Override
+    public void incCompressedReplaced() {
+      stats.incLong(compressionCompressedReplacedId, 1);
+      cachePerfStats.stats.incLong(compressionCompressedReplacedId, 1);
+    }
+
+    @Override
     public void incCompressedReplaceSkipped() {
       stats.incLong(compressionCompressedReplaceSkippedId, 1);
       cachePerfStats.stats.incLong(compressionCompressedReplaceSkippedId, 1);
@@ -14562,6 +14568,7 @@ public class LocalRegion extends AbstractRegion
 
   public static boolean isMetaTable(String fullpath) {
     return fullpath.startsWith(SystemProperties.SNAPPY_HIVE_METASTORE_PATH) ||
+        fullpath.startsWith("/SYS/") ||
         fullpath.startsWith(PersistentUUIDAdvisor.UUID_PERSIST_REGION_PATH) ||
         fullpath.startsWith(SystemProperties.DDL_STMTS_REGION_PATH) ||
         fullpath.startsWith(ManagementConstants.MONITORING_REGION_PATH);

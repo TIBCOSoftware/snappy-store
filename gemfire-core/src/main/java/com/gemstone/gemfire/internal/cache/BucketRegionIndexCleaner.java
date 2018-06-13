@@ -21,25 +21,21 @@ import java.util.List;
 import com.gemstone.gemfire.cache.query.internal.IndexUpdater;
 
 public class BucketRegionIndexCleaner {
-    private final boolean lockForGII ;
-    private final boolean holdIndexLock;
-    private final LocalRegion region;
-    
-    public BucketRegionIndexCleaner(boolean lockForGII, boolean holdIndexLock,
-        BucketRegion region) {
-      this.lockForGII = lockForGII;
-      this.holdIndexLock = holdIndexLock;      
-      this.region = region;
-     
-    }
+  private final boolean holdIndexLock;
+  private final LocalRegion region;
+
+  public BucketRegionIndexCleaner(boolean holdIndexLock, BucketRegion region) {
+    this.holdIndexLock = holdIndexLock;
+    this.region = region;
+  }
 
   public void clearEntries(List<RegionEntry> entries) {
     IndexUpdater indexUpdater = region.getIndexUpdater();
     if (indexUpdater == null) return;
     boolean indexGiiLockTaken = indexUpdater.clearIndexes(region, region.getDiskRegion(),
-        lockForGII, holdIndexLock, entries.iterator(), KeyInfo.UNKNOWN_BUCKET);
+        holdIndexLock, entries.iterator(), KeyInfo.UNKNOWN_BUCKET);
     if (indexGiiLockTaken && holdIndexLock) {
       indexUpdater.unlockForGII(true);
     }
-  }    
+  }
 }

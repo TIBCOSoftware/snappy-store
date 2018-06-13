@@ -56,13 +56,10 @@ public final class MsgChannelStreamer extends ChannelBufferUnsafeDataOutputStrea
    */
   private ConnectExceptions ce;
 
-  private static final Comparator<Connection> localPortCompare = (c1, c2) -> {
-    // ports cannot exceed Short.MAX so no problem of overflow with subtract
-    try {
-      return c1.getSocket().getLocalPort() - c2.getSocket().getLocalPort();
-    } catch (SocketException se) {
-      throw new RuntimeException(se);
-    }
+  private static final Comparator<Connection> idCompare = (c1, c2) -> {
+    final long id1 = c1.getUniqueId();
+    final long id2 = c2.getUniqueId();
+    return (id1 < id2) ? -1 : ((id1 == id2) ? 0 : 1);
   };
 
   private MsgChannelStreamer(ArrayList<Connection> connections,
@@ -73,14 +70,14 @@ public final class MsgChannelStreamer extends ChannelBufferUnsafeDataOutputStrea
         firstConn.owner.getConduit().tcpBufferSize);
     this.msg = msg;
     this.directReply = directReply;
-    this.connections = connections;
     final int numConnections = connections.size();
-    this.locks = new StoppableReentrantLock[numConnections];
     // keep the connections in order sorted by localPort for consistent locking
     // of shared connections
     if (numConnections > 1) {
-      connections.sort(localPortCompare);
+      connections.sort(idCompare);
     }
+    this.connections = connections;
+    this.locks = new StoppableReentrantLock[numConnections];
     this.stats = stats;
     this.remoteVersion = remoteVersion;
   }

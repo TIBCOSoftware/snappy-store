@@ -2711,7 +2711,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     // concurrent operations that are also updating these stats. For example,
     //a destroy could have already been applied to the map, and then updates
     //the stat after we reset it, making the state negative.
-    
+
     final PartitionedRegionDataStore prDs = this.partitionedRegion.getDataStore();
 //     this.debugMap.clear();
 //     this.createCount.set(0);
@@ -3000,9 +3000,9 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   }
 
   @Override
-  protected boolean clearIndexes(IndexUpdater indexUpdater, boolean lockForGII,
-      boolean setIsDestroyed) {
-      BucketRegionIndexCleaner cleaner = new BucketRegionIndexCleaner(lockForGII, !setIsDestroyed, this);
+  protected boolean clearIndexes(IndexUpdater indexUpdater, boolean setIsDestroyed) {
+      BucketRegionIndexCleaner cleaner = new BucketRegionIndexCleaner(
+          !setIsDestroyed, this);
       bucketRegionIndexCleaner.set(cleaner);
       return false;
   }
@@ -3095,7 +3095,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     }
   }
 
-  void updateBucketMemoryStats(final int memoryDelta) {
+  private void updateBucketMemoryStats(final int memoryDelta) {
     if (memoryDelta != 0) {
 
       final long bSize = bytesInMemory.compareAddAndGet(BUCKET_DESTROYED, memoryDelta);
