@@ -79,14 +79,20 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
       for (GemFireContainer container : containers) {
         if (container.isApplicationTable()) {
           LocalRegion r = container.getRegion();
+          String regionFullPath = r.getFullPath();
           if (managementService != null && r != null ) {
-            RegionMXBean bean = managementService.getLocalRegionMBean(r.getFullPath());
+            RegionMXBean bean = managementService.getLocalRegionMBean(regionFullPath);
             if (bean != null && !(r.getFullPath().startsWith(
                 "/" + Misc.SNAPPY_HIVE_METASTORE + '/'))) {
               SnappyRegionStats dataCollector = collectDataFromBean(r, bean);
               if (dataCollector.isColumnTable()) {
                 cachBatchStats.put(dataCollector.getTableName(), dataCollector);
               } else {
+                // Set as Column Table, if this table is corresponding row table of column store
+                String schema = regionFullPath.substring(1, regionFullPath.indexOf("/", 1));
+                boolean isColTable = Misc.getMemStore().getExternalCatalog()
+                    .isColumnTable(schema, r.getName(),true);
+                dataCollector.setColumnTable(isColTable);
                 otherStats.add(dataCollector);
               }
             }
@@ -153,8 +159,7 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
 
   private SnappyRegionStats collectDataFromBeanImpl(LocalRegion lr, RegionMXBean bean, boolean isReservoir) {
     String tableName = (Misc.getFullTableNameFromRegionPath(bean.getFullPath()));
-    SnappyRegionStats tableStats =
-        new SnappyRegionStats(tableName);
+    SnappyRegionStats tableStats = new SnappyRegionStats(tableName);
     boolean isColumnTable = bean.isColumnTable();
     tableStats.setColumnTable(isColumnTable);
     tableStats.setReplicatedTable(isReplicatedTable(lr.getDataPolicy()));
