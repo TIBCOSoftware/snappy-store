@@ -770,7 +770,7 @@ public class ObjectSizer {
             }
             if (isColumnTable) {
               int valueSize = ((Sizeable)value).getSizeInBytes();
-              columnRowCount += batchKey.getColumnBatchRowCount(prEntryIter,
+              columnRowCount += batchKey.getColumnBatchRowCount(prEntryIter.getHostedBucketRegion(),
                   re, numColumnsInColumnTable);
               valInMemoryCount++;
               valInMemorySize += valueSize;

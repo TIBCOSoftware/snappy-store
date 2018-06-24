@@ -208,6 +208,13 @@ public class SQLHelper {
     }
     
     if (exceptionList.size() == 0) {
+      if(SQLPrms.isSnappyMode() && se.getSQLState()==null) {
+        Log.getLogWriter().info("Exception from Snappy...", se);
+        while (se != null) {
+          se = se.getNextException();
+          Log.getLogWriter().info("Caused by: ", se);
+        }
+      }
       handleSQLException(se);
     } // this is GFE exception, which derby does not have. (possible that never runs on derby)
 

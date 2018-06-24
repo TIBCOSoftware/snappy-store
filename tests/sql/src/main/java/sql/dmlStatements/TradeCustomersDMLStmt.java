@@ -86,7 +86,7 @@ public class TradeCustomersDMLStmt extends AbstractDMLStmt {
     "select cid, since, cust_name from trade.customers where tid=? and cid >?" + queryLimitedNumberOfRows(),
     "select cid, since, addr, cust_name from trade.customers where (tid<? or cid <=?) and since >? and tid = ?" + queryLimitedNumberOfRows(),
     "select cid, addr, since, cust_name from trade.customers where (cid >? or since <?) and tid = ?" + queryLimitedNumberOfRows(),
-    "select max(rtrim(addr)) from trade.customers where addr < 'kj' and tid=? ",
+    "select max(rtrim(addr)) as addr from trade.customers where addr < 'kj' and tid=? ",
     "select cid, since, cust_name from trade.customers where tid =? and cust_name like ? " +
     "union " +
     "select cid, since, cust_name from trade.customers where tid =? and cust_name like ? "  
