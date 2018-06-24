@@ -89,7 +89,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   private boolean DISALLOW_CLUSTER_RESTART_CHECK = Boolean.getBoolean(
       "gemfire.DISALLOW_CLUSTER_RESTART_CHECK");
 
-  public static final boolean TRACE = true;//Boolean.getBoolean("gemfire.TRACE_PERSISTENCE_ADVISOR");
+  public static final boolean TRACE = Boolean.getBoolean("gemfire.TRACE_PERSISTENCE_ADVISOR");
   
   public PersistenceAdvisorImpl(CacheDistributionAdvisor advisor, DistributedLockService dl, PersistentMemberView storage, String regionPath, DiskRegionStats diskStats, PersistentMemberManager memberManager) {
     this.advisor = advisor;
@@ -190,7 +190,6 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   public PersistentStateQueryResults getMyStateOnMembers(
       Set<InternalDistributedMember> members) throws ReplyException {
 
-    logger.info(LocalizedStrings.DEBUG, "Sending the message PersistentStateQueryMessage to member " + members);
     PersistentStateQueryResults results = PersistentStateQueryMessage
     .send(members, advisor.getDistributionManager(), regionPath, storage
         .getMyPersistentID(), storage.getMyInitializingID());
@@ -308,7 +307,6 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
     }
 
     if(!didGII) {
-      trace("didGII : atomimcCreateion " + atomicCreation + " newID " + newId);
       setInitializing(newId);
     }
     
@@ -714,9 +712,9 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   
   protected void trace(String string) {
     if (logger.fineEnabled()) {
-      logger.fine("PersistenceAdvisor " + shortDiskStoreId() + " - " + regionPath + " - " + string/*, new Throwable("SKSK TRACE FINE")*/);
+      logger.fine("PersistenceAdvisor " + shortDiskStoreId() + " - " + regionPath + " - " + string);
     } else if(TRACE) {
-      logger.info(LocalizedStrings.DEBUG, "PersistenceAdvisor " + shortDiskStoreId() + " - " + regionPath + " - " + string/*, new Throwable("SKSK TRACE")*/);
+      logger.info(LocalizedStrings.DEBUG, "PersistenceAdvisor " + shortDiskStoreId() + " - " + regionPath + " - " + string);
     }
   }
 
@@ -892,7 +890,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
                         GemFireCacheImpl.getInstance().isSnappyDataStore(m)).
                     allMatch(m -> GemFireCacheImpl.getInstance().isUnInitializedMember(m));
 
-                logger.info(LocalizedStrings.DEBUG, "The peers are " + s);
+                trace("The peers are " + s);
                 //TODO: do we need to check with only one locator or all.
                 boolean continueWhileLoop = false;
                 if (allUninitialized) {
@@ -1300,7 +1298,6 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
       synchronized(this) {
         this.membershipChanged = true;
         this.notifyAll();
-        GemFireCacheImpl.getInstance().getLoggerI18n().info(LocalizedStrings.DEBUG, "AfterMembershipChanges: ", new Throwable("SKSK Member Listener"));
       }
     }
 
@@ -1348,8 +1345,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
             this.wait(100);
             if (!warned && System.currentTimeMillis() > warningTime) {
               //logWaitingForMember(allMembersToWaitFor, offlineMembersToWaitFor);
-              GemFireCacheImpl.getInstance().getLoggerI18n().info(LocalizedStrings.DEBUG,
-                  "waiting for atleast one server to come up.");
+              advisor.getLogWriter().info(LocalizedStrings.DEBUG, "Waiting for atleast one server to come up.");
               //logWaitingForMember();
               warned = true;
             }
@@ -1382,8 +1378,6 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
 
     public void profileUpdated(Profile profile) {
       CacheProfile cp = (CacheProfile) profile;
-      GemFireCacheImpl.getInstance().getLoggerI18n().info(LocalizedStrings.DEBUG,
-          "The profile we got is " + profile + " cp.pers " + cp.persistentID + " " + cp.persistenceInitialized);
       if(cp.persistentID != null && cp.persistenceInitialized) {
         memberOnline(profile.getDistributedMember(), cp.persistentID);
       }

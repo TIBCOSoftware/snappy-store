@@ -101,15 +101,11 @@ public class FabricServerImpl extends FabricServiceImpl implements FabricServer 
       PersistentMemberID myId, String message) {
     if (GemFireXDUtils.TraceFabricServiceBoot) {
       logger.info("Accepting WAITING notification" +
-          (message != null ? ": " + message : ""), new Throwable("SKSK "));
+          (message != null ? ": " + message : ""));
     }
     if (missingBuckets != null && missingBuckets.isEmpty() && membersToWaitFor.isEmpty()) {
       // only notify the FabricDataBase.postCreateDDLReplay
       notifyTableWait(regionPath);
-      if (GemFireXDUtils.TraceFabricServiceBoot) {
-        logger.info("Accepting WAITING notification .. notifyTableWait" +
-            (message != null ? ": " + message : ""), new Throwable("SKSK "));
-      }
     } else {
       if (this.serverstatus != State.WAITING) {
         this.previousServerStatus = this.serverstatus;

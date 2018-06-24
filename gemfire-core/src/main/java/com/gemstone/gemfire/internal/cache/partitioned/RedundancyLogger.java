@@ -421,8 +421,6 @@ public class RedundancyLogger extends RecoveryRunnable implements PersistentStat
       else if(!this.loggedDoneMessage) {
         logDoneMessage();
       }
-
-
     }
     
     /**
