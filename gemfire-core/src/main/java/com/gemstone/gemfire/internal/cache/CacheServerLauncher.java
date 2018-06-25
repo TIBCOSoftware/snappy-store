@@ -874,7 +874,7 @@ public class CacheServerLauncher extends LauncherBase {
         if (system.isReconnecting()) {
           while (true) {
             // Timed check is there so that if explicit stop has been called then
-            // we stop faster until waiting for the entire reconnect attempt to get over
+            // we stop faster rather waiting for the entire reconnect attempt to get over
             reconnected = system.waitUntilReconnected(150, TimeUnit.MILLISECONDS);
             status = readStatus();
             if (status.state == SHUTDOWN_PENDING) {
@@ -895,7 +895,7 @@ public class CacheServerLauncher extends LauncherBase {
         }
         if (!reconnected) {
           // shutdown-all disconnected the DS
-          if( externalShutDown ) {
+          if(externalShutDown) {
             //delete the status file
             deleteStatus();
           }

@@ -1916,6 +1916,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
         // the above checkCancelInProgress will throw a CancelException
         // when we are being shutdown
       } catch (Throwable t) {
+        getCache().getCancelCriterion().checkCancelInProgress(t);
         if (!(t instanceof IOException)) {
           terminateFlusherThread = false;
           throw new GemFireIOException("Exception encountered in flusher thread: " + t.getMessage(), t);
