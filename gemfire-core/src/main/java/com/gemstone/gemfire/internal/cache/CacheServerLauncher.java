@@ -895,7 +895,7 @@ public class CacheServerLauncher extends LauncherBase {
         }
         if (!reconnected) {
           // shutdown-all disconnected the DS
-          if(externalShutDown) {
+          if (externalShutDown) {
             //delete the status file
             deleteStatus();
           }
