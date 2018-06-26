@@ -881,6 +881,7 @@ public class CacheServerLauncher extends LauncherBase {
               // No point reconnecting if explicit stop has been called
               system.stopReconnecting();
               waitTillReconnectStopped(system);
+              externalShutDown = false;
             }
 
             if (reconnected) {
