@@ -112,7 +112,7 @@ public class SnappyRegionStats implements VersionedDataSerializable {
   }
 
   public SnappyRegionStats getCombinedStats(SnappyRegionStats stats) {
-    String tableName = this.isColumnTable ? stats.tableName : this.tableName;
+    String tableName = this.isColumnTable ? this.tableName : stats.tableName;
     SnappyRegionStats combinedStats = new SnappyRegionStats(tableName);
 
     if (this.isReplicatedTable()) {
