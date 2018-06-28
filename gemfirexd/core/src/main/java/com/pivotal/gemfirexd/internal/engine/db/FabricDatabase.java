@@ -64,6 +64,7 @@ import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.gemfire.internal.GFToSlf4jBridge;
 import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.cache.*;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gnu.trove.THashMap;
@@ -503,47 +504,7 @@ public final class FabricDatabase implements ModuleControl,
         GemFireXDUtils.executeSQLScripts(embedConn, postScriptPaths, false,
             logger, null, null, false);
       }
-
-      // Initialize the catalog
-      // Lead is always started with ServerGroup hence for lead LeadGroup will never be null.
-      /**
-       * In LeadImpl server group is always  set to using following code:
-       * changeOrAppend(Constant * .STORE_PROPERTY_PREFIX +com.pivotal.gemfirexd.Attribute.
-       * SERVER_GROUPS, LeadImpl.LEADER_SERVERGROUP)
-       */
-      HashSet<String> leadGroup = CallbackFactoryProvider.getClusterCallbacks().getLeaderGroup();
-      final boolean isLead = this.memStore.isSnappyStore() && (leadGroup != null && leadGroup
-          .size() > 0) && (ServerGroupUtils.isGroupMember(leadGroup)
-          || Misc.getDistributedSystem().isLoner());
-      Set<?> servers = GemFireXDUtils.getGfxdAdvisor().adviseDataStores(null);
-      if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
-          GemFireStore.VMKind.DATASTORE || (isLead && servers.size() > 0))) {
-        this.memStore.initExternalCatalog();
-        if (isLead && servers.size() > 0) {
-          // submit the task to check for catalog consistency
-          this.memStore.setExternalCatalogInit(cache.getDistributionManager()
-              .getFunctionExcecutor().submit(() -> {
-                // don't wait for self in catalog initialization
-                GemFireStore.externalCatalogInitThread.set(Boolean.TRUE);
-                EmbedConnection embedConnection = null;
-                try {
-                  GemFireXDUtils.waitForNodeInitialization();
-                  embedConnection = GemFireXDUtils.createNewInternalConnection(
-                      false);
-                  checkSnappyCatalogConsistency(embedConnection);
-                } catch (StandardException | SQLException e) {
-                  throw new GemFireXDRuntimeException(e);
-                } finally {
-                  if (embedConnection != null) {
-                    try {
-                      embedConnection.close();
-                    } catch (Exception ignore) {
-                    }
-                  }
-                }
-              }));
-        }
-      }
+      initializeCatalog();
     } catch (Throwable t) {
       try {
         LogWriter logger = Misc.getCacheLogWriter();
@@ -612,6 +573,50 @@ public final class FabricDatabase implements ModuleControl,
           ds.getDiskDirs()[0].getAbsolutePath());
       dd.addDescriptor(dsd, null, DataDictionary.SYSDISKSTORES_CATALOG_NUM,
           false, dd.getTransactionExecute());
+    }
+  }
+
+  public void initializeCatalog() throws Exception {
+    // Initialize the catalog
+    // Lead is always started with ServerGroup hence for lead LeadGroup will never be null.
+    /**
+     * In LeadImpl server group is always  set to using following code:
+     * changeOrAppend(Constant * .STORE_PROPERTY_PREFIX +com.pivotal.gemfirexd.Attribute.
+     * SERVER_GROUPS, LeadImpl.LEADER_SERVERGROUP)
+     */
+    final GemFireCacheImpl cache = GemFireCacheImpl.getExisting();
+    HashSet<String> leadGroup = CallbackFactoryProvider.getClusterCallbacks().getLeaderGroup();
+    final boolean isLead = this.memStore.isSnappyStore() && (leadGroup != null && leadGroup
+        .size() > 0) && (ServerGroupUtils.isGroupMember(leadGroup)
+        || Misc.getDistributedSystem().isLoner());
+    Set<?> servers = GemFireXDUtils.getGfxdAdvisor().adviseDataStores(null);
+    if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
+        GemFireStore.VMKind.DATASTORE || (isLead /*&& servers.size() > 0*/))) {
+      this.memStore.initExternalCatalog();
+      if (isLead /*&& servers.size() > 0*/) {
+        // submit the task to check for catalog consistency
+        this.memStore.setExternalCatalogInit(cache.getDistributionManager()
+            .getFunctionExcecutor().submit(() -> {
+              // don't wait for self in catalog initialization
+              GemFireStore.externalCatalogInitThread.set(Boolean.TRUE);
+              EmbedConnection embedConnection = null;
+              try {
+                GemFireXDUtils.waitForNodeInitialization();
+                embedConnection = GemFireXDUtils.createNewInternalConnection(
+                    false);
+                checkSnappyCatalogConsistency(embedConnection);
+              } catch (StandardException | SQLException e) {
+                throw new GemFireXDRuntimeException(e);
+              } finally {
+                if (embedConnection != null) {
+                  try {
+                    embedConnection.close();
+                  } catch (Exception ignore) {
+                  }
+                }
+              }
+            }));
+      }
     }
   }
 
@@ -1039,6 +1044,7 @@ public final class FabricDatabase implements ModuleControl,
         List<GfxdDDLQueueEntry> preprocessedQueue = ddlStmtQueue
             .getPreprocessedDDLQueue(currentQueue, skipRegionInit,
                 lastCurrentSchema, pre11TableSchemaVer, traceConflation);
+
         for (GfxdDDLQueueEntry entry : preprocessedQueue) {
           qEntry = entry;
           Object qVal = qEntry.getValue();
@@ -1075,10 +1081,10 @@ public final class FabricDatabase implements ModuleControl,
               continue;
             }
           }
-          else if (this.memStore.restrictedDDLStmtQueue()) {
-            continue;
-          }
           else if (qVal instanceof AbstractGfxdReplayableMessage) {
+            if (this.memStore.restrictedDDLStmtQueue()) {
+              continue;
+            }
             final AbstractGfxdReplayableMessage msg =
                 (AbstractGfxdReplayableMessage)qVal;
             try {
@@ -1094,6 +1100,11 @@ public final class FabricDatabase implements ModuleControl,
           }
           else {
             final DDLConflatable conflatable = (DDLConflatable)qVal;
+            String schemaForTable = conflatable.getSchemaForTableNoThrow();
+            if (this.memStore.restrictedDDLStmtQueue() &&
+                !(schemaForTable != null && Misc.isSnappyHiveMetaTable(schemaForTable))) {
+              continue;
+            }
             // check for any merged DDLs
             final String confTable = conflatable.getRegionToConflate();
             final boolean isCreateTable = conflatable.isCreateTable();
@@ -1274,7 +1285,7 @@ public final class FabricDatabase implements ModuleControl,
 
       // In case of reconnect, same cache is used and many locks are
       // already taken by reconnect thread.
-      // Can't do initlization in different thread.
+      // Can't do initialization in different thread.
       if (Thread.currentThread().getName().equals("ReconnectThread")) {
         for (GemFireContainer container : uninitializedContainers) {
           if (logger.infoEnabled() &&
@@ -1410,7 +1421,7 @@ public final class FabricDatabase implements ModuleControl,
         container.initNumRows(container.getRegion());
         if (GemFireXDUtils.TraceDDLReplay) {
           logger.info("FabricDatabase: end initializing numRows for "
-              + container);
+              + container + " initialized with total number of rows: " + container.getNumRows());
         }
       }
 
@@ -1418,6 +1429,7 @@ public final class FabricDatabase implements ModuleControl,
         // restore the default schema
         FabricDatabase.setupDefaultSchema(dd, lcc, tc, currentSchema, true);
       }
+
       if (!this.memStore.isHadoopGfxdLonerMode()) {
         SystemProcedures.SET_EXPLAIN_SCHEMA(lcc);
       }

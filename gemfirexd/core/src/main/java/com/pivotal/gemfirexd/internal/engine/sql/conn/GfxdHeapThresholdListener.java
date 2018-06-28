@@ -322,22 +322,18 @@ public final class GfxdHeapThresholdListener implements MemoryThresholdListener 
                continue;
              }
         
-             ArrayList<?> acts = lcc.getAllActivations();
+             ArrayList<Activation> allActs = lcc.getAllActivations();
+             Activation[] acts = allActs.toArray(new Activation[allActs.size()]);
              Activation act = null;
              if (GemFireXDUtils.TraceHeapThresh) {
                SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_HEAPTHRESH,
-                   "GfxdHeapThreshold: Got " + acts.size()
+                   "GfxdHeapThreshold: Got " + acts.length
                    + " Activations for LCC " + lcc);
              }
-             for(int index = acts.size() - 1; index >= 0; index-- ) {
-                 //refer GenericLanguageConnectionContext#closeUnusedActivations()
-                 if (index >= acts.size()) {
-                   continue;
-                 }
-                 
-                 act = (Activation)acts.get(index);
-                 
-                 if(act == null) {
+             for (int index = acts.length - 1; index >= 0; index--) {
+                 act = acts[index];
+
+                 if (act == null || act.isClosed() || !act.isInUse()) {
                    if (GemFireXDUtils.TraceHeapThresh) {
                      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_HEAPTHRESH,
                          "GfxdHeapThreshold: Skipping " + index

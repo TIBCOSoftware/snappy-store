@@ -638,6 +638,7 @@ public class DistributedSQLTestBase extends DistributedTestBase {
    */
   protected void setOtherCommonProperties(Properties props, int mcastPort,
       String serverGroups) {
+    System.setProperty("gemfire.DISALLOW_CLUSTER_RESTART_CHECK", "true");
   }
 
   public static DistributedMember _startNewLocator(String className,
@@ -2296,8 +2297,8 @@ public class DistributedSQLTestBase extends DistributedTestBase {
       // create the datadictionary directory if not present since GFE shutdown
       // now requires it
       deleteOrCreateDataDictionaryDir(true);
-      System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "");
-      System.setProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "");
+      System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
+      System.clearProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
       final Properties props = new Properties();
       setCommonProperties(props, 0, null, null);
       // shutdown the current VM

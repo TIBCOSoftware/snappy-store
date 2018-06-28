@@ -2512,6 +2512,7 @@ public class DistributedRegion extends LocalRegion implements
     profile.isPersistent = getDataPolicy().withPersistence();
     profile.setSubscriptionAttributes(getSubscriptionAttributes());
     profile.isGatewayEnabled = getEnableGateway();
+    GemFireCacheImpl.StaticSystemCallbacks sysCb = getCache().getInternalProductCallbacks();
     profile.serialNumber = getSerialNumber();
     profile.regionInitialized = this.isInitialized();
     // need to set the memberUnInitialized flag only for user created regions

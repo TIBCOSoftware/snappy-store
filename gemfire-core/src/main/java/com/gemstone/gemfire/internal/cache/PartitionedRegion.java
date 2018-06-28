@@ -5498,8 +5498,7 @@ public class PartitionedRegion extends LocalRegion implements
     profile.isGatewayEnabled = this.enableGateway;
     // fillInProfile MUST set serialNumber
     profile.serialNumber = getSerialNumber();
-    
-    //TODO - prpersist - this is a bit of a hack, but we're 
+    //TODO - prpersist - this is a bit of a hack, but we're
     //reusing this boolean to indicate that this member has finished disk recovery.
     profile.regionInitialized = recoveredFromDisk;
     

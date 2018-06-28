@@ -44,6 +44,8 @@ import hydra.gemfirexd.NetworkServerHelper.Endpoint;
 public class GFEDBClientManager {
   protected static String driver = "com.pivotal.gemfirexd.jdbc.ClientDriver";
   protected static String protocol = Attribute.DNC_PROTOCOL;
+  protected static String snappyThriftProtocol = Attribute.SNAPPY_THRIFT_PROTOCOL;
+  protected static String snappyProtocol = Attribute.SNAPPY_DNC_PROTOCOL;
   //private static String dbName = "";
   private static String userPrefix = "thr_";
   protected static boolean useGemFireXDHA = TestConfig.tab().booleanAt(SQLPrms.
@@ -84,8 +86,9 @@ public class GFEDBClientManager {
   
   @SuppressWarnings("unchecked")
   public static synchronized void initAvailHostPort() {
-  if (map == null) map = (HashMap <String, ArrayList<Integer>>)SQLBB.getBB().getSharedMap().get("serverPorts");  
-  hostNames = (String[])(map.keySet().toArray(new String[0])); 
+    if (map == null)
+      map = (HashMap<String, ArrayList<Integer>>)SQLBB.getBB().getSharedMap().get("serverPorts");
+    hostNames = (String[])(map.keySet().toArray(new String[0]));
   }
   
   /**
@@ -292,7 +295,13 @@ public class GFEDBClientManager {
   }
 
   public static String getProtocol() {
+    if(SQLPrms.isSnappyMode())
+      return snappyProtocol;
     return protocol;
+  }
+
+  public static String getSnappyThriftProtocol(){
+      return snappyThriftProtocol;
   }
 
   public static String getDRDAProtocol() {

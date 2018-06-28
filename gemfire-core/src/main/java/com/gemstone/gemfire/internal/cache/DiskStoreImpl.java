@@ -56,6 +56,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.CancelException;
+import com.gemstone.gemfire.GemFireIOException;
 import com.gemstone.gemfire.StatisticsFactory;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.Cache;
@@ -63,6 +64,7 @@ import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.DiskAccessException;
 import com.gemstone.gemfire.cache.DiskStore;
 import com.gemstone.gemfire.cache.DiskStoreFactory;
+import com.gemstone.gemfire.cache.LowMemoryException;
 import com.gemstone.gemfire.cache.RegionDestroyedException;
 import com.gemstone.gemfire.cache.persistence.PersistentID;
 import com.gemstone.gemfire.cache.query.IndexMaintenanceException;
@@ -1580,6 +1582,9 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     }
     while (!this.flusherThreadTerminated) {
       try {
+        // check if cache is going down and in that case also terminate the
+        // flusher thread.
+        getCache().getCancelCriterion().checkCancelInProgress(null);
         this.flusherThread.join(100);
       } catch (InterruptedException ie) {
         Thread.currentThread().interrupt();
@@ -1818,6 +1823,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
         logger.fine("Async writer thread started");
       }
       boolean doingFlush = false;
+      boolean terminateFlusherThread = true;
       try {
         while (waitUntilFlushIsReady()) {
           int drainCount = fillDrainList();
@@ -1909,7 +1915,12 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
         // logger.info(LocalizedStrings.DEBUG, "DEBUG", ignore);
         // the above checkCancelInProgress will throw a CancelException
         // when we are being shutdown
-      } catch(Throwable t) {
+      } catch (Throwable t) {
+        getCache().getCancelCriterion().checkCancelInProgress(t);
+        if (!(t instanceof IOException)) {
+          terminateFlusherThread = false;
+          throw new GemFireIOException("Exception encountered in flusher thread: " + t.getMessage(), t);
+        }
         logger.severe(LocalizedStrings.DiskStoreImpl_FATAL_ERROR_ON_FLUSH, t);
         fatalDae = new DiskAccessException(LocalizedStrings.DiskStoreImpl_FATAL_ERROR_ON_FLUSH.toLocalizedString(), t, DiskStoreImpl.this);
       } finally {
@@ -1919,11 +1930,13 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
           logger.fine("Async writer thread stopped. Pending opcount="
               + asyncQueue.size());
         }
-        flusherThreadTerminated = true;
-        stopFlusher = true; // set this before calling handleDiskAccessException
-        // or it will hang
-        if (fatalDae != null) {
-          handleDiskAccessException(fatalDae, true);
+        if (terminateFlusherThread) {
+          flusherThreadTerminated = true;
+          stopFlusher = true; // set this before calling handleDiskAccessException
+          // or it will hang
+          if (fatalDae != null) {
+            handleDiskAccessException(fatalDae, true);
+          }
         }
       }
     }

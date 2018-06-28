@@ -1522,6 +1522,7 @@ public class SystemAdmin {
     "compact-disk-store",
     "compact-all-disk-stores",
     "revoke-missing-disk-store",
+    "list-missing-disk-stores",
     "unblock-disk-store",
     "modify-disk-store",
     "show-disk-store-metadata",

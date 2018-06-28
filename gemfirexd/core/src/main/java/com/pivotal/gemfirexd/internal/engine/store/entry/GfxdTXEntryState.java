@@ -41,23 +41,9 @@ import com.gemstone.gemfire.cache.query.internal.IndexUpdater;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.InternalStatisticsDisabledException;
-import com.gemstone.gemfire.internal.cache.AbstractOperationMessage;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.DistributedRegion.DiskPosition;
-import com.gemstone.gemfire.internal.cache.EntryEventImpl;
 import com.gemstone.gemfire.internal.cache.InitialImageOperation.Entry;
-import com.gemstone.gemfire.internal.cache.KeyInfo;
-import com.gemstone.gemfire.internal.cache.KeyWithRegionContext;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.ObjectEqualsHashingStrategy;
-import com.gemstone.gemfire.internal.cache.RegionClearedException;
-import com.gemstone.gemfire.internal.cache.RegionEntry;
-import com.gemstone.gemfire.internal.cache.RegionEntryContext;
-import com.gemstone.gemfire.internal.cache.THashMapWithKeyPair;
-import com.gemstone.gemfire.internal.cache.TXEntryState;
-import com.gemstone.gemfire.internal.cache.TXEntryStateFactory;
-import com.gemstone.gemfire.internal.cache.TXRegionState;
-import com.gemstone.gemfire.internal.cache.TXState;
-import com.gemstone.gemfire.internal.cache.Token;
 import com.gemstone.gemfire.internal.cache.locks.LockMode;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
@@ -133,8 +119,10 @@ public final class GfxdTXEntryState extends TXEntryState implements
 
     // should never happen on a client/locator VM
     final VMKind myKind;
-    assert (myKind = GemFireXDUtils.getMyVMKind()) == VMKind.DATASTORE:
-      "unexpected creation of GfxdTXEntryState on VM of kind " + myKind;
+    if (!GemFireCacheImpl.getInternalProductCallbacks().isSnappyStore()) {
+      assert (myKind = GemFireXDUtils.getMyVMKind()) == VMKind.DATASTORE :
+          "unexpected creation of GfxdTXEntryState on VM of kind " + myKind;
+    }
   }
 
   @Override

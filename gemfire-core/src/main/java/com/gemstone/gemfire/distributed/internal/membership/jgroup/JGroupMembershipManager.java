@@ -1746,7 +1746,7 @@ public final class JGroupMembershipManager implements MembershipManager {
                                                myAddr.splitBrainEnabled(),
                                                myAddr.preferredForCoordinator(),
                                                MemberAttributes.DEFAULT);
-    
+
     // in order to debug startup issues it we need to announce the membership
     // ID as soon as we know it
     logger.info(LocalizedStrings.JGroupMembershipManager_entered_into_membership_in_group_0_with_id_1,

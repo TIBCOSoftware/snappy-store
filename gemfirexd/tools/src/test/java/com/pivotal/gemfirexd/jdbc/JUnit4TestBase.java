@@ -17,6 +17,7 @@
 
 package com.pivotal.gemfirexd.jdbc;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -64,6 +65,9 @@ public class JUnit4TestBase {
     }
     try {
       TestUtil.shutDown();
+      // delete persistent DataDictionary files
+      TestUtil.deleteDir(new File("datadictionary"));
+      TestUtil.deleteDir(new File("globalIndex"));
     } catch (SQLException ignored) {
     }
   }

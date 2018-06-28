@@ -832,7 +832,8 @@ public class TestUtil extends TestCase {
             && (key.startsWith(DistributionConfig.GEMFIRE_PREFIX)
             || key.startsWith(GfxdConstants.GFXD_PREFIX)
             || key.startsWith(GfxdConstants.GFXD_CLIENT_PREFIX)
-            || key.startsWith("javax.net.ssl."))) {
+            || key.startsWith(DistributionConfig.SNAPPY_PREFIX)
+            || key.startsWith("javax.net"))) {
           keysToRemove.add(key);
         }
       }

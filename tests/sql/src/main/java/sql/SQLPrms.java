@@ -38,6 +38,7 @@ import sql.dmlStatements.AbstractDMLStmt;
 import sql.hdfs.HDFSSqlTest;
 import sql.sqlutil.DDLStmtsFactory;
 import sql.sqlutil.DMLStmtsFactory;
+import util.TestException;
 
 
 /**
@@ -226,6 +227,23 @@ public class SQLPrms extends BasePrms{
 
   public static Long createDiskStore;
 
+  public static Long snappyDDLExtension;
+
+  public static boolean isSnappyMode() {
+    return TestConfig.tab().booleanAt(SQLPrms.snappyMode, false);
+  }
+
+  public static String[] getSnappyDDLExtension(String[] tables){
+    Vector snappyExtn = TestConfig.tab().vecAt(SQLPrms.snappyDDLExtension, new HydraVector());
+    if (snappyExtn.size() == 0)
+      return tables;
+    String[] strArr = new String[snappyExtn.size()];
+    for (int i = 0; i < snappyExtn.size(); i++) {
+      strArr[i] = tables[i] + " " + (String)snappyExtn.elementAt(i);
+    }
+    return strArr;
+  }
+
   //combines create table statemensts with gfe DDL extensions
   public static String[] getGFEDDL() {
     String[] tables = getCreateTablesStatements(false);
@@ -244,19 +262,21 @@ public class SQLPrms extends BasePrms{
                tables[i]+=" , json_details json )";
        }        
     }
-    
-    
-    if (AbstractDMLStmt.byTidList)
-      finalDDL =  getGFEDDLByTidList(tables);
-    else if (AbstractDMLStmt.byCidRange)
-      finalDDL =  getGFEDDLByCidRange(tables);
-    else
+    if(isSnappyMode())
       finalDDL = getGFEDDL(tables);
-    
-    if (SQLTest.isOffheap) {
-      for (int i = 0; i < finalDDL.length; i++) {
-        if (finalDDL[i].toLowerCase().indexOf(SQLTest.OFFHEAPCLAUSE.toLowerCase()) < 0) { // don't add twice
-          finalDDL[i] = finalDDL[i] + SQLTest.OFFHEAPCLAUSE;
+    else {
+      if (AbstractDMLStmt.byTidList)
+        finalDDL = getGFEDDLByTidList(tables);
+      else if (AbstractDMLStmt.byCidRange)
+        finalDDL = getGFEDDLByCidRange(tables);
+      else
+        finalDDL = getGFEDDL(tables);
+
+      if (SQLTest.isOffheap) {
+        for (int i = 0; i < finalDDL.length; i++) {
+          if (finalDDL[i].toLowerCase().indexOf(SQLTest.OFFHEAPCLAUSE.toLowerCase()) < 0) { // don't add twice
+            finalDDL[i] = finalDDL[i] + SQLTest.OFFHEAPCLAUSE;
+          }
         }
       }
     }
@@ -278,12 +298,17 @@ public class SQLPrms extends BasePrms{
  
   @SuppressWarnings("unchecked")
   private static String[] getGFEDDL(String[] tables) {
-    Vector statements = TestConfig.tab().vecAt(SQLPrms.gfeDDLExtension, new HydraVector());
+    Vector<String> statements = TestConfig.tab().vecAt(SQLPrms.gfeDDLExtension, new HydraVector());
     if (statements.size() == 0)
       return tables;
 
     String[] strArr = new String[statements.size()];
     for (int i = 0; i < statements.size(); i++) {
+      String extension = statements.elementAt(i);
+      if(isSnappyMode() && extension.trim().length() > 0 && !extension.contains("USING ROW")) {
+        throw new TestException("GFXD syntax for create table is not supported, please use snappy" +
+            " syntax");
+      }
       strArr[i] = tables[i] + " " + (String)statements.elementAt(i);
     }
     return strArr;
@@ -985,7 +1010,12 @@ public class SQLPrms extends BasePrms{
    *
    */
   public static Long isSnappyTest;
-  
+
+  /**
+   * (boolean) whether the test should be run in a snappy cluster or gemfireXD cluster.
+   */
+  public static Long snappyMode;
+
   /** (boolean) whether the test eviction use heap percentage
   *
   */

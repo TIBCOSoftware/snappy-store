@@ -66,13 +66,13 @@ public class TradeTxHistoryDMLStmt extends AbstractDMLStmt {
   protected static String[] select = {//uniqkey queries
     "select * from trade.txhistory where tid = ?",
     "select oid, cid, sid, type, tid from trade.txhistory where cid >? and sid <? and qty >? and orderTime<? and tid = ?",
-    "select sid, count(*) from trade.txhistory  where cid>? and sid<? and tid =? GROUP BY sid HAVING count(*) >=1",  
-    "select cid, max(price) from trade.txhistory  where tid =? GROUP BY cid, type",  
+    "select sid, CAST(count(*) as integer) as numRows from trade.txhistory  where cid>? and sid<? and tid =? GROUP BY sid HAVING count(*) >=1",
+    "select cid, max(price) as maxprice from trade.txhistory  where tid =? GROUP BY cid, type",
     "select cid, sum(qty*price) as amount from trade.txhistory  where sid<? and tid =? GROUP BY cid, type ORDER BY amount",
     //no uniqkey queries
     "select * from trade.txhistory ",
     "select oid, cid, sid, type, tid from trade.txhistory where cid >? and sid <? and qty >? and orderTime<? ",
-    "select sid, count(*) from trade.txhistory  where cid>? and sid<? GROUP BY sid HAVING count(*) >=1",  
+    "select sid, CAST(count(*) as integer) as numRows from trade.txhistory  where cid>? and sid<? GROUP BY sid HAVING count(*) >=1",
     "select cid, count(sid) from trade.txhistory GROUP BY cid, type",  
     "select cid, sum(qty*price) as amount from trade.txhistory  where sid<? GROUP BY cid, type ORDER BY amount"
     };
@@ -693,7 +693,12 @@ public class TradeTxHistoryDMLStmt extends AbstractDMLStmt {
     if (time == null && alterTableDropColumn) stmt.setNull(6, Types.TIMESTAMP);
     else {
       if (testworkaroundFor51519 && time != null) stmt.setTimestamp(6, time, getCal());
-      else stmt.setTimestamp(6, time);
+      else {
+        if(time ==null)
+          stmt.setNull(6, Types.TIMESTAMP);
+        else
+          stmt.setTimestamp(6, time);
+      }
     }
     stmt.setString(7, type);       
     stmt.setInt(8, tid);

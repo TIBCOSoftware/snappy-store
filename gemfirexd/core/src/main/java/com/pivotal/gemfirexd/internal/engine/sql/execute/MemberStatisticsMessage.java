@@ -85,7 +85,7 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     // Memory Stats
     Map<String, Long> memoryStats = this.getMemoryStatistics();
 
-    Map memberStatsMap = new HashMap();
+    HashMap<String, Object> memberStatsMap = new HashMap<>();
 
     memberStatsMap.put("lastUpdatedOn", System.currentTimeMillis());
 
@@ -99,6 +99,7 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     memberStatsMap.put("dataServer", isDataServer());
     memberStatsMap.put("activeLead", isActiveLead(ids.getDistributedMember()));
     memberStatsMap.put("lead", isLead());
+    memberStatsMap.put("cores", Runtime.getRuntime().availableProcessors());
     memberStatsMap.put("maxMemory", getMaxMemory());
     memberStatsMap.put("freeMemory", getFreeMemory());
     memberStatsMap.put("totalMemory", getTotalMemory());

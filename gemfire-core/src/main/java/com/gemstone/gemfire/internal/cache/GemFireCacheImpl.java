@@ -1487,14 +1487,14 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   public synchronized void initializePdxRegistry() {
     if (this.pdxRegistry == null) {
       // Check to see if this member is allowed to have a pdx registry
-      if (this.getMyId().getVmKind() == DistributionManager.LOCATOR_DM_TYPE) {
+/*      if (this.getMyId().getVmKind() == DistributionManager.LOCATOR_DM_TYPE) {
         // locators can not have a pdx registry.
         // If this changes in the future then dunit needs to change
         // to do a clear on the pdx registry in the locator.
         // Otherwise the existence of the type in the locators pdxRegistry
         // cause other members on startup to have non-persistent registries.
         return;
-      }
+      }*/
       this.pdxRegistry = new TypeRegistry(this);
       this.pdxRegistry.initialize();
     }
@@ -3257,11 +3257,13 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
   public <K, V> Region<K, V> createVMRegion(String name, RegionAttributes<K, V> p_attrs, InternalRegionArguments internalRegionArgs)
       throws RegionExistsException, TimeoutException, IOException, ClassNotFoundException {
-    if (getMyId().getVmKind() == DistributionManager.LOCATOR_DM_TYPE) {
+
+    // Commenting it out for the time being. These things are not exposed to user anymore.
+    /*if (getMyId().getVmKind() == DistributionManager.LOCATOR_DM_TYPE) {
       if (!internalRegionArgs.isUsedForMetaRegion() && internalRegionArgs.getInternalMetaRegion() == null) {
         throw new IllegalStateException("Regions can not be created in a locator.");
       }
-    }
+    }*/
     stopper.checkCancelInProgress(null);
     LocalRegion.validateRegionName(name);
     RegionAttributes<K, V> attrs = p_attrs;
@@ -5618,6 +5620,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     synchronized (this.unInitializedMembers) {
       if (initialized) {
         if (this.unInitializedMembers.remove(member)) {
+          this.unInitializedMembers.notifyAll();
           if (member.equals(getMyId())) {
             // don't invoke volunteerForPrimary() inside the lock since
             // BucketAdvisor will also require the lock after locking itself
@@ -5650,6 +5653,12 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     return true;
   }
 
+  public void waitForAtLeastOneInitializedMember() throws InterruptedException {
+    synchronized (this.unInitializedMembers) {
+      this.unInitializedMembers.wait();
+    }
+  }
+
   /**
    * Return true if this node is still not initialized else false.
    */
@@ -5659,6 +5668,15 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     }
   }
 
+  public boolean isSnappyDataStore(InternalDistributedMember member) {
+    final StaticSystemCallbacks sysCb = GemFireCacheImpl.getInternalProductCallbacks();
+    if (sysCb != null) {
+      if (sysCb.getDataStores().contains(member)) {
+        return true;
+      }
+    }
+    return false;
+  }
   /**
    * Return false for volunteer primary if this node is not currently initialized. Also adds the {@link BucketAdvisor}
    * to a list that will be replayed once this node is initialized.

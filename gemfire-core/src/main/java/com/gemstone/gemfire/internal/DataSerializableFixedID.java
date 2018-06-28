@@ -805,6 +805,8 @@ public interface DataSerializableFixedID extends SerializationVersions {
   public static final short UNBLOCK_PERSISTENT_ID_RESPONSE = 2165;
   public static final short WAITING_PERSISTENT_IDS_REQUEST = 2166;
   public static final short WAITING_PERSISTENT_IDS_RESPONSE = 2167;
+  public static final short STARTUP_SEQUENCE_QUERY_REQUEST = 2168;
+  public static final short STARTUP_SEQUENCE_QUERY_REPLY = 2169;
 
   // NOTE, codes > 65535 will take 4 bytes to serialize
   

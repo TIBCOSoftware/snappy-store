@@ -765,8 +765,8 @@ public class BugsTest extends JdbcTestBase {
    bw.flush();
    bw.close();
     }finally {
-      System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "");
-      System.setProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "");
+      System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
+      System.clearProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
       SelectQueryInfo.setTestFlagIgnoreSingleVMCriteria(false);
     }
    
@@ -882,8 +882,8 @@ public class BugsTest extends JdbcTestBase {
     
     psQuery.executeUpdate();
     }finally {
-      System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "");
-      System.setProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "");
+      System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
+      System.clearProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
       SelectQueryInfo.setTestFlagIgnoreSingleVMCriteria(false);
     }
    
@@ -1130,9 +1130,9 @@ public class BugsTest extends JdbcTestBase {
 
       }
     } finally {
-      System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "");
-      System.setProperty("gemfire."
-          + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "");
+      System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
+      System.clearProperty("gemfire."
+          + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
       SelectQueryInfo.setTestFlagIgnoreSingleVMCriteria(false);
     }
 
