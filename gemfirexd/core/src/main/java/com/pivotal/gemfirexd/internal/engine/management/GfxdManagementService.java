@@ -22,6 +22,7 @@ import java.util.logging.Level;
 
 import javax.management.ObjectName;
 import com.gemstone.gemfire.LogWriter;
+import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.management.impl.InternalManagementService;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
@@ -33,12 +34,14 @@ import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
  * @since gfxd 1.0
  */
 public class GfxdManagementService {
-  public static final String DISABLE_MANAGEMENT_PROPERTY = /*"gemfirexd.disableManagement"*/"gemfire.disableManagement";
+  public static final String DISABLE_MANAGEMENT_PROPERTY =
+      InternalDistributedSystem.DISABLE_MANAGEMENT_PROPERTY;
 
   private static final Object INSTANCE_LOCK = GfxdManagementService.class;
   private static final Map<GemFireStore, GfxdManagementService> INSTANCES = new Hashtable<GemFireStore, GfxdManagementService>();
 
   private InternalManagementService internalManagementService;
+  private static boolean loggedDisabled;
 
   private GfxdManagementService(GemFireStore store) {
     this.internalManagementService = InternalManagementService.getInstance(store);
@@ -73,10 +76,6 @@ public class GfxdManagementService {
     return Boolean.getBoolean(DISABLE_MANAGEMENT_PROPERTY);
   }
 
-  public static boolean isGfManagementDisabled() {
-    return InternalManagementService.isGfManagementDisabled();
-  }
-
   public static <T> void handleEvent(int eventId, T eventData) {
 //    System.out.println("ABHISHEK: GfxdManagementService.handleEvent: isManagementDisabled :: "+isManagementDisabled());
     GemFireStore store = GemFireStore.getBootedInstance();
@@ -90,8 +89,9 @@ public class GfxdManagementService {
           managementService.stopService();
         }
       }
-    } else {
+    } else if (!loggedDisabled) {
       logInfo("Management is disabled, MBeans won't be available.", null);
+      loggedDisabled = true;
     }
   }
 

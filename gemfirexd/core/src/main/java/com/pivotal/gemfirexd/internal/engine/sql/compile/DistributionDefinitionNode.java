@@ -33,6 +33,7 @@ import com.gemstone.gemfire.cache.RegionAttributes;
 
 import com.gemstone.gemfire.internal.cache.EvictionAttributesImpl;
 import com.gemstone.gemfire.internal.cache.PartitionAttributesImpl;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
@@ -41,6 +42,7 @@ import com.pivotal.gemfirexd.internal.engine.ddl.resolver.GfxdPartitionResolver;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.sql.catalog.DistributionDescriptor;
+import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ColumnDescriptor;
@@ -278,9 +280,7 @@ public class DistributionDefinitionNode extends TableElementNode {
         break;
       }
       case DistributionDescriptor.PARTITIONBYEXPRESSION: {
-        distributionDesc = dd.getDataDescriptorGenerator()
-            .newDistributionDescriptor(this.policy, null, this.redundancy,
-                this.maxPartSize, null, this.isPersistent, this.serverGroups);
+        distributionDesc = validatePartitionByExpression(elementList, dd);
         break;
       }
       case DistributionDescriptor.PARTITIONBYLIST:
@@ -585,7 +585,11 @@ public class DistributionDefinitionNode extends TableElementNode {
     RegionAttributes<Object, Object> attrs = (RegionAttributes<Object, Object>)
         this.tableProps.get(GfxdConstants.REGION_ATTRIBUTES_KEY);
     final DataPolicy dp = attrs.getDataPolicy();
-    if (!ServerGroupUtils.isDataStore(tableName, this.serverGroups)) {
+    GemFireStore memStore = Misc.getMemStore();
+    if (!ServerGroupUtils.isDataStore(tableName, this.serverGroups) &&
+        // if this is a datadictionary table then allow for persistence
+        !(memStore.isDataDictionaryPersistent() &&
+            GfxdConstants.GFXD_DD_DISKSTORE_NAME.equals(attrs.getDiskStoreName()))) {
       if (dp.withPartitioning()) {
         final AttributesFactory<Object, Object> afact =
           new AttributesFactory<Object, Object>(attrs);
@@ -632,10 +636,10 @@ public class DistributionDefinitionNode extends TableElementNode {
       }
     }
     else {
-      if (!Misc.getMemStore().isHadoopGfxdLonerMode()) {
+      if (!memStore.isHadoopGfxdLonerMode()) {
         // for persistence we should have DataDictionary also as persistent
         if ((getPersistence() || dp.withPersistence())
-            && !Misc.getMemStore().isDataDictionaryPersistent()) {
+            && !memStore.isDataDictionaryPersistent()) {
           throw StandardException.newException(SQLState.DD_NOT_PERSISTING,
               tableName);
         }
@@ -744,6 +748,12 @@ public class DistributionDefinitionNode extends TableElementNode {
               || tgt.getType().getScale() != src.getType().getScale()
               || tgt.getType().getMaximumWidth() != src.getType()
               .getMaximumWidth()) {
+            // SQLChar types can be collocated
+            if (CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()
+                && DataTypeDescriptor.isCharacterStreamAssignable(tgt.getType().getJDBCTypeId())
+                && DataTypeDescriptor.isCharacterStreamAssignable(src.getType().getJDBCTypeId())) {
+              continue;
+            }
           /*
           * if( !tgt.getType().equals(src.getType()) ) {
           *
@@ -805,6 +815,16 @@ public class DistributionDefinitionNode extends TableElementNode {
       columnNames[index] = colName;
     }
     return columnNames;
+  }
+
+  private DistributionDescriptor validatePartitionByExpression(
+      TableElementIterator elementList, DataDictionary dd)
+      throws StandardException {
+    String[] columnNames = this.columns != null
+        ? validatePartitionColumns(elementList) : null;
+    return dd.getDataDescriptorGenerator()
+        .newDistributionDescriptor(this.policy, columnNames, this.redundancy,
+            this.maxPartSize, null, this.isPersistent, this.serverGroups);
   }
 
   private DistributionDescriptor validatePartitionByPrimaryKey(

@@ -19,7 +19,10 @@ package com.gemstone.gemfire.internal.shared;
 import java.io.Closeable;
 import java.nio.ByteBuffer;
 
+import com.gemstone.gemfire.internal.shared.unsafe.FreeMemory;
 import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
+import org.apache.spark.unsafe.Platform;
+import org.apache.spark.unsafe.memory.MemoryAllocator;
 
 /**
  * Allocate, release and expand ByteBuffers (in-place if possible).
@@ -30,9 +33,22 @@ public abstract class BufferAllocator implements Closeable {
       "STORE_DATA_FRAME_OUTPUT";
 
   /**
+   * Special owner indicating execution pool memory.
+   */
+  public static final String EXECUTION = "EXECUTION";
+
+  /**
    * Allocate a new ByteBuffer of given size.
    */
   public abstract ByteBuffer allocate(int size, String owner);
+
+  /**
+   * Allocate using the default allocator and fallback to base JDK one in case
+   * allocation fails due to some reason (e.g. system stop).
+   */
+  public ByteBuffer allocateWithFallback(int size, String owner) {
+    return allocate(size, owner);
+  }
 
   /**
    * Allocate a new ByteBuffer of given size for storage in a Region.
@@ -45,11 +61,19 @@ public abstract class BufferAllocator implements Closeable {
   public abstract void clearPostAllocate(ByteBuffer buffer);
 
   /**
-   * Clear the given portion of the buffer setting it with zeros.
+   * Fill the given portion of the buffer setting it with given byte.
    */
-  public final void clearBuffer(ByteBuffer buffer, int position, int numBytes) {
-    UnsafeHolder.getUnsafe().setMemory(baseObject(buffer), baseOffset(buffer) +
-        position, numBytes, (byte)0);
+  public final void fill(ByteBuffer buffer, byte b, int position, int numBytes) {
+    Platform.setMemory(baseObject(buffer), baseOffset(buffer) + position,
+        numBytes, b);
+  }
+
+  /**
+   * Fill the buffer from its current position to full capacity with given byte.
+   */
+  public final void fill(ByteBuffer buffer, byte b) {
+    final int position = buffer.position();
+    fill(buffer, b, position, buffer.capacity() - position);
   }
 
   /**
@@ -94,6 +118,7 @@ public abstract class BufferAllocator implements Closeable {
     final int position = buffer.position();
     final ByteBuffer newBuffer = allocate(buffer.limit(), owner);
     buffer.rewind();
+    newBuffer.order(buffer.order());
     newBuffer.put(buffer);
     buffer.position(position);
     newBuffer.position(position);
@@ -104,7 +129,39 @@ public abstract class BufferAllocator implements Closeable {
    * For direct ByteBuffers the release method is preferred to eagerly release
    * the memory instead of depending on heap GC which can be delayed.
    */
-  public abstract void release(ByteBuffer buffer);
+  public final void release(ByteBuffer buffer) {
+    releaseBuffer(buffer);
+  }
+
+  /**
+   * For direct ByteBuffers the release method is preferred to eagerly release
+   * the memory instead of depending on heap GC which can be delayed.
+   */
+  public static boolean releaseBuffer(ByteBuffer buffer) {
+    final boolean hasArray = buffer.hasArray();
+    if (MemoryAllocator.MEMORY_DEBUG_FILL_ENABLED) {
+      Object baseObject;
+      long baseOffset;
+      if (hasArray) {
+        baseObject = buffer.array();
+        baseOffset = Platform.BYTE_ARRAY_OFFSET + buffer.arrayOffset();
+      } else {
+        baseObject = null;
+        baseOffset = UnsafeHolder.getDirectBufferAddress(buffer);
+      }
+      Platform.setMemory(baseObject, baseOffset, buffer.capacity(),
+          MemoryAllocator.MEMORY_DEBUG_FILL_FREED_VALUE);
+    }
+    // Actual release should depend on buffer type and not allocator type.
+    // Reserved off-heap space will be decremented by FreeMemory implementation.
+    if (hasArray) {
+      buffer.rewind().limit(0);
+      return false;
+    } else {
+      UnsafeHolder.releaseDirectBuffer(buffer);
+      return true;
+    }
+  }
 
   /**
    * Indicates if this allocator will produce direct ByteBuffers.
@@ -112,12 +169,29 @@ public abstract class BufferAllocator implements Closeable {
   public abstract boolean isDirect();
 
   /**
+   * Return true if this is a managed direct buffer allocator.
+   */
+  public boolean isManagedDirect() {
+    return false;
+  }
+
+  /**
+   * Allocate a buffer passing a custom FreeMemoryFactory. Requires that
+   * appropriate calls against Spark memory manager have already been done.
+   * Only for managed buffer allocator.
+   */
+  public ByteBuffer allocateCustom(int size,
+      FreeMemory.Factory factory) {
+    throw new UnsupportedOperationException("Not supported for " + toString());
+  }
+
+  /**
    * Any cleanup required at system close.
    */
   @Override
   public abstract void close();
 
-  public static int expandedSize(int currentUsed, int required) {
+  protected static int expandedSize(int currentUsed, int required) {
     final long minRequired = (long)currentUsed + required;
     // increase the size by 50%
     final int newLength = (int)Math.min(Math.max((currentUsed * 3) >>> 1L,

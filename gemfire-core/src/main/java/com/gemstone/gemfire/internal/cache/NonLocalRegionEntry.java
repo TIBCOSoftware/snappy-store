@@ -14,9 +14,6 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-/**
- * 
- */
 package com.gemstone.gemfire.internal.cache;
 
 import java.io.DataInput;
@@ -38,6 +35,7 @@ import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallback
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedLockObject;
 import com.gemstone.gemfire.internal.cache.locks.LockMode;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
+import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
@@ -53,6 +51,8 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
   protected Object value;
   private VersionTag<?> versionTag;
   private boolean updateInProgress = false;
+  private transient int valueSize;
+  private transient boolean forDelete;
 
   /**
    * Create one of these in the local case so that we have a snapshot of the
@@ -87,8 +87,14 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
       @Released Object v = null;
       if (faultInValue) {
         v = re.getValue(br);
+        // do an additional retain to match the behaviour of
+        // getValueInVMOrDiskWithoutFaultIn
+        if (GemFireCacheImpl.hasNewOffHeap() &&
+            (v instanceof SerializedDiskBuffer)) {
+          ((SerializedDiskBuffer)v).retain();
+        }
       } else {
-        v = re.getValueOffHeapOrDiskWithoutFaultIn(br);
+        v = re.getValueInVMOrDiskWithoutFaultIn(br);
       }
       try {
         this.value = OffHeapHelper.getHeapForm(v);  // OFFHEAP: copy into heap cd
@@ -141,6 +147,22 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
     this.isRemoved = Token.isRemoved(value);
     // TODO need to get version information from transaction entries
     this.versionTag = versionTag;
+  }
+
+  public void setValueSize(int size) {
+    this.valueSize = size;
+  }
+
+  public int getValueSize() {
+    return this.valueSize;
+  }
+
+  public void setForDelete() {
+    this.forDelete = true;
+  }
+
+  public boolean isForDelete() {
+    return this.forDelete;
   }
 
   @Override
@@ -287,8 +309,9 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
     throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
   }
 
-  public boolean isOverflowedToDisk(LocalRegion r, DistributedRegion.DiskPosition dp) {
-    throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
+  public boolean isOverflowedToDisk(LocalRegion r,
+      DistributedRegion.DiskPosition dp, boolean alwaysFetchPosition) {
+    return false;
   }
 
   public Object getKey() {
@@ -304,6 +327,9 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
   }
 
   public final Object getValue(RegionEntryContext context) {
+    if (Token.isRemoved(this.value)) {
+      return null;
+    }
     return this.value;
   }
   
@@ -339,7 +365,7 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
     throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
   }
 
-  public void removePhase2()
+  public void removePhase2(LocalRegion r)
   {
     throw new UnsupportedOperationException(
         "Not appropriate for PartitionedRegion.NonLocalRegionEntry");
@@ -355,7 +381,7 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
     //throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
   }
 
-  public void setOwner(LocalRegion owner) {
+  public void setOwner(LocalRegion owner, Object previousOwner) {
     throw new UnsupportedOperationException(LocalizedStrings
         .PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY
             .toLocalizedString());
@@ -363,14 +389,17 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
 
   @Override
   public Token getValueAsToken() {
-    throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
+    Object v = this.value;
+    if (v == null) {
+      return null;
+    } else if (v instanceof Token) {
+      return (Token)v;
+    } else {
+      return Token.NOT_A_TOKEN;
+    }
   }
   @Override
   public Object _getValueRetain(RegionEntryContext context, boolean decompress) {
-    throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
-  }
-  @Override
-  public Object getTransformedValue() {
     throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
   }
 
@@ -678,7 +707,7 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
 
   @Override
   public boolean isValueNull() {
-    return (null == getValueAsToken());
+    return this.value == null;
   }
 
   @Override
@@ -692,7 +721,7 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
   }
 
   @Override
-  public void setValueToNull() {
+  public void setValueToNull(RegionEntryContext context) {
     throw new UnsupportedOperationException(LocalizedStrings.PartitionedRegion_NOT_APPROPRIATE_FOR_PARTITIONEDREGIONNONLOCALREGIONENTRY.toLocalizedString());
   }
   

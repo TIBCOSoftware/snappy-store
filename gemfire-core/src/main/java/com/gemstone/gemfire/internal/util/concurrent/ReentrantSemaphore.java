@@ -19,9 +19,6 @@ package com.gemstone.gemfire.internal.util.concurrent;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
-import com.gemstone.gemfire.internal.concurrent.S;
-
-
 /**
  * A special purpose semaphore that allows reentrancy. With this semaphore, a thread
  * will only acquire a real permit the first time it calls acquire. After that, the
@@ -39,7 +36,7 @@ import com.gemstone.gemfire.internal.concurrent.S;
  * @author dsmith
  *
  */
-public class ReentrantSemaphore extends Semaphore implements S {
+public class ReentrantSemaphore extends Semaphore {
   private final ThreadLocal<Integer> holdCount = new ThreadLocal<Integer>();
 
   /**

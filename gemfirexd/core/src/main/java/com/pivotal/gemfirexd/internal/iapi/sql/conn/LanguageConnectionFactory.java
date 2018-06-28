@@ -129,6 +129,7 @@ public interface LanguageConnectionFactory {
 								LanguageFactory lf,
 								Database db,
 								String userName,
+								String authToken,
 								String drdaID,
 // GemStone changes BEGIN
 								long connId,

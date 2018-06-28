@@ -23,9 +23,10 @@ import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Set;
+
+import javax.annotation.Nonnull;
 
 import com.gemstone.gemfire.GemFireException;
 import com.gemstone.gemfire.cache.CacheLoaderException;
@@ -45,8 +46,7 @@ import com.gemstone.gemfire.internal.cache.TXManagerImpl.TXContext;
 import com.gemstone.gemfire.internal.cache.TXState;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
-import com.gemstone.gnu.trove.THashMap;
-import com.gemstone.gnu.trove.THashSet;
+import io.snappydata.collection.OpenHashSet;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.index.GlobalRowLocation;
@@ -90,7 +90,6 @@ import com.pivotal.gemfirexd.internal.iapi.store.raw.ContainerHandle;
 import com.pivotal.gemfirexd.internal.iapi.store.raw.ContainerKey;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLInteger;
 import com.pivotal.gemfirexd.internal.impl.sql.StatementStats;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.BaseActivation;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.PlanUtils;
@@ -98,6 +97,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.execute.ResultSetStatisticsVisito
 import com.pivotal.gemfirexd.internal.impl.sql.execute.RowUtil;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.xplain.XPLAINUtil;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
+import io.snappydata.collection.ObjectObjectHashMap;
 
 /**
  * @author soubhikc
@@ -107,8 +107,6 @@ import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 public final class GemFireResultSet extends AbstractGemFireResultSet implements
     NoPutResultSet {
 
-  public static DataValueDescriptor DUMMY_PK = new SQLInteger(0);
-  
   //private final AbstractGemFireActivation act;
 
   private final SelectQueryInfo selectQI;
@@ -152,7 +150,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
    * Map Keys -> Routing Objects
    * Store keys and routingObjects used in getAll for Global Index Case.
    */
-  private Map<Object, Integer> getAllKeysAndRoutingObjects;
+  private ObjectObjectHashMap<Object, Object> getAllKeysAndRoutingObjects;
 
   private int currPos;
 
@@ -302,7 +300,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
          */
         if (policy.withPartitioning()) {
           this.doGetAll = true;
-          this.getAllKeysAndRoutingObjects = new THashMap();
+          this.getAllKeysAndRoutingObjects = ObjectObjectHashMap.withExpectedSize(8);
           if (GemFireXDUtils.TraceQuery | GemFireXDUtils.TraceNCJ) {
             SanityManager
                 .DEBUG_PRINT(
@@ -677,21 +675,19 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
           }
         }
       }
-      else { // DVD[]
-        // ASIF: If the store is always byte , this else block will never be
-        // called, see if this "else" block can be removed
-        DataValueDescriptor[] dvds = null;
+      else { // DVD[] or Object
+        Object value;
         try {
           if (!didGoToServer) {
             if (this.stats != null) {
               this.stats.incNumGetsStartedDvd();
               begin = this.stats.getStatTime();
             }
-            dvds = executeGetOnGFERegion(gfKey, region, logger, hasLoader,
+            value = executeGetOnGFERegion(gfKey, region, logger, hasLoader,
                 currentRoutingObject, isTX);
           }
           else {
-            dvds = (DataValueDescriptor[])retVal;
+            value = retVal;
           }
         } finally {
           if (this.stats != null) {
@@ -699,8 +695,8 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
             this.stats.incGetNextCoreDvdTime(begin);
           }
         }
-        if (dvds != null) {
-          fetchRow = this.gfContainer.newValueRow(dvds);
+        if (value != null) {
+          fetchRow = this.gfContainer.newExecRow(gfKey, value);
         }
       }
       if (fetchRow != null) {
@@ -813,7 +809,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
               this.projectionLobColumns);
         }
         else {
-          fetchRow = this.gfContainer.newExecRow(rawRow);
+          fetchRow = this.gfContainer.newExecRow(key, rawRow);
         }
       }
     }
@@ -827,17 +823,18 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
         fetchRow = compactRow;
       }
       else {
-       fetchRow = this.gfContainer.newExecRow(rawRow);
+       fetchRow = this.gfContainer.newExecRow(key, rawRow);
       }
     }
     return fetchRow;
   }
 
   @SuppressWarnings("unchecked")
-  private List<?> callGetAllExecutorMessage() throws StandardException {
-    final LogWriterI18n logger = this.getAllMsg.getRegion().getLogWriterI18n();
+  public static List<?> callGetAllExecutorMessage(
+      @Nonnull RegionMultiKeyExecutorMessage getAllMsg) throws StandardException {
+    final LogWriterI18n logger = getAllMsg.getRegion().getLogWriterI18n();
     try {
-      return (ArrayList<Object>)this.getAllMsg.executeFunction();
+      return (ArrayList<Object>)getAllMsg.executeFunction();
     } catch (GemFireXDRuntimeException ex) {
       if (logger.fineEnabled()) {
         logger.fine("Got GemFireXDRuntimeException exception", ex);
@@ -863,8 +860,8 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
       throw Misc.processGemFireException(gfeex, gfeex,
           "execution of ResultSet.next()", true);
     } catch (StandardException ex) {
-      if (this.getAllMsg instanceof GetAllExecutorMessage
-          && ((GetAllExecutorMessage)this.getAllMsg).hasLoader()) {
+      if (getAllMsg instanceof GetAllExecutorMessage
+          && ((GetAllExecutorMessage)getAllMsg).hasLoader()) {
         if (!SQLState.LANG_DUPLICATE_KEY_CONSTRAINT.equals(ex.getSQLState())
             && !SQLState.LANG_FK_VIOLATION.equals(ex.getSQLState())) {
           throw ex;
@@ -876,8 +873,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
     } catch (SQLException sqle) {
       // wrap in StandardException
       throw Misc.processFunctionException("GemFireResultSet.executeGetAll",
-          sqle, this.getAllMsg != null ? this.getAllMsg.getTarget() : null,
-          this.getAllMsg.getRegion());
+          sqle, getAllMsg.getTarget(), getAllMsg.getRegion());
     }
 
     return null;
@@ -928,7 +924,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
             }
             Object retVal = insertOneRow(gfKey, region, logger, tx, result);
             if (retVal != null) {
-              return this.gfContainer.newExecRow(retVal);
+              return this.gfContainer.newExecRow(gfKey, retVal);
             }
           }
         }
@@ -965,7 +961,8 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
     assert giRegion != null;
 
     // Also remove duplicates
-    Map<DataValueDescriptor, CompactCompositeRegionKey> giKeys = new THashMap();
+    ObjectObjectHashMap<Object, CompactCompositeRegionKey> giKeys =
+        ObjectObjectHashMap.withExpectedSize(this.gfKeys.length);
     for (Object gfKey : this.gfKeys) {
       // also see assertion in constructor
       assert gfKey instanceof CompactCompositeRegionKey;
@@ -978,20 +975,19 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
       observer.getAllGlobalIndexInvoked(numKeys);
     }
 
+    Set<Object> keys = giKeys.keySet();
     if (doLog) {
       SanityManager.DEBUG_PRINT(
           GfxdConstants.TRACE_QUERYDISTRIB,
           "GemFireResultSet.callGetAllOnGlobalIndex: Started for container="
               + giContainer + "; with Loader="
               + giContainer.getHasLoaderAnywhere() + "; for keys["
-              + giKeys.keySet().size() + "] = "
-              + RowUtil.toString(giKeys.keySet().toArray()));
+              + keys.size() + "] = " + RowUtil.toString(keys.toArray()));
     }
 
-    this.getAllMsg = new GetAllExecutorMessage(giRegion, giKeys.keySet()
-        .toArray(), null, null, null, null, null, null, tx, this.lcc,
-        this.forUpdate, this.queryHDFS);
-    this.getAllResults = callGetAllExecutorMessage();
+    this.getAllMsg = new GetAllExecutorMessage(giRegion, keys.toArray(), null,
+        null, null, null, null, null, tx, this.lcc, this.forUpdate, queryHDFS);
+    this.getAllResults = callGetAllExecutorMessage(this.getAllMsg);
 
     if (doLog) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
@@ -1005,7 +1001,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
           && result.currentRowForGetAll != null) {
         this.getAllKeysAndRoutingObjects.put(giKeys
             .get(result.currentKeyForGetAll),
-            (Integer)((GlobalRowLocation)result.currentRowForGetAll)
+            ((GlobalRowLocation)result.currentRowForGetAll)
                 .getRoutingObject());
         if (GemFireXDUtils.TraceRSIter) {
           SanityManager.DEBUG_PRINT(
@@ -1033,10 +1029,10 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
    * GetAll Execution
    */
   private ExecRow executeGetAll() throws StandardException {
-    assert this.doGetAll == true;
-    assert this.getAllDone == false;
-    assert this.doGetAllOnLocalIndex == false;
-    assert this.gfContainer.isByteArrayStore() == true;
+    assert this.doGetAll;
+    assert !this.getAllDone;
+    assert !this.doGetAllOnLocalIndex;
+    assert this.gfContainer.isByteArrayStore() || this.gfContainer.isObjectStore();
     boolean doLog = DistributionManager.VERBOSE | GemFireXDUtils.TraceQuery
         | GemFireXDUtils.TraceNCJ;
 
@@ -1063,7 +1059,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
     }
 
     Object[] getAllKeys = null;
-    Integer[] getAllRoutingObjects = null;
+    Object[] getAllRoutingObjects = null;
     if (this.isGlobalIndexCase) {
       assert this.currPos <= this.gfKeys.length;
       ExecRow retVal = executeGetAllOnGlobalIndex();
@@ -1083,7 +1079,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
       getAllKeys = new Object[giResultSize];
       getAllRoutingObjects = new Integer[giResultSize];
       int index = 0;
-      for (Entry<Object, Integer> entry : this.getAllKeysAndRoutingObjects
+      for (Map.Entry<Object, Object> entry : this.getAllKeysAndRoutingObjects
           .entrySet()) {
         getAllKeys[index] = entry.getKey();
         getAllRoutingObjects[index] = entry.getValue();
@@ -1093,7 +1089,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
     }
     else
     {
-      Set<Object> keysSet = new THashSet();
+      OpenHashSet<Object> keysSet = new OpenHashSet<>(this.gfKeys.length);
       // remove duplicates
       for (Object key : this.gfKeys) {
         keysSet.add(key);
@@ -1141,7 +1137,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
           this.projectionFixedColumns, this.projectionVarColumns,
           this.projectionLobColumns, this.projectionAllColumnsWithLobs, tx,
           this.lcc, this.forUpdate, this.queryHDFS);
-      this.getAllResults = callGetAllExecutorMessage();
+      this.getAllResults = callGetAllExecutorMessage(this.getAllMsg);
     } finally {
       if (this.stats != null) {
         this.stats.incNumGetsEndedByte();
@@ -1184,7 +1180,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
 
     final Object[] getAllKeys;
     @SuppressWarnings("unchecked")
-    Set<Object> keysSet = new THashSet();
+    OpenHashSet<Object> keysSet = new OpenHashSet<>(this.gfKeys.length);
     // remove duplicates
     for (Object key : this.gfKeys) {
       keysSet.add(key);
@@ -1228,7 +1224,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
           this.projectionFormat, this.projectionFixedColumns,
           this.projectionVarColumns, this.projectionLobColumns,
           this.projectionAllColumnsWithLobs);
-      this.getAllResults = callGetAllExecutorMessage();
+      this.getAllResults = callGetAllExecutorMessage(this.getAllMsg);
     } finally {
       if (this.stats != null) {
         this.stats.incNumGetsEndedByte();
@@ -1355,13 +1351,13 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
     return fetchRow;
   }
 
-  private DataValueDescriptor[] executeGetOnGFERegion(final Object gfKey,
+  private Object executeGetOnGFERegion(final Object gfKey,
       final LocalRegion region, final LogWriterI18n logger,
       final boolean hasLoader, final Object routingObject, final boolean isTX)
       throws StandardException {
     Object key = gfKey;
     Object callbackArg = routingObject;
-    DataValueDescriptor[] dvds = null;
+    Object value;
     if (hasLoader) {
       if (!isTX) {
         // It is possible that this PK based get may load data & hence
@@ -1375,7 +1371,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
       }
     }
     try {
-      dvds = (DataValueDescriptor[])region.get(key, callbackArg);
+      value = region.get(key, callbackArg);
       if (hasLoader && isTX) {
         /* [sumedh] we really need to know if the value was indeed
          *  loaded by CacheLoader; currently throwing assertion error
@@ -1395,7 +1391,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
           logger.fine("Got CacheLoaderException which "
               + "had EntryNotFoundException within");
         }
-        dvds = null;
+        value = null;
       }
       else {
         throw ex;
@@ -1404,7 +1400,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
       if (logger.fineEnabled()) {
         logger.fine("Got EntryNotFoundException exception", ex);
       }
-      dvds = null;
+      value = null;
     } catch (GemFireXDRuntimeException ex) {
       if (logger.fineEnabled()) {
         logger.fine("Got GemFireXDRuntimeException exception", ex);
@@ -1418,14 +1414,14 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
       }
     } catch (EntryExistsException ex) {
       if (this.isTheRegionReplicate) {
-        dvds = (DataValueDescriptor[])ex.getOldValue();
+        value = ex.getOldValue();
       }
       else {
         throw StandardException.newException(
             SQLState.LANG_UNEXPECTED_USER_EXCEPTION, ex, ex.toString());
       }
     }
-    return dvds;
+    return value;
   }
 
   public ExecRow getNextRowCore() throws StandardException {

@@ -770,7 +770,8 @@ public class THashMap extends TObjectHash implements Map, Serializable {
         }
 
         // GemStoneAddition
-        public final Object getValueAtCurrent() {
+        public final Object nextValue() {
+          moveToNextIndex();
           return _values[_index];
         }
 

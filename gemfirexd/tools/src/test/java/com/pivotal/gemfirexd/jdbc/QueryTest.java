@@ -534,8 +534,8 @@ public class QueryTest extends JdbcTestBase {
     Connection conn = TestUtil.getConnection();
     Statement st = conn.createStatement();
 
-    final ResultSet rs = conn.getMetaData().getTables((String)null, null,
-        "course".toUpperCase(), new String[] { "TABLE" });
+    final ResultSet rs = conn.getMetaData().getTables(null, null,
+        "course".toUpperCase(), new String[] { "ROW TABLE" });
     final boolean found = rs.next();
     rs.close();
 
@@ -2950,8 +2950,8 @@ public class QueryTest extends JdbcTestBase {
   public void createTable(Connection conn) throws SQLException {
     Statement s = conn.createStatement();
     DatabaseMetaData dbmd = conn.getMetaData();
-    final ResultSet rs = dbmd.getTables((String)null, null,
-        "orders".toUpperCase(), new String[] { "TABLE" });
+    final ResultSet rs = dbmd.getTables(null, null,
+        "orders".toUpperCase(), new String[] { "ROW TABLE" });
     // also check for a few flags that are failing over network connection
     assertTrue(dbmd.othersInsertsAreVisible(ResultSet.TYPE_FORWARD_ONLY));
     assertTrue(dbmd.othersDeletesAreVisible(ResultSet.TYPE_FORWARD_ONLY));

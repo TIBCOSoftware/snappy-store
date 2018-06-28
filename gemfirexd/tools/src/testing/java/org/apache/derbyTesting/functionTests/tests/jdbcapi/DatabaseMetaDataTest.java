@@ -1226,7 +1226,7 @@ public class DatabaseMetaDataTest extends BaseJDBCTestCase {
         rs = getDMDTables(dmd, null, "SYS", "%", viewOnly);
         JDBC.assertEmpty(rs);
 
-        String[] allTables = {"SYNONYM","SYSTEM TABLE","TABLE","VIEW","COLUMN TABLE","EXTERNAL TABLE"};
+        String[] allTables = {"SYNONYM","SYSTEM TABLE","ROW TABLE","VIEW","COLUMN TABLE","EXTERNAL TABLE"};
         rs = getDMDTables(dmd, null, null, null, allTables);
         checkTablesShape(rs);
         assertEquals("Different counts from getTables",
@@ -1278,7 +1278,7 @@ public class DatabaseMetaDataTest extends BaseJDBCTestCase {
                     dbIDS[rowPosition%dbIDS.length], rs.getString("TABLE_NAME"));
             }
 
-            assertEquals("TABLE_TYPE", "TABLE", rs.getString("TABLE_TYPE"));
+            assertEquals("TABLE_TYPE", "ROW TABLE", rs.getString("TABLE_TYPE"));
 
             assertEquals("REMARKS", "", rs.getString("REMARKS"));
 
@@ -1314,7 +1314,7 @@ public class DatabaseMetaDataTest extends BaseJDBCTestCase {
                         schema, rs.getString("TABLE_SCHEM"));
                 assertEquals("TABLE_NAME",
                         dbIDS[rowPosition%dbIDS.length], rs.getString("TABLE_NAME"));
-                assertEquals("TABLE_TYPE", "TABLE", rs.getString("TABLE_TYPE"));
+                assertEquals("TABLE_TYPE", "ROW TABLE", rs.getString("TABLE_TYPE"));
                 rowPosition++;
             }
             rs.close();
@@ -1337,7 +1337,7 @@ public class DatabaseMetaDataTest extends BaseJDBCTestCase {
             {
                 assertEquals("TABLE_SCHEM",
                         dbIDS[rowPosition%dbIDS.length], rs.getString("TABLE_SCHEM"));
-                assertEquals("TABLE_TYPE", "TABLE", rs.getString("TABLE_TYPE"));
+                assertEquals("TABLE_TYPE", "ROW TABLE", rs.getString("TABLE_TYPE"));
                 assertEquals("TABLE_NAME",
                         table, rs.getString("TABLE_NAME"));
                 rowPosition++;
@@ -2033,7 +2033,7 @@ public class DatabaseMetaDataTest extends BaseJDBCTestCase {
 
         JDBC.assertFullResultSet(rs, new String[][]
           {
-            {"SYNONYM"},{"SYSTEM TABLE"},{"TABLE"},{"VIEW"},{"COLUMN TABLE"},{"EXTERNAL TABLE"},
+            {"SYNONYM"},{"SYSTEM TABLE"},{"ROW TABLE"},{"VIEW"},{"COLUMN TABLE"},{"EXTERNAL TABLE"},
           }, true);
         rs.close();
     }

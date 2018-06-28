@@ -122,6 +122,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
+import java.util.regex.Pattern;
 
 /**
  *
@@ -1202,6 +1203,11 @@ public class EmbedStatement extends ConnectionChild
               execFlags = (short) GemFireXDUtils.set(execFlags,
                   GenericStatement.QUERY_HDFS, true);
             }
+
+            if (routeQueryEnabled(cc)) {
+              execFlags = GemFireXDUtils.set(execFlags, GenericStatement.ROUTE_QUERY, true);
+            }
+
             preparedStatement = lcc.prepareInternalStatement(lcc
                 .getDefaultSchema(), cc != null? cc.getGeneralizedQueryString():SQLText,                
                 false /* for meta data*/, execFlags, cc, ncjMetaData);
@@ -1305,7 +1311,17 @@ public class EmbedStatement extends ConnectionChild
     }
    }
 
-  private void validateParameterizedData(PreparedStatement preparedStatement)
+  protected static final Pattern EXECUTION_ENGINE_STORE_HINT =
+    Pattern.compile(".*\\bEXECUTIONENGINE(\\s+)?+=(\\s+)?+STORE\\s*\\b.*",
+        Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+
+  protected boolean routeQueryEnabled(CompilerContext cc) {
+    String stmt = cc != null? cc.getGeneralizedQueryString() : SQLText;
+    return Misc.routeQuery(lcc)
+      && (!EXECUTION_ENGINE_STORE_HINT.matcher(stmt).matches());
+  }
+
+	private void validateParameterizedData(PreparedStatement preparedStatement)
       throws StandardException {
     ConstantValueSet  cvs = (ConstantValueSet)this.lcc.getConstantValueSet(null);
     GenericPreparedStatement gps = (GenericPreparedStatement)preparedStatement; 
@@ -2291,7 +2307,7 @@ public class EmbedStatement extends ConnectionChild
 						  a.reset(false);
 						}
 						if (!distribute)
-						  if (!origAutoCommit) {
+						  if (!origAutoCommit && !tran.getImplcitSnapshotTxStarted()) {
 						    if (!tran.isTransactional() && !isPreparedBatch && (act == null || !(act instanceof LockTableConstantAction))) {
 						      tran.releaseAllLocks(
 						          false, false);
@@ -2367,10 +2383,10 @@ public class EmbedStatement extends ConnectionChild
             if ((csca = ddlAction.getImplicitSchemaCreated()) != null) {
               long schemaDDLId = ddlQ.newUUID();
               schemaDDL = new DDLConflatable(csca.toString(), defaultSchema,
-                  csca, null, null, schemaDDLId, queueInitialized);
+                  csca, null, null, schemaDDLId, queueInitialized, lcc);
             }
             ddl = new DDLConflatable(this.SQLText, defaultSchema, ddlAction,
-                additionalArgs, schemaDDL, ddlId.longValue(), queueInitialized);
+                additionalArgs, schemaDDL, ddlId.longValue(), queueInitialized, lcc);
             if (distribute) {
               if (schemaDDL != null) {
                 SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLREPLAY,

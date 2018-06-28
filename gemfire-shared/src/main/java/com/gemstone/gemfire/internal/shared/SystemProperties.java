@@ -65,15 +65,42 @@ public final class SystemProperties {
 
   // these are the defaults for the per-socket TCP keepalive parameters
   public static final int DEFAULT_KEEPALIVE_IDLE = 20;
-  public static final int DEFAULT_KEEPALIVE_INTVL = 1;
+  public static final int DEFAULT_KEEPALIVE_INTVL = 4;
   public static final int DEFAULT_KEEPALIVE_CNT = 10;
 
   public static final String DEFAULT_PROPERTY_NAME_PREFIX = "gemfire.";
   public static final String DEFAULT_GFXDCLIENT_PROPERTY_NAME_PREFIX =
       "gemfirexd.client.";
 
+  /** The prefix used for SnappyData properties set through java system properties */
+  public static final String SNAPPY_PREFIX = "snappydata.store.";
+
+  public static final String SHADOW_SCHEMA_NAME = "SNAPPYSYS_INTERNAL";
+
+  public static final String SHADOW_TABLE_SUFFIX = "_COLUMN_STORE_";
+
+  public static final String SHADOW_SCHEMA_SEPARATOR = "____";
+
+  public static final String SHADOW_SCHEMA_NAME_WITH_SEPARATOR =
+      SHADOW_SCHEMA_NAME + SHADOW_SCHEMA_SEPARATOR;
+
+  public static final String SNAPPY_HIVE_METASTORE = "SNAPPY_HIVE_METASTORE";
+  public static final String SNAPPY_HIVE_METASTORE_PATH =
+      "/" + SNAPPY_HIVE_METASTORE;
+
+  /**
+   * Hidden region that is used for DDL string puts for DDL statement replay on
+   * new servers in GemFireXD.
+   */
+  public final static String DDL_STMTS_REGION = "_DDL_STMTS_META_REGION";
+  public final static String DDL_STMTS_REGION_PATH = "/" + DDL_STMTS_REGION;
+
   public static final String GFXD_FACTORY_PROVIDER = "com.pivotal.gemfirexd."
       + "internal.engine.store.entry.GfxdObjectFactoriesProvider";
+
+  public static final String SNAPPY_DEFAULT_COMPRESSION_CODEC = "lz4";
+
+  public static final int SNAPPY_MIN_COLUMN_DELTA_ROWS = 200;
 
   /**
    * Common internal product callbacks on client and server side to possibly
@@ -115,7 +142,8 @@ public final class SystemProperties {
      */
     public synchronized String getSystemProperty(String key,
         SystemProperties properties) throws PrivilegedActionException {
-      this._propertyName = this.propertyNamePrefix + key;
+      this._propertyName = key.startsWith(this.propertyNamePrefix)
+          ? key : this.propertyNamePrefix + key;
       String value = AccessController.doPrivileged(this);
       this._propertyName = null;
       return value;
@@ -174,8 +202,11 @@ public final class SystemProperties {
               .equals(frameCls) ||
           "com.pivotal.gemfirexd.internal.GemFireXDVersion"
               .equals(frameCls) ||
-          "io.snappydata.gemxd.SnappyDataVersion$"
-              .equals(frameCls)) {
+          "io.snappydata.gemxd.SnappyDataVersion$".equals(frameCls) ||
+          "io.snappydata.gemxd.SnappyDataVersion".equals(frameCls) ||
+          "org.apache.spark.sql.SnappySession$".equals(frameCls) ||
+          "org.apache.spark.sql.SnappySession".equals(frameCls) ||
+          "io.snappydata.gemxd.ClusterCallbacksImpl$".equals(frameCls)) {
         return true;
       }
     }

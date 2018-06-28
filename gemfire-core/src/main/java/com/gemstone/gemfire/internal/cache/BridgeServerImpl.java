@@ -57,8 +57,6 @@ import com.gemstone.gemfire.internal.cache.tier.Acceptor;
 import com.gemstone.gemfire.internal.cache.tier.sockets.AcceptorImpl;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientNotifier;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 import java.io.File;
@@ -70,6 +68,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * An implementation of the <code>CacheServer</code> interface that delegates
@@ -726,8 +725,8 @@ public class BridgeServerImpl
     return getName();
   }
 
-  private final static AI profileSN = CFactory.createAI();
-  
+  private final static AtomicInteger profileSN = new AtomicInteger();
+
   private static int createSerialNumber() {
     return profileSN.incrementAndGet();
   }

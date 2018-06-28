@@ -267,9 +267,6 @@ public final class MemberFunctionStreamingMessage extends
   public void fromData(DataInput in) throws IOException, ClassNotFoundException {
     super.fromData(in);
 
-    // TODO: SW: processorId is being written twice; get rid of one of these
-    // but need to take care of rolling upgrades, so do it once we bump the
-    // version
     this.processorId = in.readInt();
     ReplyProcessor21.setMessageRPId(this.processorId);
     Object object = DataSerializer.readObject(in);

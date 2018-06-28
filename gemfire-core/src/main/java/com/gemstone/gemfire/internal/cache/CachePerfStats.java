@@ -168,7 +168,14 @@ public class CachePerfStats implements HashingStats {
   protected static final int compressionDecompressionsId;
   protected static final int compressionPreCompressedBytesId;
   protected static final int compressionPostCompressedBytesId;
-  
+  protected static final int compressionSkippedId;
+  protected static final int compressionSkippedTimeId;
+  protected static final int compressionSkippedBytesId;
+  protected static final int compressionDecompressedReplacedId;
+  protected static final int compressionDecompressedReplaceSkippedId;
+  protected static final int compressionCompressedReplacedId;
+  protected static final int compressionCompressedReplaceSkippedId;
+
   protected static final int evictByCriteria_evictionsId;// total actual evictions (entries evicted)
   protected static final int evictByCriteria_evictionTimeId;// total eviction time including product + user expr. 
   protected static final int evictByCriteria_evictionsInProgressId;
@@ -289,6 +296,17 @@ public class CachePerfStats implements HashingStats {
     final String compressionDecompressionsDesc = "The total number of decompression operations.";
     final String compressionPreCompresssedBytesDesc = "The total number of bytes before compressing.";
     final String compressionPostCompressedBytesDesc = "The total number of bytes after compressing.";
+    final String compressionSkippedDesc = "The total number of compressions skipped (due to < 25% reduction).";
+    final String compressionSkippedTimeDesc = "The total time spent in compressions that were skipped.";
+    final String compressionSkippedBytesDesc = "The total number bytes skipped in compression.";
+    final String compressionDecompressedReplacedDesc = "The total number times storage " +
+        "replaced buffer after decompression.";
+    final String compressionDecompressedReplaceSkippedDesc = "The total number times storage " +
+        "skipped replacing buffer after decompression due to active usage.";
+    final String compressionCompressedReplacedDesc = "The total number times storage " +
+        "replaced buffer after compression.";
+    final String compressionCompressedReplaceSkippedDesc = "The total number times storage " +
+        "skipped replacing buffer after compression due to active usage.";
     final String evictByCriteria_evictionsDesc = "The total number of entries evicted";// total actual evictions (entries evicted)
     final String evictByCriteria_evictionTimeDesc= "Time taken for eviction process";// total eviction time including product + user expr. 
     final String evictByCriteria_evictionsInProgressDesc = "Total number of evictions in progress";
@@ -426,7 +444,21 @@ public class CachePerfStats implements HashingStats {
         f.createLongCounter("decompressions", compressionDecompressionsDesc, "operations"),
         f.createLongCounter("preCompressedBytes", compressionPreCompresssedBytesDesc, "bytes"),
         f.createLongCounter("postCompressedBytes", compressionPostCompressedBytesDesc, "bytes"),
-        
+        f.createLongCounter("compressionsSkipped",
+            compressionSkippedDesc, "operations"),
+        f.createLongCounter("compressSkippedTime",
+            compressionSkippedTimeDesc, "nanoseconds"),
+        f.createLongCounter("compressSkippedBytes",
+            compressionSkippedBytesDesc, "bytes"),
+        f.createLongCounter("decompressedReplaced",
+            compressionDecompressedReplacedDesc, "operations"),
+        f.createLongCounter("decompressedReplaceSkipped",
+            compressionDecompressedReplaceSkippedDesc, "operations"),
+        f.createLongCounter("compressedReplaced",
+            compressionCompressedReplacedDesc, "operations"),
+        f.createLongCounter("compressedReplaceSkipped",
+            compressionCompressedReplaceSkippedDesc, "operations"),
+
         f.createLongCounter("evictByCriteria_evictions", evictByCriteria_evictionsDesc, "operations"),
         f.createLongCounter("evictByCriteria_evictionTime", evictByCriteria_evictionTimeDesc, "nanoseconds"),
         f.createLongCounter("evictByCriteria_evictionsInProgress", evictByCriteria_evictionsInProgressDesc, "operations"),
@@ -565,7 +597,14 @@ public class CachePerfStats implements HashingStats {
     compressionDecompressionsId = type.nameToId("decompressions");
     compressionPreCompressedBytesId = type.nameToId("preCompressedBytes");
     compressionPostCompressedBytesId = type.nameToId("postCompressedBytes");
-    
+    compressionSkippedId = type.nameToId("compressionsSkipped");
+    compressionSkippedTimeId = type.nameToId("compressSkippedTime");
+    compressionSkippedBytesId = type.nameToId("compressSkippedBytes");
+    compressionDecompressedReplacedId = type.nameToId("decompressedReplaced");
+    compressionDecompressedReplaceSkippedId = type.nameToId("decompressedReplaceSkipped");
+    compressionCompressedReplacedId = type.nameToId("compressedReplaced");
+    compressionCompressedReplaceSkippedId = type.nameToId("compressedReplaceSkipped");
+
     evictByCriteria_evictionsId = type.nameToId("evictByCriteria_evictions");
     evictByCriteria_evictionTimeId = type.nameToId("evictByCriteria_evictionTime"); 
     evictByCriteria_evictionsInProgressId = type.nameToId("evictByCriteria_evictionsInProgress");
@@ -603,7 +642,7 @@ public class CachePerfStats implements HashingStats {
    * @since 5.0
    */
   public static long getStatTime() {
-    return enableClockStats? NanoTimer.getTime() : 0;
+    return enableClockStats ? NanoTimer.getTime() : 0;
   }
 
   @Override
@@ -804,6 +843,10 @@ public class CachePerfStats implements HashingStats {
      return stats.getLong(compressionPostCompressedBytesId);                    
    }
 
+   public long getTotalCompressionsSkipped() {
+     return stats.getLong(compressionSkippedId);
+   }
+
   //////////////////////  Updating Stats  //////////////////////
 
    public long startCompression() {
@@ -818,6 +861,30 @@ public class CachePerfStats implements HashingStats {
 
      stats.incLong(compressionPreCompressedBytesId, startSize);
      stats.incLong(compressionPostCompressedBytesId, endSize);
+   }
+
+   public void endCompressionSkipped(long startTime, long startSize) {
+     if (enableClockStats) {
+       stats.incLong(compressionSkippedTimeId, getStatTime() - startTime);
+     }
+     stats.incLong(compressionSkippedId, 1);
+     stats.incLong(compressionSkippedBytesId, startSize);
+   }
+
+   public void incDecompressedReplaced() {
+     stats.incLong(compressionDecompressedReplacedId, 1);
+   }
+
+   public void incDecompressedReplaceSkipped() {
+     stats.incLong(compressionDecompressedReplaceSkippedId, 1);
+   }
+
+  public void incCompressedReplaced() {
+    stats.incLong(compressionCompressedReplacedId, 1);
+  }
+
+   public void incCompressedReplaceSkipped() {
+     stats.incLong(compressionCompressedReplaceSkippedId, 1);
    }
 
    public long startDecompression() {
@@ -1467,5 +1534,13 @@ public class CachePerfStats implements HashingStats {
 
   public long getEvaluationTime() {
     return stats.getLong(evictByCriteria_evaluationTimeId);
+  }
+
+  /** only used by tests */
+  public void clearEvictionByCriteriaStatsForTest() {
+    stats.setLong(evictByCriteria_evictionsId, 0L);
+    stats.setLong(evictByCriteria_evictionsInProgressId, 0L);
+    stats.setLong(evictByCriteria_evaluationsId, 0L);
+    stats.setLong(evictByCriteria_evaluationTimeId, 0L);
   }
 }

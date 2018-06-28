@@ -21,13 +21,13 @@ import com.gemstone.gemfire.InternalGemFireException;
 import com.gemstone.gemfire.i18n.StringIdImpl;
 import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.org.jgroups.util.StringId;
+import io.snappydata.collection.IntObjectHashMap;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Locale;
-import com.gemstone.gnu.trove.TIntObjectHashMap;
 
 
 /**
@@ -38,7 +38,7 @@ import com.gemstone.gnu.trove.TIntObjectHashMap;
  * @since 5.7 
  */
 public class AbstractStringIdResourceBundle {
-  private TIntObjectHashMap data;
+  private IntObjectHashMap<String> data;
 
   /** 
    * The {@link java.util.ResourceBundle} that implements the message lookup
@@ -47,8 +47,8 @@ public class AbstractStringIdResourceBundle {
   private static AbstractStringIdResourceBundle messageBundle;
   
   /**
-   * Init method to populate the TIntObjectHashMap for Non-english locales
-   * <code>data = new TIntObjectHashMap();</code>
+   * Init method to populate the IntObjectHashMap for Non-english locales
+   * <code>data = IntObjectHashMap.withExpectedSize(...);</code>
    *
    * The default bundle, English, will be
    * <code>data = null</code>
@@ -76,8 +76,8 @@ public class AbstractStringIdResourceBundle {
     }
   }
 	
-  private TIntObjectHashMap readDataFile(InputStream is) {
-    TIntObjectHashMap map = new TIntObjectHashMap();
+  private IntObjectHashMap<String> readDataFile(InputStream is) {
+    IntObjectHashMap<String> map = IntObjectHashMap.withExpectedSize(128);
     boolean complete = false;
     BufferedReader input = null;
     try {
@@ -90,7 +90,7 @@ public class AbstractStringIdResourceBundle {
          String message = line.substring(equalSign+2).replaceAll("\\\\n", "\n");
          try {
            int id = Integer.parseInt(idAsString);
-           map.put(id, message);
+           map.justPut(id, message);
          } catch(NumberFormatException nfe) {
            //unit tests should prevent this from happening in a customer situation
            throw new InternalGemFireException(nfe);
@@ -129,7 +129,7 @@ public class AbstractStringIdResourceBundle {
   public String getString(StringId key) {
     if (usingRawMode())
       return key.getRawText();
-    String txt = (String) data.get(((StringIdImpl)key).id);
+    String txt = data.get(((StringIdImpl)key).id);
     if( txt != null ) {
       return txt;
     } else {

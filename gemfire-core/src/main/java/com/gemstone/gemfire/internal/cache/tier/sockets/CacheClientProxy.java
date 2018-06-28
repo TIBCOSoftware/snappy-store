@@ -25,7 +25,9 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -81,15 +83,11 @@ import com.gemstone.gemfire.internal.cache.StateFlushOperation;
 import com.gemstone.gemfire.internal.cache.ha.HAContainerWrapper;
 import com.gemstone.gemfire.internal.cache.ha.HARegionQueue;
 import com.gemstone.gemfire.internal.cache.ha.HARegionQueueAttributes;
-import com.gemstone.gemfire.internal.cache.tier.Acceptor;
 import com.gemstone.gemfire.internal.cache.ha.HARegionQueueStats;
 import com.gemstone.gemfire.internal.cache.tier.InterestType;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientUpdateMessageImpl.CqNameToOp;
 import com.gemstone.gemfire.internal.cache.tier.sockets.command.Get70;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
-import com.gemstone.gemfire.internal.concurrent.AB;
-import com.gemstone.gemfire.internal.concurrent.AR;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.security.AuthorizeRequestPP;
 import com.gemstone.gemfire.internal.shared.Version;
@@ -166,7 +164,8 @@ public class CacheClientProxy implements ClientSession
    */
   protected final CacheClientProxyStats _statistics;
 
-  protected final AR  _durableExpirationTask = CFactory.createAR();
+  protected final AtomicReference<SystemTimerTask> _durableExpirationTask =
+      new AtomicReference<>();
 
   protected SystemTimer durableTimer;
 
@@ -821,7 +820,7 @@ public class CacheClientProxy implements ClientSession
    * Set to true once this proxy starts being closed.
    * Remains true for the rest of its existence.
    */
-  private final AB closing = CFactory.createAB(false);
+  private final AtomicBoolean closing = new AtomicBoolean(false);
 
   /**
    * Close the <code>CacheClientProxy</code>.
@@ -2002,7 +2001,7 @@ public class CacheClientProxy implements ClientSession
   }
 
   protected void cancelDurableExpirationTask(boolean logMessage) {
-    SystemTimer.SystemTimerTask task = (SystemTimerTask) _durableExpirationTask.getAndSet(null);
+    SystemTimer.SystemTimerTask task = _durableExpirationTask.getAndSet(null);
     if (task != null) {
       if (logMessage && this._logger.infoEnabled()) {
         this._logger.info(

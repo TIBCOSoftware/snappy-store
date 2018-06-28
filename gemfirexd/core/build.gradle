@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -16,39 +16,37 @@
  */
 
 plugins {
-  id 'ca.coglinc.javacc' version '2.3.1'
-  id 'com.github.johnrengelman.shadow' version '1.2.3'
+  id 'ca.coglinc.javacc' version '2.4.0'
+  id 'com.github.johnrengelman.shadow' version '2.0.1'
 }
 
 dependencies {
   compile project(subprojectBase + 'gemfire-core')
-  compile project(subprojectBase + 'gemfirexd-shared')
-  compile project(subprojectBase + 'gemfirexd-client')
-  provided project(subprojectBase + 'gemfirexd-prebuild')
+  compile project(subprojectBase + 'snappydata-store-shared')
+  compile project(subprojectBase + 'snappydata-store-client')
+  compileOnly project(subprojectBase + 'snappydata-store-prebuild')
 
-  provided files("${System.getProperty('java.home')}/../lib/tools.jar")
-  provided 'xalan:xalan:2.7.2'
-  provided 'xalan:serializer:2.7.2'
-  provided "com.pivotal:pxf-api:${pxfVersion}"
+  compileOnly files("${System.getProperty('java.home')}/../lib/tools.jar")
+  compileOnly 'xalan:xalan:2.7.2'
+  compileOnly 'xalan:serializer:2.7.2'
+  compileOnly "com.pivotal:pxf-api:${pxfVersion}"
   compile "org.osgi:org.osgi.core:${osgiVersion}"
   compile "org.apache.ant:ant:${antVersion}"
   compile "javax.servlet:javax.servlet-api:${servletAPIVersion}"
   compile "org.apache.thrift:libthrift:${thriftVersion}"
   compile "com.esotericsoftware:kryo-shaded:${kryoVersion}"
-  compile "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 
-  provided "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-common:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
-  provided "com.google.protobuf:protobuf-java:${protobufVersion}"
-  provided "com.sun.jersey:jersey-core:${sunJerseyVersion}"
-  provided "com.sun.jersey:jersey-server:${sunJerseyVersion}"
-  provided "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
-  provided "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
-  provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
-  provided "com.google.code.findbugs:jsr305:${jsr305Version}"
+  compileOnly "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-common:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
+  compileOnly "com.google.protobuf:protobuf-java:${protobufVersion}"
+  compileOnly "org.glassfish.jersey.core:jersey-server:${jerseyVersion}"
+  compileOnly "org.glassfish.jersey.containers:jersey-container-servlet-core:${jerseyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-server:${jettyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-util:${jettyVersion}"
+  compileOnly "com.google.code.findbugs:jsr305:${jsr305Version}"
 }
 
 // move javacc output directory to a place where IDEA can easily register
@@ -104,7 +102,7 @@ def msgDir = "${projectDir}/src/main/resources/${locDir}"
 def msgEnDir = "${buildDir}/resources/main/${locDir}"
 
 task buildMessages {
-  dependsOn subprojectBase + 'gemfirexd-prebuild:jar', 'processResources', subprojectBase + 'gemfirexd-client:processResources'
+  dependsOn subprojectBase + 'snappydata-store-prebuild:jar', 'processResources', subprojectBase + 'snappydata-store-client:processResources'
 
   def msgXml = "${msgDir}/messages.xml"
   def msgEn = "${msgEnDir}/messages_en.properties"
@@ -119,7 +117,7 @@ task buildMessages {
 
     ant.taskdef(name: 'buildMessages',
         classname: 'org.apache.derbyBuild.MessageBuilder',
-        classpath: project(subprojectBase + 'gemfirexd-prebuild').sourceSets.main.output.classesDir)
+        classpath: project(subprojectBase + 'snappydata-store-prebuild').sourceSets.main.output.classesDir)
 
     ant.buildMessages(xmlSourceFile: msgXml, propertiesTargetFile: msgEn,
         ditaTargetFile: "${projectDir}/doc/rrefexcept71493.dita")
@@ -140,10 +138,10 @@ def splitMessages(def msgFile, def msgDir) {
 // create the client messages files for various languages
 task doSplit(dependsOn: buildMessages) {
   def msgXml = "${msgDir}/messages.xml"
-  def clientResourceDir = "${project(subprojectBase + 'gemfirexd-client').buildDir}/resources/main/${locDir}"
+  def clientResourceDir = "${project(subprojectBase + 'snappydata-store-client').buildDir}/resources/main/${locDir}"
 
   inputs.file msgXml
-  outputs.file "${clientResourceDir}/clientmessages_en.properties"
+  outputs.files "${msgEnDir}/m0_en.properties", "${clientResourceDir}/clientmessages_en.properties"
 
   doLast {
     splitMessages('messages_en.properties', msgEnDir)
@@ -178,9 +176,9 @@ task doSplit(dependsOn: buildMessages) {
 }
 
 task odbcMeta {
-  dependsOn "${subprojectBase}gemfirexd-prebuild:processResources", 'processResources', "${subprojectBase}gemfirexd-prebuild:jar"
+  dependsOn "${subprojectBase}snappydata-store-prebuild:processResources", 'processResources', "${subprojectBase}snappydata-store-prebuild:jar"
   def metaDir = file("${buildDir}/resources/main/com/pivotal/gemfirexd/internal/impl/jdbc")
-  outputs.files "${metaDir}/metadata.properties"
+  outputs.file "${metaDir}/metadata.properties"
   inputs.dir compileJava.destinationDir
 
   doFirst {
@@ -225,8 +223,6 @@ task createClassSizeCatalog {
 
 compileJava.dependsOn generatePropertiesFiles
 
-// TODO: SW: manifest generation, check previous GemFireXD.xml
-
 // external javadocs
 javadoc {
   include 'com/pivotal/gemfirexd/auth/callback/*.java'
@@ -268,6 +264,10 @@ jar {
       copy {
         from "${projectDir}/lib"
         into "${gemfireCoreProject.buildDir}/libs"
+      }
+      copy {
+        from "${projectDir}/lib"
+        into gemfireCoreProject.sourceSets.main.output.classesDir
       }
     }
   }

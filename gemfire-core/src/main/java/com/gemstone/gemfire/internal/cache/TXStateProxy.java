@@ -193,7 +193,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
   /**
    * The current {@link State} of the transaction.
    */
-  private final AtomicReference<State> state;
+  final AtomicReference<State> state;
 
   protected volatile boolean hasCohorts;
 
@@ -206,6 +206,12 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
   private volatile boolean hasReadOps;
 
   private Throwable inconsistentThr;
+
+  /**
+   * Transient flag to indicate that rollover from row buffers to column store
+   * are disabled.
+   */
+  private volatile boolean columnRolloverDisabled;
 
   /**
    * List of any function executions that have not yet invoked a getResult().
@@ -457,6 +463,9 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       this.eventsToBePublished = eventsToBePublished;
       if (numRegions > 0) {
         this.viewVersions = new long[numRegions];
+        for (int i = 0; i < numRegions; i++) {
+          this.viewVersions[i] = -1;
+        }
         this.viewAdvisors = new DistributionAdvisor[numRegions];
       }
       else {
@@ -474,7 +483,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       final long[] viewVersions = this.viewVersions;
       final DistributionAdvisor[] advisors;
       LogWriterI18n logger = null;
-      long viewVersion;
+      long viewVersion = -1;
       if (viewVersions != null) {
         advisors = this.viewAdvisors;
         if (LOG_VERSIONS) {
@@ -483,7 +492,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
         int numOps = viewVersions.length;
         while (--numOps >= 0) {
           viewVersion = viewVersions[numOps];
-          if (viewVersion > 0) {
+          if (viewVersion != -1) {
             advisors[numOps].endOperation(viewVersion);
             if (logger != null) {
               logger.info(LocalizedStrings.DEBUG, "TXCommit: "
@@ -596,8 +605,8 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     this.isJCA = false;
     if (flags == null) {
       this.lockPolicy = LockingPolicy.fromIsolationLevel(isolationLevel, false);
-      this.enableBatching = ENABLE_BATCHING;
-      this.syncCommits = (this.lockPolicy == LockingPolicy.SNAPSHOT)?  true: false;
+      this.enableBatching = (this.lockPolicy != LockingPolicy.SNAPSHOT) && ENABLE_BATCHING;
+      this.syncCommits = this.lockPolicy == LockingPolicy.SNAPSHOT;
     }
     else {
       this.lockPolicy = LockingPolicy.fromIsolationLevel(isolationLevel,
@@ -606,10 +615,9 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
         this.enableBatching = false;
       }
       else {
-        this.enableBatching = ENABLE_BATCHING;
+        this.enableBatching = (this.lockPolicy != LockingPolicy.SNAPSHOT) && ENABLE_BATCHING;
       }
-      this.syncCommits = (this.lockPolicy == LockingPolicy.SNAPSHOT) ? true :
-          flags.contains(TransactionFlag.SYNC_COMMITS);
+      this.syncCommits = (this.lockPolicy == LockingPolicy.SNAPSHOT) || flags.contains(TransactionFlag.SYNC_COMMITS);
     }
     this.inconsistentThr = null;
 
@@ -739,8 +747,8 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
 
   public final boolean batchingEnabled() {
     final TXManagerImpl.TXContext context;
-    return this.enableBatching || ((context = TXManagerImpl.currentTXContext())
-        != null && context.forceBatching);
+    return !isSnapshot() && (this.enableBatching || ((context = TXManagerImpl.currentTXContext())
+        != null && context.forceBatching));
   }
 
   public final boolean skipBatchFlushOnCoordinator() {
@@ -1369,7 +1377,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       new TObjectLongProcedure() {
     @Override
     public boolean execute(Object o, long viewVersion) {
-      if (viewVersion > 0) {
+      if (viewVersion != -1) {
         DistributionAdvisor advisor = (DistributionAdvisor)o;
         advisor.endOperation(viewVersion);
         if (LOG_VERSIONS) {
@@ -1498,8 +1506,9 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
             DistributionAdvisor advisor = dataRegion.getDistributionAdvisor();
             int insertionIndex = versions.getInsertionIndex(advisor);
             if (insertionIndex >= 0) {
-              long viewVersion = advisor.startOperation();
-              if (viewVersion > 0) {
+              long viewVersion = -1;
+              viewVersion = advisor.startOperation();
+              if (viewVersion != -1) {
                 versions.putAtIndex(advisor, viewVersion, insertionIndex);
                 if (LOG_VERSIONS) {
                   getTxMgr().getLogger().info(LocalizedStrings.DEBUG,
@@ -1623,9 +1632,10 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
    * here.
    */
   protected void cleanup() {
+    this.hasCohorts = false;
     this.isDirty = false;
     this.hasReadOps = false;
-    this.hasCohorts = false;
+    this.columnRolloverDisabled = false;
     if (!this.pendingResultCollectors.isEmpty()) {
       this.pendingResultCollectors.clear();
     }
@@ -2219,6 +2229,13 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     }
   }
 
+  public final void cleanSnapshotEntriesForRegion(LocalRegion r) {
+    final TXState localState = this.localTXState;
+    if (localState != null) {
+      localState.cleanSnapshotEntriesForRegion(r);
+    }
+  }
+
   public final void rollback(final Object callbackArg)
       throws TransactionException {
     rollback(callbackArg, null);
@@ -2246,7 +2263,8 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       // if rollback already started due to some reason (e.g. coordinator
       // departed) then wait for it to finish and then return
       if (state == State.ROLLBACK_STARTED) {
-        waitForLocalTXCommit(null, ExclusiveSharedSynchronizer.LOCK_MAX_TIMEOUT);
+        waitForLocalTXCommit(null,
+            Math.max(5000L, ExclusiveSharedSynchronizer.LOCK_MAX_TIMEOUT / 10));
         return;
       }
       if (this.state.compareAndSet(state, State.ROLLBACK_STARTED)) {
@@ -2490,7 +2508,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
             if (viewVersions != null) {
               viewVersions[index] = advisor.startOperation();
               viewAdvisors[index] = advisor;
-              if (LOG_VERSIONS && viewVersions[index] > 0) {
+              if (LOG_VERSIONS && viewVersions[index] != -1) {
                 getTxMgr().getLogger().info(LocalizedStrings.DEBUG,
                     "TXCommit: " + getTransactionId().shortToString()
                         + " dispatching operation for " + pbr.getFullPath()
@@ -2515,7 +2533,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
             if (viewVersions != null) {
               viewVersions[index] = advisor.startOperation();
               viewAdvisors[index] = advisor;
-              if (LOG_VERSIONS && viewVersions[index] > 0) {
+              if (LOG_VERSIONS && viewVersions[index] != -1) {
                 getTxMgr().getLogger().info(LocalizedStrings.DEBUG,
                     "TXCommit: " + getTransactionId().shortToString()
                         + " dispatching operation for " + dreg.getFullPath()
@@ -2988,28 +3006,47 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     // for state flush
     DistributionAdvisor advisor = null;
     long viewVersion = -1;
-    if (dataRegion != null) {
-      if (hasPossibleRecipients) {
-        advisor = dataRegion.getDistributionAdvisor();
-        viewVersion = advisor.startOperation();
-        if (LOG_VERSIONS) {
+
+    try {
+      if (dataRegion != null) {
+        if (hasPossibleRecipients && !isSnapshot()) {
+          advisor = dataRegion.getDistributionAdvisor();
+          viewVersion = advisor.startOperation();
+          if (LOG_VERSIONS) {
+            logger = r.getLogWriterI18n();
+            logger.info(LocalizedStrings.DEBUG, "TX: "
+                + getTransactionId().shortToString()
+                + " dispatching operation in view version " + viewVersion);
+          }
+        }
+        TransactionObserver observer = getObserver();
+        if (observer != null) {
           logger = r.getLogWriterI18n();
           logger.info(LocalizedStrings.DEBUG, "TX: "
               + getTransactionId().shortToString()
               + " dispatching operation in view version " + viewVersion);
+          observer.beforePerformOp(this);
         }
-      }
-      addAffectedRegion(dataRegion);
-    }
-    else {
-      addAffectedRegion(r);
-    }
-    if (lockPolicy == LockingPolicy.SNAPSHOT) {
-      event.setTXState(this);
-      return performOp.operateOnSharedDataView(event, expectedOldValue, cacheWrite, lastModified, flags);
-    }
 
-    try {
+        // if checkTXState fails here..we don't have endOperation
+        addAffectedRegion(dataRegion);
+      }
+      else {
+        TransactionObserver observer = getObserver();
+        if (observer != null) {
+          logger = r.getLogWriterI18n();
+          logger.info(LocalizedStrings.DEBUG, "TX: "
+              + getTransactionId().shortToString()
+              + " dispatching operation in view version " + viewVersion);
+          observer.beforePerformOp(this);
+        }
+        // if checkTXState fails here..we don't have endOperation
+        addAffectedRegion(r);
+      }
+      if (lockPolicy == LockingPolicy.SNAPSHOT) {
+        event.setTXState(this);
+        return performOp.operateOnSharedDataView(event, expectedOldValue, cacheWrite, lastModified, flags);
+      }
       try {
         // in case of a local operation flush the pending ops else the batched
         // information can become incorrect
@@ -3113,7 +3150,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
               flags);
         }
         // message distribution, if any, is done at this point
-        if (viewVersion > 0) {
+        if (viewVersion != -1) {
           advisor.endOperation(viewVersion);
           if (LOG_VERSIONS) {
             logger.info(LocalizedStrings.DEBUG, "TX: "
@@ -3192,7 +3229,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       }
       throw te;
     } finally {
-      if (viewVersion > 0) {
+      if (viewVersion != -1) {
         advisor.endOperation(viewVersion);
         if (LOG_VERSIONS) {
           logger.info(LocalizedStrings.DEBUG, "TX: " + performOp
@@ -3307,18 +3344,18 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
 
   final public boolean isClosed() {
     final State state = this.state.get();
-    if (state == State.CLOSED) {
-      return true;
-    }
-    return false;
+    return state == State.CLOSED;
   }
 
   final void checkTXState() throws TransactionException {
-    final LogWriterI18n logger = getTxMgr().getLogger();
-
     final State state = this.state.get();
     if (state == State.OPEN || state == State.COMMIT_PHASE2_STARTED) {
       return;
+    }
+    if (state == State.ROLLBACK_STARTED) {
+      throw new IllegalTransactionStateException(LocalizedStrings
+          .TransactionManagerImpl_TRANSACTIONMANAGERIMPL_COMMIT_TRANSACTION_ROLLED_BACK_BECAUSE_A_USER_MARKED_IT_FOR_ROLLBACK
+          .toLocalizedString());
     }
     if (state == State.CLOSED) {
       throw new IllegalTransactionStateException(LocalizedStrings
@@ -4037,7 +4074,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       final Object key, final LocalRegion dataRegion, final int iContext,
       final boolean allowTombstones, final ReadEntryUnderLock reader) {
     final LockingPolicy lockPolicy = getLockingPolicy();
-    return TXState.lockEntryForRead(lockPolicy, entry, key, dataRegion,
+    return TXState.lockEntryForRead(lockPolicy, entry, key, dataRegion, null,
         this.txId, getTXStateForRead(), iContext, batchingEnabled(),
         allowTombstones, Boolean.TRUE, reader);
   }
@@ -4765,13 +4802,20 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     }
   }
 
+  public void setColumnRolloverDisabled(boolean disabled) {
+    this.columnRolloverDisabled = disabled;
+  }
+
+  public boolean isColumnRolloverDisabled() {
+    return this.columnRolloverDisabled;
+  }
+
   /**
    * {@inheritDoc}
    */
   @Override
   public int getExecutionSequence() {
-    // TODO Auto-generated method stub
-    return 0;
+    return this.currentExecutionSeq;
   }
   
   public void rollback(int savepoint) {

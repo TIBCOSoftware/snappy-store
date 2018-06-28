@@ -18,17 +18,19 @@ package com.pivotal.gemfirexd.internal.impl.sql.execute;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Hashtable;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
+import com.gemstone.gemfire.cache.DiskAccessException;
 import com.gemstone.gemfire.cache.DiskStoreFactory;
-import com.pivotal.gemfirexd.internal.engine.Misc;
+import io.snappydata.collection.OpenHashSet;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.access.operations.DiskStoreCreateOperation;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -51,7 +53,7 @@ public class CreateDiskStoreConstantAction extends DDLConstantAction {
 
   final private List<Integer> dirSizes;
 
-  final private Map otherAttribs;
+  final private Map<?, ?> otherAttribs;
 
   public static final String REGION_PREFIX_FOR_CONFLATION =
       "__GFXD_INTERNAL_DISKSTORE_";
@@ -83,30 +85,46 @@ public class CreateDiskStoreConstantAction extends DDLConstantAction {
   public String toString() {
     return constructToString("CREATE DISKSTORE ", diskStoreName);
   }
-  
-  // Is this filename valid?
-  public static boolean isFilenameValid(String file) {
-   // Illegal characters are
-   //  asterisk
-   //  question mark
-   //  greater-than/less-than
-   //  pipe character
-   //  semicolon
-   // Some are legal on Linux, but trying to create DISKSTORE "*" crashes anyway
-   // So make this more restrictive and same as Windows restrictions
-   Pattern illegalCharsPattern = Pattern.compile("[*?<>|;]");
-   Matcher matcher = illegalCharsPattern.matcher(file);
-   if (matcher.find())
-   {
-     return false;
-   }
-   return true;
-  }
-
 
   @Override
   public void executeConstantAction(Activation activation)
       throws StandardException {
+    // first register operation to create the main disk store
+    executeConstantAction(diskStoreName, dirPaths, dirSizes,
+        otherAttribs, activation);
+    // next register operation to create the internal delta store
+    if (Misc.getMemStore().isSnappyStore()) {
+      int numDirs = dirPaths.size();
+      List<String> deltaDirs;
+      List<Integer> deltaSizes;
+      if (numDirs > 0) {
+        deltaDirs = new ArrayList<>(numDirs);
+        for (String dirPath : dirPaths) {
+          deltaDirs.add(dirPath + File.separator +
+              GfxdConstants.SNAPPY_DELTA_SUBDIR);
+        }
+        deltaSizes = dirSizes;
+      } else {
+        deltaDirs = Collections.singletonList(GfxdConstants.SNAPPY_DELTA_SUBDIR);
+        deltaSizes = Collections.singletonList(0);
+      }
+      // set/overwrite the max oplog size to fixed one for delta store
+      LinkedHashMap<Object, Object> deltaAttrs = new LinkedHashMap<>(otherAttribs);
+      deltaAttrs.put("maxlogsize", GfxdConstants.SNAPPY_DELTA_DISKSTORE_SIZEMB);
+      executeConstantAction(diskStoreName +
+              GfxdConstants.SNAPPY_DELTA_DISKSTORE_SUFFIX, deltaDirs,
+          deltaSizes, deltaAttrs, activation);
+    }
+  }
+
+  private static void executeConstantAction(String diskStoreName,
+      List<String> dirPaths, List<Integer> dirSizes, Map<?, ?> otherAttribs,
+      Activation activation) throws StandardException {
+    // Verify that this disk store name is legal
+    if (!GemFireStore.isFilenameValid(diskStoreName)) {
+      throw StandardException.newException(SQLState.NOT_IMPLEMENTED,
+          "Disk Store name " + diskStoreName + " is not valid");
+    }
     if (!ServerGroupUtils.isDataStore()) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_CONGLOM,
           "Skipping create diskstore for " + diskStoreName + " on JVM of kind "
@@ -122,22 +140,20 @@ public class CreateDiskStoreConstantAction extends DDLConstantAction {
       int sizes[] = new int[numDirs];
       boolean dirCreated[] = new boolean[numDirs];
       Arrays.fill(dirCreated, false);
-      Hashtable<String, String> ht = new Hashtable<String, String>();
-      String canonicalPath = null;
+      OpenHashSet<String> ht = new OpenHashSet<>(numDirs);
+      String canonicalPath;
       boolean foundExplicitSize = false;
       for (int i = 0; i < numDirs; ++i) {
         String fileStr = dirPaths.get(i);
-        fileStr = store.generatePersistentDirName(fileStr);
-        // Verify that this directory name is legal
-        if (!isFilenameValid(fileStr))
-        {
-          throw StandardException.newException(SQLState.NOT_IMPLEMENTED,
-              "Directory name " + dirPaths.get(i) + " was not valid");        
+        try {
+          dirs[i] = GemFireStore.createPersistentDir(
+              store.getBasePersistenceDir(), fileStr).toFile();
+          dirPathsAndSizes.append(dirs[i].toString());
+          dirCreated[i] = true;
+        } catch (DiskAccessException dae) {
+          throw StandardException.newException(
+              SQLState.DATA_UNEXPECTED_EXCEPTION, dae);
         }
-
-        dirs[i] = new File(fileStr).getAbsoluteFile();
-        dirPathsAndSizes.append(dirs[i].getAbsolutePath());
-        dirCreated[i] = dirs[i].mkdir();
 
         /* Detect whether the user has entered duplicate directory names.
         * If yes, error out. For example, for CREATE DISKSTORE X ('DIR1', 
@@ -157,7 +173,7 @@ public class CreateDiskStoreConstantAction extends DDLConstantAction {
               "Unexpected exception while accessing the directory "
                   + dirs[i].toString(), ie);
         }
-        if (ht.put(canonicalPath, canonicalPath) != null) {
+        if (!ht.add(canonicalPath)) {
           // Duplicate directory found. Remove only the
           // directories that we have created and error out
           for (int k = 0; k <= i; ++k) {
@@ -187,30 +203,25 @@ public class CreateDiskStoreConstantAction extends DDLConstantAction {
       else {
         dsf.setDiskDirs(dirs);
       }
-    }
-    else {
-      String defaultDir = store.generatePersistentDirName(null);
-      File dirs[] = new File[] { new File(defaultDir).getAbsoluteFile() };
+    } else {
+      Path defaultDir = GemFireStore.createPersistentDir(
+          store.getBasePersistenceDir(), null);
+      File dirs[] = new File[] { defaultDir.toFile() };
       dirPathsAndSizes.append(dirs[0].getAbsolutePath());
-      String fileNameToCheck = defaultDir + "\\" + diskStoreName;
-      // Verify that this directory name is legal
-      if (!isFilenameValid(fileNameToCheck))
-      {
-        throw StandardException.newException(SQLState.NOT_IMPLEMENTED,
-            "Disk Store name " + diskStoreName + " was not valid");        
-      }
-      dirs[0].mkdir();
       dsf.setDiskDirs(dirs);
     }
-    Iterator<Map.Entry> entryItr = otherAttribs.entrySet().iterator();
-    while (entryItr.hasNext()) {
-      Map.Entry entry = entryItr.next();
+    for (Map.Entry<?, ?> entry : otherAttribs.entrySet()) {
       String key = (String)entry.getKey();
       Object vn = entry.getValue();
       try {
         if (key.equalsIgnoreCase("maxlogsize")) {
-          NumericConstantNode ncn = (NumericConstantNode)vn;
-          dsf.setMaxOplogSize(ncn.getValue().getLong());
+          // value may be set directly as Integer/Long for delta store
+          if (vn instanceof NumericConstantNode) {
+            NumericConstantNode ncn = (NumericConstantNode)vn;
+            dsf.setMaxOplogSize(ncn.getValue().getLong());
+          } else {
+            dsf.setMaxOplogSize(((Number)vn).longValue());
+          }
         }
         else if (key.equalsIgnoreCase("compactionthreshold")) {
           NumericConstantNode ncn = (NumericConstantNode)vn;

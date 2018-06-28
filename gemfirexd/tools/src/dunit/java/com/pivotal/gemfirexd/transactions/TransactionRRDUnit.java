@@ -39,8 +39,6 @@ public class TransactionRRDUnit extends TransactionDUnit {
    */
   @Override
   public void test42822() throws Exception {
-    startVMs(1, 3);
-
     Connection conn = TestUtil.jdbcConn;
     conn.setTransactionIsolation(getIsolationLevel());
     conn.setAutoCommit(false);
@@ -134,7 +132,6 @@ public class TransactionRRDUnit extends TransactionDUnit {
    * commit before its commit.
    */
   public void testRepeatableRead() throws Exception {
-    startVMs(1, 3);
     Connection conn = TestUtil.jdbcConn;
     Statement st = conn.createStatement();
     ResultSet rs;

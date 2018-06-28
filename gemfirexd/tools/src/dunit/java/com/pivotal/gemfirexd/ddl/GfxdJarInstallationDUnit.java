@@ -32,7 +32,6 @@ import java.util.concurrent.CyclicBarrier;
 import org.apache.derbyTesting.junit.JDBC;
 
 import com.gemstone.gemfire.internal.AvailablePort;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.FabricLocator;
 import com.pivotal.gemfirexd.FabricServiceManager;
@@ -69,7 +68,7 @@ public class GfxdJarInstallationDUnit extends DistributedSQLTestBase {
   public void testBug44223() throws Exception {
     final Properties locatorProps = new Properties();
     setMasterCommonProperties(locatorProps);
-    String locatorBindAddress = SocketCreator.getLocalHost().getHostName();
+    String locatorBindAddress = "localhost";
     int locatorPort = AvailablePort
         .getRandomAvailablePort(AvailablePort.SOCKET);
     _startNewLocator(this.getClass().getName(), getName(), locatorBindAddress,
@@ -105,9 +104,7 @@ public class GfxdJarInstallationDUnit extends DistributedSQLTestBase {
     // Use this VM as the network client
     TestUtil.loadNetDriver();
 
-    final InetAddress localHost = SocketCreator.getLocalHost();
-
-    String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort1);
+    String url = TestUtil.getNetProtocol("localhost", netPort1);
     Connection conn = DriverManager.getConnection(url);
 
     Statement st = conn.createStatement();
@@ -175,8 +172,7 @@ public class GfxdJarInstallationDUnit extends DistributedSQLTestBase {
     // Use this VM as the network client
     TestUtil.loadNetDriver();
 
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort1);
+    String url = TestUtil.getNetProtocol("localhost", netPort1);
     Connection conn = DriverManager.getConnection(url);
     Statement st = conn.createStatement();
     st.execute("call sqlj.install_jar('" + callbackjar + "', 'app.rowloaderjar', 0)");
@@ -196,8 +192,7 @@ public class GfxdJarInstallationDUnit extends DistributedSQLTestBase {
     // Use this VM as the network client
     TestUtil.loadNetDriver();
 
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort1);
+    String url = TestUtil.getNetProtocol("localhost", netPort1);
     Connection conn = DriverManager.getConnection(url);
     Statement st = conn.createStatement();
     st.execute("call sqlj.install_jar('" + callbackjar + "', 'app.writerjar', 0)");
@@ -217,8 +212,7 @@ public class GfxdJarInstallationDUnit extends DistributedSQLTestBase {
     // Use this VM as the network client
     TestUtil.loadNetDriver();
 
-    final InetAddress localHost = SocketCreator.getLocalHost();
-    String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort1);
+    String url = TestUtil.getNetProtocol("localhost", netPort1);
     Connection conn = DriverManager.getConnection(url);
     Statement st = conn.createStatement();
     st.execute("call sqlj.install_jar('" + callbackjar + "', 'app.listenerjar', 0)");
@@ -315,7 +309,7 @@ public class GfxdJarInstallationDUnit extends DistributedSQLTestBase {
   
   public void test52526() throws Exception {
     startVMs(1, 2);
-    String localHostName = SocketCreator.getLocalHost().getHostName();
+    String localHostName = "localhost";
     int netPort = startNetworkServer(1, null, null);
 
     Connection conn = TestUtil.getConnection();
@@ -349,7 +343,7 @@ public class GfxdJarInstallationDUnit extends DistributedSQLTestBase {
 
   public void testJarInstallRemoveReplace_vti() throws Exception {
     startVMs(1, 2);
-    final String localHostName = SocketCreator.getLocalHost().getHostName();
+    final String localHostName = "localhost";
     final int netPort = startNetworkServer(1, null, null);
 
     Connection conn = TestUtil.getConnection();
@@ -492,7 +486,7 @@ public class GfxdJarInstallationDUnit extends DistributedSQLTestBase {
       return;
     }
     // start a locator
-    final InetAddress localHost = SocketCreator.getLocalHost();
+    final InetAddress localHost = InetAddress.getByName("localhost");
     FabricLocator fabapi = FabricServiceManager.getFabricLocatorInstance();
     final Properties locProps = new Properties();
     setCommonProperties(locProps, 0, null, null);
@@ -544,9 +538,6 @@ public class GfxdJarInstallationDUnit extends DistributedSQLTestBase {
 
   public void testBug47783_47824() throws Exception {
     Properties props = new Properties();
-    // don't skip SPS pre-compilation for this test since it tests for
-    // deadlock which is fixed precisely by SPS precompilation (#47824)
-    props.setProperty("SKIP_SPS_PRECOMPILE", "false");
     startClientVMs(1, 0, null, props);
     startServerVMs(2, 0, "DBSYNC", props);
     final int netPort1 = startNetworkServer(2, null, props);
@@ -555,7 +546,6 @@ public class GfxdJarInstallationDUnit extends DistributedSQLTestBase {
     props.setProperty("mcast-port", "0");
     startServerVMs(1, 0, null, props);
     int netPort = startNetworkServer(3, null, props);
-    String netAddress = SocketCreator.getLocalHost().getHostName();
 
     Connection conn = TestUtil.getConnection();
     Connection netConn = TestUtil.getNetConnection(netPort, null, null);
@@ -573,8 +563,8 @@ public class GfxdJarInstallationDUnit extends DistributedSQLTestBase {
     stmt.execute("create asynceventlistener SECTSYNC("
         + "listenerclass 'com.jpmorgan.tss.securitas.strategic.logsynctable."
         + "db.gemfirexd.callbacks.SectDBSynchronizer' initparams "
-        + "'com.pivotal.gemfirexd.jdbc.ClientDriver,jdbc:gemfirexd://" + netAddress
-        + ':' + netPort + "' ENABLEPERSISTENCE true MANUALSTART false "
+        + "'com.pivotal.gemfirexd.jdbc.ClientDriver,jdbc:gemfirexd://localhost:"
+        + netPort + "' ENABLEPERSISTENCE true MANUALSTART false "
         + "ALERTTHRESHOLD 5000) SERVER GROUPS(DBSYNC)");
 
     stmt.execute("ALTER TABLE EMP.PARTITIONTESTTABLE SET ASYNCEVENTLISTENER("
@@ -681,7 +671,6 @@ public class GfxdJarInstallationDUnit extends DistributedSQLTestBase {
     props.setProperty("mcast-port", "0");
     startServerVMs(1, 0, null, props);
     int netPort = startNetworkServer(3, null, props);
-    String netAddress = SocketCreator.getLocalHost().getHostName();
 
     props.setProperty("user", "testuser");
     props.setProperty("password", "testpass");
@@ -704,8 +693,8 @@ public class GfxdJarInstallationDUnit extends DistributedSQLTestBase {
     stmt.execute("create asynceventlistener SECTSYNC("
         + "listenerclass 'com.jpmorgan.tss.securitas.strategic.logsynctable."
         + "db.gemfirexd.callbacks.SectDBSynchronizer' initparams "
-        + "'com.pivotal.gemfirexd.jdbc.ClientDriver,jdbc:gemfirexd://" + netAddress
-        + ':' + netPort + "' ENABLEPERSISTENCE true MANUALSTART false "
+        + "'com.pivotal.gemfirexd.jdbc.ClientDriver,jdbc:gemfirexd://localhost:" +
+        + netPort + "' ENABLEPERSISTENCE true MANUALSTART false "
         + "ALERTTHRESHOLD 5000) SERVER GROUPS(DBSYNC)");
 
     stmt.execute("ALTER TABLE EMP.PARTITIONTESTTABLE SET ASYNCEVENTLISTENER("

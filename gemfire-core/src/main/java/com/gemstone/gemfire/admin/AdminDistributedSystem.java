@@ -391,7 +391,20 @@ public interface AdminDistributedSystem {
    * @since 7.0
    */
   public void revokePersistentMember(UUID diskStoreID) throws AdminException;
-  
+
+
+  /**
+   * Indicates a member waiting for other diskStoreID to go ahead with the initialization.
+   * When a member recovers from a set of persistent files, it will wait for
+   * other members that were also persisting the same region to start up. If the
+   * persistent files for those other members were lost or not available,
+   * this method can be used to tell the members to stop waiting for that data
+   * and consider its own data as latest.
+   * @param diskStoreID
+   * @throws AdminException
+   */
+  public void unblockPersistentMember(UUID diskStoreID) throws AdminException;
+
   /**
    * Retrieve the set of persistent files that the existing members are waiting
    * for. See {@link AdminDistributedSystem#revokePersistentMember(InetAddress, String)}

@@ -110,5 +110,6 @@ public interface DiskRegionView extends PersistentMemberView, RegionEntryContext
   public String getCompressorClassName();
   public void oplogRecovered(long oplogId);
   public boolean getEnableOffHeapMemory();
+  public boolean isMetaTable();
 }
 

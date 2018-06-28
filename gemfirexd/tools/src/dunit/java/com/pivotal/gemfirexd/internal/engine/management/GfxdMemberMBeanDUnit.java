@@ -123,16 +123,14 @@ public class GfxdMemberMBeanDUnit extends GfxdManagementTestBase {
             AggregateMemberMXBean.class);
         
         //check that there are default 4 members
-        boolean done = (bean != null && bean.getMembers().length == 4  && 
-            bean.getNetworkServerPeerConnectionStats().getConnectionsAttempted() > 0);        
-        return done;
+        return bean != null && bean.getMembers().length == 4;
       }
 
     }, ManagementConstants.REFRESH_TIME * 4, 500, true);
     
       Set<DistributedMember> dsMembers = CliUtil.getAllMembers(Misc.getGemFireCacheNoThrow());      
       Iterator<DistributedMember> it = dsMembers.iterator();
-      InternalDistributedSystem system = Misc.getGemFireCacheNoThrow().getDistributedSystem();      
+      InternalDistributedSystem system = Misc.getDistributedSystem();
       StatisticsType connectionStatsType = system.findType(ConnectionStats.name);
       
       long peerConnectionsOpened = 0 ;
@@ -182,12 +180,10 @@ public class GfxdMemberMBeanDUnit extends GfxdManagementTestBase {
            internalConnectionsClosed = statistics.getLong("internalConnectionsClosed");
            internalConnectionsOpen= statistics.getLong("internalConnectionsOpen");           
         }
-      }else{
+      } else {
         //fail the test
-        logInfo( "For member=" +  system.getMemberId() + " connectionStatsType is null" );
-        fail();
+        fail("For member=" + system.getMemberId() + " connectionStatsType is null");
       }     
-      
       while (it.hasNext()) {
         DistributedMember dsMember = it.next();
         

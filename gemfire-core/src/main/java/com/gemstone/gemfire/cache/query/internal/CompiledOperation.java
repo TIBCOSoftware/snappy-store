@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.gemstone.gemfire.cache.EntryDestroyedException;
 import com.gemstone.gemfire.cache.Region;
@@ -32,17 +33,12 @@ import com.gemstone.gemfire.cache.query.NameResolutionException;
 import com.gemstone.gemfire.cache.query.QueryInvocationTargetException;
 import com.gemstone.gemfire.cache.query.QueryService;
 import com.gemstone.gemfire.cache.query.TypeMismatchException;
-import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.pdx.PdxInstance;
 import com.gemstone.gemfire.pdx.PdxSerializationException;
 import com.gemstone.gemfire.pdx.internal.PdxInstanceImpl;
-import com.gemstone.gemfire.pdx.internal.PdxType;
-
 
 /**
  * Class Description
@@ -56,9 +52,9 @@ public class CompiledOperation extends AbstractCompiledValue {
   private final CompiledValue receiver; // may be null if implicit to scope
   private final String methodName;
   private final List args;
-  private static final CM cache = CFactory.createCM();
-  
-  
+  private static final ConcurrentHashMap<Object, MethodDispatch> cache =
+      new ConcurrentHashMap<>();
+
   // receiver is an ID or PATH that contains the operation name
   public CompiledOperation(CompiledValue receiver, String methodName, List args) {
     this.receiver = receiver;
@@ -259,7 +255,7 @@ public class CompiledOperation extends AbstractCompiledValue {
     // see if in cache
     MethodDispatch methodDispatch;
     List key = Arrays.asList(new Object[] { resolutionType , this.methodName, argTypes });
-    methodDispatch = (MethodDispatch)CompiledOperation.cache.get(key);
+    methodDispatch = CompiledOperation.cache.get(key);
     if (methodDispatch == null) {
       try {
         methodDispatch = new MethodDispatch(resolutionType, this.methodName, argTypes);

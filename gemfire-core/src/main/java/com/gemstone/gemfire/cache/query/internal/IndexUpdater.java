@@ -22,6 +22,7 @@ import com.gemstone.gemfire.cache.Operation;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.TimeoutException;
 import com.gemstone.gemfire.distributed.LockNotHeldException;
+import com.gemstone.gemfire.internal.cache.DiskRegion;
 import com.gemstone.gemfire.internal.cache.EntryEventImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.RegionEntry;
@@ -101,11 +102,13 @@ public interface IndexUpdater {
   /**
    * Invoked to clear all index entries for a region before destroying it. This
    * can be a bucket region or a replicated region.
-   * 
+   *
    * @param region
    *          the {@link LocalRegion} being destroyed
-   * @param lockForGII
-   *          if true then also acquire the {@link #lockForGII()}
+   * @param dr
+   *          the {@link DiskRegion} to be used; normally is the DiskRegion of
+   *          the "region", but can be different in case a bucket region has not
+   *          yet been created in a failed GII when destroying the disk data
    * @param holdIndexLock
    *          if true then hold on to the index level lock acquired by
    *          {@link #lockForGII()} at the end of this method which will block
@@ -113,18 +116,19 @@ public interface IndexUpdater {
    *          block when this is true by a call to
    *          {@link #releaseIndexLock(LocalRegion)}
    * @param bucketEntriesIter
-   *         iterator on List of RegionEntry belonging to the bucket which is being destroyed.
-   *         null is passed for non bucket regions.
-   * @param destroyOffline
-   * @return  Returns whether write lock was acqired by clearIndex or not
+   *          iterator on List of RegionEntry belonging to the bucket which is
+   *          being destroyed with null passed for non bucket regions
+   * @param bucketId
+   *          if region passed is a PR then ID of the current bucket else -1
+   *
+   * @return returns whether write lock was acquired by clearIndex or not
    */
-
-  boolean clearIndexes(LocalRegion region, boolean lockForGII,
-      boolean holdIndexLock, Iterator<?> bucketEntriesIter, boolean destroyOffline);
+  boolean clearIndexes(LocalRegion region, DiskRegion dr,
+      boolean holdIndexLock, Iterator<?> bucketEntriesIter, int bucketId);
 
   /**
    * should be invoked if "holdIndexLock" argument was true in
-   * {@link #clearIndexes(LocalRegion, boolean, boolean, Iterator, boolean)}
+   * {@link #clearIndexes}
    */
   public void releaseIndexLock(LocalRegion region);
 

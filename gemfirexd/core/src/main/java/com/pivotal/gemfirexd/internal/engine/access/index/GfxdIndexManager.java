@@ -638,8 +638,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       if (lockForGII) {
         // the container GII lock is to synchronize with any index list changes
         // in refreshIndexListAndConstraintDesc()
-        lockForGII(false, tc);
-        lockedForGII = true;
+        lockedForGII = lockForGII(false, tc);
       }
 
       // check for region destroyed
@@ -651,7 +650,11 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       // No constraint checking for destroy since that is done by
       // ReferencedKeyCheckerMessage if required.
       // Also check if foreign key constraint check is really required.
-      final TXStateInterface tx = event.getTXState(owner);
+      TXStateInterface tx = event.getTXState(owner);
+      if (tx != null && tx.isSnapshot()) {
+        tx = null;
+      }
+
       final RowLocation rl = entry instanceof RowLocation ? (RowLocation)entry
           : null;
       final boolean skipDistribution;
@@ -1044,7 +1047,10 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
     }
     final Operation op = event.getOperation();
     //try {
-    final TXStateInterface tx = event.getTXState(owner);
+    TXStateInterface tx = event.getTXState(owner);
+    if (tx != null && tx.isSnapshot()) {
+      tx = null;
+    }
     if (success && tx == null /* txnal ops will update this at commit */) {
       if (!(op.isUpdate() && event.hasDelta())) {
         this.container.updateNumRows(op.isDestroy());
@@ -4348,8 +4354,8 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
   }
 
   @Override
-  public boolean clearIndexes(LocalRegion region, boolean lockForGII,
-      boolean holdIndexLock, Iterator<?> bucketEntriesIter, boolean destroyOffline) {
+  public boolean clearIndexes(LocalRegion region, DiskRegion dr,
+      boolean holdIndexLock, Iterator<?> bucketEntriesIter, int bucketId) {
     EmbedConnection conn = null;
     GemFireContainer gfc = null;
     LanguageConnectionContext lcc = null;
@@ -4389,15 +4395,13 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
         }
       }
       if (needToAcquireWriteLockOnGIILock) {
-        if (lockForGII) {
-          lockForGII(holdIndexLock, tc);
-          giiLockAcquired = true;
-        }
+        giiLockAcquired = lockForGII(holdIndexLock, tc);
       }
 
       // for the case of replicated region, simply blow away the entire
       // local indexes
-      if (!region.isUsedForPartitionedRegionBucket() && !destroyOffline) {
+      if (!region.isUsedForPartitionedRegionBucket()
+          && bucketId == KeyInfo.UNKNOWN_BUCKET) {
         if (indexes != null) {
           for (GemFireContainer index : indexes) {
             index.clear(lcc, tc);
@@ -4409,18 +4413,26 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       RegionEntry entry;
       boolean isOffHeapEnabled = region.getEnableOffHeapMemory();
       if (isOffHeapEnabled || indexes != null) {
+        int totalExceptionCount = 0;
         while (bucketEntriesIter.hasNext()) {
           entry = (RegionEntry) bucketEntriesIter.next();
           try {
             if (indexes != null) {
-              basicClearEntry(region, tc, indexes, entry, destroyOffline);
+              basicClearEntry(region, dr, tc, indexes, entry, bucketId);
             }
           } catch (Throwable th) {
-            if (logger != null) {
+            // in case of not destroyOffline, no need to log.
+            // However, after the index fix we shouldn't reach here.
+            totalExceptionCount++;
+            if (logger != null && (totalExceptionCount == 1)) {
               logger.error("Exception in removing the entry from index. "
                   + "Ignoring & continuing the loop ", th);
             }
           } finally {
+            if (logger != null && totalExceptionCount > 1) {
+              logger.error("Exception in removing the entry from index. "
+                  + "Total exception count : " + totalExceptionCount);
+            }
             if (isOffHeapEnabled) {
               ((AbstractRegionEntry) entry).release();
             }
@@ -4439,8 +4451,8 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       handleException(t, "GfxdIndexManager#clearIndexes: unexpected exception",
           lcc, null, null);
     } finally {
-      if (!holdIndexLock) {
-        unlockForGII(holdIndexLock, tc);
+      if (!holdIndexLock && giiLockAcquired) {
+        unlockForGII(false, tc);
       }
       if (tableLockAcquired) {
         gfc.closeForEndTransaction(tc, false);
@@ -4449,14 +4461,14 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
     return giiLockAcquired;
   }
 
-  void basicClearEntry(LocalRegion region, GemFireTransaction tc,
-      final List<GemFireContainer> indexes, RegionEntry entry, boolean destroyOffline)
+  void basicClearEntry(LocalRegion region, DiskRegion dr, GemFireTransaction tc,
+      final List<GemFireContainer> indexes, RegionEntry entry, int bucketId)
       throws StandardException, InternalGemFireError, Error {
     ExecRow oldRow;
     synchronized (entry) {
       if (!entry.isDestroyedOrRemoved()) {
         @Retained @Released
-        Object val = entry.getValueOffHeapOrDiskWithoutFaultIn(region);
+        Object val = ((AbstractRegionEntry)entry).getValueOffHeapOrDiskWithoutFaultIn(region, dr);
         if (val == null || val instanceof Token) {
           return;
         }
@@ -4467,14 +4479,16 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           // value
           // is a ListOfDeltas in which case ignore the destroy (bug #41529)
           if (oldRow != null) {
-            // destroyOffline flag is a hack set when bucket region is not created
+            // bucketId is passed when bucket region is not created
             // and instead a PR is passed as region. Avoid passing region tp
-            // EntryEventImpl.create if destroyOffline is set as it
+            // EntryEventImpl.create if bucketId is valid as it
             // will try to find routing object if region is passed
-            EntryEventImpl event = EntryEventImpl.create(destroyOffline ? null : region,
+            EntryEventImpl event = EntryEventImpl.create(
+                bucketId == KeyInfo.UNKNOWN_BUCKET ? region : null,
                 Operation.DESTROY, entry.getKey(), null, null, false, null);
-            if (destroyOffline) {
+            if (bucketId != KeyInfo.UNKNOWN_BUCKET) {
               event.setRegion(region);
+              event.setBucketId(bucketId);
             }
             event.setOldValue(val, true);
             event.setPossibleDuplicate(true);

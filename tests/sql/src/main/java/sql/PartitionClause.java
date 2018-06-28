@@ -73,55 +73,96 @@ public class PartitionClause {
     " replicate "  ,
   };
 
+  protected static String[] customersPartitionClauseForSnappy = {
+      " ",
+      " partition_by 'since' ",
+      " partition_by 'cust_name' ",
+      " " //replicate
+  };
+
   //writes the partition key info to BB
   protected static void writeCustomersPartitionToBB(int whichClause) {
     ArrayList<String> partitionKey = new ArrayList<String>();
     int customersPRs = 2;
-    switch (whichClause) {
-    case 0:
-      partitionKey.add("cid");
-      partitionMap.put("custPartitionOn", "hash");    
-      counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
-      --customersPRs;
-      if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.CUSTOMERS" + HDFSSqlTest.STORENAME) != null){      
-        counters.decrement(SQLBB.numOfPRs); 
+
+    if(SQLPrms.isSnappyMode()){
+      switch(whichClause) {
+        case 0:
+          partitionKey.add("cid");
+          partitionMap.put("custPartitionOn", "hash");
+          counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
+          --customersPRs;
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.CUSTOMERS" + HDFSSqlTest.STORENAME) != null) {
+            counters.decrement(SQLBB.numOfPRs);
+          }
+          break;
+        case 1:
+          partitionKey.add("since");
+          break;
+        case 2:
+            partitionKey.add("cust_name");
+          break;
+        case 3:
+          //replicated table, no partition key
+          counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index and no PR
+          customersPRs = 0;
+          break;
+        default:
+          throw new TestException("Unknown partitionKey " + whichClause);
       }
-      break;
-    case 1:
-      partitionKey.add("tid");
-      break;
-    case 2:
-      partitionKey.add("tid");
-      break;
-    case 3:
-      partitionKey.add("tid");
-      break;
-    case 4:
-      partitionKey.add("since");
-      break;
-    case 5:
-      partitionKey.add("since");
-      break;
-    case 6:
-      partitionKey.add("cust_name");
-      break;
-    case 7:
-      partitionKey.add("cid");
-      partitionMap.put("custPartitionOn", "range");
-      counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
-      --customersPRs;
-      if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.CUSTOMERS" + HDFSSqlTest.STORENAME) != null){      
-        counters.decrement(SQLBB.numOfPRs); 
+    } else {
+      switch (whichClause) {
+        case 0:
+          partitionKey.add("cid");
+          partitionMap.put("custPartitionOn", "hash");
+          counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
+          --customersPRs;
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.CUSTOMERS" + HDFSSqlTest.STORENAME) != null){
+            counters.decrement(SQLBB.numOfPRs);
+          }
+          break;
+        case 1:
+            partitionKey.add("tid");
+          break;
+        case 2:
+          if(SQLPrms.isSnappyMode())
+            partitionKey.add("cust_name");
+          else
+            partitionKey.add("tid");
+          break;
+        case 3:
+          if(SQLPrms.isSnappyMode()){
+
+          }  else
+            partitionKey.add("tid");
+          break;
+        case 4:
+          partitionKey.add("since");
+          break;
+        case 5:
+          partitionKey.add("since");
+          break;
+        case 6:
+          partitionKey.add("cust_name");
+          break;
+        case 7:
+          partitionKey.add("cid");
+          partitionMap.put("custPartitionOn", "range");
+          counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
+          --customersPRs;
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.CUSTOMERS" + HDFSSqlTest.STORENAME) != null){
+            counters.decrement(SQLBB.numOfPRs);
+          }
+          break;
+        case 8:
+          //replicated table, no partition key
+          counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index and no PR
+          customersPRs = 0;
+          break;
+        default:
+          throw new TestException("Unknown partitionKey " + whichClause)
+              ;
       }
-      break;
-    case 8:
-      //replicated table, no partition key
-      counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index and no PR
-      customersPRs = 0;
-      break;
-    default:
-      throw new TestException("Unknown partitionKey " + whichClause) 
-      ;
     }
     counters.add(SQLBB.numOfPRs, 2); //PR and global hash index
     partitionMap.put("customersPartition", partitionKey); //put into BB 
@@ -169,67 +210,98 @@ public class PartitionClause {
     " replicate "  ,
   };
 
+  protected static String[] securitiesPartitionClauseForSnappy = {
+      " ",
+      " partition_by 'sec_id,price' ",
+      " "  , //replicate
+  };
+
   protected static void writeSecuritiesPartitionToBB(int whichClause) {
     ArrayList<String>  partitionKey = new ArrayList<String> ();
-    switch (whichClause) {
-    case 0:
-      partitionKey.add("sec_id");
-      counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
-      if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.SECURITIES" + HDFSSqlTest.STORENAME) != null){      
-        counters.decrement(SQLBB.numOfPRs); //PR and global hash index
+    if(SQLPrms.isSnappyMode()){
+      switch (whichClause) {
+        case 0:
+          partitionKey.add("sec_id");
+          counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.SECURITIES" + HDFSSqlTest.STORENAME) != null) {
+            counters.decrement(SQLBB.numOfPRs); //PR and global hash index
+          }
+          break;
+        case 1:
+          partitionKey.add("price");
+          partitionKey.add("sec_id");
+          break;
+        case 2:
+        //replicated table
+        counters.subtract(SQLBB.numOfPRs, 3); //no gloabl hash index for primary and unique key and no PR
+        break;
+        default:
+          throw new TestException("Unknown partitionKey " + whichClause)
+              ;
       }
-      break;
-    case 1:
-      partitionKey.add("sec_id");
-      counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
-      if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.SECURITIES" + HDFSSqlTest.STORENAME) != null){      
-        counters.decrement(SQLBB.numOfPRs); //PR and global hash index
+    } else {
+      switch (whichClause) {
+        case 0:
+          partitionKey.add("sec_id");
+          counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.SECURITIES" + HDFSSqlTest.STORENAME) != null) {
+            counters.decrement(SQLBB.numOfPRs); //PR and global hash index
+          }
+          break;
+        case 1:
+          partitionKey.add("sec_id");
+          counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.SECURITIES" + HDFSSqlTest.STORENAME) != null) {
+            counters.decrement(SQLBB.numOfPRs); //PR and global hash index
+          }
+          break;
+        case 2:
+          partitionKey.add("tid");
+          break;
+        case 3:
+          partitionKey.add("price");
+          break;
+        case 4:
+          partitionKey.add("price");
+          partitionKey.add("sec_id");
+          break;
+        case 5:
+          partitionKey.add("symbol");
+          //TODO, this handles that global hash index is created for hdfs table
+          //need to cfm if this is necessary.
+          if (ticket47289resolved)
+            counters.decrement(SQLBB.numOfPRs); //no global hash index for unique keys -- partitioned by subset of the unique keys
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.SECURITIES" + HDFSSqlTest.STORENAME) != null) {
+            counters.decrement(SQLBB.numOfPRs); // for #51443
+            if (hdfsExtnParams.get("TRADE.SECURITIES" + HDFSSqlTest.EVICTION_CRITERIA) != null) {
+              counters.increment(SQLBB.numOfPRs); // for #51443
+              counters.increment(SQLBB.numOfPRs); // for #51443
+            }
+          }
+
+          break;
+        case 6:
+          partitionKey.add("exchange");
+          //TODO, this handles that global hash index is created for hdfs table
+          //need to cfm if this is necessary.
+          if (ticket47289resolved)
+            counters.decrement(SQLBB.numOfPRs); //no global hash index for unique keys -- partitioned by subset of the unique keys
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.SECURITIES" + HDFSSqlTest.STORENAME) != null) {
+            counters.decrement(SQLBB.numOfPRs); // for #51443
+            if (hdfsExtnParams.get("TRADE.SECURITIES" + HDFSSqlTest.EVICTION_CRITERIA) != null) {
+              counters.increment(SQLBB.numOfPRs); // for #51443
+              counters.increment(SQLBB.numOfPRs); // for #51443
+            }
+          }
+          break;
+        case 7:
+          //replicated table
+          counters.subtract(SQLBB.numOfPRs, 3); //no gloabl hash index for primary and unique key and no PR
+          break;
+        default:
+          throw new TestException("Unknown partitionKey " + whichClause)
+              ;
       }
-      break;
-    case 2:
-      partitionKey.add("tid");
-      break;
-    case 3:
-      partitionKey.add("price");
-      break;
-    case 4:
-      partitionKey.add("price");
-      partitionKey.add("sec_id");
-      break;
-    case 5:
-      partitionKey.add("symbol");  
-      //TODO, this handles that global hash index is created for hdfs table
-      //need to cfm if this is necessary.
-      if (ticket47289resolved ) counters.decrement(SQLBB.numOfPRs); //no global hash index for unique keys -- partitioned by subset of the unique keys
-      if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.SECURITIES" + HDFSSqlTest.STORENAME) != null) {
-        counters.decrement(SQLBB.numOfPRs); // for #51443
-        if (hdfsExtnParams.get("TRADE.SECURITIES" + HDFSSqlTest.EVICTION_CRITERIA) != null){
-          counters.increment(SQLBB.numOfPRs); // for #51443
-          counters.increment(SQLBB.numOfPRs); // for #51443
-        }
-      }
-        
-      break;
-    case 6:
-      partitionKey.add("exchange");
-      //TODO, this handles that global hash index is created for hdfs table
-      //need to cfm if this is necessary.
-      if (ticket47289resolved ) counters.decrement(SQLBB.numOfPRs); //no global hash index for unique keys -- partitioned by subset of the unique keys
-      if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.SECURITIES" + HDFSSqlTest.STORENAME) != null) {
-        counters.decrement(SQLBB.numOfPRs); // for #51443
-        if (hdfsExtnParams.get("TRADE.SECURITIES" + HDFSSqlTest.EVICTION_CRITERIA) != null){
-          counters.increment(SQLBB.numOfPRs); // for #51443
-          counters.increment(SQLBB.numOfPRs); // for #51443
-        }
-      }        
-      break;
-    case 7:
-      //replicated table
-      counters.subtract(SQLBB.numOfPRs, 3); //no gloabl hash index for primary and unique key and no PR 
-      break;
-    default:
-      throw new TestException("Unknown partitionKey " + whichClause)
-      ;
     }
     counters.add(SQLBB.numOfPRs, 3); //PR and global hash index and unique key field
     partitionMap.put("securitiesPartition", partitionKey); //put into BB 
@@ -272,55 +344,90 @@ public class PartitionClause {
     " replicate ",
   };
 
+  protected static String[] networthPartitionClauseForSnappy = {
+      " ", //default
+      " partition_by 'cash' ",
+      " partition_by 'loanLimit,availloan' ",
+      " ", //replicate
+  };
 
   protected static void writeNetworthPartitionToBB(int whichClause) {
     ArrayList<String>  partitionKey = new ArrayList<String> ();
     int netwPRs = 2;
-    switch (whichClause) {
-    case 0:
-      partitionKey.add("cid");
-      partitionMap.put("netPartitionOn", "default");
-      counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
-      netwPRs--;
-      if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.NETWORTH" + HDFSSqlTest.STORENAME) != null){      
-        counters.decrement(SQLBB.numOfPRs); //PR and global hash index
+    if(SQLPrms.isSnappyMode()){
+      switch (whichClause) {
+        case 0:
+          partitionKey.add("cid");
+          partitionMap.put("netPartitionOn", "default");
+          counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
+          netwPRs--;
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.NETWORTH" + HDFSSqlTest.STORENAME) != null) {
+            counters.decrement(SQLBB.numOfPRs); //PR and global hash index
+          }
+          break;
+        case 1:
+          partitionKey.add("cash");
+          break;
+        case 2:
+          partitionKey.add("loanLimit");
+          partitionKey.add("availloan");
+          break;
+        case 3:
+          //replicate
+          counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index and PR
+          netwPRs = 0;
+          break;
+        default:
+          throw new TestException("Unknown partitionKey " + whichClause)
+              ;
       }
-      break;
-    case 1:
-      partitionKey.add("cid");
-      partitionMap.put("netPartitionOn", "range");
-      counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
-      netwPRs--;
-      if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.NETWORTH" + HDFSSqlTest.STORENAME) != null){      
-        counters.decrement(SQLBB.numOfPRs); //PR and global hash index
+    } else {
+      switch (whichClause) {
+        case 0:
+          partitionKey.add("cid");
+          partitionMap.put("netPartitionOn", "default");
+          counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
+          netwPRs--;
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.NETWORTH" + HDFSSqlTest.STORENAME) != null){
+            counters.decrement(SQLBB.numOfPRs); //PR and global hash index
+          }
+          break;
+        case 1:
+          partitionKey.add("cid");
+          partitionMap.put("netPartitionOn", "range");
+          counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
+          netwPRs--;
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.NETWORTH" + HDFSSqlTest.STORENAME) != null){
+            counters.decrement(SQLBB.numOfPRs); //PR and global hash index
+          }
+          break;
+        case 2:
+          partitionKey.add("tid");
+          break;
+        case 3:
+          partitionKey.add("cash");
+          break;
+        case 4:
+          partitionKey.add("securities");
+          break;
+        case 5:
+          partitionKey.add("loanLimit");
+          partitionKey.add("availloan");
+          break;
+        case 6:
+          partitionKey.add("cash");
+          partitionKey.add("securities");
+          partitionKey.add("tid");
+          break;
+        case 7:
+          //replicate
+          counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index and PR
+          netwPRs = 0;
+          break;
+        default:
+          throw new TestException("Unknown partitionKey " + whichClause)
+              ;
       }
-      break;
-    case 2:
-      partitionKey.add("tid");
-      break;
-    case 3:
-      partitionKey.add("cash");
-      break;
-    case 4:
-      partitionKey.add("securities");
-      break;
-    case 5:
-      partitionKey.add("loanLimit");
-      partitionKey.add("availloan");
-      break;
-    case 6:
-      partitionKey.add("cash");
-      partitionKey.add("securities");
-      partitionKey.add("tid");
-      break;
-    case 7:
-      //replicate
-      counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index and PR
-      netwPRs = 0;
-      break;
-    default:
-      throw new TestException("Unknown partitionKey " + whichClause)
-      ;
     }
 
     counters.add(SQLBB.numOfPRs, 2); //PR and global hash index
@@ -363,65 +470,107 @@ public class PartitionClause {
     " replicate "  ,
   };
 
+  protected static String[] portfolioPartitionClauseForSnappy = {
+      " ",
+      " partition_by 'qty' ",
+      " partition_by 'qty, availQty' ",
+      " "  , //replicate
+  };
+
   @SuppressWarnings("unchecked")
   protected static void writePortfolioPartitionToBB(int whichClause) {
     ArrayList<String>  partitionKey = new ArrayList<String> ();
     int portfolioPRs = 2;
-    switch (whichClause) {
-    case 0:
-      ArrayList<String>  custPartition = (ArrayList<String>) partitionMap.get("customersPartition");
-      ArrayList<String>  secPartition = (ArrayList<String> ) partitionMap.get("securitiesPartition");
-      if (custPartition.contains("cid")&& custPartition.size()==1) partitionKey.add("cid"); //cid is the first foreign key
-      else if (secPartition.contains("sec_id") && secPartition.size()==1) partitionKey.add("sid");
-      else {
-        partitionKey.add("cid");
-        partitionKey.add("sid");
+    if(SQLPrms.isSnappyMode()){
+      switch (whichClause) {
+        case 0:
+          ArrayList<String>  custPartition = (ArrayList<String>) partitionMap.get("customersPartition");
+          ArrayList<String>  secPartition = (ArrayList<String> ) partitionMap.get("securitiesPartition");
+          if (custPartition.contains("cid")&& custPartition.size()==1) partitionKey.add("cid"); //cid is the first foreign key
+          else if (secPartition.contains("sec_id") && secPartition.size()==1) partitionKey.add("sid");
+          else {
+            partitionKey.add("cid");
+            partitionKey.add("sid");
+          }
+          counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
+          --portfolioPRs;
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.PORTFOLIO" + HDFSSqlTest.STORENAME) != null){
+            counters.decrement(SQLBB.numOfPRs);
+          }
+          break;
+        case 1:
+            partitionKey.add("qty");
+          break;
+        case 2:
+          partitionKey.add("qty");
+          partitionKey.add("availQty");
+          break;
+        case 3:
+          //replicated table
+          counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index & PR
+          portfolioPRs = 0;
+          break;
+        default:
+          throw new TestException("Unknown partitionKey " + whichClause)
+              ;
       }
-      counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
-      --portfolioPRs;
-      if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.PORTFOLIO" + HDFSSqlTest.STORENAME) != null){      
-        counters.decrement(SQLBB.numOfPRs);
+    } else {
+      switch (whichClause) {
+        case 0:
+          ArrayList<String>  custPartition = (ArrayList<String>) partitionMap.get("customersPartition");
+          ArrayList<String>  secPartition = (ArrayList<String> ) partitionMap.get("securitiesPartition");
+          if (custPartition.contains("cid")&& custPartition.size()==1) partitionKey.add("cid"); //cid is the first foreign key
+          else if (secPartition.contains("sec_id") && secPartition.size()==1) partitionKey.add("sid");
+          else {
+            partitionKey.add("cid");
+            partitionKey.add("sid");
+          }
+          counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
+          --portfolioPRs;
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.PORTFOLIO" + HDFSSqlTest.STORENAME) != null){
+            counters.decrement(SQLBB.numOfPRs);
+          }
+          break;
+        case 1:
+          partitionKey.add("cid");
+          partitionMap.put("portfPartitionOn", "range");
+          counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
+          --portfolioPRs;
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.PORTFOLIO" + HDFSSqlTest.STORENAME) != null){
+            counters.decrement(SQLBB.numOfPRs);
+          }
+          break;
+        case 2:
+          partitionKey.add("tid");
+          break;
+        case 3:
+          partitionKey.add("qty");
+          break;
+        case 4:
+          partitionKey.add("qty");
+          partitionKey.add("availQty");
+          break;
+        case 5:
+          partitionKey.add("subTotal");
+          break;
+        case 6:
+          partitionKey.add("sid");
+          partitionMap.put("portfPartitionOn", "wrongRange"); //not colocated as the range are incompatiable
+          counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
+          --portfolioPRs;
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.PORTFOLIO" + HDFSSqlTest.STORENAME) != null){
+            counters.decrement(SQLBB.numOfPRs);
+          }
+          break;
+        case 7:
+          //replicated table
+          counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index & PR
+          portfolioPRs = 0;
+          break;
+        default:
+          throw new TestException("Unknown partitionKey " + whichClause)
+              ;
       }
-      break;
-    case 1:
-      partitionKey.add("cid");
-      partitionMap.put("portfPartitionOn", "range");
-      counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
-      --portfolioPRs;
-      if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.PORTFOLIO" + HDFSSqlTest.STORENAME) != null){      
-        counters.decrement(SQLBB.numOfPRs);
-      }
-      break;
-    case 2:
-      partitionKey.add("tid");
-      break;
-    case 3:
-      partitionKey.add("qty");
-      break;
-    case 4:
-      partitionKey.add("qty");
-      partitionKey.add("availQty");
-      break;
-    case 5:
-      partitionKey.add("subTotal");
-      break;
-    case 6:
-      partitionKey.add("sid");
-      partitionMap.put("portfPartitionOn", "wrongRange"); //not colocated as the range are incompatiable
-      counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
-      --portfolioPRs;
-      if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.PORTFOLIO" + HDFSSqlTest.STORENAME) != null){      
-        counters.decrement(SQLBB.numOfPRs);
-      }
-      break;
-    case 7:
-      //replicated table
-      counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index & PR
-      portfolioPRs = 0;
-      break;
-    default:
-      throw new TestException("Unknown partitionKey " + whichClause)
-      ;
     }
 
     counters.add(SQLBB.numOfPRs, 2); //PR and global hash index
@@ -491,60 +640,114 @@ public class PartitionClause {
     " replicate ", 
   };
 
+  protected static String[] sellordersPartitionClauseForSnappy = {
+      " ",
+      " partition_by 'qty' ",
+      " partition_by 'ask, status' ",
+      " partition_by 'order_time, status' ",
+      " partition_by 'sid, order_time, ask' ",
+      " ", //replicate
+  };
+
   @SuppressWarnings("unchecked")
   protected static void writeSellordersPartitionToBB(int whichClause) {
     ArrayList<String>  partitionKey = new ArrayList<String> ();
-    switch (whichClause) {
-    case 0:
-      ArrayList<String>  portfolioPartition = (ArrayList<String>) partitionMap.get("portfolioPartition");
-      if (portfolioPartition.contains("cid")&& portfolioPartition.contains("sid")
-          && portfolioPartition.size()==2) {
-        // if portofio partitioned on primary keys, sellorders partition on foreign key
+    if(SQLPrms.isSnappyMode()){
+      switch (whichClause) {
+        case 0:
+          ArrayList<String>  portfolioPartition = (ArrayList<String>) partitionMap.get("portfolioPartition");
+          if (portfolioPartition.contains("cid")&& portfolioPartition.contains("sid")
+              && portfolioPartition.size()==2) {
+            // if portofio partitioned on primary keys, sellorders partition on foreign key
             partitionKey.add("cid");
-            partitionKey.add("sid"); 
-      } else if (testMultiTableJoin){
-        partitionKey.add("cid"); //cid is colcated with customers
-      } else {
-        partitionKey.add("oid");
-        counters.decrement(SQLBB.numOfPRs);  //should not create global hash index as the counter is incremented later
-        if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.SELLORDERS" + HDFSSqlTest.STORENAME) != null){      
-          counters.decrement(SQLBB.numOfPRs); //PR and global hash index
-        }
+            partitionKey.add("sid");
+          } else if (testMultiTableJoin){
+            partitionKey.add("cid"); //cid is colcated with customers
+          } else {
+            partitionKey.add("oid");
+            counters.decrement(SQLBB.numOfPRs);  //should not create global hash index as the counter is incremented later
+            if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.SELLORDERS" + HDFSSqlTest.STORENAME) != null){
+              counters.decrement(SQLBB.numOfPRs); //PR and global hash index
+            }
+          }
+          break;
+        case 1:
+          partitionKey.add("qty");
+          break;
+        case 2:
+          partitionKey.add("ask");
+          partitionKey.add("status");
+          break;
+        case 3:
+          partitionKey.add("order_time");
+          partitionKey.add("status");
+          break;
+        case 4:
+          partitionKey.add("sid");
+          partitionKey.add("order_time");
+          partitionKey.add("ask");
+          break;
+        case 5:
+          //replicated table
+          counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index and PR
+          break;
+        default:
+          throw new TestException("Unknown partitionKey " + whichClause)
+              ;
       }
-      break;
-    case 1:
-      partitionKey.add("cid");
-      partitionMap.put("soPartitionOn", "range"); //needed when server groups/random join query are involved
-      break;
-    case 2:
-      partitionKey.add("tid");
-      break;
-    case 3:
-      partitionKey.add("qty");
-      break;
-    case 4:
-      partitionKey.add("ask");
-      break;
-    case 5:
-      partitionKey.add("ask");
-      partitionKey.add("status");
-      break;
-    case 6:
-      partitionKey.add("order_time");
-      partitionKey.add("status");
-      break;
-    case 7:
-      partitionKey.add("sid");
-      partitionKey.add("order_time");
-      partitionKey.add("ask");
-      break;
-    case 8:
-      //replicated table
-      counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index and PR
-      break;
-    default:
-      throw new TestException("Unknown partitionKey " + whichClause)
-      ;
+    } else {
+      switch (whichClause) {
+        case 0:
+          ArrayList<String>  portfolioPartition = (ArrayList<String>) partitionMap.get("portfolioPartition");
+          if (portfolioPartition.contains("cid")&& portfolioPartition.contains("sid")
+              && portfolioPartition.size()==2) {
+            // if portofio partitioned on primary keys, sellorders partition on foreign key
+            partitionKey.add("cid");
+            partitionKey.add("sid");
+          } else if (testMultiTableJoin){
+            partitionKey.add("cid"); //cid is colcated with customers
+          } else {
+            partitionKey.add("oid");
+            counters.decrement(SQLBB.numOfPRs);  //should not create global hash index as the counter is incremented later
+            if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.SELLORDERS" + HDFSSqlTest.STORENAME) != null){
+              counters.decrement(SQLBB.numOfPRs); //PR and global hash index
+            }
+          }
+          break;
+        case 1:
+          partitionKey.add("cid");
+          partitionMap.put("soPartitionOn", "range"); //needed when server groups/random join query are involved
+          break;
+        case 2:
+          partitionKey.add("tid");
+          break;
+        case 3:
+          partitionKey.add("qty");
+          break;
+        case 4:
+          partitionKey.add("ask");
+          break;
+        case 5:
+          partitionKey.add("ask");
+          partitionKey.add("status");
+          break;
+        case 6:
+          partitionKey.add("order_time");
+          partitionKey.add("status");
+          break;
+        case 7:
+          partitionKey.add("sid");
+          partitionKey.add("order_time");
+          partitionKey.add("ask");
+          break;
+        case 8:
+          //replicated table
+          counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index and PR
+          break;
+        default:
+          throw new TestException("Unknown partitionKey " + whichClause)
+              ;
+      }
     }
     counters.add(SQLBB.numOfPRs, 2); //PR and global hash index    	
     partitionMap.put("sellordersPartition", partitionKey); //put into BB 
@@ -606,53 +809,95 @@ public class PartitionClause {
     " replicate "  ,  
   };
 
+  protected static String[] buyordersPartitionClauseForSnappy = {
+      " ",
+      " partition_by 'bid,ordertime' ",
+      " partition_by 'ordertime,status' ",
+      " "  , //replicate
+  };
   @SuppressWarnings("unchecked")
   protected static void writeBuyordersPartitionToBB(int whichClause) {
     ArrayList<String>  partitionKey = new ArrayList<String> ();
-    switch (whichClause) {
-    case 0:
-      ArrayList<String>  custPartition = (ArrayList<String> ) partitionMap.get("customersPartition");
-      ArrayList<String>  secPartition = (ArrayList<String> ) partitionMap.get("securitiesPartition");
-      if (custPartition.contains("cid")&& custPartition.size()==1) partitionKey.add("cid"); //cid is the first foreign key
-      else if (testMultiTableJoin){
-        partitionKey.add("cid"); //cid is colcated with customers
-      } else if (secPartition.contains("sec_id") && secPartition.size()==1) partitionKey.add("sid");
-      else {
-        partitionKey.add("oid");
-        counters.decrement(SQLBB.numOfPRs);  //should not create global hash index as the counter is incremented later
-        if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.BUYORDERS" + HDFSSqlTest.STORENAME) != null){      
-          counters.decrement(SQLBB.numOfPRs); //PR and global hash index
-        }
-      }
-      break;
-    case 1:
-      partitionKey.add("cid");
-      break;
-    case 2:
-      partitionKey.add("tid");
-      break;
-    case 3:
-      partitionKey.add("sid");
-      break;
-    case 4:
-      partitionKey.add("bid");
-      break;
-    case 5:
-      partitionKey.add("bid");
-      partitionKey.add("ordertime");
-      break;
-    case 6:
-      partitionKey.add("ordertime");
-      partitionKey.add("status");
-      break;
-    case 7:
-      //replicated table
-      counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index & PR      
-      break;
-    default:
-      throw new TestException("Unknown partitionKey " + whichClause)
-      ;
+    if(SQLPrms.isSnappyMode()){
+      switch (whichClause) {
+        case 0:
+          ArrayList<String>  custPartition = (ArrayList<String> ) partitionMap.get("customersPartition");
+          ArrayList<String>  secPartition = (ArrayList<String> ) partitionMap.get("securitiesPartition");
+          if (custPartition.contains("cid")&& custPartition.size()==1) partitionKey.add("cid"); //cid is the first foreign key
+          else if (testMultiTableJoin){
+            partitionKey.add("cid"); //cid is colcated with customers
+          } else if (secPartition.contains("sec_id") && secPartition.size()==1) partitionKey.add("sid");
+          else {
+            partitionKey.add("oid");
+            counters.decrement(SQLBB.numOfPRs);  //should not create global hash index as the counter is incremented later
+            if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.BUYORDERS" + HDFSSqlTest.STORENAME) != null){
+              counters.decrement(SQLBB.numOfPRs); //PR and global hash index
+            }
+          }
+          break;
+        case 1:
+          partitionKey.add("bid");
+          partitionKey.add("ordertime");
+          break;
+        case 2:
+          partitionKey.add("ordertime");
+          partitionKey.add("status");
+          break;
+        case 3:
+          //replicated table
+          counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index & PR
+          break;
+        default:
+          throw new TestException("Unknown partitionKey " + whichClause)
+              ;
 
+      }
+    } else {
+      switch (whichClause) {
+        case 0:
+          ArrayList<String>  custPartition = (ArrayList<String> ) partitionMap.get("customersPartition");
+          ArrayList<String>  secPartition = (ArrayList<String> ) partitionMap.get("securitiesPartition");
+          if (custPartition.contains("cid")&& custPartition.size()==1) partitionKey.add("cid"); //cid is the first foreign key
+          else if (testMultiTableJoin){
+            partitionKey.add("cid"); //cid is colcated with customers
+          } else if (secPartition.contains("sec_id") && secPartition.size()==1) partitionKey.add("sid");
+          else {
+            partitionKey.add("oid");
+            counters.decrement(SQLBB.numOfPRs);  //should not create global hash index as the counter is incremented later
+            if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.BUYORDERS" + HDFSSqlTest.STORENAME) != null){
+              counters.decrement(SQLBB.numOfPRs); //PR and global hash index
+            }
+          }
+          break;
+        case 1:
+          partitionKey.add("cid");
+          break;
+        case 2:
+          partitionKey.add("tid");
+          break;
+        case 3:
+          partitionKey.add("sid");
+          break;
+        case 4:
+          partitionKey.add("bid");
+          break;
+        case 5:
+          partitionKey.add("bid");
+          partitionKey.add("ordertime");
+          break;
+        case 6:
+          partitionKey.add("ordertime");
+          partitionKey.add("status");
+          break;
+        case 7:
+          //replicated table
+          counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index & PR
+          break;
+        default:
+          throw new TestException("Unknown partitionKey " + whichClause)
+              ;
+
+      }
     }
     counters.add(SQLBB.numOfPRs, 2); //PR and global hash index    	
     partitionMap.put("buyordersPartition", partitionKey); //put into BB 
@@ -714,30 +959,55 @@ public class PartitionClause {
     " replicate "  ,
   };
 
+  protected static String[] txhistoryPartitionClauseForSnappy = {
+      " ",
+      " "  , //replicate
+  };
+
   protected static void writeTxhistoryPartitionToBB(int whichClause) {
     ArrayList<String>  partitionKey = new ArrayList<String> ();
-    switch (whichClause) {
-    case 0:
-    	if (testMultiTableJoin) {
-    	  //add the partition on cid colocate with customer for join query
-    	  partitionKey.add("cid");
-        break;
-    	}
-      //for others, no primary key or foreign key or unique key field in txhistory table 
-      break;
-    case 1:
-      partitionKey.add("cid");
-      break;
-    case 2:
-      partitionKey.add("tid");
-      break;
-    case 3:
-      //replicated table
-      counters.decrement(SQLBB.numOfPRs); //no PR
-      break;
-    default:
-      throw new TestException("Unknown partitionKey " + whichClause)
-      ;
+    if(SQLPrms.isSnappyMode()){
+      switch (whichClause) {
+        case 0:
+          if (testMultiTableJoin) {
+            //add the partition on cid colocate with customer for join query
+            partitionKey.add("cid");
+            break;
+          }
+          //for others, no primary key or foreign key or unique key field in txhistory table
+          break;
+        case 1:
+          //replicated table
+          counters.decrement(SQLBB.numOfPRs); //no PR
+          break;
+        default:
+          throw new TestException("Unknown partitionKey " + whichClause)
+              ;
+      }
+    } else {
+      switch (whichClause) {
+        case 0:
+          if (testMultiTableJoin) {
+            //add the partition on cid colocate with customer for join query
+            partitionKey.add("cid");
+            break;
+          }
+          //for others, no primary key or foreign key or unique key field in txhistory table
+          break;
+        case 1:
+          partitionKey.add("cid");
+          break;
+        case 2:
+          partitionKey.add("tid");
+          break;
+        case 3:
+          //replicated table
+          counters.decrement(SQLBB.numOfPRs); //no PR
+          break;
+        default:
+          throw new TestException("Unknown partitionKey " + whichClause)
+              ;
+      }
     }
     counters.increment(SQLBB.numOfPRs); //PR only 	
     partitionMap.put("txhistoryPartition", partitionKey); //put into BB 
@@ -806,72 +1076,132 @@ public class PartitionClause {
     " replicate "  ,
   };
 
+  protected static String[] companiesPartitionClauseForSnappy = {
+      " ",
+      " partition_by 'uid' ",
+      " partition_by 'histprice'",
+      " partition_by 'companyname' ",
+      " partition_by 'companyinfo'" ,
+      " partition_by 'note' ",
+      " partition_by 'asset, companytype'" ,
+      " partition_by 'logo'" ,
+      " partition_by 'uuid'" ,
+      " ", //replicate
+  };
+
+
   protected static void writeCompaniesPartitionToBB(int whichClause) {
     ArrayList<String>  partitionKey = new ArrayList<String> ();
-    switch (whichClause) {
-    case 0:
-      partitionKey.add("symbol");
-      partitionKey.add("exchange");
-      //TODO check if securities table is replicate table, if so, global hask key is not there
-      counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
-      if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.COMPANIES" + HDFSSqlTest.STORENAME) != null){      
-        counters.decrement(SQLBB.numOfPRs); 
+    if(SQLPrms.isSnappyMode()) {
+      switch (whichClause) {
+        case 0:
+          partitionKey.add("symbol");
+          partitionKey.add("exchange");
+          //TODO check if securities table is replicate table, if so, global hask key is not there
+          counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.COMPANIES" + HDFSSqlTest.STORENAME) != null){
+            counters.decrement(SQLBB.numOfPRs);
+          }
+          break;
+        case 1:
+          partitionKey.add("_uid");
+          break;
+        case 2:
+          partitionKey.add("histprice");
+          break;
+        case 3:
+          partitionKey.add("companyname");
+          break;
+        case 4:
+          partitionKey.add("companyinfo");
+          break;
+        case 5:
+          partitionKey.add("note");
+          break;
+        case 6:
+          partitionKey.add("asset");
+          partitionKey.add("companytype");
+          break;
+        case 7:
+          partitionKey.add("logo");
+          break;
+        case 8:
+          partitionKey.add("uuid");
+          break;
+        case 9:
+          //replicated table
+          counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index for primary and no PR
+          break;
+        default:
+          throw new TestException("Unknown partitionKey " + whichClause)
+              ;
       }
-      break;
-    case 1:
-      partitionKey.add("_uid");
-      break;
-    case 2:
-      partitionKey.add("companytype");
-      break;
-    case 3:
-      partitionKey.add("histprice");
-      break;
-    case 4:
-      partitionKey.add("companyname");
-      break;
-    case 5:
-      partitionKey.add("symbol");
-      //TODO check if securities table is replicate table, 
-      counters.decrement(SQLBB.numOfPRs); //no global hash index for unique keys -- partitioned by subset of the unique keys
-      if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.COMPANIES" + HDFSSqlTest.STORENAME) != null){      
-        counters.decrement(SQLBB.numOfPRs); //PR and global hash index
+    } else {
+      switch (whichClause) {
+        case 0:
+          partitionKey.add("symbol");
+          partitionKey.add("exchange");
+          //TODO check if securities table is replicate table, if so, global hask key is not there
+          counters.decrement(SQLBB.numOfPRs); //no gloabl hash index
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.COMPANIES" + HDFSSqlTest.STORENAME) != null){
+            counters.decrement(SQLBB.numOfPRs);
+          }
+          break;
+        case 1:
+          partitionKey.add("_uid");
+          break;
+        case 2:
+          partitionKey.add("companytype");
+          break;
+        case 3:
+          partitionKey.add("histprice");
+          break;
+        case 4:
+          partitionKey.add("companyname");
+          break;
+        case 5:
+          partitionKey.add("symbol");
+          //TODO check if securities table is replicate table,
+          counters.decrement(SQLBB.numOfPRs); //no global hash index for unique keys -- partitioned by subset of the unique keys
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.COMPANIES" + HDFSSqlTest.STORENAME) != null){
+            counters.decrement(SQLBB.numOfPRs); //PR and global hash index
+          }
+          break;
+        case 6:
+          //TODO check if securities table is replicate table,
+          partitionKey.add("exchange");
+          counters.decrement(SQLBB.numOfPRs); //no global hash index for unique keys -- partitioned by subset of the unique keys
+          if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.COMPANIES" + HDFSSqlTest.STORENAME) != null){
+            counters.decrement(SQLBB.numOfPRs); //PR and global hash index
+          }
+          break;
+        case 7:
+          partitionKey.add("histprice");
+          break;
+        case 8:
+          partitionKey.add("companyinfo");
+          break;
+        case 9:
+          partitionKey.add("note");
+          break;
+        case 10:
+          partitionKey.add("asset");
+          partitionKey.add("companytype");
+          break;
+        case 11:
+          partitionKey.add("logo");
+          break;
+        case 12:
+          partitionKey.add("uuid");
+          break;
+        case 13:
+          //replicated table
+          counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index for primary and no PR
+          break;
+        default:
+          throw new TestException("Unknown partitionKey " + whichClause)
+              ;
       }
-      break;
-    case 6:
-      //TODO check if securities table is replicate table, 
-      partitionKey.add("exchange");
-      counters.decrement(SQLBB.numOfPRs); //no global hash index for unique keys -- partitioned by subset of the unique keys
-      if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.COMPANIES" + HDFSSqlTest.STORENAME) != null){      
-        counters.decrement(SQLBB.numOfPRs); //PR and global hash index
-      }
-      break;
-    case 7:
-      partitionKey.add("histprice");
-      break;
-    case 8:
-      partitionKey.add("companyinfo");
-      break;
-    case 9:
-      partitionKey.add("note");
-      break;
-    case 10:
-      partitionKey.add("asset");
-      partitionKey.add("companytype");
-      break;
-    case 11:
-      partitionKey.add("logo");
-      break;
-    case 12:
-      partitionKey.add("uuid");
-      break;
-    case 13:
-      //replicated table
-      counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index for primary and no PR 
-      break;
-    default:
-      throw new TestException("Unknown partitionKey " + whichClause)
-      ;
     }
     counters.add(SQLBB.numOfPRs, 2); //PR and global hash index 
     partitionMap.put("companiesPartition", partitionKey); //put into BB 
@@ -904,6 +1234,8 @@ public class PartitionClause {
   @SuppressWarnings("unchecked")
   public static String getPartitionClause(String tableInfo){
     String partitionClause = null;
+    if(SQLPrms.isSnappyMode())
+      tableInfo = tableInfo.substring(tableInfo.indexOf("(") + 1, tableInfo.indexOf(")"));
     String[] strArray = tableInfo.split(":");
     String tableName = strArray[0];
     String partition = strArray[1]; //parse in the partition key
@@ -916,22 +1248,41 @@ public class PartitionClause {
     int whichClause;
     if (tableName.equalsIgnoreCase("trade.customers")) {
       if (partition.equals("random")) {
-        if (withReplicatedTables) whichClause = SQLTest.random.nextInt(customersPartitionClause.length);  
-        else whichClause = SQLTest.random.nextInt(customersPartitionClause.length-1); //last one is for replicated table        
+        if (withReplicatedTables) {
+          if(SQLPrms.isSnappyMode())
+            whichClause = SQLTest.random.nextInt(customersPartitionClauseForSnappy.length);
+          else
+            whichClause = SQLTest.random.nextInt(customersPartitionClause.length);
+        }
+        else {
+          if(SQLPrms.isSnappyMode())
+            whichClause = SQLTest.random.nextInt(customersPartitionClauseForSnappy.length-1);
+          else
+            whichClause = SQLTest.random.nextInt(customersPartitionClause.length-1); //last one is for replicated table
+        }
       
         if (isConcUpdateTx && whichClause == 6)
           whichClause = 5;   //to avoid update on a partitioned field 
       } 
       else if (partition.equals("replicate")){
-        whichClause = customersPartitionClause.length-1; //last clause is "replicate"
+        if(SQLPrms.isSnappyMode())
+          whichClause = customersPartitionClauseForSnappy.length -1;
+        else
+          whichClause = customersPartitionClause.length-1; //last clause is "replicate"
       }
       else {
         whichClause = Integer.parseInt(partition);
-      }  
-      if (whichClause == customersPartitionClause.length-1) partitionInfoMap.put(tableName, "replicate");
+      }
+      boolean isReplicated = SQLPrms.isSnappyMode()?whichClause == customersPartitionClauseForSnappy
+          .length-1:whichClause == customersPartitionClause.length -1;
+      if (isReplicated)
+        partitionInfoMap.put(tableName, "replicate");
       else partitionInfoMap.put(tableName, "any");
-      
-      partitionClause = getPartitionSG(customersPartitionClause[whichClause], serverGroup); //which partition clause and server groups
+
+      String clause = (SQLPrms.isSnappyMode()) ? customersPartitionClauseForSnappy[whichClause]:
+          customersPartitionClause[whichClause];
+      partitionClause = getPartitionSG(clause, serverGroup); //which partition clause and server groups
+      Log.getLogWriter().info("whichClause is " + whichClause);
       if (!testServerGroups) writeCustomersPartitionToBB(whichClause);  
       else writeCustomersPartitionSGToBB(whichClause, serverGroup); //to process default partitioning
       Log.getLogWriter().info("getPartitionClause customers: whichClause is " + whichClause
@@ -939,20 +1290,36 @@ public class PartitionClause {
     } 
     else if (tableName.equalsIgnoreCase("trade.securities")){
       if (partition.equals("random")) {
-        if (withReplicatedTables) whichClause = SQLTest.random.nextInt(securitiesPartitionClause.length);  
-        else whichClause = SQLTest.random.nextInt(securitiesPartitionClause.length-1);
+        if (withReplicatedTables){
+          if(!SQLPrms.isSnappyMode())
+            whichClause = SQLTest.random.nextInt(securitiesPartitionClause.length);
+          else
+            whichClause = SQLTest.random.nextInt(securitiesPartitionClauseForSnappy.length);
+        }
+        else{
+          if(!SQLPrms.isSnappyMode())
+            whichClause = SQLTest.random.nextInt(securitiesPartitionClause.length-1);
+          else
+            whichClause = SQLTest.random.nextInt(securitiesPartitionClauseForSnappy.length-1);
+        }
       } 
       else if (partition.equals("replicate")){
-        whichClause = securitiesPartitionClause.length-1; //last clause is "replicate"
+        if(!SQLPrms.isSnappyMode())
+          whichClause = securitiesPartitionClause.length-1; //last clause is "replicate"
+        else
+          whichClause = securitiesPartitionClauseForSnappy.length-1;
       }
       else {
         whichClause = Integer.parseInt(partition);
       }   
-      
-      if (whichClause == securitiesPartitionClause.length-1) partitionInfoMap.put(tableName, "replicate");
+      boolean isReplicated = SQLPrms.isSnappyMode()?whichClause == securitiesPartitionClauseForSnappy
+          .length-1:whichClause == securitiesPartitionClause.length-1;
+
+      if (isReplicated) partitionInfoMap.put(tableName,"replicate");
       else partitionInfoMap.put(tableName, "any");
-      
-      partitionClause = getPartitionSG(securitiesPartitionClause[whichClause], serverGroup); //with the SG clause
+      String clause = (SQLPrms.isSnappyMode()) ? securitiesPartitionClauseForSnappy[whichClause]:
+        securitiesPartitionClause[whichClause];
+      partitionClause = getPartitionSG(clause, serverGroup); //with the SG clause
       if (!testServerGroups) writeSecuritiesPartitionToBB(whichClause);
       else writeSecuritiesPartitionSGToBB(whichClause, serverGroup);
       Log.getLogWriter().info("getPartitionClause securities: whichClause is " + whichClause
@@ -961,14 +1328,27 @@ public class PartitionClause {
     else if (tableName.equalsIgnoreCase("trade.portfolio")){
       if (partition.equals("random")) {
         if (SQLDAPTest.cidByRange) whichClause = 1; //cid range
-        else if (withReplicatedTables) whichClause = SQLTest.random.nextInt(portfolioPartitionClause.length);  
-        else whichClause = SQLTest.random.nextInt(portfolioPartitionClause.length-1);
+        else if (withReplicatedTables) {
+          if(SQLPrms.isSnappyMode())
+            whichClause = SQLTest.random.nextInt(portfolioPartitionClauseForSnappy.length);
+          else
+            whichClause = SQLTest.random.nextInt(portfolioPartitionClause.length);
+        }
+        else{
+          if(SQLPrms.isSnappyMode())
+            whichClause = SQLTest.random.nextInt(portfolioPartitionClauseForSnappy.length -1);
+          else
+            whichClause = SQLTest.random.nextInt(portfolioPartitionClause.length -1);
+        }
         
         if (isConcUpdateTx && (whichClause == 3 || whichClause == 4))
           whichClause = 2;   //to avoid update on a partitioned field        
       }       
       else if (partition.equals("replicate")){
-        whichClause = portfolioPartitionClause.length-1; //last clause is "replicate"
+        if(SQLPrms.isSnappyMode())
+          whichClause = portfolioPartitionClauseForSnappy.length -1;
+        else
+          whichClause = portfolioPartitionClause.length-1; //last clause is "replicate"
       }
       else {
         whichClause = Integer.parseInt(partition);
@@ -976,19 +1356,21 @@ public class PartitionClause {
       // don't allow whichClause = 0 for HDFS (affects numOfPRs and waitForRebalRecov)
       // as this configures default colocation with the parent region
       if (SQLTest.hasHdfs && whichClause == 0) whichClause++;  
-      
-      if (whichClause == portfolioPartitionClause.length-1) partitionInfoMap.put(tableName, "replicate");
+      boolean isReplicated = SQLPrms.isSnappyMode()? whichClause == portfolioPartitionClauseForSnappy
+          .length-1 : whichClause == portfolioPartitionClause.length-1;
+      if (isReplicated) partitionInfoMap.put(tableName, "replicate");
       else partitionInfoMap.put(tableName, "any");
-      
+
       if (!testServerGroups) writePortfolioPartitionToBB(whichClause);
       else writePortfolioPartitionSGToBB(whichClause, serverGroup);
-      
+      String clause = SQLPrms.isSnappyMode()? portfolioPartitionClauseForSnappy[whichClause]:
+          portfolioPartitionClause[whichClause];
       if (testServerGroupsInheritence && whichClause == 1 
           && ((ArrayList<String>)partitionMap.get("customersPartition")).size() ==1 
           && ((ArrayList<String>)partitionMap.get("customersPartition")).contains("cid")
           && ((String) partitionMap.get("custPartitionOn")).equals("range")
           && ((String) partitionMap.get("portfolioSG")).equals(partitionMap.get("customersSG"))) {
-        String portfClause = portfolioPartitionClause[whichClause] + " colocate with (trade.customers)";
+        String portfClause = clause + " colocate with (trade.customers)";
         //other than the default colocation, must use "colocated with" 
         partitionClause = getPartitionSG(portfClause, serverGroup);
       } else if (testMultiTableJoin) {
@@ -1001,7 +1383,7 @@ public class PartitionClause {
         }
         partitionClause = getPartitionSG(portfClause, serverGroup);
       } else {
-        partitionClause = getPartitionSG(portfolioPartitionClause[whichClause], serverGroup); //with the SG clause
+        partitionClause = getPartitionSG(clause, serverGroup); //with the SG clause
       }       
       
       if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.PORTFOLIO" + HDFSSqlTest.STORENAME) != null && partitionClause.contains(" colocate ")){      
@@ -1014,8 +1396,19 @@ public class PartitionClause {
     else if (tableName.equalsIgnoreCase("trade.networth")){
       String netClause = null; 
       if (partition.equals("random")) {
-        if (withReplicatedTables) whichClause = SQLTest.random.nextInt(networthPartitionClause.length); 
-        else whichClause = SQLTest.random.nextInt(networthPartitionClause.length-1);
+        if (withReplicatedTables) {
+          if(SQLPrms.isSnappyMode())
+            whichClause = SQLTest.random.nextInt(networthPartitionClauseForSnappy.length);
+          else
+            whichClause = SQLTest.random.nextInt(networthPartitionClause.length);
+        }
+        else{
+          if(SQLPrms.isSnappyMode())
+            whichClause = SQLTest.random.nextInt(networthPartitionClauseForSnappy.length-1);
+          else
+            whichClause = SQLTest.random.nextInt(networthPartitionClause.length-1);
+        }
+
         //avoid update partition key in procedure
         boolean hasProcedure = TestConfig.tab().booleanAt(SQLPrms.hasProcedure, false);
         if (hasProcedure && whichClause == 3) whichClause++; //do not partitioned on cash, which will be updated in procedure
@@ -1024,7 +1417,10 @@ public class PartitionClause {
         }
       } 
       else if (partition.equals("replicate")){
-        whichClause = networthPartitionClause.length-1; //last clause is "replicate"
+        if(SQLPrms.isSnappyMode())
+          whichClause = networthPartitionClauseForSnappy.length-1;
+        else
+          whichClause = networthPartitionClause.length-1; //last clause is "replicate"
       }
       else {
         whichClause = Integer.parseInt(partition);
@@ -1032,8 +1428,10 @@ public class PartitionClause {
       // don't allow whichClause = 0 for HDFS (affects numOfPRs and waitForRebalRecov)
       // as this configures default colocation with the parent region
       if (SQLTest.hasHdfs && whichClause == 0) whichClause++;  
-      
-      if (whichClause == networthPartitionClause.length-1) partitionInfoMap.put(tableName, "replicate");
+
+      boolean isReplicated = SQLPrms.isSnappyMode()?whichClause == networthPartitionClauseForSnappy
+          .length-1 : whichClause == networthPartitionClause.length-1;
+      if (isReplicated) partitionInfoMap.put(tableName, "replicate");
       else partitionInfoMap.put(tableName, "any");
            
       /* as fk cid in netWorth table is also a primary -- no mater whether 
@@ -1042,7 +1440,8 @@ public class PartitionClause {
        * */
       if (!testServerGroups) writeNetworthPartitionToBB(whichClause);
       else writeNetworthPartitionSGToBB(whichClause, serverGroup);
-      
+      String clause = SQLPrms.isSnappyMode() ? networthPartitionClauseForSnappy[whichClause] :
+          networthPartitionClause[whichClause];
       if (testServerGroupsInheritence && whichClause == 1 
           && ((ArrayList<String>)partitionMap.get("customersPartition")).size() ==1 
           && ((ArrayList<String>)partitionMap.get("customersPartition")).contains("cid")
@@ -1050,9 +1449,9 @@ public class PartitionClause {
           && ((String) partitionMap.get("networthSG")).equals(partitionMap.get("customersSG"))) {
         //add replicate customers case
         if (((String)partitionInfoMap.get(tableName)).equalsIgnoreCase("replicate")) {
-          netClause = networthPartitionClause[whichClause];
+          netClause = clause;
         } else {
-          netClause = networthPartitionClause[whichClause] + " colocate with (trade.customers)";
+          netClause = clause + " colocate with (trade.customers)";
         }
         //other than the default colocation, must use "colocated with" 
         partitionClause = getPartitionSG(netClause, serverGroup);
@@ -1065,7 +1464,7 @@ public class PartitionClause {
         }
       	partitionClause = getPartitionSG(netClause, serverGroup);
       } else {
-        partitionClause = getPartitionSG(networthPartitionClause[whichClause], serverGroup);
+        partitionClause = getPartitionSG(clause, serverGroup);
       }
       
       if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.NETWORTH" + HDFSSqlTest.STORENAME) != null && partitionClause.contains (" colocate" ) ){      
@@ -1077,14 +1476,27 @@ public class PartitionClause {
     } 
     else if (tableName.equalsIgnoreCase("trade.sellorders")){
       if (partition.equals("random")) {
-        if (withReplicatedTables) whichClause = SQLTest.random.nextInt(sellordersPartitionClause.length);  
-        else whichClause = SQLTest.random.nextInt(sellordersPartitionClause.length-1);
+        if (withReplicatedTables){
+          if(SQLPrms.isSnappyMode())
+            whichClause = SQLTest.random.nextInt(sellordersPartitionClauseForSnappy.length);
+          else
+            whichClause = SQLTest.random.nextInt(sellordersPartitionClause.length);
+        }
+        else {
+          if(SQLPrms.isSnappyMode())
+            whichClause = SQLTest.random.nextInt(sellordersPartitionClauseForSnappy.length-1);
+          else
+            whichClause = SQLTest.random.nextInt(sellordersPartitionClause.length-1);
+        }
         
         if (isConcUpdateTx && (whichClause == 4  || whichClause == 5 || whichClause == 7))
           whichClause = 6;   //to avoid update on a partitioned field 
       } 
-      else if (partition.equals("replicate")){
-        whichClause = sellordersPartitionClause.length-1; //last clause is "replicate"
+      else if (partition.equals("replicate")) {
+        if (SQLPrms.isSnappyMode())
+          whichClause = sellordersPartitionClauseForSnappy.length - 1;
+        else
+          whichClause = sellordersPartitionClause.length - 1; //last clause is "replicate"
       }
       else {
         whichClause = Integer.parseInt(partition);
@@ -1092,19 +1504,25 @@ public class PartitionClause {
       // don't allow whichClause = 0 for HDFS (affects numOfPRs and waitForRebalRecov)
       // as this configures default colocation with the parent region
       if (SQLTest.hasHdfs && whichClause == 0) whichClause++;  
-      
-      if (whichClause == sellordersPartitionClause.length-1) partitionInfoMap.put(tableName, "replicate");
+
+      boolean isReplicated = SQLPrms.isSnappyMode() ?
+          whichClause == sellordersPartitionClauseForSnappy.length -1
+          : whichClause == sellordersPartitionClause.length-1;
+      if (isReplicated) partitionInfoMap.put(tableName, "replicate");
       else partitionInfoMap.put(tableName, "any");
       
       if (!testServerGroups) writeSellordersPartitionToBB(whichClause);
       else writeSellordersPartitionSGToBB(whichClause, serverGroup);
+
+      String clause = SQLPrms.isSnappyMode()? sellordersPartitionClauseForSnappy[whichClause]:
+          sellordersPartitionClause[whichClause];
       
       if (testServerGroupsInheritence && whichClause == 1  
           && ((ArrayList<String> )partitionMap.get("customersPartition")).size() ==1 
           && ((ArrayList<String> )partitionMap.get("customersPartition")).contains("cid")
           && ((String) partitionMap.get("custPartitionOn")).equals("range")
           && ((String) partitionMap.get("sellordersSG")).equals(partitionMap.get("customersSG"))) {
-        String soClause = sellordersPartitionClause[whichClause] + " colocate with (trade.customers)";
+        String soClause = clause + " colocate with (trade.customers)";
         // test server group and will try to use colocate with customers
         partitionClause = getPartitionSG(soClause, serverGroup);
       } 
@@ -1113,7 +1531,7 @@ public class PartitionClause {
           && ((ArrayList<String> )partitionMap.get("portfolioPartition")).contains("cid")
           && ((String) partitionMap.get("portfPartitionOn")).equals("range")
           && ((String) partitionMap.get("sellordersSG")).equals(partitionMap.get("portfolioSG"))) {
-        String soClause = sellordersPartitionClause[whichClause] + " colocate with (trade.portfolio)";
+        String soClause = clause + " colocate with (trade.portfolio)";
         // test server group and will try to use colocate with portfolio as customers may be replicated
         partitionClause = getPartitionSG(soClause, serverGroup);
       } 
@@ -1128,7 +1546,7 @@ public class PartitionClause {
         partitionClause = getPartitionSG(soClause, serverGroup);        
       }
       else {
-        partitionClause = getPartitionSG(sellordersPartitionClause[whichClause], serverGroup);
+        partitionClause = getPartitionSG(clause, serverGroup);
       }
       sellordersClause = whichClause;
       if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.SELLORDERS" + HDFSSqlTest.STORENAME) != null && partitionClause.contains(" colocate ")){      
@@ -1141,11 +1559,24 @@ public class PartitionClause {
     else if (tableName.equalsIgnoreCase("trade.buyorders")){
       if (partition.equals("random")) {
         if (SQLDAPTest.tidByList) whichClause = 2;
-        else if (withReplicatedTables) whichClause = SQLTest.random.nextInt(buyordersPartitionClause.length); 
-        else whichClause = SQLTest.random.nextInt(buyordersPartitionClause.length-1);
+        else if (withReplicatedTables) {
+          if(SQLPrms.isSnappyMode())
+            whichClause = SQLTest.random.nextInt(buyordersPartitionClauseForSnappy.length);
+          else
+            whichClause = SQLTest.random.nextInt(buyordersPartitionClause.length);
+        }
+        else{
+          if(SQLPrms.isSnappyMode())
+            whichClause = SQLTest.random.nextInt(buyordersPartitionClauseForSnappy.length -1);
+          else
+            whichClause = SQLTest.random.nextInt(buyordersPartitionClause.length-1);
+        }
       } 
       else if (partition.equals("replicate")){
-        whichClause = buyordersPartitionClause.length-1; //last clause is "replicate"
+        if(SQLPrms.isSnappyMode())
+          whichClause = buyordersPartitionClause.length -1;
+        else
+          whichClause = buyordersPartitionClause.length-1; //last clause is "replicate"
       }
       else {
         whichClause = Integer.parseInt(partition);
@@ -1153,13 +1584,16 @@ public class PartitionClause {
       // don't allow whichClause = 0 for HDFS (affects numOfPRs and waitForRebalRecov)
       // as this configures default colocation with the parent region
       if (SQLTest.hasHdfs && whichClause == 0) whichClause++;  
-      
-      if (whichClause == buyordersPartitionClause.length-1) partitionInfoMap.put(tableName, "replicate");
+      boolean isReplicated = SQLPrms.isSnappyMode() ?
+          whichClause == buyordersPartitionClauseForSnappy.length-1
+          : whichClause == buyordersPartitionClause.length -1;
+      if (isReplicated) partitionInfoMap.put(tableName, "replicate");
       else partitionInfoMap.put(tableName, "any");
       
       if (!testServerGroups) writeBuyordersPartitionToBB(whichClause);
       else writeBuyordersPartitionSGToBB(whichClause, serverGroup);
-      
+      String clause = SQLPrms.isSnappyMode()? buyordersPartitionClauseForSnappy[whichClause]:
+          buyordersPartitionClause[whichClause];
       if (testMultiTableJoin) {
         String boClause = null;
         //add replicate customers case
@@ -1170,7 +1604,7 @@ public class PartitionClause {
         }
         partitionClause = getPartitionSG(boClause, serverGroup);
       } else {
-        partitionClause =  getPartitionSG(buyordersPartitionClause[whichClause], serverGroup);
+        partitionClause =  getPartitionSG(clause, serverGroup);
       }      
       if (SQLTest.hasHdfs == true && hdfsExtnParams.get("TRADE.BUYORDERS" + HDFSSqlTest.STORENAME) != null && partitionClause.contains(" colocate ")){      
         counters.decrement(SQLBB.numOfPRs); //PR and global hash index
@@ -1181,11 +1615,24 @@ public class PartitionClause {
     }
     else if (tableName.equalsIgnoreCase("trade.txhistory")){
       if (partition.equals("random")) {
-        if (withReplicatedTables) whichClause = SQLTest.random.nextInt(txhistoryPartitionClause.length);   
-        else whichClause = SQLTest.random.nextInt(txhistoryPartitionClause.length-1);
+        if (withReplicatedTables) {
+          if(SQLPrms.isSnappyMode())
+            whichClause = SQLTest.random.nextInt(txhistoryPartitionClauseForSnappy.length);
+          else
+            whichClause = SQLTest.random.nextInt(txhistoryPartitionClause.length);
+        }
+        else {
+          if(SQLPrms.isSnappyMode())
+            whichClause = SQLTest.random.nextInt(txhistoryPartitionClauseForSnappy.length -1);
+          else
+            whichClause = SQLTest.random.nextInt(txhistoryPartitionClause.length-1);
+        }
       } 
       else if (partition.equals("replicate")){
-        whichClause = txhistoryPartitionClause.length-1; //last clause is "replicate"
+        if(SQLPrms.isSnappyMode())
+          whichClause = txhistoryPartitionClauseForSnappy.length-1;
+        else
+          whichClause = txhistoryPartitionClause.length-1; //last clause is "replicate"
       }
       else {
         whichClause = Integer.parseInt(partition);
@@ -1196,10 +1643,14 @@ public class PartitionClause {
           whichClause++;
         }
       }
-      
-      if (whichClause == txhistoryPartitionClause.length-1) partitionInfoMap.put(tableName, "replicate");
+      boolean isReplicated = SQLPrms.isSnappyMode() ?
+          whichClause == txhistoryPartitionClauseForSnappy.length-1
+          :whichClause == txhistoryPartitionClause.length-1;
+      if (isReplicated) partitionInfoMap.put(tableName, "replicate");
       else partitionInfoMap.put(tableName, "any");
-      
+
+      String clause = SQLPrms.isSnappyMode() ? txhistoryPartitionClauseForSnappy[whichClause]:
+          txhistoryPartitionClause[whichClause];
       if (testMultiTableJoin) {
         String historyClause = null;
         //add replicate customers case
@@ -1208,10 +1659,9 @@ public class PartitionClause {
         } else {
           historyClause = " partition by column (cid) colocate with (trade.customers)";
         }
-
         partitionClause = getPartitionSG(historyClause, serverGroup);
       } else {
-        partitionClause = getPartitionSG(txhistoryPartitionClause[whichClause], serverGroup);
+        partitionClause = getPartitionSG(clause, serverGroup);
       }      
       /* no pk or fk in txhistory table, so default partition is no field is partitioned
        * no matter how server groups is defined
@@ -1228,11 +1678,24 @@ public class PartitionClause {
     }
     else if (tableName.equalsIgnoreCase("trade.companies")){
       if (partition.equals("random")) {
-        if (withReplicatedTables) whichClause = SQLTest.random.nextInt(companiesPartitionClause.length);  
-        else whichClause = SQLTest.random.nextInt(companiesPartitionClause.length-1);
+        if (withReplicatedTables){
+          if(SQLPrms.isSnappyMode())
+            whichClause = SQLTest.random.nextInt(companiesPartitionClauseForSnappy.length);
+          else
+            whichClause = SQLTest.random.nextInt(companiesPartitionClause.length);
+        }
+        else {
+          if(SQLPrms.isSnappyMode())
+            whichClause = SQLTest.random.nextInt(companiesPartitionClauseForSnappy.length -1);
+          else
+            whichClause = SQLTest.random.nextInt(companiesPartitionClause.length-1);
+        }
       } 
       else if (partition.equals("replicate")){
-        whichClause = companiesPartitionClause.length-1; //last clause is "replicate"
+        if(SQLPrms.isSnappyMode())
+          whichClause = companiesPartitionClauseForSnappy.length -1;
+        else
+          whichClause = companiesPartitionClause.length-1; //last clause is "replicate"
       }
       else {
         whichClause = Integer.parseInt(partition);
@@ -1240,11 +1703,14 @@ public class PartitionClause {
       // don't allow whichClause = 0 for HDFS (affects numOfPRs and waitForRebalRecov)
       // as this configures default colocation with the parent region
       if (SQLTest.hasHdfs && whichClause == 0) whichClause++;  
-      
-      if (whichClause == companiesPartitionClause.length-1) partitionInfoMap.put(tableName, "replicate");
+      boolean isReplicated = SQLPrms.isSnappyMode() ?
+          whichClause == companiesPartitionClauseForSnappy.length-1 :
+          whichClause == companiesPartitionClause.length-1;
+      if (isReplicated) partitionInfoMap.put(tableName, "replicate");
       else partitionInfoMap.put(tableName, "any");
-      
-      partitionClause = getPartitionSG(companiesPartitionClause[whichClause], serverGroup); //with the SG clause
+      String clause = SQLPrms.isSnappyMode() ? companiesPartitionClauseForSnappy[whichClause] :
+          companiesPartitionClause[whichClause];
+      partitionClause = getPartitionSG(clause, serverGroup); //with the SG clause
       if (!testServerGroups) writeCompaniesPartitionToBB(whichClause);
       else writeCompaniesPartitionSGToBB(whichClause, serverGroup);
       Log.getLogWriter().info("getPartitionClause companies: whichClause is " + whichClause
@@ -1252,19 +1718,24 @@ public class PartitionClause {
     } 
     else if (tableName.equalsIgnoreCase("trade.sellordersdup")){
       whichClause = sellordersClause; //make sure it is exactly same as sellorders partition
- 
-      if (whichClause == sellordersPartitionClause.length-1) partitionInfoMap.put(tableName, "replicate");
+
+      boolean isReplicated = SQLPrms.isSnappyMode()?
+          whichClause == sellordersPartitionClauseForSnappy.length-1
+          :whichClause == sellordersPartitionClause.length-1;
+      if (isReplicated) partitionInfoMap.put(tableName, "replicate");
       else partitionInfoMap.put(tableName, "any");
       
       if (!testServerGroups) writeSellordersPartitionToBB(whichClause);
       else writeSellordersPartitionSGToBB(whichClause, serverGroup);
-      
+
+      String clause = SQLPrms.isSnappyMode() ? sellordersPartitionClauseForSnappy[whichClause]
+          :sellordersPartitionClause[whichClause];
       if (testServerGroupsInheritence && whichClause == 1  
           && ((ArrayList<String> )partitionMap.get("customersPartition")).size() ==1 
           && ((ArrayList<String> )partitionMap.get("customersPartition")).contains("cid")
           && ((String) partitionMap.get("custPartitionOn")).equals("range")
           && ((String) partitionMap.get("sellordersSG")).equals(partitionMap.get("customersSG"))) {
-        String soClause = sellordersPartitionClause[whichClause] + " colocate with (trade.customers)";
+        String soClause = clause + " colocate with (trade.customers)";
         // test server group and will try to use colocate with customers
         partitionClause = getPartitionSG(soClause, serverGroup);
       } 
@@ -1273,7 +1744,7 @@ public class PartitionClause {
           && ((ArrayList<String> )partitionMap.get("portfolioPartition")).contains("cid")
           && ((String) partitionMap.get("portfPartitionOn")).equals("range")
           && ((String) partitionMap.get("sellordersSG")).equals(partitionMap.get("portfolioSG"))) {
-        String soClause = sellordersPartitionClause[whichClause] + " colocate with (trade.portfolio)";
+        String soClause = clause + " colocate with (trade.portfolio)";
         // test server group and will try to use colocate with portfolio as customers may be replicated
         partitionClause = getPartitionSG(soClause, serverGroup);
       } 
@@ -1283,7 +1754,7 @@ public class PartitionClause {
         partitionClause = getPartitionSG(soClause, serverGroup);        
       }
       else {
-        partitionClause = getPartitionSG(sellordersPartitionClause[whichClause], serverGroup);
+        partitionClause = getPartitionSG(clause, serverGroup);
       }
      
       Log.getLogWriter().info("getPartitionClause sellordersdup: whichClause is " + whichClause
@@ -1300,7 +1771,12 @@ public class PartitionClause {
       if (partition.equals("replicate"))
         partitionClause = " replicate ";
       else {
-        partitionClause = " partition by column (eid) "; //TODO need to modify when the tables are used
+        {
+          if(SQLPrms.isSnappyMode())
+            partitionClause = " partition_by 'eid' ";
+          else
+            partitionClause = " partition by column (eid) "; //TODO need to modify when the tables are used
+        }
         
         ArrayList<String> partitionKey = new ArrayList<String>();
         partitionKey.add("eid");

@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -35,7 +34,10 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.CancelException;
@@ -84,10 +86,6 @@ import com.gemstone.gemfire.internal.cache.tier.sockets.ClientUpdateMessageImpl;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientUpdateMessageImpl.CqNameToOp;
 import com.gemstone.gemfire.internal.cache.tier.sockets.HAEventWrapper;
 import com.gemstone.gemfire.internal.cache.tier.sockets.HandShake;
-import com.gemstone.gemfire.internal.concurrent.AB;
-import com.gemstone.gemfire.internal.concurrent.AL;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.size.SingleObjectSizer;
@@ -145,7 +143,7 @@ public class HARegionQueue implements RegionQueue
    * from 1
    *  
    */
-  protected final AL tailKey = CFactory.createAL(0);
+  protected final AtomicLong tailKey = new AtomicLong(0);
 
   /**
    * Map whose key is the ThreadIdentifier object value is the
@@ -153,8 +151,8 @@ public class HARegionQueue implements RegionQueue
    * identified by the ThreadIdentifier object & the position recorded in the
    * LastDispatchedAndCurrentEvents object.
    */
-
-  protected final CM eventsMap = CFactory.createCM();
+  protected final ConcurrentHashMap<ThreadIdentifier, DispatchedAndCurrentEvents> eventsMap =
+      new ConcurrentHashMap<>();
 
   /**
    * The <code>Map</code> mapping the regionName->key to the queue key. This
@@ -196,7 +194,7 @@ public class HARegionQueue implements RegionQueue
    * underlying map contains ThreadIdentifier as key & value as the last
    * dispatched sequence ID)
    */
-  static CM dispatchedMessagesMap;
+  static ConcurrentHashMap dispatchedMessagesMap;
 
   /**
    * A MapWrapper object whose underlying map contains ThreadIdentifier as key &
@@ -318,7 +316,7 @@ public class HARegionQueue implements RegionQueue
   /**
    * initialization flag - when true the queue has fully initialized
    */
-  final AB initialized = CFactory.createAB();
+  final AtomicBoolean initialized = new AtomicBoolean();
 
   /**
    * Test hooks for periodic ack
@@ -463,6 +461,7 @@ public class HARegionQueue implements RegionQueue
     }
     for (Iterator it=eventState.entrySet().iterator(); it.hasNext(); ) {
       Map.Entry entry = (Map.Entry)it.next();
+      ThreadIdentifier threadId = (ThreadIdentifier)entry.getKey();
       DispatchedAndCurrentEvents giiDace = (DispatchedAndCurrentEvents)entry.getValue();
       if (giiDace != null) { // fix for bug #41789: npe during state transfer
         giiDace.owningQueue = this;
@@ -473,12 +472,12 @@ public class HARegionQueue implements RegionQueue
           giiDace.QRM_LOCK = new Object();
         }
         if (sb != null) {
-          sb.append("\n  ").append(((ThreadIdentifier)entry.getKey()).expensiveToString())
+          sb.append("\n  ").append(threadId.expensiveToString())
             .append("; sequenceID=")
             .append(giiDace.lastSequenceIDPut);
         }
         // use putIfAbsent to avoid overwriting newer dispatch information
-        Object o = this.eventsMap.putIfAbsent(entry.getKey(), giiDace);
+        Object o = this.eventsMap.putIfAbsent(threadId, giiDace);
         if (o != null && sb != null) {
           sb.append(" -- could not store.  found " + o);
         }
@@ -685,8 +684,7 @@ public class HARegionQueue implements RegionQueue
     ThreadIdentifier ti = getThreadIdentifier(eventId);
     long sequenceID = eventId.getSequenceID();
     // Check from Events Map if the put operation should proceed or not
-    DispatchedAndCurrentEvents dace = (DispatchedAndCurrentEvents)this.eventsMap
-        .get(ti);
+    DispatchedAndCurrentEvents dace = this.eventsMap.get(ti);
     if (dace != null && dace.isGIIDace && this.puttingGIIDataInQueue) {
       // we only need to retain DACE for which there are no entries in the queue.
       // for other thread identifiers we build up a new DACE
@@ -726,8 +724,7 @@ public class HARegionQueue implements RegionQueue
     }
     else {
       dace = new DispatchedAndCurrentEvents(this);
-      DispatchedAndCurrentEvents oldDace = (DispatchedAndCurrentEvents)this.eventsMap
-          .putIfAbsent(ti, dace);
+      DispatchedAndCurrentEvents oldDace = this.eventsMap.putIfAbsent(ti, dace);
       if (oldDace != null) {
         dace = oldDace;
       }
@@ -858,7 +855,6 @@ public class HARegionQueue implements RegionQueue
     }
   }
 
-  
   /**
    * this method is for transmission of DACE information with initial image state
    * in HARegions.  It should not be used for other purposes.  The map contains
@@ -866,25 +862,16 @@ public class HARegionQueue implements RegionQueue
    * replay of events in the new queue that have already been removed from this queue.
    */
   public Map getEventMapForGII() {
-    // fix for bug #41621 - concurrent modification exception while serializing event map
-    Map<ThreadIdentifier, DispatchedAndCurrentEvents> events = this.eventsMap;
-    do {
-      HashMap result = new HashMap();
-      try {
-        for (Map.Entry<ThreadIdentifier, DispatchedAndCurrentEvents> entry: events.entrySet()) {
-          if (entry.getValue().isCountersEmpty()) {
-            result.put(entry.getKey(), entry.getValue());
-          }
-        }
-        return result;
-      } catch (ConcurrentModificationException e) {
-        if (this.logger.fineEnabled()) {
-          this.logger.fine("HARegion encountered concurrent modification exception while analysing event state - will try again");
-        }
+    HashMap<ThreadIdentifier, DispatchedAndCurrentEvents> result = new HashMap<>();
+    for (Map.Entry<ThreadIdentifier, DispatchedAndCurrentEvents> entry :
+        eventsMap.entrySet()) {
+      if (entry.getValue().isCountersEmpty()) {
+        result.put(entry.getKey(), entry.getValue());
       }
-    } while (true);
+    }
+    return result;
   }
-  
+
   /**
    * Implementation in BlokcingHARegionQueue class
    * 
@@ -913,7 +900,7 @@ public class HARegionQueue implements RegionQueue
   {
     
     if (qrmThread == null) {
-      dispatchedMessagesMap = CFactory.createCM();
+      dispatchedMessagesMap = new ConcurrentHashMap();
       qrmThread = new QueueRemovalThread(c);
       qrmThread.setName("Queue Removal Thread");
       qrmThread.start();
@@ -971,10 +958,11 @@ public class HARegionQueue implements RegionQueue
   protected Long addToConflationMap(Conflatable event, Long newPosition)
   {
     String r = event.getRegionToConflate();
-    CM latestIndexesForRegion = (CM)this.indexes.get(r);
+    ConcurrentHashMap latestIndexesForRegion =
+        (ConcurrentHashMap)this.indexes.get(r);
     if (latestIndexesForRegion == null) {
       synchronized (HARegionQueue.this) {
-        if ((latestIndexesForRegion = (CM)this.indexes.get(r)) == null) {
+        if ((latestIndexesForRegion = (ConcurrentHashMap)this.indexes.get(r)) == null) {
           latestIndexesForRegion = createConcurrentMap();
           Map newMap = new HashMap(this.indexes);
           newMap.put(r, latestIndexesForRegion);
@@ -995,10 +983,8 @@ public class HARegionQueue implements RegionQueue
    * 
    * @return new ConcurrentMap
    */
-  CM createConcurrentMap()
-  {
-
-    return CFactory.createCM();
+  ConcurrentHashMap createConcurrentMap() {
+    return new ConcurrentHashMap();
   }
 
   /**
@@ -1069,8 +1055,7 @@ public class HARegionQueue implements RegionQueue
       // is 0. If yes the Dace should be removed
       // Get DACE
 
-      DispatchedAndCurrentEvents dace = (DispatchedAndCurrentEvents)HARegionQueue.this.eventsMap
-          .get(key);
+      DispatchedAndCurrentEvents dace = HARegionQueue.this.eventsMap.get(key);
       Assert.assertTrue(dace != null);
       Long expirySequenceID = (Long)event.getOldValue();
       boolean expired = dace.expireOrUpdate(expirySequenceID.longValue(),
@@ -1091,7 +1076,7 @@ public class HARegionQueue implements RegionQueue
       EventID id = cf.getEventId();
       byte[] memID = id.getMembershipID();
       long threadId = id.getThreadID();
-      DispatchedAndCurrentEvents dace = (DispatchedAndCurrentEvents)eventsMap
+      DispatchedAndCurrentEvents dace = eventsMap
           .get(new ThreadIdentifier(memID, threadId));
       if (shouldBeConflated(cf)) {
         dace
@@ -1328,8 +1313,7 @@ public class HARegionQueue implements RegionQueue
       EventID eventid = object.getEventId();
       long sequenceId = eventid.getSequenceID();
       ThreadIdentifier threadid = getThreadIdentifier(eventid);
-      DispatchedAndCurrentEvents dace = (DispatchedAndCurrentEvents)this.eventsMap
-          .get(threadid);
+      DispatchedAndCurrentEvents dace = this.eventsMap.get(threadid);
       Assert.assertTrue(dace != null);
       Object keyToConflate = null;
       if (shouldBeConflated(object)) {
@@ -1459,8 +1443,7 @@ public class HARegionQueue implements RegionQueue
       ThreadIdentifier tid = (ThreadIdentifier)element.getKey();
       List removedEvents = (List)element.getValue();
       long lastDispatchedId = ((Long)removedEvents.remove(0)).longValue();
-      DispatchedAndCurrentEvents dace = (DispatchedAndCurrentEvents)this.eventsMap
-          .get(tid);
+      DispatchedAndCurrentEvents dace = this.eventsMap.get(tid);
       if (dace != null && dace.lastDispatchedSequenceId < lastDispatchedId) {
         try {
           dace.setLastDispatchedIDAndRemoveEvents(removedEvents,
@@ -1761,9 +1744,9 @@ public class HARegionQueue implements RegionQueue
       // new Map
       //Assert.assertTrue(!dispatchedMessagesMap.containsKey(this.regionName));
       //dispatchedMessagesMap.put(this.regionName, this.threadIdToSeqId);
-      Map tempDispatchedMessagesMap = dispatchedMessagesMap ;
-      if(tempDispatchedMessagesMap!= null){
-        Object old = ((CM)tempDispatchedMessagesMap).putIfAbsent(
+      ConcurrentHashMap tempDispatchedMessagesMap = dispatchedMessagesMap;
+      if (tempDispatchedMessagesMap != null) {
+        Object old = tempDispatchedMessagesMap.putIfAbsent(
             this.regionName, this.threadIdToSeqId);
         if (isUsedByTest) {
           testMarkerMessageRecieved = true;
@@ -1849,8 +1832,7 @@ public class HARegionQueue implements RegionQueue
   {
     Set counters = null;
     ThreadIdentifier tid = getThreadIdentifier(id);
-    DispatchedAndCurrentEvents wrapper = (DispatchedAndCurrentEvents)this.eventsMap
-        .get(tid);
+    DispatchedAndCurrentEvents wrapper = this.eventsMap.get(tid);
     if (wrapper != null) {
       synchronized (wrapper) {
         if (wrapper.isCountersEmpty()) {
@@ -1874,8 +1856,7 @@ public class HARegionQueue implements RegionQueue
   long getLastDispatchedSequenceId(EventID id)
   {
     ThreadIdentifier tid = getThreadIdentifier(id);
-    DispatchedAndCurrentEvents wrapper = (DispatchedAndCurrentEvents)this.eventsMap
-        .get(tid);
+    DispatchedAndCurrentEvents wrapper = this.eventsMap.get(tid);
     return wrapper.lastDispatchedSequenceId;
   }
 
@@ -1917,16 +1898,14 @@ public class HARegionQueue implements RegionQueue
     ThreadIdentifier ti = getThreadIdentifier(lastDispatched);
     long sequenceID = lastDispatched.getSequenceID();
     // get the DispatchedAndCurrentEvents object for this threadID
-    DispatchedAndCurrentEvents dace = (DispatchedAndCurrentEvents)this.eventsMap
-        .get(ti);
+    DispatchedAndCurrentEvents dace = this.eventsMap.get(ti);
     if (dace != null && dace.lastDispatchedSequenceId < sequenceID) {
       dace.setLastDispatchedIDAndRemoveEvents(sequenceID);
     }
     else if (dace == null) {
       dace = new DispatchedAndCurrentEvents(this);
       dace.lastDispatchedSequenceId = sequenceID;
-      DispatchedAndCurrentEvents oldDace = (DispatchedAndCurrentEvents)this.eventsMap
-          .putIfAbsent(ti, dace);
+      DispatchedAndCurrentEvents oldDace = this.eventsMap.putIfAbsent(ti, dace);
       if (oldDace != null) {
         dace = oldDace;
         if (dace.lastDispatchedSequenceId < sequenceID) {
@@ -3351,8 +3330,7 @@ protected boolean checkEventForRemoval(Long counter, ThreadIdentifier threadid, 
         if (old != null) {
           ThreadIdentifier oldTi = HARegionQueue.getThreadIdentifier(old
               .getEventId());
-          DispatchedAndCurrentEvents oldDace = (DispatchedAndCurrentEvents)owningQueue.eventsMap
-              .get(oldTi);
+          DispatchedAndCurrentEvents oldDace = owningQueue.eventsMap.get(oldTi);
           if (oldDace != null) {
             oldDace.removeOldConflatedEntry(oldPosition);
           }
@@ -3426,7 +3404,7 @@ protected boolean checkEventForRemoval(Long counter, ThreadIdentifier threadid, 
       // Remove from conflation Map if the position in the conflation map is the
       // position
       // that is passed
-      CM conflationMap = (CM)owningQueue.indexes.get(rName);
+      ConcurrentHashMap conflationMap = (ConcurrentHashMap)owningQueue.indexes.get(rName);
       Assert.assertTrue(conflationMap != null);
       conflationMap.remove(key, position);
 

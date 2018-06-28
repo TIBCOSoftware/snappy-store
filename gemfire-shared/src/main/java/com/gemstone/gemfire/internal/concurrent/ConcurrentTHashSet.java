@@ -67,6 +67,10 @@ public class ConcurrentTHashSet<T> extends THashParameters implements Set<T> {
         THash.DEFAULT_LOAD_FACTOR, null, null);
   }
 
+  public ConcurrentTHashSet(int concurrency, int initialCapacity) {
+    this(concurrency, initialCapacity, THash.DEFAULT_LOAD_FACTOR, null, null);
+  }
+
   public ConcurrentTHashSet(TObjectHashingStrategy strategy,
       HashingStats stats) {
     this(DEFAULT_CONCURRENCY, THash.DEFAULT_INITIAL_CAPACITY,
@@ -601,6 +605,34 @@ public class ConcurrentTHashSet<T> extends THashParameters implements Set<T> {
   @Override
   public <E> E[] toArray(E[] a) {
     return toArray(a, null, null);
+  }
+
+  /** copy the contents in array and clear the map as atomic operation */
+  @SuppressWarnings("unchecked")
+  public <E> E[] drainTo(E[] a) {
+    int size = 0;
+    int offset = 0;
+    E[] result;
+    acquireAllLocks(true);
+    try {
+      for (ConcurrentTHashSegment<T> seg : this.segments) {
+        size += seg.size;
+      }
+      if (a.length >= size) {
+        result = a;
+      } else {
+        Class<?> c = a.getClass();
+        result = (E[])(c == Object[].class ? new Object[size]
+            : Array.newInstance(c.getComponentType(), size));
+      }
+      for (ConcurrentTHashSegment<T> seg : this.segments) {
+        offset = seg.toArray(result, seg.set, offset);
+        seg.clear();
+      }
+    } finally {
+      releaseAllLocks(true);
+    }
+    return result;
   }
 
   /**

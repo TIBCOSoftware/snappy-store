@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -91,14 +91,13 @@ public final class LeadNodeSmartConnectorOpMsg extends MemberExecutorMessage<Obj
     try {
       super.executeFunction(enableStreaming);
     } catch (RuntimeException re) {
-      throw LeadNodeExecutorMsg.handleLeadNodeException(re);
+      throw LeadNodeExecutorMsg.handleLeadNodeRuntimeException(re);
     }
   }
 
   @Override
   protected LeadNodeSmartConnectorOpMsg clone() {
-    final LeadNodeSmartConnectorOpMsg msg = new LeadNodeSmartConnectorOpMsg(this.ctx, this.userCollector);
-    return msg;
+    return new LeadNodeSmartConnectorOpMsg(this.ctx, this.userCollector);
   }
 
   @Override
@@ -119,6 +118,16 @@ public final class LeadNodeSmartConnectorOpMsg extends MemberExecutorMessage<Obj
   }
 
   public void appendFields(final StringBuilder sb) {
-
+    super.appendFields(sb);
+    sb.append(";opType=").append(ctx.getType())
+        .append(";table=").append(ctx.getTableIdentifier())
+        .append(";ifExists=").append(ctx.getIfExists())
+        .append(";isBuiltIn=").append(ctx.getIsBuiltIn());
+    if (ctx.getProvider() != null) {
+      sb.append(";provider=").append(ctx.getProvider());
+    }
+    if (ctx.getSchemaDDL() != null) {
+      sb.append(";schemaDDL=").append(ctx.getSchemaDDL());
+    }
   }
 }

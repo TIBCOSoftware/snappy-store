@@ -26,7 +26,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CyclicBarrier;
 
-import com.gemstone.gemfire.GemFireTestCase;
 import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.Cache;
@@ -40,7 +39,6 @@ import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.internal.cache.Conflatable;
 import com.gemstone.gemfire.internal.cache.EventID;
 import com.gemstone.gemfire.internal.cache.RegionQueue;
-import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.size.SingleObjectSizer;
 import io.snappydata.test.dunit.DistributedTestBase;
 import junit.framework.Assert;
@@ -1145,8 +1143,7 @@ public class HARegionQueueJUnitTest extends TestCase
       super(REGION_NAME, cache);
     }
 
-    CM createConcurrentMap()
-    {
+    ConcurrentHashMap createConcurrentMap() {
       return new ConcHashMap();
     }
   }
@@ -1154,8 +1151,7 @@ public class HARegionQueueJUnitTest extends TestCase
   /**
    * Used to override the remove method for testSafeConflationRemoval
    */
-  static class ConcHashMap extends ConcurrentHashMap implements CM
-  {
+  static class ConcHashMap extends ConcurrentHashMap {
     public boolean remove(Object arg0, Object arg1)
     {
       Conflatable cf2 = new ConflatableObject("key1", "value2", new EventID(

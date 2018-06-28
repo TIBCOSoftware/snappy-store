@@ -386,8 +386,8 @@ public final class ClientService extends ReentrantLock implements LobService {
           p.setParameter(this.socketParams, propValue);
         }
       }
-      // check if configured to use direct ByteBuffers
-      directBuffers = Boolean.parseBoolean(props.remove(
+      // check direct ByteBuffers for large LOB chunks (default is true)
+      directBuffers = !"false".equalsIgnoreCase(props.remove(
           ClientAttribute.THRIFT_LOB_DIRECT_BUFFERS));
       // set the chunk size for LOBs if set
       String chunkSize = props.remove(ClientAttribute.THRIFT_LOB_CHUNK_SIZE);
@@ -430,7 +430,7 @@ public final class ClientService extends ReentrantLock implements LobService {
         this.currentHostAddress = hostAddr;
         if (this.loadBalance) {
           ControlConnection controlService = ControlConnection
-              .getOrCreateControlConnection(connHosts.get(0), this, failure);
+              .getOrCreateControlConnection(connHosts, this, failure);
           // at this point query the control service for preferred server
           this.currentHostAddress = hostAddr = controlService.getPreferredServer(
               failedServers, this.serverGroups, false, failure);
@@ -609,7 +609,7 @@ public final class ClientService extends ReentrantLock implements LobService {
     if (host != null && !failedServers.add(host) && checkAllFailed) {
       // have we come around full circle?
       ControlConnection controlService = ControlConnection
-          .getOrCreateControlConnection(connHosts.get(0), this, cause);
+          .getOrCreateControlConnection(connHosts, this, cause);
       // Below call will throw failure if no servers are available.
       // This is required to be done explicitly to break the infinite loop
       // for cases where server is otherwise healthy (so doesn't get detected

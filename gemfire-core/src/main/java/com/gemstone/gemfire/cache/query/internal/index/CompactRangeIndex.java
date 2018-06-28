@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -35,7 +34,6 @@ import com.gemstone.gemfire.cache.query.FunctionDomainException;
 import com.gemstone.gemfire.cache.query.IndexStatistics;
 import com.gemstone.gemfire.cache.query.IndexType;
 import com.gemstone.gemfire.cache.query.NameResolutionException;
-import com.gemstone.gemfire.cache.query.QueryException;
 import com.gemstone.gemfire.cache.query.QueryInvocationTargetException;
 import com.gemstone.gemfire.cache.query.QueryService;
 import com.gemstone.gemfire.cache.query.SelectResults;
@@ -71,7 +69,6 @@ import com.gemstone.gemfire.internal.cache.RegionEntry;
 import com.gemstone.gemfire.internal.cache.RegionEntryContext;
 import com.gemstone.gemfire.internal.cache.VMThinRegionEntryHeap;
 import com.gemstone.gemfire.internal.cache.persistence.query.CloseableIterator;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.pdx.internal.PdxString;
 import com.gemstone.gnu.trove.THashMap;
@@ -133,11 +130,11 @@ public class CompactRangeIndex extends AbstractIndex {
 
   @Override
   public void initializeIndex() throws IMQException {
-    long startTime = CFactory.nanoTime();
+    long startTime = System.nanoTime();
     this.evaluator.initializeIndex();
     this.internalIndexStats.incNumUpdates(((IMQEvaluator) this.evaluator)
         .getTotalEntriesUpdated());
-    long endTime = CFactory.nanoTime();
+    long endTime = System.nanoTime();
     this.internalIndexStats.incUpdateTime(endTime - startTime);
   }
 

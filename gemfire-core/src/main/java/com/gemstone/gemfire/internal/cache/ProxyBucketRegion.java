@@ -22,9 +22,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.InternalGemFireError;
+import com.gemstone.gemfire.cache.DiskAccessException;
 import com.gemstone.gemfire.cache.EvictionAttributes;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.RegionAttributes;
@@ -49,8 +51,6 @@ import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberManager;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMembershipView;
-import com.gemstone.gemfire.internal.concurrent.AB;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gnu.trove.THashSet;
 
@@ -69,7 +69,7 @@ public final class ProxyBucketRegion implements Bucket {
   private final BucketAdvisor advisor;
   private final BucketPersistenceAdvisor persistenceAdvisor;
   private volatile BucketRegion realBucket = null;
-  private final AB bucketSick = CFactory.createAB(false);
+  private final AtomicBoolean bucketSick = new AtomicBoolean(false);
   private final Set<DistributedMember> sickHosts = new HashSet<DistributedMember>();
   private final DiskRegion diskRegion;
   private final BucketLock bucketLock;
@@ -503,7 +503,11 @@ public final class ProxyBucketRegion implements Bucket {
       }
       
       persistenceAdvisor.initializeMembershipView();
-    } catch(RuntimeException e) {
+    } catch (DiskAccessException dae) {
+      this.partitionedRegion.handleDiskAccessException(dae, true);
+      throw dae;
+    }
+    catch(RuntimeException e) {
       exception=e;
       throw e;
     } finally {
@@ -535,7 +539,7 @@ public final class ProxyBucketRegion implements Bucket {
     }
   }
 
-  private void clearIndexes(LogWriterI18n logger) {
+  public void clearIndexes(LogWriterI18n logger) {
     IndexUpdater iup = this.partitionedRegion.getIndexUpdater();
     if(logger.fineEnabled()) {
       logger.fine("clearing index for diskregion: " + this.diskRegion);
@@ -543,7 +547,11 @@ public final class ProxyBucketRegion implements Bucket {
     if (iup != null) {
       RegionMap rmap = diskRegion.getRecoveredEntryMap();
       if (rmap != null && rmap.regionEntries() != null) {
-        iup.clearIndexes(this.partitionedRegion, true, false, rmap.regionEntries().iterator(), true);
+        if(logger.fineEnabled()) {
+          logger.fine("Going to clear indexes in ProxyBucketRegion: " + this.diskRegion);
+        }
+        iup.clearIndexes(this.partitionedRegion, getDiskRegion(),
+            false, rmap.regionEntries().iterator(), getBucketId());
       }
     }
   }

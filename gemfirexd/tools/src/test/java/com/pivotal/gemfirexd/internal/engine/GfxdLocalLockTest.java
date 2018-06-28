@@ -22,7 +22,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.gemstone.gemfire.cache.Cache;
 import com.gemstone.gemfire.cache.CacheFactory;
-import com.gemstone.org.jgroups.oswego.concurrent.WriterPreferenceReadWriteLock;
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.pivotal.gemfirexd.internal.engine.locks.impl.GfxdReentrantReadWriteLock;
 import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
 
@@ -47,6 +47,12 @@ public class GfxdLocalLockTest extends JdbcTestBase {
   private static AcquireReleaseLocks currentLock;
 
   private static final AtomicInteger globalId = new AtomicInteger(0);
+
+  @Override
+  protected void setUp() throws Exception {
+    GemFireCacheImpl.setGFXDSystemForTests();
+    super.setUp();
+  }
 
   public void testReadWriteLockWithPerf() throws Exception {
     final int numReaders = 100;
@@ -128,7 +134,6 @@ public class GfxdLocalLockTest extends JdbcTestBase {
     // test for different ReadWriteLock implementations
     final AcquireReleaseLocks[] allLocks = new AcquireReleaseLocks[] {
         new GfxdAcquireReleaseLocks(),
-        new WriterPreferenceAcquireReleaseLocks(),
         new ReentrantAcquireReleaseLocks() };
 
     // start the threads in parallel
@@ -258,7 +263,6 @@ public class GfxdLocalLockTest extends JdbcTestBase {
     // test for different ReadWriteLock implementations
     final AcquireReleaseLocks[] allLocks = new AcquireReleaseLocks[] {
         new GfxdAcquireReleaseLocks(),
-        new WriterPreferenceAcquireReleaseLocks(),
         new ReentrantAcquireReleaseLocks() };
 
     // start the threads in parallel
@@ -347,26 +351,6 @@ public class GfxdLocalLockTest extends JdbcTestBase {
     @Override
     public String toString() {
       return this.lock.toString();
-    }
-  }
-
-  private static final class WriterPreferenceAcquireReleaseLocks extends
-      WriterPreferenceReadWriteLock implements AcquireReleaseLocks {
-
-    public void acquireReadLock() throws InterruptedException {
-      readLock().acquire();
-    }
-
-    public void acquireWriteLock() throws InterruptedException {
-      writeLock().acquire();
-    }
-
-    public void releaseReadLock() {
-      readLock().release();
-    }
-
-    public void releaseWriteLock() {
-      writeLock().release();
     }
   }
 

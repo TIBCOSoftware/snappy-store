@@ -28,6 +28,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.InternalGemFireException;
 import com.gemstone.gemfire.cache.CacheClosedException;
@@ -36,25 +37,27 @@ import com.gemstone.gemfire.cache.client.ServerOperationException;
 import com.gemstone.gemfire.cache.client.internal.GetAllOp.GetAllOpImpl;
 import com.gemstone.gemfire.cache.execute.FunctionException;
 import com.gemstone.gemfire.cache.execute.ResultCollector;
+import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
+import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PutAllPartialResultException;
 import com.gemstone.gemfire.internal.cache.execute.InternalFunctionInvocationTargetException;
 import com.gemstone.gemfire.internal.cache.tier.sockets.VersionedObjectList;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 public class SingleHopClientExecutor {
 
   static final ExecutorService execService = Executors
       .newCachedThreadPool(new ThreadFactory() {
-        AI threadNum = CFactory.createAI();
+        AtomicInteger threadNum = new AtomicInteger();
 
         public Thread newThread(final Runnable r) {
-          Thread result = new Thread(r, "Function Execution Thread-"
-              + threadNum.incrementAndGet());
+          LogWriterI18n logger = InternalDistributedSystem.getLoggerI18n();
+          Thread result = new Thread(LogWriterImpl.createThreadGroup(
+              "FunctionExecutionThreadGroup", logger), r,
+              "Function Execution Thread-" + threadNum.incrementAndGet());
           result.setDaemon(true);
           return result;
         }
@@ -106,8 +109,7 @@ public class SingleHopClientExecutor {
       ResultCollector rc, Set<String> failedNodes) {
 
     LogWriterI18n logger = region.getLogWriterI18n();
-    ClientMetadataService cms = region.getCache()
-        .getClientMetadataService();
+    ClientMetadataService cms;
     boolean reexecute = false;
 
     if (callableTasks != null && !callableTasks.isEmpty()) {
@@ -391,7 +393,7 @@ public class SingleHopClientExecutor {
   }
   
   static void submitTask(Runnable task) {
-    execService.submit(task);
+    execService.execute(task);
   }
 
   // Find out what exception to throw?

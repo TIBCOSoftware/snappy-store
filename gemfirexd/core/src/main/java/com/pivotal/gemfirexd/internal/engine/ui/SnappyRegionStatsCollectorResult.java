@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -19,16 +19,12 @@ package com.pivotal.gemfirexd.internal.engine.ui;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.gemstone.gemfire.DataSerializable;
-import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.pivotal.gemfirexd.internal.engine.GfxdDataSerializable;
-import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
 
 public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
   private transient List<SnappyRegionStats> combinedStats = new ArrayList<>();
@@ -38,9 +34,11 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
   public void addRegionStat(SnappyRegionStats stats) {
     combinedStats.add(stats);
   }
+
   public void addIndexStat(SnappyIndexStats stats) {
     indexStats.add(stats);
   }
+
   public void addAllIndexStat(List<SnappyIndexStats> stats) {
     indexStats.addAll(stats);
   }
@@ -51,6 +49,7 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
   public List<SnappyRegionStats> getRegionStats() {
     return combinedStats;
   }
+
   public List<SnappyIndexStats> getIndexStats() {
     return indexStats;
   }
@@ -60,21 +59,22 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
     return SNAPPY_REGION_STATS_RESULT;
   }
 
-  @Override
-  public Version[] getSerializationVersions() {
-    return null;
-  }
+  private static Version[] serializationVersions =
+      new Version[] { Version.STORE_162 };
 
   @Override
-  public void toData(final DataOutput out) throws IOException {
+  public Version[] getSerializationVersions() {
+    return serializationVersions;
+  }
+
+  private void toData(final DataOutput out, boolean pre162) throws IOException {
     out.writeInt(combinedStats.size());
     for (SnappyRegionStats stats : combinedStats) {
-      InternalDataSerializer.writeString(stats.getRegionName(), out);
-      InternalDataSerializer.writeLong(stats.getTotalSize(), out);
-      InternalDataSerializer.writeLong(stats.getSizeInMemory(), out);
-      InternalDataSerializer.writeLong(stats.getRowCount(), out);
-      InternalDataSerializer.writeBoolean(stats.isColumnTable(), out);
-      InternalDataSerializer.writeBoolean(stats.isReplicatedTable(), out);
+      if (pre162) {
+        stats.toDataPre_STORE_1_6_2_0(out);
+      } else {
+        stats.toData(out);
+      }
     }
     out.writeInt(indexStats.size());
     for (SnappyIndexStats stats : indexStats) {
@@ -84,18 +84,26 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
     }
   }
 
+  public void toDataPre_STORE_1_6_2_0(final DataOutput out) throws IOException {
+    toData(out, true);
+  }
+
   @Override
-  public void fromData(DataInput in) throws IOException {
+  public void toData(final DataOutput out) throws IOException {
+    toData(out, false);
+  }
+
+  private void fromData(DataInput in, boolean pre162) throws IOException {
     int size = in.readInt();
     while (size > 0) {
       size--;
-      String regionName = InternalDataSerializer.readString(in);
-      long totalSize = InternalDataSerializer.readLong(in);
-      long memorySize = InternalDataSerializer.readLong(in);
-      long count = InternalDataSerializer.readLong(in);
-      boolean isColumnTable = InternalDataSerializer.readBoolean(in);
-      boolean isReplicated = InternalDataSerializer.readBoolean(in);
-      addRegionStat(new SnappyRegionStats(regionName, totalSize, memorySize, count, isColumnTable, isReplicated));
+      SnappyRegionStats stats = new SnappyRegionStats();
+      if (pre162) {
+        stats.fromDataPre_STORE_1_6_2_0(in);
+      } else {
+        stats.fromData(in);
+      }
+      addRegionStat(stats);
     }
     int numIndex = in.readInt();
     while (numIndex > 0) {
@@ -107,4 +115,12 @@ public class SnappyRegionStatsCollectorResult extends GfxdDataSerializable {
     }
   }
 
+  public void fromDataPre_STORE_1_6_2_0(DataInput in) throws IOException {
+    fromData(in, true);
+  }
+
+  @Override
+  public void fromData(DataInput in) throws IOException {
+    fromData(in, false);
+  }
 }

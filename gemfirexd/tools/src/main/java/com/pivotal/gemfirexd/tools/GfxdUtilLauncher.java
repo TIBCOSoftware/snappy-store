@@ -50,18 +50,18 @@ import jline.console.history.FileHistory;
 public class GfxdUtilLauncher extends GemFireUtilLauncher {
 
   /**
-   * Name of the script that launches {@link #main(String[])}. This should be
-   * changed if the script name changes.
-   */
-  static final String SCRIPT_NAME = "gfxd";
-
-  /**
    * Special internal argument to just resolve the full path from the given path
    * including any symlinks (see #43722).
    */
-  static final String GET_CANONICAL_PATH_ARG = "--get-canonical-path";
+  protected static final String GET_CANONICAL_PATH_ARG = "--get-canonical-path";
 
   protected static boolean snappyStore;
+
+  static {
+    String scriptName = System.getenv("SNAPPY_SCRIPT_NAME");
+    SCRIPT_NAME = scriptName != null && scriptName.length() > 0
+        ? scriptName : "gfxd";
+  }
 
   public static boolean isSnappyStore() {
     return snappyStore;

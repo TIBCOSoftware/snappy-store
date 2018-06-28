@@ -20,6 +20,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.gemstone.gemfire.InternalGemFireException;
 import com.gemstone.gemfire.cache.client.internal.Connection;
@@ -29,8 +30,6 @@ import com.gemstone.gemfire.cache.client.internal.Endpoint;
 import com.gemstone.gemfire.cache.client.internal.Op;
 import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ServerQueueStatus;
-import com.gemstone.gemfire.internal.concurrent.AB;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 /**
  * A connection managed by the connection manager. Keeps track
@@ -48,7 +47,7 @@ public class PooledConnection implements Connection {
   private volatile long birthDate;
   private long lastAccessed; // read & written while synchronized
   private boolean active = true; // read and write while synchronized on this
-  private final AB shouldDestroy = CFactory.createAB();
+  private final AtomicBoolean shouldDestroy = new AtomicBoolean();
   private boolean waitingToSwitch = false;
 //  private final ConnectionManagerImpl manager;
 
@@ -56,7 +55,7 @@ public class PooledConnection implements Connection {
 //    this.manager = manager;
     this.connection = connection;
     this.endpoint = connection.getEndpoint();
-    this.birthDate = CFactory.nanoTime();
+    this.birthDate = System.nanoTime();
     this.lastAccessed = this.birthDate;
   }
 
@@ -145,7 +144,7 @@ public class PooledConnection implements Connection {
     long now = 0L;
     if (accessed) {
       // do this outside the sync
-      now = CFactory.nanoTime();
+      now = System.nanoTime();
     }
     synchronized (this) {
       if(isDestroyed()) {
@@ -182,7 +181,7 @@ public class PooledConnection implements Connection {
       }
       if (shouldDestroy()) return false;
       assert !this.active;
-      final long now = CFactory.nanoTime();
+      final long now = System.nanoTime();
       oldCon = this.connection;
       this.connection = newCon;
       this.endpoint = newCon.getEndpoint();

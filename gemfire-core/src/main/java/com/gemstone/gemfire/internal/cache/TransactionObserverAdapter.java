@@ -60,4 +60,7 @@ public class TransactionObserverAdapter implements TransactionObserver,
 
   public void afterSend(TXStateProxy tx, boolean rollback) {
   }
+
+  public void beforePerformOp(TXStateProxy tx){
+  }
 }

@@ -45,6 +45,7 @@ public interface ManagementConstants {
   int    REFRESH_TIME = DistributionConfig.DEFAULT_JMX_MANAGER_UPDATE_RATE;
 
   String MONITORING_REGION = "_monitoringRegion";
+  String MONITORING_REGION_PATH = "/" + MONITORING_REGION;
 
   String NOTIFICATION_REGION = "_notificationRegion";
 

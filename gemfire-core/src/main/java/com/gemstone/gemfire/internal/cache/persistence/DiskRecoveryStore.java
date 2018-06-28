@@ -60,4 +60,5 @@ public interface DiskRecoveryStore {
   public long getVersionForMember(VersionSource member);
   public void setRVVTrusted(boolean rvvTrusted);
   public DiskStoreImpl getDiskStore();
+  public boolean isInternalColumnTable();
 }

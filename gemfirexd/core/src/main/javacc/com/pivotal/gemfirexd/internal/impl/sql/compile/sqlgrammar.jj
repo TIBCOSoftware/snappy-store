@@ -214,6 +214,7 @@ import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 import com.pivotal.gemfirexd.Constants;
+import com.gemstone.gemfire.internal.cache.InternalPartitionResolver;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.ddl.EvictionTableAttribute;
@@ -417,9 +418,15 @@ public class SQLParser
       }
 
 	  //////////////////////////////////////////////
-	  if (getLanguageConnectionContext().isDefaultPersistent() && !repPartPersFlags[2]) {
+	  final LanguageConnectionContext lcc = getLanguageConnectionContext();
+	  if (lcc.isDefaultPersistent() && !repPartPersFlags[2]) {
 	    repPartPersFlags[2] = true;
-		  afact.setDiskStoreName(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME);
+	    if (Misc.isSnappyHiveMetaTable(lcc.getDefaultSchema().getSchemaName()) &&
+	        lcc.isPersistMetaStoreInDataDictionary()) {
+	      afact.setDiskStoreName(GfxdConstants.GFXD_DD_DISKSTORE_NAME);
+	    } else {
+	      afact.setDiskStoreName(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME);
+	    }
 	  }
 
 	  if (repPartPersFlags[1] && repPartPersFlags[2]) {
@@ -5260,7 +5267,7 @@ LOBType() throws StandardException :
 			throw StandardException.newException(SQLState.NOT_IMPLEMENTED, type);
 		}
 	|
-		<BINARY> <LARGE> <OBJECT> [ length = lengthAndModifier() ]
+		<BINARY> [ <LARGE> <OBJECT> ] [ length = lengthAndModifier() ]
 		{
 			type = TypeId.BLOB_NAME;
 		}
@@ -11673,6 +11680,11 @@ StatementNode gatewaySenderDefinition() throws StandardException :
 {
     
    <GATEWAYSENDER> id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true)
+   {
+      CompilerContext cc = getCompilerContext();
+      cc.markAsDDLForSnappyUse(false);
+      cc.setForcedDDLrouting(false);
+   }
    <LEFT_PAREN>
    <REMOTEDSID > remoteDsId = simpleValueSpecification_int()
     (  populateGatewaySenderAttributes(attrs))*
@@ -11723,6 +11735,11 @@ StatementNode asyncEventListenerDefinition() throws StandardException :
 {
     
    <ASYNCLISTENER> id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true)
+   {
+      CompilerContext cc = getCompilerContext();
+      cc.markAsDDLForSnappyUse(false);
+      cc.setForcedDDLrouting(false);
+   }
    <LEFT_PAREN>
    <LISTENERCLASS>  listenerClass = string()
    <INITPARAMS>  initParams = string()   
@@ -11772,6 +11789,11 @@ StatementNode dropAsyncEventListenerStatement() throws StandardException :
     
    <ASYNCLISTENER>
 // GemStone changes BEGIN
+{
+   CompilerContext cc = getCompilerContext();
+   cc.markAsDDLForSnappyUse(false);
+   cc.setForcedDDLrouting(false);
+}
 	[ <IF> <EXISTS> { onlyIfExists = Boolean.TRUE; } ]
 // GemStone changes END
    id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true)
@@ -11799,6 +11821,11 @@ StatementNode dropGatewaySenderStatement() throws StandardException :
     
    <GATEWAYSENDER>
 // GemStone changes BEGIN
+{
+   CompilerContext cc = getCompilerContext();
+   cc.markAsDDLForSnappyUse(false);
+   cc.setForcedDDLrouting(false);
+}
 	[ <IF> <EXISTS> { onlyIfExists = Boolean.TRUE; } ]
 // GemStone changes END
    
@@ -11820,6 +11847,11 @@ StatementNode dropGatewayReceiverStatement() throws StandardException :
 {
 	String id  = null;
 // GemStone changes BEGIN
+{
+   CompilerContext cc = getCompilerContext();
+   cc.markAsDDLForSnappyUse(false);
+   cc.setForcedDDLrouting(false);
+}
 	Boolean onlyIfExists = Boolean.FALSE;
 // GemStone changes END
 }
@@ -11851,7 +11883,12 @@ gatewayReceiverDefinition() throws StandardException :
 	String id  = null;
 }
 {
-	<GATEWAYRECEIVER> id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true) 
+	<GATEWAYRECEIVER> id = identifier(Limits.MAX_IDENTIFIER_LENGTH,true)
+	{
+       CompilerContext cc = getCompilerContext();
+       cc.markAsDDLForSnappyUse(false);
+       cc.setForcedDDLrouting(false);
+    }
 	[ <LEFT_PAREN>
      ( populateGatewarReceiverAttributes(attrs) )*
 	 <RIGHT_PAREN>
@@ -12378,8 +12415,21 @@ partitioningClause(DistributionDefinitionNode distributionNode,
       }
       repPartPersFlags[1] = true;
       try {
-        return (PartitionResolver)ClassPathLoader.getLatest().forName(
+        PartitionResolver resolver = (PartitionResolver)ClassPathLoader.getLatest().forName(
             resolverClass).getConstructor(TableName.class).newInstance(tableName);
+        if (resolver instanceof InternalPartitionResolver) {
+          InternalPartitionResolver internalResolver = (InternalPartitionResolver)resolver;
+          String[] partCols = internalResolver.getPartitioningColumns();
+          if (partCols != null && partCols.length > 0) {
+            for (String partCol : partCols) {
+               ColumnReference ref = (ColumnReference)nodeFactory.getNode(
+                   C_NodeTypes.COLUMN_REFERENCE, partCol, null, getContextManager());
+               distributionNode.addColumnReference(ref);
+            }
+            distributionNode.setPolicy(DistributionDescriptor.PARTITIONBYEXPRESSION);
+          }
+        }
+        return resolver;
       } catch (Exception e) {
         throw StandardException.newException(
             SQLState.UNEXPECTED_EXCEPTION_FOR_PARTITION_RESOLVER, e, tableName);
@@ -13936,7 +13986,13 @@ viewDefinition(Token beginToken) throws StandardException :
 	Token				endToken;
 }
 {
-	<VIEW> tableName = qualifiedName(Limits.MAX_IDENTIFIER_LENGTH) 
+	<VIEW>
+	{
+		CompilerContext cc = getCompilerContext();
+		cc.markAsDDLForSnappyUse(true);
+		cc.setForcedDDLrouting(true);
+	}
+	tableName = qualifiedName(Limits.MAX_IDENTIFIER_LENGTH)
 		[ <LEFT_PAREN> resultColumns = viewColumnList() <RIGHT_PAREN> ]
 		<AS> queryExpression = queryExpression(null, NO_SET_OP)
 	{
@@ -14590,6 +14646,20 @@ literal() throws StandardException :
 NumericConstantNode
 intLiteral() throws StandardException :
 {
+    NumericConstantNode result;
+}
+{
+    result = integral(true)
+    {
+        return result;
+    }
+}
+
+/*
+ * <A NAME="int">integral</A>
+ */
+NumericConstantNode integral(boolean intsOnly) throws StandardException :
+{
     Token   tok;
     String sign = null;
     NumericConstantNode result;
@@ -14608,7 +14678,7 @@ intLiteral() throws StandardException :
             num = sign.concat(num);
 
         try {
-            result = getNumericNode(num, true);
+            result = getNumericNode(num, intsOnly);
         } catch (NumberFormatException e) {
             throw StandardException.newException(
                 SQLState.LANG_INTEGER_LITERAL_EXPECTED);
@@ -15413,7 +15483,7 @@ simpleValueSpecification_int() throws StandardException :
 	ValueNode	value;
 }
 {
-	value = literal()
+	value = intLiteral()
 	{
 	    // Negative numbers are always illegal for all tokens that require int values
 	    // But sometimes zero is legal
@@ -15433,7 +15503,7 @@ simpleValueSpecification_long() throws StandardException :
 	ValueNode	value;
 }
 {
-	value = literal()
+	value = integral(false)
 	{
 	    // A negative number is valid for this value
 	    // Currently only used for RECOVERYDELAY and STARTUPRECOVERYDELAY
@@ -16871,12 +16941,14 @@ dropIndexStatement() throws StandardException :
 	TableName indexName;
 // GemStone changes BEGIN
 	Boolean onlyIfExists = Boolean.FALSE;
-	CompilerContext cc = getCompilerContext();
-// GemStone changes END
 }
 {
-// GemStone changes BEGIN
-  <INDEX>
+	<INDEX>
+	{
+		CompilerContext cc = getCompilerContext();
+		cc.markAsDDLForSnappyUse(true);
+		cc.setForcedDDLrouting(true);
+	}
 	[ <IF> <EXISTS> { onlyIfExists = Boolean.TRUE; } ]    
   indexName = qualifiedName(Limits.MAX_IDENTIFIER_LENGTH)
 // GemStone changes END
@@ -16884,8 +16956,6 @@ dropIndexStatement() throws StandardException :
 	<INDEX> indexName = qualifiedName(Limits.MAX_IDENTIFIER_LENGTH)
 	*/
 	{
-    cc.markAsDDLForSnappyUse(true);
-    cc.setForcedDDLrouting(true);
 		return (StatementNode) nodeFactory.getNode(
 								C_NodeTypes.DROP_INDEX_NODE,
 								indexName,
@@ -16983,9 +17053,14 @@ dropViewStatement() throws StandardException :
 {
 	<VIEW>
 // GemStone changes BEGIN
+	{
+		CompilerContext cc = getCompilerContext();
+		cc.markAsDDLForSnappyUse(true);
+		cc.setForcedDDLrouting(true);
+	}
 	[ <IF> <EXISTS> { onlyIfExists = Boolean.TRUE; } ]
 // GemStone changes END
-	viewName = qualifiedName(Limits.MAX_IDENTIFIER_LENGTH) 
+	viewName = qualifiedName(Limits.MAX_IDENTIFIER_LENGTH)
 	{
 		return (StatementNode) nodeFactory.getNode(
 								C_NodeTypes.DROP_VIEW_NODE,
@@ -17029,12 +17104,16 @@ truncateTableStatement() throws StandardException :
 	TableName tableName;
 }
 {
-	<TRUNCATE> <TABLE> tableName = qualifiedName(Limits.MAX_IDENTIFIER_LENGTH) 
+	<TRUNCATE> <TABLE>
+// GemStone changes BEGIN
 	{
-  // GemStone changes BEGIN
-  CompilerContext cc = getCompilerContext();
-  cc.markAsDDLForSnappyUse(true);
-  cc.setForcedDDLrouting(true);
+		CompilerContext cc = getCompilerContext();
+		cc.markAsDDLForSnappyUse(true);
+		cc.setForcedDDLrouting(true);
+	}
+// GemStone changes END
+	tableName = qualifiedName(Limits.MAX_IDENTIFIER_LENGTH)
+	{
 		return (StatementNode) nodeFactory.getNode(
 							C_NodeTypes.ALTER_TABLE_NODE,
 							tableName,
@@ -17700,6 +17779,7 @@ reservedKeyword() :
 |	tok = <GROUP>
 |	tok = <HAVING>
 |	tok = <IDENTITY>
+|	tok = <IF>
 |	tok = <IMMEDIATE>
 |	tok = <IN>
 |	tok = <INDICATOR>
@@ -18044,7 +18124,6 @@ nonReservedKeyword()  :
 	|   tok = <GROUPS>
 	|   tok = <HASH> // for CREATE INDEX GLOBAL HASH extension
 	|   tok = <IDLETIME>
-	|   tok = <IF>
 	|   tok = <INCOMING>
 	|   tok = <INITSIZE>
 	|   tok = <INFINITY>

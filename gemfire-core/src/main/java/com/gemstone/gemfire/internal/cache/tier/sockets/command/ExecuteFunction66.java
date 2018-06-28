@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.cache.LowMemoryException;
@@ -56,8 +57,6 @@ import com.gemstone.gemfire.internal.cache.tier.sockets.HandShake;
 import com.gemstone.gemfire.internal.cache.tier.sockets.Message;
 import com.gemstone.gemfire.internal.cache.tier.sockets.Part;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ServerConnection;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.security.AuthorizeRequest;
 
@@ -73,7 +72,7 @@ public class ExecuteFunction66 extends BaseCommand {
 
   static final ExecutorService execService = Executors
       .newCachedThreadPool(new ThreadFactory() {
-        AI threadNum = CFactory.createAI();
+        AtomicInteger threadNum = new AtomicInteger();
 
         public Thread newThread(final Runnable r) {
           Thread result = new Thread(r, "Function Execution Thread-"

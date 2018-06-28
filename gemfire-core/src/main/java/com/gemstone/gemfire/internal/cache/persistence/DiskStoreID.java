@@ -27,6 +27,7 @@ import java.util.UUID;
 
 import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
+import com.gemstone.gemfire.internal.shared.ClientResolverUtils;
 import com.gemstone.gemfire.internal.shared.Version;
 
 /**
@@ -114,11 +115,8 @@ public final class DiskStoreID implements VersionSource<DiskStoreID>,
 
   @Override
   public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + (int) (leastSig ^ (leastSig >>> 32));
-    result = prime * result + (int) (mostSig ^ (mostSig >>> 32));
-    return result;
+    int hash = ClientResolverUtils.addLongToHashOpt(leastSig, 42);
+    return ClientResolverUtils.addLongToHashOpt(mostSig, hash);
   }
 
   @Override

@@ -643,7 +643,7 @@ public class OpExecutorImpl implements ExecutablePool {
     boolean warn = true;
     boolean forceThrow = false;
     Throwable cause = e;
-    
+    boolean authTrouble = false;
     cancelCriterion.checkCancelInProgress(e);
 
     // if connection is being destroyed then don't log anything
@@ -765,6 +765,7 @@ public class OpExecutorImpl implements ExecutablePool {
     }
     else {
       Throwable t = e.getCause();
+
       if ((t instanceof ConnectException)
           || (t instanceof SocketException)
           || (t instanceof SocketTimeoutException)
@@ -796,6 +797,7 @@ public class OpExecutorImpl implements ExecutablePool {
           && e.getMessage()
               .equals("Connection error while authenticating user")) {
         title = null;
+        authTrouble = true;
         if (logger.fineEnabled()) {
           logger.fine(e.getMessage());
         }
@@ -824,6 +826,10 @@ public class OpExecutorImpl implements ExecutablePool {
         if (forceThrow || finalAttempt) {
           exToThrow = new ServerConnectivityException(msg, cause);
         }
+      }
+    } else {
+      if (authTrouble && finalAttempt) {
+        exToThrow = new ServerConnectivityException("retry attempt exhaused while trying to authenticate user", cause);
       }
     }
     if (exToThrow != null) {

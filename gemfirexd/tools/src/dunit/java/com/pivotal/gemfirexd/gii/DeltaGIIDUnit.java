@@ -697,7 +697,8 @@ public class DeltaGIIDUnit  extends DistributedSQLTestBase {
   }
   
   private static class Mycallback extends GIITestHook {
-    private Object lockObject = new Object();
+    private final Object lockObject = new Object();
+    private boolean resetDone;
 
     public Mycallback(GIITestHookType type, String region_name) {
       super(type, region_name);
@@ -706,17 +707,20 @@ public class DeltaGIIDUnit  extends DistributedSQLTestBase {
     @Override
     public void reset() {
       synchronized (this.lockObject) {
-        this.lockObject.notify();
+        this.resetDone = true;
+        this.lockObject.notifyAll();
       }
     }
 
     @Override
     public void run() {
       synchronized (this.lockObject) {
-        try {
-          isRunning = true;
-          this.lockObject.wait();
-        } catch (InterruptedException e) {
+        while (!resetDone) {
+          try {
+            isRunning = true;
+            this.lockObject.wait(1000);
+          } catch (InterruptedException e) {
+          }
         }
       }
     }

@@ -34,7 +34,7 @@ import dunit.SerializableRunnable;
 import dunit.VM;
 
 /**
- * Tests the functionality of the <code>VMStats50</code> and
+ * Tests the functionality of the <code>VMStats</code> and
  * <code>PartitionedRegionStats</code>
  *
  * @author Harsh Khanna

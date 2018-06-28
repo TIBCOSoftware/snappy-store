@@ -1027,4 +1027,5 @@ public interface GemFireXDQueryObserver extends QueryObserver {
   public void testExecutionEngineDecision(QueryInfo queryInfo,
       ExecutionEngineRule.ExecutionEngine engine, String queryText);
 
+  public void regionPreInitialized(GemFireContainer container);
 }

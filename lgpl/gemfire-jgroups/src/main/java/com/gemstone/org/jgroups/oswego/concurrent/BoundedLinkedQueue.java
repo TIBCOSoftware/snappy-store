@@ -45,7 +45,6 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
  * queue is not empty or full, most puts and
  * takes are still usually able to execute concurrently.
  * @see LinkedQueue 
- * @see BoundedBuffer 
  * <p>[<a href="http://gee.cs.oswego.edu/dl/classes/EDU/oswego/cs/dl/util/concurrent/intro.html"> Introduction to this package. </a>] <p>
  **/
 

@@ -51,11 +51,11 @@ public class MVCCDUnitTest extends DistributedSQLTestBase {
 
   @Override
   public void setUp() throws Exception {
-    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "true");
+    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "true");
     invokeInEveryVM(new SerializableRunnable() {
       @Override
       public void run() {
-        System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "true");
+        System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "true");
       }
     });
     super.setUp();
@@ -63,11 +63,11 @@ public class MVCCDUnitTest extends DistributedSQLTestBase {
 
   @Override
   public void tearDown2() throws Exception {
-    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "false");
+    System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "false");
     invokeInEveryVM(new SerializableRunnable() {
       @Override
       public void run() {
-        System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION", "false");
+        System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "false");
       }
     });
     super.tearDown2();
@@ -118,7 +118,7 @@ public class MVCCDUnitTest extends DistributedSQLTestBase {
 
         try {
           final GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
-          //final Region r = cache.getRegion(regionName);
+          //final Region r = cache.getRegion(tableName);
           cache.getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
           Connection conn = TestUtil.getConnection();
           conn.setTransactionIsolation(Connection.TRANSACTION_NONE);
@@ -343,15 +343,15 @@ public class MVCCDUnitTest extends DistributedSQLTestBase {
       @Override
       public Object call() {
         try {
+          TXManagerImpl txManager = GemFireCacheImpl.getExisting()
+              .getCacheTransactionManager();
 
-          TXStateProxy txStateProxy = GemFireCacheImpl.getInstance().getCacheTransactionManager()
-              .getHostedTXState(txid1);
+          TXStateProxy txStateProxy = txManager.getHostedTXState(txid1);
           //To invoke this operation without tx we need to unmasquerade
-          TXManagerImpl.TXContext context=GemFireCacheImpl.getInstance()
-              .getCacheTransactionManager().masqueradeAs(txStateProxy);
+          TXManagerImpl.TXContext context = txManager.masqueradeAs(txStateProxy);
 
-          GemFireCacheImpl.getInstance().getCacheTransactionManager().unmasquerade(context, true);
-          TXManagerImpl.snapshotTxState.set(null);
+          txManager.unmasquerade(context, true);
+          context.setSnapshotTXState(null);
           Connection conn = TestUtil.getConnection();
           Statement stmt = conn.createStatement();
           for (int i = 0; i < 5; i++) {
@@ -468,11 +468,11 @@ public class MVCCDUnitTest extends DistributedSQLTestBase {
       @Override
       public Object call() {
         try {
-          TXStateProxy txStateProxy = GemFireCacheImpl.getInstance().getCacheTransactionManager()
-              .getHostedTXState(txId);
-          TXManagerImpl.TXContext context = GemFireCacheImpl.getInstance()
-              .getCacheTransactionManager().masqueradeAs(txStateProxy);
-          TXManagerImpl.snapshotTxState.set(txStateProxy);
+          TXManagerImpl txManager = GemFireCacheImpl.getExisting()
+              .getCacheTransactionManager();
+          TXStateProxy txStateProxy = txManager.getHostedTXState(txId);
+          TXManagerImpl.TXContext context = txManager.masqueradeAs(txStateProxy);
+          context.setSnapshotTXState(txStateProxy);
 
           Connection conn = TestUtil.getConnection();
           conn.setTransactionIsolation(Connection.TRANSACTION_NONE);
@@ -485,9 +485,8 @@ public class MVCCDUnitTest extends DistributedSQLTestBase {
             numRows++;
           }
           assertEquals(expectedResults, numRows);
-          GemFireCacheImpl.getInstance()
-              .getCacheTransactionManager().unmasquerade(context, true);
-          TXManagerImpl.snapshotTxState.set(null);
+          txManager.unmasquerade(context, true);
+          context.setSnapshotTXState(null);
         } catch (Exception ex) {
           ex.printStackTrace();
           throw new RuntimeException(ex);

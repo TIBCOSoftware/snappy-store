@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -684,19 +684,19 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
   }
 
   /**
-   * Get the {@link Profile} for the given member's toString().
+   * Get the {@link Profile} for the given member's canonicalString().
    */
   public GfxdProfile getProfile(String memberStr) {
     final Profile[] allProfiles = this.profiles; // volatile read
     final int numProfiles = allProfiles.length;
     for (int i = 0; i < numProfiles; i++) {
       final Profile profile = allProfiles[i];
-      if (profile.getDistributedMember().toString().equals(memberStr)) {
+      if (profile.getDistributedMember().canonicalString().equals(memberStr)) {
         return (GfxdProfile)profile;
       }
     }
     GfxdProfile profile = getMyProfile();
-    if (profile.getDistributedMember().toString().equals(memberStr)) {
+    if (profile.getDistributedMember().canonicalString().equals(memberStr)) {
       return profile;
     } else {
       return null;
@@ -1089,7 +1089,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
               serverSB.append(',');
             }
             if (s instanceof HostAddress) {
-              serverSB.append(((HostAddress)s).getHostString());
+              serverSB.append(((HostAddress)s).getHostAddressString());
             } else {
               serverSB.append(s);
             }

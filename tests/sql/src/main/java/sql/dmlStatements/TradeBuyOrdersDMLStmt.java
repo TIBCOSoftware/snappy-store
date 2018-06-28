@@ -38,6 +38,7 @@ import com.gemstone.gemfire.cache.query.Struct;
 
 import sql.SQLBB;
 import sql.SQLHelper;
+import sql.SQLPrms;
 import sql.SQLTest;
 import sql.security.SQLSecurityTest;
 import sql.sqlutil.ResultSetHelper;
@@ -81,7 +82,7 @@ public class TradeBuyOrdersDMLStmt extends AbstractDMLStmt {
     //uniqkey queries
     "select * from trade.buyorders where status = 'open' and tid = ?",
     "select cid, bid, cid, sid from trade.buyorders where cid >? and sid <? and qty >? and orderTime<? and tid = ?",
-    "select sid, count(*) from trade.buyorders  where status =? and tid =? GROUP BY sid HAVING count(*) >=1",  
+    "select sid, CAST(count(*) as Integer) as COUNT from trade.buyorders  where status =? and tid =? GROUP BY sid HAVING count(*) >=1",
     "select cid, min(qty*bid) as smallest_order from trade.buyorders  where status =? and tid =? GROUP BY cid",  
     "select cid, cast (avg(qty*bid) as decimal (30, 20)) as amount from trade.buyorders  where status =? and tid =? GROUP BY cid ORDER BY amount",
     "select cid, max(qty*bid) as largest_order from trade.buyorders  where status =? and tid =?  GROUP BY cid HAVING max(qty*bid) > 2000 ORDER BY largest_order DESC, cid DESC ",
@@ -90,10 +91,10 @@ public class TradeBuyOrdersDMLStmt extends AbstractDMLStmt {
     //no uniqkey queries
     "select * from trade.buyorders",
     "select cid, bid, cid, sid from trade.buyorders where cid >?  and sid <? and qty >? and orderTime<?  ",
-    "select sid, count(*) from trade.buyorders  where status =? GROUP BY sid HAVING count(*) >=1", 
-    "select cid, count(distinct sid) from trade.buyorders  where status =? GROUP BY cid",    
+    "select sid, count(*) as COUNT from trade.buyorders  where status =? GROUP BY sid HAVING count(*) >=1",
+    "select cid, count(distinct sid) as DIST_SID from trade.buyorders  where status =? GROUP BY cid",
     "select cid, cast (avg(qty*bid) as decimal (30, 20)) as amount from trade.buyorders  where status =? GROUP BY cid ORDER BY amount",
-    "select cid, max(qty*bid) as largest_order from trade.buyorders  where status =? GROUP BY cid HAVING max(qty*bid) > 20000 ORDER BY max(qty*bid), cid DESC ",
+    "select cid, max(qty*bid) as largest_order from trade.buyorders  where status =? GROUP BY cid HAVING max(qty*bid) > 20000 ORDER BY largest_order, cid DESC ",
     "select b1.oid, b1.cid, b1.sid, b1.qty, b1.tid, b2.oid, b2.cid, b2.sid, b2.qty, b2.tid from trade.buyorders b1, trade.buyorders b2 " +
     "where b1.cid = b2.cid and b1.sid = b2.sid and b1.qty < b2.qty and b1.oid < b2.oid",
   };
@@ -380,12 +381,17 @@ public class TradeBuyOrdersDMLStmt extends AbstractDMLStmt {
           SQLHelper.closeResultSet(gfeRS, gConn); //for single hop, result set needs to be closed instead of fully consumed
           
           String offsetClause = " OFFSET 3 ROWS FETCH NEXT 2 ROWS ONLY";
-        
-          String sql = select[5] + offsetClause;
+          String sql = select[5];
+          if(!SQLPrms.isSnappyMode()) {
+            sql = sql + offsetClause;
+          }
           
           try {
-            Log.getLogWriter().info("Derby - querying trade.buyorders QUERY: " + sql );
-            PreparedStatement dps = dConn.prepareStatement(sql);
+            String derbysql =sql;
+            if(SQLPrms.isSnappyMode())
+              derbysql = sql + "FETCH FIRST 5 ROWS ONLY";
+            Log.getLogWriter().info("Derby - querying trade.buyorders QUERY: " + derbysql );
+            PreparedStatement dps = dConn.prepareStatement(derbysql);
             dps.setString(1, status);
             dps.setInt(2, tid);
             discRS = dps.executeQuery();
@@ -399,6 +405,8 @@ public class TradeBuyOrdersDMLStmt extends AbstractDMLStmt {
           } 
           
           try {
+            if(SQLPrms.isSnappyMode())
+              sql = sql + " LIMIT 5";
             Log.getLogWriter().info("gemfirexd - querying trade.buyorders QUERY: " + sql );
             PreparedStatement sps = gConn.prepareStatement(sql);
             sps.setString(1, status);
@@ -1723,7 +1731,8 @@ public class TradeBuyOrdersDMLStmt extends AbstractDMLStmt {
   //*** for delete ***//  
   /**
    * get data inserted by this thread or some random data 
-   * @param conn -- connection used to find the record inserted by this thread, when testUniqueKey is true.
+   * @param regConn -- connection used to find the record inserted by this thread, when
+   *              testUniqueKey is true.
    * @param cid -- array of cid to be populated
    * @param sid -- array lf sid to be populated
    * @return the number of array elements populated or -1 is none is available

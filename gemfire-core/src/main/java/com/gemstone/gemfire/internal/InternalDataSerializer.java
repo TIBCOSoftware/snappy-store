@@ -59,6 +59,25 @@ this software without specific prior written permission.
  * standalone and requires a support library to be linked with it.  This
  * support library is itself covered by the above license.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
 package com.gemstone.gemfire.internal;
 
 import java.io.DataInput;
@@ -138,8 +157,6 @@ import com.gemstone.gemfire.internal.cache.tier.sockets.CacheServerHelper;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientDataSerializerMessage;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.tier.sockets.Part;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.Version;
@@ -669,7 +686,8 @@ public abstract class InternalDataSerializer extends DataSerializer implements D
   
   /** Maps the id of a serializer to its <code>DataSerializer</code>.
    */
-  private static final CM/*<Integer, DataSerializer|Marker>*/ idsToSerializers = CFactory.createCM();
+  private static final ConcurrentHashMap<Integer, Object> idsToSerializers =
+      new ConcurrentHashMap<>();
 
   /**
    * Contains the classnames of the data serializers (and not the supported
@@ -1436,7 +1454,7 @@ public abstract class InternalDataSerializer extends DataSerializer implements D
         // consistency check to make sure that the same DSFID is not used
         // for two different classes
         String newClassName = o.getClass().getName();
-        String existingClassName = (String)dsfidToClassMap.putIfAbsent(Integer.valueOf(dsfid), newClassName);
+        String existingClassName = dsfidToClassMap.putIfAbsent(Integer.valueOf(dsfid), newClassName);
         if (existingClassName != null && !existingClassName.equals(newClassName)) {
           logger.error( StringIdImpl.LITERAL,
                        "dsfid=" + dsfid
@@ -1508,7 +1526,7 @@ public abstract class InternalDataSerializer extends DataSerializer implements D
         // consistency check to make sure that the same DSFID is not used
         // for two different classes
         String newClassName = o.getClass().getName();
-        String existingClassName = (String)dsfidToClassMap.putIfAbsent(
+        String existingClassName = dsfidToClassMap.putIfAbsent(
             dsfid, newClassName);
         if (existingClassName != null && !existingClassName.equals(newClassName)) {
           logger.fine("dsfid=" + dsfid + " is used for class "
@@ -2404,8 +2422,9 @@ public abstract class InternalDataSerializer extends DataSerializer implements D
 
   private static final boolean DEBUG_DSFID = Boolean.getBoolean("InternalDataSerializer.DEBUG_DSFID");
   //private static final HashSet seenClassNames = DEBUG_DSFID ? new HashSet(): null;
-  private static final CM dsfidToClassMap = DEBUG_DSFID ? CFactory.createCM(): null;
-  
+  private static final ConcurrentHashMap<Integer, String> dsfidToClassMap =
+      DEBUG_DSFID ? new ConcurrentHashMap<>() : null;
+
   public static final void writeUserDataSerializableHeader(int classId,
                                                            DataOutput out)
     throws IOException
@@ -4515,6 +4534,15 @@ public abstract class InternalDataSerializer extends DataSerializer implements D
     }
   }
 
+  /** write to DataOutput compressing high and low integers of given long */
+  public static void writeVLHighLow(final long val, final DataOutput out)
+      throws IOException {
+    final long low = (val & 0xffffffffL);
+    final long high = (val >>> 32);
+    InternalDataSerializer.writeUnsignedVL(low, out);
+    InternalDataSerializer.writeUnsignedVL(high, out);
+  }
+
   /**
    * Number of bytes required to encode a long as a variable length array. 
    */
@@ -4572,6 +4600,14 @@ public abstract class InternalDataSerializer extends DataSerializer implements D
    */
   public static long readSignedVL(DataInput in) throws IOException {
     return decodeZigZag64(readUnsignedVL(in));
+  }
+
+  /** read from DataInput compressing high and low integers of given long */
+  public static long readVLHighLow(final DataInput in)
+      throws IOException {
+    final long low = InternalDataSerializer.readUnsignedVL(in);
+    final long high = InternalDataSerializer.readUnsignedVL(in);
+    return ((high << 32) | low);
   }
 
   /**

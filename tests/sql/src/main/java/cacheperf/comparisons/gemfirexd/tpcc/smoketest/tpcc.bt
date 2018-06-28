@@ -1,0 +1,74 @@
+cacheperf/comparisons/gemfirexd/tpcc/smoketest/tpccPeer.conf
+  clientHosts=1 clientVMsPerHost=1 clientThreadsPerVM=1
+  serverHosts=3 serverVMsPerHost=1 serverThreadsPerVM=1
+  tableFileNum=1 indexFileNum=3
+  numWarehouses=3 numItems=50000
+  numCustomersPerDistrict=3000
+  clientHeapMB=256 serverHeapMB=768
+  trimSeconds=20 workSeconds=30
+  logQueries=false
+  queryPlanFrequency=35
+  perffmwk.comparisonKey=tpcc
+cacheperf/comparisons/gemfirexd/tpcc/smoketest/tpccThin.conf
+  clientHosts=1 clientVMsPerHost=1 clientThreadsPerVM=1
+  serverHosts=3 serverVMsPerHost=1 serverThreadsPerVM=1
+  tableFileNum=1 indexFileNum=3
+  numWarehouses=3 numItems=50000
+  numCustomersPerDistrict=3000
+  clientHeapMB=256 serverHeapMB=768
+  trimSeconds=20 workSeconds=30
+  logQueries=false
+  queryPlanFrequency=35
+  perffmwk.comparisonKey=tpcc
+cacheperf/comparisons/gemfirexd/tpcc/smoketest/tpccThinHDFS.conf onlyOnPlatforms=Linux
+  clientHosts=1 clientVMsPerHost=1 clientThreadsPerVM=1
+  serverHosts=3 serverVMsPerHost=1 serverThreadsPerVM=1
+  numWarehouses=3 numItems=50000
+  numCustomersPerDistrict=3000
+  clientHeapMB=256 serverHeapMB=1500
+  trimSeconds=60 workSeconds=180
+  logQueries=false
+  queryPlanFrequency=0
+  queryHDFS = true,false
+  perffmwk.comparisonKey=tpcc
+cacheperf/comparisons/gemfirexd/tpcc/smoketest/tpccPeer.conf
+  clientHosts=1 clientVMsPerHost=1 clientThreadsPerVM=1
+  serverHosts=3 serverVMsPerHost=1 serverThreadsPerVM=1
+  tableFileNum=1 indexFileNum=3
+  numWarehouses=3 numItems=50000
+  numCustomersPerDistrict=3000
+  clientHeapMB=256 serverHeapMB=768
+  trimSeconds=20 workSeconds=30
+  logQueries=false
+  queryPlanFrequency=35
+  offHeapMemorySize = 500m
+  useOffHeapMemoryPR = true
+  perffmwk.comparisonKey=tpcc
+cacheperf/comparisons/gemfirexd/tpcc/smoketest/tpccThin.conf
+  clientHosts=1 clientVMsPerHost=1 clientThreadsPerVM=1
+  serverHosts=3 serverVMsPerHost=1 serverThreadsPerVM=1
+  tableFileNum=1 indexFileNum=3
+  numWarehouses=3 numItems=50000
+  numCustomersPerDistrict=3000
+  clientHeapMB=256 serverHeapMB=768
+  trimSeconds=20 workSeconds=30
+  logQueries=false
+  queryPlanFrequency=35
+  offHeapMemorySize = 500m
+  useOffHeapMemoryPR = true
+  perffmwk.comparisonKey=tpcc
+cacheperf/comparisons/gemfirexd/tpcc/smoketest/tpccThinHDFS.conf onlyOnPlatforms=Linux
+  clientHosts=1 clientVMsPerHost=1 clientThreadsPerVM=1
+  serverHosts=3 serverVMsPerHost=1 serverThreadsPerVM=1
+  numWarehouses=3 numItems=50000
+  numCustomersPerDistrict=3000
+  clientHeapMB=256 serverHeapMB=1500
+  trimSeconds=60 workSeconds=180
+  logQueries=false
+  queryPlanFrequency=0
+  offHeapMemorySize = 500m
+  useOffHeapMemoryPR = true
+  queryHDFS = true,false
+  perffmwk.comparisonKey=tpcc
+cacheperf/comparisons/gemfirexd/tpcc/smoketest/tpccThinRollingRestartFromDisk.conf
+  version = 100, 130, 131

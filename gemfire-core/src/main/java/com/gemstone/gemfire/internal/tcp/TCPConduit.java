@@ -1034,12 +1034,18 @@ public class TCPConduit implements Runnable {
               getLogger().fine("Closing old connection.  conn=" + conn + " before retrying.  remoteID=" + remoteId
                 + " memberInTrouble=" + memberInTrouble);
             }
-            conn.closeForReconnect("closing before retrying"); 
-          } 
+            conn.closeForReconnect("closing before retrying");
+          }
           catch (CancelException ex) {
             throw ex;
           }
-          catch (Exception ex) {
+          catch (Exception ignored) {
+          }
+          finally {
+            if (useNIOStream()) {
+              releasePooledConnection(conn);
+            }
+            conn = null;
           }
         }
       } // not first time in loop

@@ -336,7 +336,7 @@ public class GFXDDiskStoreImpl extends DiskStoreImplProxy {
             DiskPosition dp = new DiskPosition();
             DiskId did = de.getDiskId();
             dp.setPosition(did.getOplogId(), did.getOffsetInOplog());
-            diskSavyIterator.diskMap.add(new DiskEntryPage(dp, re, diskSavyIterator.drvToIdMap.get(diskRegion).intValue()));
+            diskSavyIterator.diskMap.add(new DiskEntryPage(dp, re, null));
           }
         }
         regionEntries.clear();

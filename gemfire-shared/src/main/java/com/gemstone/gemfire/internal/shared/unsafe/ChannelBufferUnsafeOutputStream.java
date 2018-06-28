@@ -38,7 +38,6 @@ package com.gemstone.gemfire.internal.shared.unsafe;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.WritableByteChannel;
 import javax.annotation.Nonnull;
 
@@ -114,7 +113,7 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
               + " too small (minimum " + MIN_BUFFER_SIZE + ')');
     }
     // use allocator which will restrict total allocated size
-    final ByteBuffer buffer = DirectBufferAllocator.instance().allocate(
+    final ByteBuffer buffer = DirectBufferAllocator.instance().allocateWithFallback(
         bufferSize, "CHANNELOUTPUT");
     // set the order to native explicitly to skip any byte order conversions
     buffer.order(ByteOrder.nativeOrder());
@@ -201,10 +200,6 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
     // reflection to get src's native address in case it is a direct
     // byte buffer. Avoiding the complication since the benefit will be
     // very small in any case (and reflection cost may well offset that).
-
-    if (!isOpen()) {
-      throw new ClosedChannelException();
-    }
 
     // adjust this buffer position first
     this.buffer.position((int)(this.addrPosition - this.baseAddress));
@@ -302,7 +297,7 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
 
   /** Write an integer in big-endian format on given off-heap address. */
   protected static long putInt(long addrPos, final int v) {
-    if (ClientSharedUtils.isLittleEndian) {
+    if (UnsafeHolder.littleEndian) {
       Platform.putInt(null, addrPos, Integer.reverseBytes(v));
     } else {
       Platform.putInt(null, addrPos, v);

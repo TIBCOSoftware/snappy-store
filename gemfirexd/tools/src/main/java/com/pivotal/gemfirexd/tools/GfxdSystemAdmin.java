@@ -36,6 +36,7 @@ import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.distributed.internal.DistributionConfigImpl;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.GemFireTerminateError;
+import com.gemstone.gemfire.internal.GemFireUtilLauncher;
 import com.gemstone.gemfire.internal.SystemAdmin;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
@@ -80,10 +81,12 @@ public class GfxdSystemAdmin extends SystemAdmin {
   protected final static HashMap<String, String> modifiedHelpInfo =
     new HashMap<String, String>();
 
+  // keep the commands here in sorted order since Arrays.binarySearch is used
   final static String[] commandsWithDSProps = new String[] { "backup",
       "compact-all-disk-stores", "encrypt-password",
       "list-missing-disk-stores", "print-stacks", "revoke-missing-disk-store",
-      "shut-down-all" };
+      "shut-down-all", "unblock-disk-store"
+  };
 
   private static final String INCLUDE_ADMINS = "-include-admins";
   private static final String SKIP_ACCESSORS = "-skip-accessors";
@@ -107,6 +110,9 @@ public class GfxdSystemAdmin extends SystemAdmin {
     GemFireCacheImpl.setGFXDSystem(true);
   }
 
+  protected String UTIL_Tools_DSProps = "UTIL_GFXD_Tools_DSProps";
+  protected String UTIL_DSProps_HelpPost = "UTIL_GFXD_Tools_DSProps_HelpPost";
+
   protected void initMapsForGFXD() {
     usageMap.put("encrypt-password", "encrypt-password [external]");
     helpMap.put("encrypt-password",
@@ -129,11 +135,11 @@ public class GfxdSystemAdmin extends SystemAdmin {
     }
 
     final String dsPropsArgs = LocalizedResource
-        .getMessage("UTIL_GFXD_Tools_DSProps");
+        .getMessage(UTIL_Tools_DSProps);
     final String dsPropsHelpPre = LocalizedResource
         .getMessage("UTIL_GFXD_Tools_DSProps_HelpPre");
     final String dsPropsHelpPost = LocalizedResource
-        .getMessage("UTIL_GFXD_Tools_DSProps_HelpPost");
+        .getMessage(UTIL_DSProps_HelpPost);
     for (String cmd : commandsWithDSProps) {
       // append the system properties information
       final String usage = usageMap.get(cmd).toString();
@@ -213,7 +219,7 @@ public class GfxdSystemAdmin extends SystemAdmin {
   @Override
   protected String getUsageString(String cmd) {
     final StringBuilder result = new StringBuilder(80);
-    result.append(GfxdUtilLauncher.SCRIPT_NAME).append(' ');
+    result.append(GemFireUtilLauncher.SCRIPT_NAME).append(' ');
     result.append(this.usageMap.get(cmd.toLowerCase()));
     return result.toString();
   }
@@ -357,7 +363,7 @@ public class GfxdSystemAdmin extends SystemAdmin {
   }
 
   @Override
-  protected void checkRevokeMissingDiskStoresArgs(String cmd,
+  protected void checkUnblockOrRevokeMissingDiskStoresArgs(String cmd,
       @SuppressWarnings("rawtypes") List cmdLine) {
     if (cmdLine.size() < 1) {
       // remaining checks will be done in getAdminCnx
@@ -547,8 +553,9 @@ public class GfxdSystemAdmin extends SystemAdmin {
     System.out.print("Connecting to distributed system:");
     if (!"".equals(dsc.getLocators())) {
       System.out.println(" locators=" + dsc.getLocators());
-    }
-    else {
+    } else if (GfxdUtilLauncher.isSnappyStore()) {
+      throw new IllegalArgumentException("option -locators must be specified");
+    } else {
       System.out.println(" mcast=" + dsc.getMcastAddress() + ":"
           + dsc.getMcastPort());
     }

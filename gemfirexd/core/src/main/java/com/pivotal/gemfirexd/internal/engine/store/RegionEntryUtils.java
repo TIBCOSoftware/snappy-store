@@ -31,6 +31,7 @@ import com.gemstone.gemfire.cache.EntryExistsException;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
+import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.DSCODE;
@@ -60,6 +61,7 @@ import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.internal.util.BlobHelper;
 import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
@@ -676,6 +678,11 @@ public final class RegionEntryUtils {
   public static final StaticSystemCallbacks gfxdSystemCallbacks =
       new StaticSystemCallbacks() {
 
+    private final String[] allPrefixes = new String[]{
+        GfxdConstants.SNAPPY_PREFIX,
+        GfxdConstants.GFXD_PREFIX,
+        DistributionConfig.GEMFIRE_PREFIX};
+
     @Override
     public void logAsync(final Object []line) {
       SanityManager.DEBUG_PRINT_COMPACT_LINE(line);
@@ -731,8 +738,7 @@ public final class RegionEntryUtils {
 
     @Override
     public void waitForAsyncIndexRecovery(DiskStoreImpl dsi) {
-      // don't wait for DataDictionary
-      if (dsi.isUsedForInternalUse() || dsi.isOffline()) {
+      if (dsi.isOffline()) {
         return;
       }
       final GemFireStore memStore = Misc.getMemStoreBooting();
@@ -780,7 +786,8 @@ public final class RegionEntryUtils {
      */
     @Override
     public String getSystemPropertyNamePrefix() {
-      return GfxdConstants.GFXD_PREFIX;
+      return CallbackFactoryProvider.getStoreCallbacks().isSnappyStore()
+          ? GfxdConstants.SNAPPY_PREFIX : GfxdConstants.GFXD_PREFIX;
     }
 
     @Override
@@ -799,21 +806,24 @@ public final class RegionEntryUtils {
         throw GemFireXDRuntimeException.newRuntimeException(null, se);
       }
 
-      String lookupKey = key;
-      boolean hasPrefix = key.startsWith(GfxdConstants.GFXD_PREFIX)
-          || key.startsWith(DistributionConfig.GEMFIRE_PREFIX);
-      if (!hasPrefix) {
-        lookupKey = GfxdConstants.GFXD_PREFIX + key;
+      boolean hasPrefix = false;
+      for (String prefix : allPrefixes) {
+        if (key.startsWith(prefix)) {
+          hasPrefix = true;
+          break;
+        }
       }
-      propValue = PropertyUtil.getSystemProperty(lookupKey, null);
-      if (propValue != null) {
-        return propValue;
-      }
-      if (!hasPrefix) {
-        lookupKey = DistributionConfig.GEMFIRE_PREFIX + key;
-        propValue = PropertyUtil.getSystemProperty(lookupKey, null);
+      if (hasPrefix) {
+        propValue = PropertyUtil.getSystemProperty(key, null);
         if (propValue != null) {
           return propValue;
+        }
+      } else {
+        for (String prefix : allPrefixes) {
+          propValue = PropertyUtil.getSystemProperty(prefix + key, null);
+          if (propValue != null) {
+            return propValue;
+          }
         }
       }
       return null;
@@ -1217,9 +1227,6 @@ public final class RegionEntryUtils {
                   || bytes[2] != GfxdDataSerializable.DDL_REGION_VALUE) {
                 return bytes;
               } else {
-                  // TODO: SW: this should be avoided completely for objects
-                  // that have not changed serialization as per
-                  // SerializationVersions
                 in.initialize(bytes, 0, bytesLen, version);
                 hdos.clearForReuse();
                 // register GemFireXD types explicitly for offline mode
@@ -1388,7 +1395,7 @@ public final class RegionEntryUtils {
       // set the service status
       final FabricService service = FabricServiceManager
           .currentFabricServiceInstance();
-      if (service != null) {
+      if (service instanceof FabricServiceImpl) {
         ((FabricServiceImpl) service).notifyWaiting(regionPath,
             membersToWaitFor, missingBuckets, myId, message);
       }
@@ -1589,8 +1596,7 @@ public final class RegionEntryUtils {
 
     @Override
     public Set<DistributedMember> getDataStores() {
-      // KN: TODO write implementation
-      return null;
+      return GemFireXDUtils.getGfxdAdvisor().adviseDataStores(null);
     }
 
     // assumes val to be non null
@@ -1613,9 +1619,16 @@ public final class RegionEntryUtils {
         PartitionedRegion region) {
       GemFireContainer container = (GemFireContainer)region.getUserAttribute();
       if (container != null) {
-        return container.fetchHiveMetaData(false);
+        ExternalTableMetaData metaData = container.fetchHiveMetaData(false);
+        if (metaData == null) {
+          throw new IllegalStateException("Table for container " +
+              container.getQualifiedTableName() + " not found in hive metadata");
+        }
+        return metaData;
+      } else {
+        throw new IllegalStateException("Table for " + region.getFullPath() +
+            " not found in containers");
       }
-      return null;
     }
   };
 
@@ -1668,19 +1681,12 @@ public final class RegionEntryUtils {
               pkrf.getNumColumns());
           final TIntArrayList varCols = new TIntArrayList(pkrf.getNumColumns());
           getFixedAndVarColumns(pkrf, fixedCols, varCols);
-          int[] fixedColumnPositions = null;
-          int[] varColumnPositions = null;
-          if (fixedCols.size() > 0) {
-            fixedColumnPositions = fixedCols.toNativeArray();
-          }
-          if (varCols.size() > 0) {
-            varColumnPositions = varCols.toNativeArray();
-          }
           int keyIndex, offset, width, offsetFromMap;
           int varOffset = 0;
-          if (fixedColumnPositions != null) {
-            for (int index = 0; index < fixedColumnPositions.length; ++index) {
-              keyIndex = fixedColumnPositions[index] - 1;
+          final int numFixedCols = fixedCols.size();
+          if (numFixedCols > 0) {
+            for (int index = 0; index < numFixedCols; ++index) {
+              keyIndex = fixedCols.getQuick(index) - 1;
               offsetFromMap = pkrf.positionMap[keyIndex];
               width = pkrf.getColumnDescriptor(keyIndex).fixedWidth;
               hash = ResolverUtils.addBytesToHash(key, offsetFromMap, width,
@@ -1688,12 +1694,12 @@ public final class RegionEntryUtils {
               varOffset += width;
             }
           }
-          if (varColumnPositions != null) {
+          final int numVarWidths = varCols.size();
+          if (numVarWidths > 0) {
             // next add the variable width columns to hash
-            final int numVarWidths = varColumnPositions.length;
             final int[] varOffsets = new int[numVarWidths];
             for (int index = 0; index < numVarWidths; ++index) {
-              keyIndex = varColumnPositions[index] - 1;
+              keyIndex = varCols.getQuick(index) - 1;
               offsetFromMap = pkrf.positionMap[keyIndex];
               assert offsetFromMap <= 0 : "unexpected offsetFromMap="
                   + offsetFromMap;

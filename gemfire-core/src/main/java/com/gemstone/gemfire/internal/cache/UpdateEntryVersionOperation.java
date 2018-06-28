@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.gemstone.gemfire.internal.cache;
 
@@ -22,7 +40,6 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.CacheEvent;
@@ -76,7 +93,6 @@ public class UpdateEntryVersionOperation extends DistributedCacheOperation {
     protected EventID eventId = null;
     protected EntryEventImpl event = null;    
     private long tailKey = 0L; // Used for Parallel Gateway Senders
-    private UUID batchUUID = null; // Used for Parallel Gateway Senders
 
     public UpdateEntryVersionMessage() {
     }
@@ -103,8 +119,7 @@ public class UpdateEntryVersionOperation extends DistributedCacheOperation {
       ev.setEventId(this.eventId);
       ev.setVersionTag(this.versionTag);
       ev.setTailKey(this.tailKey);
-      ev.setBatchUUID(this.batchUUID);
-      
+
       return ev;
     }
 
@@ -164,7 +179,6 @@ public class UpdateEntryVersionOperation extends DistributedCacheOperation {
       this.eventId = (EventID)DataSerializer.readObject(in);
       this.key = DataSerializer.readObject(in);
       this.tailKey = InternalDataSerializer.readSignedVL(in);
-      this.batchUUID = InternalDataSerializer.readUUID(in);
     }
 
     @Override
@@ -190,7 +204,6 @@ public class UpdateEntryVersionOperation extends DistributedCacheOperation {
       else{
         InternalDataSerializer.writeSignedVL(0, out);
       }
-      InternalDataSerializer.writeUUID(this.event.getBatchUUID(),out);
     }
   }
 }

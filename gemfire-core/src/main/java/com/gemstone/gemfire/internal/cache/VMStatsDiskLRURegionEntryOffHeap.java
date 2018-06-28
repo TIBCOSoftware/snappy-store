@@ -60,7 +60,8 @@ public class VMStatsDiskLRURegionEntryOffHeap extends VMStatsDiskLRURegionEntry
   protected long getlastModifiedField() {
     return lastModifiedUpdater.get(this);
   }
-  protected boolean compareAndSetLastModifiedField(long expectedValue, long newValue) {
+  protected final boolean compareAndSetLastModifiedField(long expectedValue,
+      long newValue) {
     return lastModifiedUpdater.compareAndSet(this, expectedValue, newValue);
   }
   @Override
@@ -68,7 +69,7 @@ public class VMStatsDiskLRURegionEntryOffHeap extends VMStatsDiskLRURegionEntry
     return this.hash;
   }
   @Override
-  protected void setEntryHash(int v) {
+  protected final void setEntryHash(int v) {
     this.hash = v;
   }
   @Override
@@ -79,7 +80,7 @@ public class VMStatsDiskLRURegionEntryOffHeap extends VMStatsDiskLRURegionEntry
   public final void setNextEntry(final HashEntry<Object, Object> n) {
     this.next = n;
   }
-  protected void initialize(RegionEntryContext drs, Object value) {
+  protected final void initialize(RegionEntryContext drs, Object value) {
     boolean isBackup;
     if (drs instanceof LocalRegion) {
       isBackup = ((LocalRegion)drs).getDiskRegion().isBackup();
@@ -128,15 +129,15 @@ public class VMStatsDiskLRURegionEntryOffHeap extends VMStatsDiskLRURegionEntry
     Helper.initialize(this, drs, value);
   }
   protected DiskId id;
-  public DiskId getDiskId() {
+  public final DiskId getDiskId() {
     return this.id;
   }
   @Override
-  public void setDiskId(RegionEntry old) {
+  public final void setDiskId(RegionEntry old) {
     this.id = ((AbstractDiskRegionEntry)old).getDiskId();
   }
   @Override
-  public void setDelayedDiskId(LocalRegion r) {
+  public final void setDelayedDiskId(LocalRegion r) {
     DiskStoreImpl ds = r.getDiskStore();
     long maxOplogSize = ds.getMaxOplogSize();
     this.id = DiskId.createDiskId(maxOplogSize, false , ds.needsLinkedList());
@@ -231,7 +232,7 @@ public class VMStatsDiskLRURegionEntryOffHeap extends VMStatsDiskLRURegionEntry
     this.missCount = 0;
   }
   @Override
-  public boolean hasStats() {
+  public final boolean hasStats() {
     return true;
   }
   private Object key;
@@ -240,45 +241,46 @@ public class VMStatsDiskLRURegionEntryOffHeap extends VMStatsDiskLRURegionEntry
     return this.key;
   }
   @Override
-  protected void _setRawKey(Object key) {
+  protected final void _setRawKey(Object key) {
     this.key = key;
   }
   @Retained @Released private volatile long ohAddress;
   private final static AtomicLongFieldUpdater<VMStatsDiskLRURegionEntryOffHeap> ohAddrUpdater =
       AtomicUpdaterFactory.newLongFieldUpdater(VMStatsDiskLRURegionEntryOffHeap.class, "ohAddress");
   @Override
-  public boolean isOffHeap() {
+  public final boolean isOffHeap() {
     return true;
   }
   @Override
-  public Token getValueAsToken() {
+  public final Token getValueAsToken() {
     return OffHeapRegionEntryHelper.getValueAsToken(this);
   }
   @Override
   @Unretained
-  protected Object getValueField() {
+  protected final Object getValueField() {
     return OffHeapRegionEntryHelper._getValue(this);
   }
   @Override
-  protected void setValueField(@Unretained Object v) {
+  protected final void setValueField(@Unretained Object v) {
     OffHeapRegionEntryHelper.setValue(this, v);
   }
   @Override
   @Retained
-  public Object _getValueRetain(RegionEntryContext context, boolean decompress) {
+  public final Object _getValueRetain(RegionEntryContext context,
+      boolean decompress) {
     return OffHeapRegionEntryHelper._getValueRetain(this, decompress);
   }
   @Override
-  public long getAddress() {
+  public final long getAddress() {
     return ohAddrUpdater.get(this);
   }
   @Override
-  public boolean setAddress(long expectedAddr, long newAddr) {
+  public final boolean setAddress(long expectedAddr, long newAddr) {
     return ohAddrUpdater.compareAndSet(this, expectedAddr, newAddr);
   }
   @Override
   @Released
-  public void release() {
+  public final void release() {
     OffHeapRegionEntryHelper.releaseEntry(this);
   }
   private static RegionEntryFactory factory = new RegionEntryFactory() {

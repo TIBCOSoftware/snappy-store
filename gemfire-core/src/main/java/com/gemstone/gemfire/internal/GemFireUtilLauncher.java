@@ -26,7 +26,6 @@ import java.util.regex.Pattern;
 
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.admin.jmx.internal.AgentLauncher;
-import com.gemstone.gemfire.internal.SystemAdmin;
 import com.gemstone.gemfire.internal.cache.CacheServerLauncher;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 
@@ -53,7 +52,7 @@ public class GemFireUtilLauncher {
    * Name of the script that launches {@link #main(String[])}. This should be
    * changed if the script name changes.
    */
-  static final String SCRIPT_NAME = "gemfire";
+  public static String SCRIPT_NAME = "gemfire";
 
   /**
    * Returns a mapping of utility names to the class used to spawn them.
@@ -99,8 +98,9 @@ public class GemFireUtilLauncher {
     return SCRIPT_NAME; 
   }
 
-  public static final String getScriptName() {
-    return GemFireCacheImpl.gfxdSystem() ? "gfxd" : SCRIPT_NAME;
+  public static String getScriptName() {
+    return SCRIPT_NAME.equals("gemfire") && GemFireCacheImpl.gfxdSystem()
+        ? "gfxd" : SCRIPT_NAME;
   }
 
   /** 

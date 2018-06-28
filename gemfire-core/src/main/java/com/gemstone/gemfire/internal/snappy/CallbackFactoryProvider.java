@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -17,12 +17,16 @@
 
 package com.gemstone.gemfire.internal.snappy;
 
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
+import com.gemstone.gemfire.internal.cache.EntryEventImpl;
+import com.gemstone.gemfire.internal.cache.lru.LRUEntry;
+import com.gemstone.gemfire.internal.cache.persistence.query.CloseableIterator;
+import com.gemstone.gemfire.internal.snappy.memory.MemoryManagerStats;
 
 public abstract class CallbackFactoryProvider {
 
@@ -34,14 +38,29 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
-    public Set<Object> createColumnBatch(BucketRegion region, UUID batchID,
+    public Set<Object> createColumnBatch(BucketRegion region, long batchID,
         int bucketID) {
       return null;
     }
 
     @Override
+    public void invokeColumnStorePutCallbacks(BucketRegion bucket,
+        EntryEventImpl[] events) {
+    }
+
+    @Override
     public List<String> getInternalTableSchemas() {
       return Collections.emptyList();
+    }
+
+    @Override
+    public boolean isColumnTable(String qualifiedName) {
+      return false;
+    }
+
+    @Override
+    public boolean skipEvictionForEntry(LRUEntry entry) {
+      return false;
     }
 
     @Override
@@ -63,7 +82,9 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
-    public String snappyInternalSchemaName() {
+    public CloseableIterator<ColumnTableEntry> columnTableScan(
+        String columnTable, int[] projection, byte[] serializedFilters,
+        Set<Integer> bucketIds) throws SQLException {
       throw new UnsupportedOperationException("unexpected invocation for "
           + toString());
     }
@@ -102,6 +123,10 @@ public abstract class CallbackFactoryProvider {
     @Override
     public void dropStorageMemory(String objectName, long ignoreBytes) {
 
+    }
+
+    @Override
+    public void waitForRuntimeManager(long maxWaitMillis) {
     }
 
     @Override
@@ -152,6 +177,14 @@ public abstract class CallbackFactoryProvider {
 
     @Override
     public void logMemoryStats() {
+    }
+
+    @Override
+    public void initMemoryStats(MemoryManagerStats stats) {
+    }
+
+    @Override
+    public void clearConnectionPools() {
     }
   };
 

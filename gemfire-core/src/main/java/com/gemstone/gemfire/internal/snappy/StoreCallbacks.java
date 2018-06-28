@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -17,34 +17,49 @@
 
 package com.gemstone.gemfire.internal.snappy;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 import com.gemstone.gemfire.internal.cache.BucketRegion;
+import com.gemstone.gemfire.internal.cache.EntryEventImpl;
+import com.gemstone.gemfire.internal.cache.lru.LRUEntry;
+import com.gemstone.gemfire.internal.cache.persistence.query.CloseableIterator;
+import com.gemstone.gemfire.internal.shared.SystemProperties;
+import com.gemstone.gemfire.internal.snappy.memory.MemoryManagerStats;
 
 public interface StoreCallbacks {
 
-  String SHADOW_SCHEMA_NAME = "SNAPPYSYS_INTERNAL";
+  String SHADOW_TABLE_SUFFIX = SystemProperties.SHADOW_TABLE_SUFFIX;
 
-  String SHADOW_TABLE_SUFFIX = "_COLUMN_STORE_";
-
-  String SHADOW_SCHEMA_SEPARATOR = "____";
+  String SHADOW_TABLE_BUCKET_TAG = SHADOW_TABLE_SUFFIX.replace("_", "__");
 
   void registerTypes();
 
-  Set<Object> createColumnBatch(BucketRegion region, UUID batchID,
+  Set<Object> createColumnBatch(BucketRegion region, long batchID,
       int bucketID);
 
+  void invokeColumnStorePutCallbacks(BucketRegion bucket, EntryEventImpl[] events);
+
   List<String> getInternalTableSchemas();
+
+  boolean isColumnTable(String qualifiedName);
+
+  boolean skipEvictionForEntry(LRUEntry entry);
 
   int getHashCodeSnappy(Object dvd, int numPartitions);
 
   int getHashCodeSnappy(Object dvds[], int numPartitions);
 
-  public String columnBatchTableName(String tableName);
+  String columnBatchTableName(String tableName);
 
-  public String snappyInternalSchemaName();
+  /**
+   * Scan the entries of a column table. The returned value in ColumnTableEntry
+   * will have reference count incremented, so caller should decrement once done.
+   */
+  CloseableIterator<ColumnTableEntry> columnTableScan(String qualifiedTable,
+      int[] projection, byte[] serializedFilters,
+      Set<Integer> bucketIds) throws SQLException;
 
   void registerRelationDestroyForHiveStore();
 
@@ -75,6 +90,9 @@ public interface StoreCallbacks {
 
   void dropStorageMemory(String objectName, long ignoreBytes);
 
+  /** wait for runtime manager to initialize and get set in callbacks */
+  void waitForRuntimeManager(long maxWaitMillis);
+
   boolean isSnappyStore();
 
   void resetMemoryManager();
@@ -100,4 +118,15 @@ public interface StoreCallbacks {
    * Log the used memory breakdown as maintained by the MemoryManager.
    */
   void logMemoryStats();
+
+  /**
+   * Initializes different memory manager related stats
+   */
+  void initMemoryStats(MemoryManagerStats stats);
+
+  /**
+   * Clear any existing connection pools (forced in case of major
+   * authentication service changes, for example).
+   */
+  void clearConnectionPools();
 }

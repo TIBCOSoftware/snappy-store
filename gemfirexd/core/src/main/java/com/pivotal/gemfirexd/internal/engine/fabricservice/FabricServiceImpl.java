@@ -44,13 +44,13 @@ import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem.DisconnectListener;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem.ReconnectListener;
 import com.gemstone.gemfire.distributed.internal.ServerLocation;
-import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.BridgeServerAdvisor;
 import com.gemstone.gemfire.internal.cache.BridgeServerAdvisor.BridgeServerProfile;
 import com.gemstone.gemfire.internal.cache.CacheServerLauncher;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.cache.Status;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.Attribute;
@@ -88,6 +88,8 @@ import io.snappydata.thrift.server.SnappyThriftServer;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Base implementation of the fabric service startup.
@@ -100,6 +102,8 @@ public abstract class FabricServiceImpl implements FabricService {
   private static final String driver = "io.snappydata.jdbc.EmbeddedDriver";
 
   protected static final String fabapi = "FabricServiceAPI";
+
+  protected final Logger logger = LoggerFactory.getLogger(getClass());
 
   protected volatile State serverstatus = State.UNINITIALIZED;
   protected volatile State previousServerStatus = State.UNINITIALIZED;
@@ -240,8 +244,7 @@ public abstract class FabricServiceImpl implements FabricService {
       Properties startupProps = FabricServiceUtils.preprocessProperties(
           bootProperties, monitorlite, sysProps, false);
 
-      if (!existingInstance
-          && SanityManager.TRACE_ON(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT)) {
+      if (!existingInstance && GemFireXDUtils.TraceFabricServiceBoot) {
         monitorlite.dumpProperties((isLocator ? "GemFireXD locator"
             : "GemFireXD peer") + " boot properties ", bootProperties);
       }
@@ -290,8 +293,7 @@ public abstract class FabricServiceImpl implements FabricService {
       GemFireCacheImpl cache;
       if (rebalance && !isLocator
           && (cache = GemFireCacheImpl.getInstance()) != null) {
-        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
-            "Starting rebalance of buckets for the distributed system.");
+        logger.info("Starting rebalance of buckets for the distributed system.");
         cache.getResourceManager().createRebalanceFactory().start();
       }
 
@@ -305,7 +307,7 @@ public abstract class FabricServiceImpl implements FabricService {
       }
       registerForcedDisconnectListener(sys, bootProperties);
     } catch (SQLException sqle) {
-      SanityManager.DEBUG_PRINT("error:" + fabapi, sqle.getSQLState()
+      logger.error(sqle.getSQLState()
           + " error occurred while starting server : " + sqle);
       throw sqle;
     } finally {
@@ -418,8 +420,7 @@ public abstract class FabricServiceImpl implements FabricService {
       serverstatus = State.STOPPING;
 
       if (GemFireXDUtils.TraceFabricServiceBoot) {
-        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
-            "Stopping the GemFireXD instance.");
+        logger.info("Stopping the SnappyData instance.");
       }
 
       if (stopNetServers) {
@@ -441,8 +442,7 @@ public abstract class FabricServiceImpl implements FabricService {
         return;
       }
       else {
-        SanityManager.DEBUG_PRINT("warning:" + fabapi,
-            "exception while shutting down " + ex);
+        logger.warn("exception while shutting down " + ex);
         exception = ex;
       }
     }
@@ -540,11 +540,8 @@ public abstract class FabricServiceImpl implements FabricService {
    */
   protected void handleThrowable(Throwable t) throws SQLException {
 
-    if (SanityManager.DEBUG) {
-      if (GemFireXDUtils.TraceFabricServiceBoot) {
-        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
-            "Handling Throwable during startup", t);
-      }
+    if (GemFireXDUtils.TraceFabricServiceBoot) {
+      logger.info("Handling Throwable during startup", t);
     }
 
     FabricServiceUtils.clearSystemProperties(monitorlite, sysProps);
@@ -573,9 +570,8 @@ public abstract class FabricServiceImpl implements FabricService {
       Set<PersistentMemberID> membersToWaitFor, Set<Integer> missingBuckets,
       PersistentMemberID myId, String message) {
     if (GemFireXDUtils.TraceFabricServiceBoot) {
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
-          "Accepting WAITING notification"
-              + (message != null ? ": " + message : ""));
+      logger.info("Accepting WAITING notification" +
+          (message != null ? ": " + message : ""));
     }
     if (this.serverstatus != State.WAITING) {
       this.previousServerStatus = this.serverstatus;
@@ -597,6 +593,18 @@ public abstract class FabricServiceImpl implements FabricService {
   }
 
   /**
+   * Only invoked to change the WAITING state to previous (STARTING/STANDBY).
+   * Actual RUNNING status in launcher should only be set by launcher code
+   * itself when it has started all the components (SNAP-1960).
+   */
+  protected void notifyRunningInLauncher(int stateIfWaiting) {
+    CacheServerLauncher launcher = CacheServerLauncher.getCurrentInstance();
+    if (launcher != null) {
+      launcher.running(Misc.getDistributedSystem(), stateIfWaiting);
+    }
+  }
+
+  /**
    * This method invoked from GemFire to end notify waiting for another JVM to
    * initialize for disk GII after a previous call to {@link #notifyWaiting}.
    *
@@ -606,29 +614,33 @@ public abstract class FabricServiceImpl implements FabricService {
    */
   public void endNotifyWaiting() {
     if (GemFireXDUtils.TraceFabricServiceBoot) {
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
-          "Accepting END WAITING notification with previous status "
-              + this.previousServerStatus);
+      logger.info("Accepting END WAITING notification with previous status " +
+          this.previousServerStatus);
     }
-    if (this.previousServerStatus == State.RUNNING) {
-      this.serverstatus = State.RUNNING;
-      // if started from command-line then change the status in the file too
-      CacheServerLauncher launcher = CacheServerLauncher.getCurrentInstance();
-      if (launcher != null) {
-        launcher.running(Misc.getDistributedSystem(), true);
-      }
-    }
+    final State previousStatus = this.previousServerStatus;
     this.previousServerStatus = State.UNINITIALIZED;
+    switch (previousStatus) {
+      case STARTING:
+        notifyRunningInLauncher(Status.STARTING);
+        break;
+      case STANDBY:
+        notifyRunningInLauncher(Status.STANDBY);
+        break;
+      case RUNNING:
+        break;
+      default:
+        return;
+    }
+    this.serverstatus = previousStatus;
   }
 
   /**
    * This method invoked from GemFireStore to notify booting up through
    * DriverManager.getConnection() instead of FabricServer api.
    */
-  public final void notifyRunning() {
+  public void notifyRunning() {
     if (GemFireXDUtils.TraceFabricServiceBoot) {
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
-          "Accepting RUNNING notification");
+      logger.info("Accepting RUNNING notification");
     }
     serverstatus = State.RUNNING;
   }
@@ -637,10 +649,9 @@ public abstract class FabricServiceImpl implements FabricService {
    * This method invoked from GemFireStore to notify booting up through
    * DriverManager.getConnection() instead of FabricServer api.
    */
-  public final void notifyStop(boolean reconnecting) {
-    if (GemFireXDUtils.TraceFabricServiceBoot && SanityManager.isFinerEnabled) {
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
-          "Accepting STOPPED notification");
+  public void notifyStop(boolean reconnecting) {
+    if (GemFireXDUtils.TraceFabricServiceBoot) {
+      logger.info("Accepting STOPPED notification");
     }
     serverstatus = reconnecting ? State.RECONNECTING : State.STOPPED;
     FabricServiceUtils.clearSystemProperties(monitorlite, sysProps);
@@ -698,9 +709,8 @@ public abstract class FabricServiceImpl implements FabricService {
           "Allowed port range is between 1 to 65535 (excluding limits)");
     }
 
-    SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
-        "Starting " + serverType + " on: " + listenAddress
-          + '[' + port + ']');
+    logger.info("Starting " + serverType + " on: " + listenAddress +
+        '[' + port + ']');
 
     this.clientPort = port;
     this.clientBindAddress = bindAddress;
@@ -723,18 +733,24 @@ public abstract class FabricServiceImpl implements FabricService {
         netImpl.internalStart(networkProperties);
         retry = false;
       } catch (GemFireXDRuntimeException e) {
-        if (retry && numTries <= 10) {
+        if (retry && numTries <= 50) {
           // retry with an incremented port.
           netImpl.setPort(++port);
         } else throw e;
       }
-    } while (retry && numTries <= 10);
+    } while (retry && numTries <= 50);
 
     if (netImpl.getServerType().isThrift()) {
       serverType += (" (" + netImpl.getServerType().getProtocolString() + ')');
     }
-    SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
-        "Started " + serverType + " on: " + listenAddress + '[' + port + ']');
+    String startupMessage = "Started " + serverType + " on: " +
+        listenAddress + '[' + port + ']';
+    // set on launcher if run through it
+    CacheServerLauncher launcher = CacheServerLauncher.getCurrentInstance();
+    if (launcher != null) {
+      launcher.setServerStartupMessage(startupMessage);
+    }
+    logger.info(startupMessage);
 
     return netImpl;
   }
@@ -771,8 +787,7 @@ public abstract class FabricServiceImpl implements FabricService {
     networkserverstatus = State.STOPPING;
 
     if (GemFireXDUtils.TraceFabricServiceBoot) {
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
-          "Stopping all network interfaces ");
+      logger.info("Stopping all network interfaces ");
     }
 
     try {
@@ -806,9 +821,8 @@ public abstract class FabricServiceImpl implements FabricService {
         }
 
         if (GemFireXDUtils.TraceFabricServiceBoot) {
-          SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
-              "Stopped " + server + " successfully. status "
-                  + (stopped ? State.STOPPED : State.RUNNING));
+          logger.info("Stopped " + server + " successfully. status " +
+              (stopped ? State.STOPPED : State.RUNNING));
         }
       }
     } finally {
@@ -816,8 +830,7 @@ public abstract class FabricServiceImpl implements FabricService {
     }
 
     if (GemFireXDUtils.TraceFabricServiceBoot) {
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
-          "All network interfaces stopped successfully ");
+      logger.info("All network interfaces stopped successfully.");
     }
   }
 
@@ -927,9 +940,8 @@ public abstract class FabricServiceImpl implements FabricService {
       }
 
       if (GemFireXDUtils.TraceFabricServiceBoot) {
-        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
-            (!this.isPreStarted ? "Starting " : "Wrapping ") + this
-            + " on given address " + this.inetAddress + '[' + this.port + ']');
+        logger.info((!this.isPreStarted ? "Starting " : "Wrapping ") + this +
+            " on given address " + this.inetAddress + '[' + this.port + ']');
       }
 
       this.networkProps = networkProps;
@@ -1002,7 +1014,7 @@ public abstract class FabricServiceImpl implements FabricService {
       }
 
       if (GemFireXDUtils.TraceFabricServiceBoot) {
-        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
+        logger.info(
             (!this.isPreStarted ? "Started " : "Wrapped ") + this
                 + " successfully (prefer-ipaddress="
                 + this.preferIPAddressForClients + "). status "
@@ -1023,8 +1035,7 @@ public abstract class FabricServiceImpl implements FabricService {
 
       try {
         if (GemFireXDUtils.TraceFabricServiceBoot) {
-          SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
-              "Stopping " + this);
+          logger.info("Stopping " + this);
         }
 
         if (this.advisor != null && this.advisor.isInitialized()) {
@@ -1047,7 +1058,7 @@ public abstract class FabricServiceImpl implements FabricService {
           }
         }
 
-        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FABRIC_SERVICE_BOOT,
+        logger.info(
             "Stopped " + this + " successfully. status "
                 + (isReconnecting() ? State.RECONNECTING
                     : (status() ? State.RUNNING : State.STOPPED)));
@@ -1350,11 +1361,10 @@ public abstract class FabricServiceImpl implements FabricService {
           .adviseServerLocators(false);
 
       if (locators != null && locators.size() > 0) {
-        final LogWriterI18n logger = this.advisor.getLogWriter();
         final ServerLoad load = this.probe.getLoad(this);
-        if (logger.fineEnabled()) {
-          logger.fine("GemFireXD NetworkServerImpl: transmitting load " + load
-              + " to locators " + locators);
+        if (logger.isDebugEnabled()) {
+          logger.debug("GemFireXD NetworkServerImpl: transmitting load " + load +
+              " to locators " + locators);
         }
 
         // stats.setLoad(load);
@@ -1828,8 +1838,8 @@ public abstract class FabricServiceImpl implements FabricService {
     }
   }
 
-  void logSevere(String msg, Exception ex) {
-    SanityManager.DEBUG_PRINT(fabapi, msg, ex);
+  private void logSevere(String msg, Exception ex) {
+    logger.error(msg, ex);
 
     if (msg != null) {
       System.err.println(msg);
@@ -1901,8 +1911,8 @@ public abstract class FabricServiceImpl implements FabricService {
               impl.stopNoSync(this.bootProperties, sys, true);
             }
           } catch (SQLException e) {
-            SanityManager.DEBUG_PRINT(fabapi, "exception caught while " +
-                "stopping service due to forced disconnect", e);
+            SanityManager.DEBUG_PRINT("warning:" + fabapi, "exception caught " +
+                "while stopping service due to forced disconnect", e);
           }
         }
       }

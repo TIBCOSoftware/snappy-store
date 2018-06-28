@@ -24,6 +24,7 @@ import com.gemstone.gemfire.internal.cache.locks.LockMode;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.locks.NonReentrantReadWriteLock;
 import com.gemstone.gemfire.internal.cache.tier.sockets.Message;
+import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
 import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap;
 import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap.HashEntry;
 import com.gemstone.gemfire.internal.concurrent.MapCallback;
@@ -92,10 +93,6 @@ public final class TXManagerImpl implements CacheTransactionManager,
   private static final WeakHashMap<TXContext, Boolean> jtaContexts =
     new WeakHashMap<TXContext, Boolean>();
 
-  // This holds snapshot txState started by Gemfire layer.
-  public static ThreadLocal<TXStateInterface> snapshotTxState =
-      new ThreadLocal<TXStateInterface>();
-
   /**
    * Avoid doing the potentially expensive lock owner search in case of
    * conflicts by {@link #searchLockOwner}. Note that this is disabled by
@@ -130,6 +127,9 @@ public final class TXManagerImpl implements CacheTransactionManager,
   private boolean closed = false;
 
   private final CustomEntryConcurrentHashMap<TXId, TXStateProxy> hostedTXStates;
+
+  private static final ConcurrentTHashSet<TXContext> hostedTXContexts =
+      new ConcurrentTHashSet<>(16, 128);
 
   private final ConcurrentHashMap<TXId, TXStateInterface> suspendedTXs;
 
@@ -583,6 +583,8 @@ public final class TXManagerImpl implements CacheTransactionManager,
 
     private TXStateInterface txState;
 
+    private TXStateInterface snapshotTXState;
+
     // below field is volatile since ReplyProcessor for this will remove itself
     // from TXContext when its done
     private final AtomicReference<CommitResponse> pendingCommit =
@@ -618,11 +620,16 @@ public final class TXManagerImpl implements CacheTransactionManager,
     private static TXContext newContext() {
       final TXContext context = new TXContext();
       txContext.set(context);
+      hostedTXContexts.add(context);
       return context;
     }
 
     public final TXStateInterface getTXState() {
       return this.txState;
+    }
+
+    public final TXStateInterface getSnapshotTXState() {
+      return this.snapshotTXState;
     }
 
     public final TXId getTXId() {
@@ -639,11 +646,49 @@ public final class TXManagerImpl implements CacheTransactionManager,
       this.waitForPhase2Commit = false;
     }
 
+    public final void setSnapshotTXState(final TXStateInterface tx) {
+      this.snapshotTXState = tx;
+      this.commitRecipients = null;
+      this.waitForPhase2Commit = false;
+    }
+
     public final void clearTXState() {
       this.txState = null;
       this.commitRecipients = null;
       this.waitForPhase2Commit = false;
       this.msgUsesTXProxy = false;
+    }
+
+    public final void clearTXStateAll() {
+      if (TXStateProxy.LOG_FINE) {
+        LogWriterI18n logger = InternalDistributedSystem.getLoggerI18n();
+        if (logger != null) {
+          logger.info(LocalizedStrings.DEBUG, "clearAll for " + toString());
+        }
+      }
+      clearTXState();
+      this.snapshotTXState = null;
+    }
+
+    /** clear the TXContext and remove from global list when thread closes */
+    public final void threadClose() {
+      rollback(this.txState);
+      rollback(this.snapshotTXState);
+      clearTXStateAll();
+      hostedTXContexts.remove(this);
+    }
+
+    private void rollback(TXStateInterface tx) {
+      if (tx != null && !tx.isClosed()) {
+        // skip if cache is closing
+        GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+        if (cache != null && !cache.isClosing) {
+          try {
+            tx.rollback(null);
+          } catch (Throwable ignored) {
+          }
+        }
+      }
     }
 
     public final Transaction getJTA() {
@@ -802,7 +847,7 @@ public final class TXManagerImpl implements CacheTransactionManager,
     this.dm = cache.getDistributedSystem().getDistributionManager();
     this.cachePerfStats = cachePerfStats;
     this.logWriter = logWriter;
-    this.hostedTXStates = new CustomEntryConcurrentHashMap<TXId, TXStateProxy>(
+    this.hostedTXStates = new CustomEntryConcurrentHashMap<>(
         128, CustomEntryConcurrentHashMap.DEFAULT_LOAD_FACTOR,
         TXMAP_CONCURRENCY);
     this.suspendedTXs = new ConcurrentHashMap<TXId, TXStateInterface>();
@@ -973,7 +1018,7 @@ public final class TXManagerImpl implements CacheTransactionManager,
     // For snapshot isolation, create tx state at the beginning
     if (txState.isSnapshot()) {
       txState.getTXStateForRead();
-      snapshotTxState.set(txState);
+      context.setSnapshotTXState(txState);
     }
 
     return txState;
@@ -1029,20 +1074,17 @@ public final class TXManagerImpl implements CacheTransactionManager,
    *
    */
   public void commit() throws TransactionException {
-
-    TXStateInterface st = getTXState();
-    commit(getTXState(), null, FULL_COMMIT, null, false);
-    // set the txState set in the cache also to null
-    snapshotTxState.set(null);
+    final TXContext context = txContext.get();
+    final TXStateInterface tx = context != null ? context.getTXState() : null;
+    commit(tx, null, FULL_COMMIT, context, false);
   }
 
   public final TXManagerImpl.TXContext commit(
       final TXStateInterface tx, final Object callbackArg,
-      final int commitPhase, final TXContext context, boolean isRemoteCommit)
+      final int commitPhase, TXContext ctx, boolean isRemoteCommit)
       throws TransactionException {
     checkClosed();
 
-    TXManagerImpl.TXContext ctx = context;
     if (tx == null) {
       throw new IllegalTransactionStateException(LocalizedStrings
           .TXManagerImpl_THREAD_DOES_NOT_HAVE_AN_ACTIVE_TRANSACTION
@@ -1085,6 +1127,13 @@ public final class TXManagerImpl implements CacheTransactionManager,
     // TODO: TX: how to account for time in phase one
     if (commitPhase != PHASE_ONE_COMMIT) {
       noteCommitSuccess(opStart, lifeTime, tx, isRemoteCommit);
+    }
+    if (ctx == null) {
+      ctx = currentTXContext();
+    }
+    if (ctx != null) {
+      // clear the snapshot TXState
+      ctx.setSnapshotTXState(null);
     }
     return ctx;
   }
@@ -1220,10 +1269,12 @@ public final class TXManagerImpl implements CacheTransactionManager,
 
     final long opStart = CachePerfStats.getStatTime();
     final long lifeTime = opStart - tx.getBeginTime();
-    clearTXState();
+    TXManagerImpl.TXContext context = TXManagerImpl.currentTXContext();
+    if (context != null) {
+      context.clearTXStateAll();
+    }
     tx.rollback(callbackArg);
     noteRollbackSuccess(opStart, lifeTime, tx, isRemoteRollback);
-    snapshotTxState.set(null);
   }
 
   final void noteRollbackSuccess(final long opStart, final long lifeTime,
@@ -1354,7 +1405,8 @@ public final class TXManagerImpl implements CacheTransactionManager,
 
   //See #50072
   public void release() {
-    TXState tx = null;
+    final TXContext selfContext = getOrCreateTXContext();
+    TXState tx;
     for (TXStateProxy proxy : getHostedTransactionsInProgress()) {
       if ((tx = proxy.getLocalTXState()) != null) {
         final TXRegionState[] txrs = tx.getTXRegionStatesSnap();
@@ -1370,6 +1422,17 @@ public final class TXManagerImpl implements CacheTransactionManager,
           }
         }
       }
+      if (!proxy.isClosed()) {
+        try {
+          setTXState(tx, selfContext);
+          proxy.rollback(null);
+        } catch (Throwable ignored) {
+        }
+      }
+    }
+    // clear the hosted TXContexts too
+    for (TXContext context : hostedTXContexts) {
+      context.clearTXStateAll();
     }
   }
 
@@ -1378,13 +1441,10 @@ public final class TXManagerImpl implements CacheTransactionManager,
       return;
     }
     this.closed = true;
-    {
-      TransactionListener[] listeners = getListeners();
-      for (int i = 0; i < listeners.length; i++) {
-        closeListener(listeners[i]);
-      }
+    TransactionListener[] listeners = getListeners();
+    for (TransactionListener listener : listeners) {
+      closeListener(listener);
     }
-
   }
 
   private void closeListener(TransactionListener tl) {
@@ -1489,7 +1549,8 @@ public final class TXManagerImpl implements CacheTransactionManager,
   }
 
   public static TXStateInterface getCurrentSnapshotTXState() {
-    return snapshotTxState.get();
+    final TXContext context = txContext.get();
+    return context != null ? context.getSnapshotTXState() : null;
   }
 
   public static TXId getCurrentTXId() {
@@ -1835,6 +1896,8 @@ public final class TXManagerImpl implements CacheTransactionManager,
     for (TXStateProxy txProxy : txMgr.getHostedTransactionsInProgress()) {
       msg.append(' ');
       txProxy.getTransactionId().appendToString(msg, sys);
+      msg.append(",state=").append(txProxy.state)
+          .append('{').append(txProxy.getIsolationLevel()).append('}');
       msg.append('{').append(txProxy.creatorThread.toString()).append('}');
     }
   }
@@ -1966,7 +2029,7 @@ public final class TXManagerImpl implements CacheTransactionManager,
     return this.hostedTXStates.containsKey(txId);
   }
 
-  public TXStateProxy getHostedTXState(TransactionId txId) {
+  public TXStateProxy getHostedTXState(TXId txId) {
     return this.hostedTXStates.get(txId);
   }
 

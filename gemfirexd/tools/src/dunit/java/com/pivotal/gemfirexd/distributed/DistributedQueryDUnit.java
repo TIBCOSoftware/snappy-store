@@ -24,7 +24,6 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.Reader;
 import java.math.BigDecimal;
-import java.net.InetAddress;
 import java.sql.*;
 import java.util.Calendar;
 import java.util.Properties;
@@ -948,8 +947,8 @@ public class DistributedQueryDUnit extends DistributedSQLTestBase {
 
           Statement st = conn.createStatement();
 
-          ResultSet rs = conn.getMetaData().getTables((String)null, null,
-              "course".toUpperCase(), new String[] { "TABLE" });
+          ResultSet rs = conn.getMetaData().getTables(null, null,
+              "course".toUpperCase(), new String[] { "ROW TABLE" });
           final boolean found = rs.next();
           rs.close();
 
@@ -1046,8 +1045,7 @@ public class DistributedQueryDUnit extends DistributedSQLTestBase {
 
     Connection conn = TestUtil.getNetConnection(clientPort, null, null);
     Connection conn2 = TestUtil.jdbcConn;
-    String derbyDbUrl = "jdbc:derby://"
-        + InetAddress.getLocalHost().getHostName() + ':' + derbyPort
+    String derbyDbUrl = "jdbc:derby://localhost:" + derbyPort
         + "/newDB;create=true;";
     if (TestUtil.currentUserName != null) {
       derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="

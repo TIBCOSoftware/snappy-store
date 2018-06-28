@@ -17,14 +17,11 @@
 
 package com.pivotal.gemfirexd.internal.engine.distributed;
 
-import java.net.InetAddress;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.Properties;
 
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
 
@@ -50,9 +47,8 @@ public class ScrollableResultSetDUnit extends DistributedSQLTestBase {
     startVMs(0, 2);
     final int netPort = startNetworkServer(1, null, null);
     TestUtil.loadNetDriver();
-    final InetAddress localHost = SocketCreator.getLocalHost();
     Connection conn = DriverManager.getConnection(TestUtil.getNetProtocol(
-        localHost.getHostName(), netPort));
+        "localhost", netPort));
     runTest(conn);
   }
 

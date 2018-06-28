@@ -48,11 +48,11 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
   private void checkNonPKBasedSelect(Statement st1) throws Exception {
     st1.execute("truncate table t1");
     st1.execute("insert into t1 values (1, 1, 1)");
-    Thread.sleep(6000);
+    Thread.sleep(2000);
     st1.execute("select col1 from t1");
     ResultSet rs1 = st1.getResultSet();
     assertTrue(rs1.next());
-    Thread.sleep(6000);
+    Thread.sleep(10000);
     st1.execute("select col1 from t1");
     rs1 = st1.getResultSet();
     assertFalse(rs1.next());
@@ -62,43 +62,65 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
   private void checkPKBasedSelect(Statement st1) throws Exception {
     st1.execute("truncate table t1");
     st1.execute("insert into t1 values (1, 1, 1)");
-    Thread.sleep(5000);
+    Thread.sleep(2000);
+    long then = System.currentTimeMillis();
     st1.execute("select col1 from t1 where col1 = 1");
     ResultSet rs1 = st1.getResultSet();
     assertTrue(rs1.next());
     assertEquals(1, rs1.getInt(1));
-    Thread.sleep(6000);
+    Thread.sleep(8000);
     st1.execute("select col1 from t1 where col1 = 1");
     rs1 = st1.getResultSet();
-    assertTrue(rs1.next());
-    assertEquals(1, rs1.getInt(1));
-    assertFalse(rs1.next());
+    boolean result = rs1.next();
+    long delta = System.currentTimeMillis() - then;
+    if (delta < 9000) {
+      assertTrue(result);
+      assertEquals(1, rs1.getInt(1));
+      assertFalse(rs1.next());
+    } else {
+      rs1.close();
+    }
   }
   
   // non pk based update
   private void checkNonPKBasedUpdate(Statement st1) throws Exception {
-  st1.execute("truncate table t1");
-  st1.execute("insert into t1 values (1, 1, 1)");
-  Thread.sleep(5000);
-  st1.execute("update t1 set col2 = 2");
-  Thread.sleep(7000);
-  st1.execute("select col1 from t1");
-  ResultSet rs1 = st1.getResultSet();
-  assertTrue(rs1.next());
+    st1.execute("truncate table t1");
+    st1.execute("insert into t1 values (1, 1, 1)");
+    Thread.sleep(2000);
+    long then = System.currentTimeMillis();
+    st1.execute("update t1 set col2 = 2");
+    Thread.sleep(8000);
+    // after parallel run this can cause issue..3 seconds of wait and row is gone.
+    st1.execute("select col1 from t1");
+    ResultSet rs1 = st1.getResultSet();
+    boolean result = rs1.next();
+    long delta = System.currentTimeMillis() - then;
+    if (delta < 9000) {
+      assertTrue(result);
+    } else {
+      rs1.close();
+    }
   }
   
   // pk based update
   private void checkPKBasedUpdate(Statement st1) throws Exception {
-  st1.execute("truncate table t1");
-  st1.execute("insert into t1 values (1, 1, 1)");
-  Thread.sleep(5000);
-  st1.execute("update t1 set col2 = 2 where col1 = 1");
-  Thread.sleep(7000);
-  st1.execute("select col1 from t1 where col1 = 1");
-  ResultSet rs1 = st1.getResultSet();
-  assertTrue(rs1.next());
-  assertEquals(1, rs1.getInt(1));
-  assertFalse(rs1.next());
+    st1.execute("truncate table t1");
+    st1.execute("insert into t1 values (1, 1, 1)");
+    Thread.sleep(2000);
+    long then = System.currentTimeMillis();
+    st1.execute("update t1 set col2 = 2 where col1 = 1");
+    Thread.sleep(8000);
+    st1.execute("select col1 from t1 where col1 = 1");
+    ResultSet rs1 = st1.getResultSet();
+    boolean result = rs1.next();
+    long delta = System.currentTimeMillis() - then;
+    if (delta < 9000) {
+      assertTrue(result);
+      assertEquals(1, rs1.getInt(1));
+      assertFalse(rs1.next());
+    } else {
+      rs1.close();
+    }
   }
   
   private void basicEntryExpirationTest(Connection conn, boolean idletime,

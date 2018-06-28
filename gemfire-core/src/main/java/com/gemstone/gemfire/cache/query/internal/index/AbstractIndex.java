@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.cache.Cache;
@@ -66,7 +67,6 @@ import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.RegionEntry;
 import com.gemstone.gemfire.internal.cache.persistence.query.CloseableIterator;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl.Chunk;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
@@ -180,14 +180,14 @@ public abstract class AbstractIndex implements IndexProtocol
 
   long updateIndexUpdateStats()
   {
-    long result = CFactory.nanoTime();
+    long result = System.nanoTime();
     this.internalIndexStats.incUpdatesInProgress(1);
     return result;
   }
 
   void updateIndexUpdateStats(long start)
   {
-    long end = CFactory.nanoTime();
+    long end = System.nanoTime();
     this.internalIndexStats.incUpdatesInProgress(-1);
     this.internalIndexStats.incUpdateTime(end - start);
   }
@@ -201,9 +201,9 @@ public abstract class AbstractIndex implements IndexProtocol
     long result = 0;
     if (updateStats) {
       this.internalIndexStats.incUsesInProgress(1);
-      result = CFactory.nanoTime();
+      result = System.nanoTime();
     }
-    return CFactory.nanoTime();
+    return System.nanoTime();
   }
 
   void updateIndexUseEndStats(long start) {
@@ -213,7 +213,7 @@ public abstract class AbstractIndex implements IndexProtocol
   void updateIndexUseEndStats(long start, boolean updateStats)
   {
     if (updateStats) {
-      long end = CFactory.nanoTime();
+      long end = System.nanoTime();
       this.internalIndexStats.incUsesInProgress(-1);
       this.internalIndexStats.incNumUses();
       this.internalIndexStats.incUseTime(end - start);
@@ -1667,7 +1667,7 @@ public abstract class AbstractIndex implements IndexProtocol
     private volatile int numValues = 0;
 
     RegionEntryToValuesMap(boolean useList) {
-      this.map = CFactory.createCM(2, 0.75f, 1);
+      this.map = new ConcurrentHashMap(2, 0.75f, 1);
       this.useList = useList; 
     }
 

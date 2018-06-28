@@ -18,8 +18,8 @@ package com.gemstone.gemfire.internal.shared;
 
 import java.nio.ByteBuffer;
 
-import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
 import org.apache.spark.unsafe.Platform;
+import org.apache.spark.unsafe.memory.MemoryAllocator;
 
 /**
  * Heap ByteBuffer implementation of {@link BufferAllocator}.
@@ -38,17 +38,26 @@ public final class HeapBufferAllocator extends BufferAllocator {
 
   @Override
   public ByteBuffer allocate(int size, String owner) {
-    return ByteBuffer.allocate(size);
+    return allocateForStorage(size);
   }
 
   @Override
   public ByteBuffer allocateForStorage(int size) {
-    return ByteBuffer.allocate(size);
+    ByteBuffer buffer = ByteBuffer.allocate(size);
+    if (MemoryAllocator.MEMORY_DEBUG_FILL_ENABLED) {
+      fill(buffer, MemoryAllocator.MEMORY_DEBUG_FILL_CLEAN_VALUE);
+    }
+    return buffer;
   }
 
   @Override
   public void clearPostAllocate(ByteBuffer buffer) {
-    // JVM clears the allocated area
+    // JVM clears the allocated area, so only clear for DEBUG_FILL case
+    if (MemoryAllocator.MEMORY_DEBUG_FILL_ENABLED) {
+      // clear till the capacity and not limit since former will be a factor
+      // of 8 and hence more efficient in Unsafe.setMemory
+      fill(buffer, (byte)0, 0, buffer.capacity());
+    }
   }
 
   @Override
@@ -71,6 +80,12 @@ public final class HeapBufferAllocator extends BufferAllocator {
       final int newLength = BufferAllocator.expandedSize(currentUsed, required);
       final byte[] newBytes = new byte[newLength];
       System.arraycopy(bytes, buffer.arrayOffset(), newBytes, 0, currentUsed);
+      if (MemoryAllocator.MEMORY_DEBUG_FILL_ENABLED) {
+        // fill the remaining bytes
+        ByteBuffer buf = ByteBuffer.wrap(newBytes, currentUsed,
+            newLength - currentUsed);
+        fill(buf, MemoryAllocator.MEMORY_DEBUG_FILL_CLEAN_VALUE);
+      }
       return ByteBuffer.wrap(newBytes).order(buffer.order());
     } else {
       buffer.limit(currentUsed + required);
@@ -100,15 +115,9 @@ public final class HeapBufferAllocator extends BufferAllocator {
     } else {
       ByteBuffer newBuffer = super.transfer(buffer, owner);
       // release the incoming direct buffer eagerly
-      if (buffer.isDirect()) {
-        DirectBufferAllocator.instance().release(buffer);
-      }
+      releaseBuffer(buffer);
       return newBuffer;
     }
-  }
-
-  @Override
-  public void release(ByteBuffer buffer) {
   }
 
   @Override

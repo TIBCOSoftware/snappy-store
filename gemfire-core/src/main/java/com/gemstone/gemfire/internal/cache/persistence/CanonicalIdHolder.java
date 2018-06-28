@@ -16,8 +16,8 @@
  */
 package com.gemstone.gemfire.internal.cache.persistence;
 
-import com.gemstone.gnu.trove.TIntObjectHashMap;
-import com.gemstone.gnu.trove.TObjectIntHashMap;
+import io.snappydata.collection.IntObjectHashMap;
+import io.snappydata.collection.ObjectLongHashMap;
 
 /**
  * This class manages in memory copy of the canonical ids held in the disk
@@ -33,12 +33,14 @@ public class CanonicalIdHolder {
   /**
    * Map of integer representation to canonicalized member ids.
    */
-  private TIntObjectHashMap idToObject = new TIntObjectHashMap();
+  private final IntObjectHashMap<Object> idToObject =
+      IntObjectHashMap.withExpectedSize(10);
   
   /**
    * Map of canonicalized member ids to integer representation.
    */
-  private TObjectIntHashMap objectToID = new TObjectIntHashMap();
+  private final ObjectLongHashMap<Object> objectToID =
+      ObjectLongHashMap.withExpectedSize(10);
   
   private int highestID = 0;
   
@@ -47,7 +49,7 @@ public class CanonicalIdHolder {
    */
   public void addMapping(int id, Object object) {
     //Store the mapping
-    idToObject.put(id, object);
+    idToObject.justPut(id, object);
     objectToID.put(object, id);
     
     //increase the next canonical id the recovered id is higher than it.
@@ -58,7 +60,7 @@ public class CanonicalIdHolder {
    * Get the id for a given object 
    */
   public int getId(Object object) {
-    return objectToID.get(object);
+    return (int)objectToID.getLong(object);
   }
   
   /**
@@ -70,14 +72,13 @@ public class CanonicalIdHolder {
   
   /**
    * Create an id of the given object.
-   * @param object
    * @return the id generated for this object.
    */
   public int createId(Object object) {
-    assert !objectToID.contains(object);
+    assert !objectToID.containsKey(object);
     int id = ++highestID;
     objectToID.put(object, id);
-    idToObject.put(id, object);
+    idToObject.justPut(id, object);
     return id;
   }
   
@@ -86,10 +87,7 @@ public class CanonicalIdHolder {
    * @return a map of id to object for all objects
    * held by this canonical id holder.
    */
-  public TIntObjectHashMap getAllMappings() {
+  public IntObjectHashMap<Object> getAllMappings() {
     return idToObject;
   }
-
-  
-
 }

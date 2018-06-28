@@ -1506,7 +1506,7 @@ TBA
 <dd>
 <em>Public:</em> false
 <p>
-<em>Integer</em> (default is 15000)
+<em>Integer</em> (default is 120000)
 <p>
 See <code>com.gemstone.gemfire.distributed.internal.PooledExecutorWithDMStats#PooledExecutorWithDMStats(BlockingQueue, int, PoolStatHelper, ThreadFactory)</code>.
 <p>
@@ -2810,7 +2810,7 @@ TBA
 <dd>
 <em>Public:</em> false
 <p>
-<em>Long</em> (default is 1000)
+<em>Long</em> (default is 3000)
 <p>
 See <code>com.gemstone.gemfire.distributed.internal.membership.jgroup.JGroupMembershipManager#createChannel</code>.
 <p>
@@ -2922,6 +2922,20 @@ in turn sets the <code>join_timeout</code> property in the
 Units are in milliseconds.
 <p>
 TBA
+</dd>
+
+<!-- -------------------------------------------------------  -->
+<dt><strong>p2p.minJoinTries</strong></dt>
+<dd>
+<em>Public:</em> false
+<p>
+<em>Integer</em> (default is 2)
+<p>
+See <code>com.gemstone.gemfire.distributed.internal.membership.jgroup.JGroupMembershipManager#createChannel</code>.
+<p>
+Sets the <code>MIN_JOIN_TRIES</code> field in the JGroups config template, which
+in turn sets the <code>min_join_tries</code> property in the
+<code>pbcast.GMS protocol</code>.
 </dd>
 
 <!-- -------------------------------------------------------  -->

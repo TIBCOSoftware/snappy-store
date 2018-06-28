@@ -1,0 +1,7 @@
+cacheperf/comparisons/gemfirexd/tpcc/tpccPeerMem.conf
+  numWarehouses = 2
+  clientHosts = 2
+  clientThreadsPerVM = 2
+  logQueries = false
+  trimSeconds = 30
+  workSeconds = 30

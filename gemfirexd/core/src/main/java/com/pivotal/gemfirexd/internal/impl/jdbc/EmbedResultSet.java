@@ -55,6 +55,7 @@ import com.pivotal.gemfirexd.internal.engine.procedure.coordinate.ProcedureProce
 import com.pivotal.gemfirexd.internal.engine.sql.execute.UpdatableResultSet;
 import com.pivotal.gemfirexd.internal.engine.store.AbstractCompactExecRow;
 import com.pivotal.gemfirexd.internal.engine.store.ResultWasNull;
+import com.pivotal.gemfirexd.internal.engine.store.RowFormatter;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecutionContext;
 import com.pivotal.gemfirexd.procedure.OutgoingResultSet;
 // GemStone changes END
@@ -91,6 +92,8 @@ import com.pivotal.gemfirexd.internal.impl.sql.GenericActivationHolder;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.StatementStats;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.ScrollInsensitiveResultSet;
+import io.snappydata.ResultSetWithNull;
+import io.snappydata.thrift.common.BufferedBlob;
 
 
 
@@ -129,7 +132,7 @@ import java.util.Map;
 
 public abstract class EmbedResultSet extends ConnectionChild 
 // GemStone changes BEGIN
-    implements EngineResultSet, ResultWasNull, Comparable {
+    implements EngineResultSet, ResultWasNull, ResultSetWithNull, Comparable {
     /* (original code)
     implements EngineResultSet, Comparable {
     */
@@ -4654,6 +4657,10 @@ public abstract class EmbedResultSet extends ConnectionChild
 
 // GemStone changes BEGIN
 				//return new EmbedBlob(dvd, getEmbedConnection());
+				Object blob = dvd.getObject();
+				if (blob instanceof BufferedBlob) {
+					return (BufferedBlob)blob;
+				}
 				return HarmonySerialBlob.wrapBytes(dvd.getBytes());
 				/* (original code)
 				return new EmbedBlob(dvd, getEmbedConnection());
@@ -5841,10 +5848,15 @@ public abstract class EmbedResultSet extends ConnectionChild
     /* 
      * @see com.pivotal.gemfirexd.internal.iapi.jdbc.EngineResultSet#isNull(int)
      */
-    public final boolean isNull(int columnIndex) throws SQLException{
+    public final boolean isNull(int columnIndex) throws SQLException {
         try {
+            this.isValid(columnIndex);
+            return this.currentRow.isNull(columnIndex) ==
+                RowFormatter.OFFSET_AND_WIDTH_IS_NULL;
+            /* (original code)
             DataValueDescriptor dvd = getColumn(columnIndex);
             return dvd.isNull();
+            */
         } catch (StandardException t) {
                 throw noStateChangeException(t, this.resultDescription
                     .getColumnDescriptor(columnIndex).getName() /* GemStoneAddition */);

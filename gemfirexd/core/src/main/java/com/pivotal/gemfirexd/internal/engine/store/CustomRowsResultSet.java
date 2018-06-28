@@ -73,10 +73,16 @@ public final class CustomRowsResultSet extends DVDStoreResultSet {
     }
   }
 
+  @Override
+  public void close() throws SQLException {
+    super.close();
+    this.fetchRows.close();
+  }
+
   /**
    * Allows fetching one row at a time as a DVD[] from arbitrary source.
    */
-  public static interface FetchDVDRows {
+  public interface FetchDVDRows {
 
     /**
      * If next row is available then fill in template and return true, else
@@ -84,5 +90,8 @@ public final class CustomRowsResultSet extends DVDStoreResultSet {
      */
     public boolean getNext(DataValueDescriptor[] template) throws SQLException,
         StandardException;
+
+    default void close() throws SQLException {
+    }
   }
 }

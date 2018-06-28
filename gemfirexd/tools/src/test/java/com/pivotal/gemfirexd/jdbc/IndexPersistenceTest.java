@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
+import com.gemstone.gemfire.admin.internal.FinishBackupRequest;
 import com.gemstone.gemfire.cache.persistence.PersistentID;
 import com.gemstone.gemfire.internal.FileUtil;
 import com.gemstone.gemfire.internal.cache.AbstractRegionEntry;
@@ -163,7 +164,7 @@ public class IndexPersistenceTest extends JdbcTestBase {
   private HashSet<PersistentID> backup(File backupDir, File baseDir) throws IOException {
     BackupManager backup = Misc.getGemFireCache().startBackup(Misc.getGemFireCache().getDistributedSystem().getDistributedMember());
     backup.prepareBackup();
-    HashSet<PersistentID> set = backup.finishBackup(backupDir, baseDir);
+    HashSet<PersistentID> set = backup.finishBackup(backupDir, baseDir, FinishBackupRequest.DISKSTORE_ALL);
     File incompleteBackup = FileUtil.find(backupDir, ".*INCOMPLETE.*");
     assertNull(incompleteBackup);
     return set;

@@ -17,12 +17,11 @@
 
 package com.gemstone.gemfire.internal.cache;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.gemstone.gemfire.CancelException;
@@ -38,7 +37,6 @@ import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedSynchronizer;
 import com.gemstone.gemfire.internal.cache.locks.LockMode;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
-import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
@@ -72,6 +70,10 @@ public final class TXRegionState extends ReentrantLock {
 
   // A map of Objects (entry keys) -> TXEntryState
   private final THashMapWithCreate entryMods;
+
+  // uncommitted/commit list for snapshot isolation
+  private ArrayDeque<RegionEntry> unCommittedEntryReference;
+  private ArrayDeque<Object> committedEntryReference;
 
   TObjectLongHashMapDSFID tailKeysForParallelWAN;
 
@@ -153,13 +155,22 @@ public final class TXRegionState extends ReentrantLock {
     this.expiryReadLock = r.getTxEntryExpirationReadLock();
     this.isValid = true;
 
-    if (r.isInitialized() || !r.getImageState().addPendingTXRegionState(this)) {
+    if (!r.isInitialized() && r.getImageState().lockPendingTXRegionStates(true, false)) {
+      try {
+        if (!r.getImageState().addPendingTXRegionState(this)) {
+          this.pendingTXOps = null;
+          this.pendingTXLockFlags = null;
+        } else {
+          this.pendingTXOps = new ArrayList<Object>();
+          this.pendingTXLockFlags = new TIntArrayList();
+        }
+      } finally {
+        r.getImageState().unlockPendingTXRegionStates(true);
+      }
+
+    } else {
       this.pendingTXOps = null;
       this.pendingTXLockFlags = null;
-    }
-    else {
-      this.pendingTXOps = new ArrayList<Object>();
-      this.pendingTXLockFlags = new TIntArrayList();
     }
   }
 
@@ -464,9 +475,7 @@ public final class TXRegionState extends ReentrantLock {
         Operation.UPDATE, null, null, null, true, null);
     eventTemplate.setTXState(tx);
     // apply as PUT DML so duplicate entry inserts etc. will go through fine
-    // [sumedh] this is a strange duplication of functionality to combine
-    // fetchFromHDFS with PUT DML -- should have separate flag
-    //eventTemplate.setFetchFromHDFS(false);
+    eventTemplate.setPutDML(true);
     final LocalRegion region = this.region;
     final LocalRegion baseRegion;
     if (region.isUsedForPartitionedRegionBucket()) {
@@ -836,6 +845,37 @@ public final class TXRegionState extends ReentrantLock {
     }
     */
     return this.tmpEntryCount;
+  }
+
+  /**
+   * Track uncommitted entry for snapshot isolation.
+   */
+  void addSnapshotRegionEntry(Object re, RegionEntry newRe) {
+    if (unCommittedEntryReference == null) {
+      unCommittedEntryReference = new ArrayDeque<>(4);
+      committedEntryReference = new ArrayDeque<>(4);
+    }
+    // add at front so will be rolled back in reverse order (LIFO)
+    unCommittedEntryReference.addFirst(newRe);
+    committedEntryReference.addFirst(re);
+  }
+
+  Object[] getAndClearSnapshotRegionEntries() {
+    if (unCommittedEntryReference != null) {
+      RegionEntry[] uncommittedEntries = unCommittedEntryReference.toArray(
+          new RegionEntry[unCommittedEntryReference.size()]);
+      Object[] committedEntries = committedEntryReference.toArray(
+          new Object[committedEntryReference.size()]);
+      cleanupSnapshotRegionEntries();
+      return new Object[] { uncommittedEntries, committedEntries };
+    } else {
+      return null;
+    }
+  }
+
+  void cleanupSnapshotRegionEntries() {
+    unCommittedEntryReference = null;
+    committedEntryReference = null;
   }
 
   @Override

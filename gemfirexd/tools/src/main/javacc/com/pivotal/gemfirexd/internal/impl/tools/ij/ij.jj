@@ -2490,7 +2490,7 @@ throws SQLException
 	{
 		if(t!=null) {
 // GemStone changes: Addition of "COLUMN TABLE", "EXTERNAL TABLE" etc below
-		    types = new String[] { "TABLE", "SYSTEM TABLE", "COLUMN TABLE",
+		    types = new String[] { "ROW TABLE", "SYSTEM TABLE", "COLUMN TABLE",
 		        "EXTERNAL TABLE", "STREAM TABLE", "SAMPLE TABLE", "TOPK TABLE" };
 		}
 		else if(v!=null)

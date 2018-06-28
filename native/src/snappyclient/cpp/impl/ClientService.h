@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -172,6 +172,13 @@ namespace impl {
     static std::string s_hostName;
     static std::string s_hostId;
     static boost::mutex s_globalLock;
+    static bool s_initialized;
+
+    /**
+     * Global initialization that is done only once.
+     * The s_globalLock must be held in the invocation.
+     */
+    static bool globalInitialize();
 
   public:
     ClientService(const std::string& host, const int port,
@@ -179,7 +186,7 @@ namespace impl {
 
     virtual ~ClientService();
 
-    static bool staticInitialize();
+    static void staticInitialize();
 
     static void staticInitialize(
         std::map<std::string, std::string>& props);

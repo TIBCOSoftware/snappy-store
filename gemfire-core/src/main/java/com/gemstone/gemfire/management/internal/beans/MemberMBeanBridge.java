@@ -32,7 +32,6 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -43,6 +42,7 @@ import javax.management.ObjectName;
 
 import com.gemstone.gemfire.Statistics;
 import com.gemstone.gemfire.StatisticsType;
+import com.gemstone.gemfire.admin.internal.FinishBackupRequest;
 import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.DiskStore;
 import com.gemstone.gemfire.cache.Region;
@@ -71,7 +71,6 @@ import com.gemstone.gemfire.internal.PureJavaMode;
 import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.SolarisSystemStats;
 import com.gemstone.gemfire.internal.StatSamplerStats;
-import com.gemstone.gemfire.internal.VMStatsContract;
 import com.gemstone.gemfire.internal.WindowsSystemStats;
 import com.gemstone.gemfire.internal.cache.CachePerfStats;
 import com.gemstone.gemfire.internal.cache.CacheServerLauncher;
@@ -92,7 +91,7 @@ import com.gemstone.gemfire.internal.offheap.MemoryAllocator;
 import com.gemstone.gemfire.internal.offheap.OffHeapMemoryStats;
 import com.gemstone.gemfire.internal.process.PidUnavailableException;
 import com.gemstone.gemfire.internal.process.ProcessUtils;
-import com.gemstone.gemfire.internal.stats50.VMStats50;
+import com.gemstone.gemfire.internal.statistics.VMStats;
 import com.gemstone.gemfire.internal.tcp.ConnectionTable;
 import com.gemstone.gemfire.management.DependenciesNotFoundException;
 import com.gemstone.gemfire.management.DiskBackupResult;
@@ -631,23 +630,20 @@ public class MemberMBeanBridge {
   }
   
   public void addVMStats(){
-    VMStatsContract vmStatsContract = system.getStatSampler().getVMStats();
-    
-    if (vmStatsContract != null && vmStatsContract instanceof VMStats50){
-      VMStats50 vmStats50 = (VMStats50) vmStatsContract;
-      Statistics vmStats = vmStats50.getVMStats();
-      if (vmStats != null) {
-        vmStatsMonitor.addStatisticsToMonitor(vmStats);
+    VMStats vmStats = system.getStatSampler().getVMStats();
+    if (vmStats != null) {
+      Statistics stats = vmStats.getVMStats();
+      if (stats != null) {
+        vmStatsMonitor.addStatisticsToMonitor(stats);
       }
-      
-      Statistics vmHeapStats = vmStats50.getVMHeapStats();
+      Statistics vmHeapStats = vmStats.getVMHeapStats();
       if (vmHeapStats != null) {
         vmStatsMonitor.addStatisticsToMonitor(vmHeapStats);
       }
       
       //vmStatsMonitor.addStatisticsToMonitor(vm50.getVMNonHeapStats());
       
-      StatisticsType gcType = VMStats50.getGCType();
+      StatisticsType gcType = VMStats.getGCType();
       if (gcType != null) {
         Statistics[] gcStats = system.findStatisticsByType(gcType);
         if (gcStats != null && gcStats.length > 0){
@@ -1123,7 +1119,7 @@ public class MemberMBeanBridge {
         Set<PersistentID> existingDataStores = manager.prepareBackup();
 
         Set<PersistentID> successfulDataStores = manager
-          .finishBackup(targetDir, null/* TODO rishi */);
+          .finishBackup(targetDir, null/* TODO rishi */, FinishBackupRequest.DISKSTORE_ALL);
         diskBackUpResult = new DiskBackupResult[existingDataStores.size()];
         int j = 0;
 

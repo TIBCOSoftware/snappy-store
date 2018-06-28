@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -51,6 +51,7 @@ import com.gemstone.gemfire.internal.shared.ReverseListIterator;
 import com.gemstone.gnu.trove.TObjectIntHashMap;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
+import io.snappydata.ResultSetWithNull;
 import io.snappydata.thrift.*;
 import io.snappydata.thrift.common.ColumnValueConverter;
 import io.snappydata.thrift.common.Converters;
@@ -59,8 +60,9 @@ import io.snappydata.thrift.common.ThriftExceptionUtil;
 /**
  * Implementation of {@link ResultSet} for JDBC client.
  */
+@SuppressWarnings("WeakerAccess")
 public final class ClientResultSet extends ClientFetchColumnValue implements
-    ResultSet {
+    ResultSetWithNull {
 
   private final ClientStatement statement;
   private final StatementAttrs attrs;
@@ -93,7 +95,9 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     this.attrs = attrs;
     this.rowsIter = rs.rows.listIterator();
     this.fetchDirection = attrs.fetchReverse ? FETCH_REVERSE : FETCH_FORWARD;
-    this.fetchSize = attrs.batchSize;
+    if (attrs.isSetBatchSize()) {
+      this.fetchSize = attrs.batchSize;
+    }
     initRowSet(rs);
   }
 
@@ -207,7 +211,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   }
 
   final void checkScrollable() throws SQLException {
-    if (this.attrs.resultSetType == snappydataConstants.RESULTSET_TYPE_FORWARD_ONLY) {
+    if (this.attrs.getResultSetType() == snappydataConstants.RESULTSET_TYPE_FORWARD_ONLY) {
       throw ThriftExceptionUtil
           .newSQLException(SQLState.CURSOR_MUST_BE_SCROLLABLE);
     }
@@ -362,6 +366,15 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     } finally {
       reset();
     }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public final boolean isNull(int columnIndex) throws SQLException {
+    final Row currentRow = checkValidColumn(columnIndex);
+    return currentRow.isNull(columnIndex - 1);
   }
 
   /**
@@ -1038,7 +1051,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   public final boolean isBeforeFirst() throws SQLException {
     checkClosed();
 
-    return this.rowSet.offset == 0 && !this.rowsIter.hasPrevious();
+    return (this.rowSet.flags & snappydataConstants.ROWSET_BEFORE_FIRST) != 0 &&
+        !this.rowsIter.hasPrevious();
   }
 
   /**
@@ -1048,8 +1062,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   public final boolean isAfterLast() throws SQLException {
     checkClosed();
 
-    return !this.rowsIter.hasNext()
-        && (this.rowSet.flags & snappydataConstants.ROWSET_LAST_BATCH) != 0;
+    return (this.rowSet.flags & snappydataConstants.ROWSET_AFTER_LAST) != 0 &&
+        !this.rowsIter.hasNext();
   }
 
   /**
@@ -1059,7 +1073,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   public final boolean isFirst() throws SQLException {
     checkClosed();
 
-    return this.rowSet.offset == 0 && this.rowsIter.previousIndex() == 0;
+    return this.rowSet.offset == 0 && !this.rowsIter.hasPrevious();
   }
 
   /**
@@ -1069,8 +1083,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   public final boolean isLast() throws SQLException {
     checkClosed();
 
-    return this.rowsIter.nextIndex() == this.rowSet.rows.size()
-        && (this.rowSet.flags & snappydataConstants.ROWSET_LAST_BATCH) != 0;
+    return (this.rowSet.flags & snappydataConstants.ROWSET_LAST_BATCH) != 0 &&
+        !this.rowsIter.hasNext();
   }
 
   /**
@@ -1082,6 +1096,10 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     checkScrollable();
     clearForPositioning();
 
+    setBeforeFirst();
+  }
+
+  private void setBeforeFirst() throws SQLException {
     if (this.rowSet.offset == 0) {
       this.rowsIter = this.rowSet.rows.listIterator();
     }
@@ -1113,13 +1131,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public final boolean first() throws SQLException {
     beforeFirst();
-    if (this.rowsIter.hasNext()) {
-      setCurrentRow(this.rowsIter.next());
-      return true;
-    }
-    else {
-      return false;
-    }
+    return moveNext();
   }
 
   /**
@@ -1128,13 +1140,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   @Override
   public final boolean last() throws SQLException {
     afterLast();
-    if (this.rowsIter.hasPrevious()) {
-      setCurrentRow(this.rowsIter.previous());
-      return true;
-    }
-    else {
-      return false;
-    }
+    return movePrevious();
   }
 
   /**
@@ -1172,10 +1178,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
         }
       }
     } else if (rows == 0) {
-      if (this.rowSet.offset == 0) {
-        this.rowsIter = this.rowSet.rows.listIterator();
-        return true;
-      }
+      setBeforeFirst();
+      return false;
     } else if ((this.rowSet.flags & snappydataConstants.ROWSET_LAST_BATCH) != 0) {
       if ((-rows) <= this.rowSet.rows.size()) {
         this.rowsIter = this.rowSet.rows.listIterator(this.rowSet.rows.size()
@@ -1325,7 +1329,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
   public int getType() throws SQLException {
     checkClosed();
 
-    return Converters.getJdbcResultSetType(this.attrs.resultSetType);
+    // noinspection MagicConstant
+    return Converters.getJdbcResultSetType(this.attrs.getResultSetType());
   }
 
   /**

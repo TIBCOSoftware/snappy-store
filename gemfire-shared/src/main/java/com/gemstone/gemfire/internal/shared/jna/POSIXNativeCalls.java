@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -133,7 +133,7 @@ class POSIXNativeCalls extends NativeCalls {
     public long rlim_max;
 
     @Override
-    protected List<?> getFieldOrder() {
+    protected List<String> getFieldOrder() {
       return Arrays.asList("rlim_cur", "rlim_max");
     }
   }
@@ -243,6 +243,11 @@ class POSIXNativeCalls extends NativeCalls {
    */
   @Override
   public boolean isProcessActive(final int processId) {
+    try {
+      return super.isProcessActive(processId);
+    } catch (UnsupportedOperationException ignored) {
+      // ignore and try "kill -0"
+    }
     try {
       return kill(processId, 0) == 0;
     } catch (LastErrorException le) {

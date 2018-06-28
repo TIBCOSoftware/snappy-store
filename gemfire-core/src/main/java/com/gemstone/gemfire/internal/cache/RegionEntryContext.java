@@ -34,7 +34,16 @@ public interface RegionEntryContext extends HasCachePerfStats {
    * @return null if no compressor is assigned or available for the entry.
    */
   public Compressor getCompressor();
-  
+
+  /**
+   * Returns the name for compression codec to be used for column store.
+   * Null is returned if no codec is defined or node has not initialized.
+   */
+  public String getColumnCompressionCodec();
+
+  /** Get the full path of the corresponding region */
+  public String getFullPath();
+
   /**
    * Returns true if region entries are stored off heap.
    */
@@ -44,4 +53,6 @@ public interface RegionEntryContext extends HasCachePerfStats {
    * Returns true if this region is persistent.
    */
   public boolean isBackup();
+
+  public void updateMemoryStats(Object oldValue, Object newValue);
 }

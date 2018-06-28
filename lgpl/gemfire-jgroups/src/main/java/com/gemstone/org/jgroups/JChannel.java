@@ -100,8 +100,8 @@ public class JChannel extends Channel  {
             "UNICAST(timeout=600,1200,2400,4800):" +
             "pbcast.STABLE(desired_avg_gossip=10000):" +
             "FRAG:" +
-            "pbcast.GMS(join_timeout=5000;join_retry_timeout=2000;" +
-            "shun=true;print_local_addr=true)";
+            "pbcast.GMS(join_timeout=3000;join_retry_timeout=1000;" +
+            "min_join_tries=2;shun=true;print_local_addr=true)";
 
     static final String FORCE_PROPS="force.properties";
 

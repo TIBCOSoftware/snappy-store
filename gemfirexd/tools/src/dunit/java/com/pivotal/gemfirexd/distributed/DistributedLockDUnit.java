@@ -30,18 +30,18 @@ import com.gemstone.gemfire.cache.execute.FunctionService;
 import com.gemstone.gemfire.cache.execute.ResultCollector;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DistributionStats;
+import com.gemstone.gemfire.internal.DSFIDFactory;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.execute.InternalRegionFunctionContext;
-import com.gemstone.gnu.trove.TIntObjectHashMap;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
-import com.pivotal.gemfirexd.internal.engine.GfxdDataSerializable;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdListResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.RegionExecutorMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdDRWLockService;
+import io.snappydata.collection.IntObjectHashMap;
 import io.snappydata.test.dunit.AsyncInvocation;
 import io.snappydata.test.dunit.SerializableCallable;
 import io.snappydata.test.dunit.SerializableRunnable;
@@ -199,6 +199,8 @@ public class DistributedLockDUnit extends DistributedSQLTestBase {
   public static final class TestFunctionMessage extends
       RegionExecutorMessage<Object> {
 
+    static final byte ID = LAST_MSG_ID + 1;
+
     /** for deserialization */
     public TestFunctionMessage() {
       super(true);
@@ -249,9 +251,8 @@ public class DistributedLockDUnit extends DistributedSQLTestBase {
 
     @Override
     public byte getGfxdID() {
-      return LAST_MSG_ID + 1;
+      return ID;
     }
-
   }
 
   static final class TestFunction implements Function {
@@ -487,7 +488,8 @@ public class DistributedLockDUnit extends DistributedSQLTestBase {
     int[][] arrays5 = (int[][])async4.getResult();
 
     System.gc();
-    TIntObjectHashMap allKeys = new TIntObjectHashMap(numKeysPerVM * 5);
+    IntObjectHashMap<Object> allKeys = IntObjectHashMap.withExpectedSize(
+        numKeysPerVM * 5);
     checkUniqueKeys(allKeys, arrays1, "currentVM");
     checkUniqueKeys(allKeys, arrays2, getServerVM(1));
     checkUniqueKeys(allKeys, arrays3, getServerVM(2));
@@ -508,7 +510,8 @@ public class DistributedLockDUnit extends DistributedSQLTestBase {
       @Override
       public void run() {
         FunctionService.registerFunction(new TestFunction());
-        GfxdDataSerializable.registerSqlSerializable(TestFunctionMessage.class);
+        DSFIDFactory.registerGemFireXDClass(TestFunctionMessage.ID,
+            () -> new TestFunctionMessage());
       }
     };
     invokeInEveryVM(register);
@@ -599,7 +602,7 @@ public class DistributedLockDUnit extends DistributedSQLTestBase {
     // --------------- End function message execution -----------------
   }
 
-  private static void checkUniqueKeys(final TIntObjectHashMap allKeys,
+  private static void checkUniqueKeys(final IntObjectHashMap<Object> allKeys,
       final int[][] arrays, final Object vm) {
     Object oldVM;
     // check uniqueness of keys and also that each list is in ascending order
@@ -608,7 +611,9 @@ public class DistributedLockDUnit extends DistributedSQLTestBase {
       for (final int key : array) {
         final long currentKey = (key & 0xFFFFFFFFL);
         if (currentKey > lastKey) {
-          if ((oldVM = allKeys.put(key, vm)) == null) {
+          oldVM = allKeys.get(key);
+          if (oldVM == null) {
+            allKeys.justPut(key, vm);
             lastKey = currentKey;
           }
           else {

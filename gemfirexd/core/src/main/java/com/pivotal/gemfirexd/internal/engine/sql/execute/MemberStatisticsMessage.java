@@ -1,9 +1,9 @@
 package com.pivotal.gemfirexd.internal.engine.sql.execute;
 
-import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collection;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -21,12 +21,13 @@ import com.gemstone.gemfire.internal.LinuxSystemStats;
 import com.gemstone.gemfire.internal.PureJavaMode;
 import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.SolarisSystemStats;
-import com.gemstone.gemfire.internal.VMStatsContract;
 import com.gemstone.gemfire.internal.WindowsSystemStats;
+import com.gemstone.gemfire.internal.cache.DirectoryHolder;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
-import com.gemstone.gemfire.internal.stats50.VMStats50;
+import com.gemstone.gemfire.internal.statistics.VMStats;
 import com.gemstone.gemfire.management.internal.ManagementConstants;
 import com.gemstone.gemfire.management.internal.beans.stats.StatsKey;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
@@ -37,6 +38,9 @@ import com.pivotal.gemfirexd.internal.engine.management.NetworkServerConnectionS
 import com.pivotal.gemfirexd.internal.engine.stats.ConnectionStats;
 import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
 import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
+import org.apache.log4j.Appender;
+import org.apache.log4j.FileAppender;
+import org.apache.log4j.Logger;
 
 public class MemberStatisticsMessage extends MemberExecutorMessage {
 
@@ -49,6 +53,7 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
   private Statistics systemStat;
   private java.util.UUID diskStoreUUID;
   private String diskStoreName;
+  private long diskStoreDiskSpace;
 
 
   /** Default constructor for deserialization. Not to be invoked directly. */
@@ -80,24 +85,33 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     // Memory Stats
     Map<String, Long> memoryStats = this.getMemoryStatistics();
 
-    Map memberStatsMap = new HashMap();
+    HashMap<String, Object> memberStatsMap = new HashMap<>();
+
+    memberStatsMap.put("lastUpdatedOn", System.currentTimeMillis());
+
     memberStatsMap.put("id", memberId);
     memberStatsMap.put("name", ids.getName());
     memberStatsMap.put("host", getHost());
     memberStatsMap.put("userDir", getUserDir());
+    memberStatsMap.put("logFile", getLogFile());
     memberStatsMap.put("processId", getProcessId());
     memberStatsMap.put("locator", isLocator());
     memberStatsMap.put("dataServer", isDataServer());
     memberStatsMap.put("activeLead", isActiveLead(ids.getDistributedMember()));
     memberStatsMap.put("lead", isLead());
+    memberStatsMap.put("cores", Runtime.getRuntime().availableProcessors());
     memberStatsMap.put("maxMemory", getMaxMemory());
     memberStatsMap.put("freeMemory", getFreeMemory());
     memberStatsMap.put("totalMemory", getTotalMemory());
     memberStatsMap.put("usedMemory", getUsedMemory());
-    memberStatsMap.put("cpuActive", getHostCpuUsage());
+
+    int cpuActive = getHostCpuUsage();
+    memberStatsMap.put("cpuActive", cpuActive >= 0 ? cpuActive : 0);
+
     memberStatsMap.put("clients", clientConnectionStats.getConnectionsOpen());
     memberStatsMap.put("diskStoreUUID", getDiskStoreUUID());
     memberStatsMap.put("diskStoreName", getDiskStoreName());
+    memberStatsMap.put("diskStoreDiskSpace", getDiskStoreDiskSpace());
 
     memberStatsMap.put("heapStoragePoolUsed", memoryStats.get("heapStoragePoolUsed"));
     memberStatsMap.put("heapStoragePoolSize", memoryStats.get("heapStoragePoolSize"));
@@ -140,29 +154,35 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
       }
     }
 
-    VMStatsContract vmStatsContract = system.getStatSampler().getVMStats();
-
-    if (vmStatsContract != null && vmStatsContract instanceof VMStats50){
-      VMStats50 vmStats50 = (VMStats50) vmStatsContract;
-      Statistics vmStats = vmStats50.getVMStats();
-      if (vmStats != null) {
-        this.vmStats = vmStats;
+    VMStats vmStats = system.getStatSampler().getVMStats();
+    if (vmStats != null) {
+      Statistics stats = vmStats.getVMStats();
+      if (stats != null) {
+        this.vmStats = stats;
       }
 
-      Statistics vmHeapStats = vmStats50.getVMHeapStats();
+      Statistics vmHeapStats = vmStats.getVMHeapStats();
       if (vmHeapStats != null) {
         this.vmHeapStats = vmHeapStats;
       }
 
       // update disk store details
       Collection<DiskStoreImpl> diskStores = this.gemFireCache.listDiskStores();
-
-      for(DiskStoreImpl dsi : diskStores){
-        if(dsi.getName().equals(GemFireCacheImpl.getDefaultDiskStoreName())){
+      long totalDiskSpace = 0;
+      for (DiskStoreImpl dsi : diskStores) {
+        if (dsi.getName().equals(GemFireCacheImpl.getDefaultDiskStoreName())) {
           this.diskStoreUUID = dsi.getDiskStoreUUID();
           this.diskStoreName = dsi.getName();
         }
+
+        long diskSpace = 0;
+        DirectoryHolder[] directoryHolders = dsi.getDirectoryHolders();
+        for (DirectoryHolder dr : directoryHolders) {
+          diskSpace += dr.getDiskDirectoryStats().getDiskSpace();
+        }
+        totalDiskSpace += diskSpace;
       }
+      this.diskStoreDiskSpace = totalDiskSpace;
     }
   }
 
@@ -179,9 +199,23 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
     return System.getProperty("user.dir");
   }
 
+  private String getLogFile() {
+    Logger rootLogger = Logger.getRootLogger();
+    Appender appender;
+    if (rootLogger != null) {
+      Enumeration<?> e = rootLogger.getAllAppenders();
+      while (e.hasMoreElements()) {
+        appender = (Appender)e.nextElement();
+        if (appender instanceof FileAppender) {
+          return ((FileAppender)appender).getFile();
+        }
+      }
+    }
+    return "";
+  }
+
   private String getProcessId(){
-    String[] processDetails = ManagementFactory.getRuntimeMXBean().getName().split("@");
-    return processDetails[0];
+    return Integer.toString(NativeCalls.getInstance().getProcessId());
   }
 
   /**
@@ -255,6 +289,10 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
 
   public String getDiskStoreName() {
     return this.diskStoreName;
+  }
+
+  public long getDiskStoreDiskSpace() {
+    return diskStoreDiskSpace;
   }
 
   public long getStoragePoolUsed() {

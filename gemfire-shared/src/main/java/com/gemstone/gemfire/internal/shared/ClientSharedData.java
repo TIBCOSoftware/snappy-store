@@ -17,6 +17,7 @@
 
 package com.gemstone.gemfire.internal.shared;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.GregorianCalendar;
@@ -67,6 +68,8 @@ public final class ClientSharedData {
   public static final byte CLIENT_TXID_NOT_WRITTEN = (byte)0;
 
   public static final byte[] ZERO_ARRAY = new byte[0];
+
+  public static final ByteBuffer NULL_BUFFER = ByteBuffer.wrap(ZERO_ARRAY);
 
   private static final ThreadLocal<GregorianCalendar> DEFAULT_CALENDAR =
       new ThreadLocal<GregorianCalendar>() {

@@ -1,5 +1,23 @@
 dependencies {
-  provided project(subprojectBase + 'gemfirexd-core')
-  provided 'org.hibernate:hibernate-core:4.3.11.Final'
+  compileOnly project(subprojectBase + 'snappydata-store-core')
+  compileOnly 'org.hibernate:hibernate-core:4.3.11.Final'
 }
+
+if (rootProject.hasProperty('enablePublish')) {
+  uploadArchives {
+    repositories {
+      mavenDeployer {
+        pom.project {
+          licenses {
+            license {
+              name 'GNU Lesser General Public License 2.1'
+              url 'http://www.gnu.org/licenses/lgpl-2.1.html'
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 jar.baseName = 'snappydata-store-hibernate'

@@ -225,6 +225,7 @@ public final class DistributedMembers extends UpdateVTITemplate {
       }
       switch (this.currentMember.getVmKind()) {
         case DistributionManager.NORMAL_DM_TYPE:
+        case DistributionManager.LOCATOR_DM_TYPE:
           sb.append("normal");
           break;
         case DistributionManager.ADMIN_ONLY_DM_TYPE:
@@ -245,7 +246,7 @@ public final class DistributedMembers extends UpdateVTITemplate {
     else if (STATUS.equals(columnName)) {
       final FabricService service = FabricServiceManager.currentFabricServiceInstance();
       if(service != null) {
-        res = service.status().name();
+        res = service.serviceStatus().name();
       }
       else {
         res = "UNKNOWN";

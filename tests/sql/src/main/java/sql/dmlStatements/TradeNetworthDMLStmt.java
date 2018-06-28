@@ -35,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import sql.SQLBB;
 import sql.SQLHelper;
+import sql.SQLPrms;
 import sql.SQLTest;
 import sql.security.SQLSecurityTest;
 import sql.sqlTx.SQLDistTxTest;
@@ -74,7 +75,7 @@ public class TradeNetworthDMLStmt extends AbstractDMLStmt {
     //uniqs
     "select * from trade.networth where tid = ?" + queryLimitedNumberOfRows(),
     "select cid, (cash + securities - (loanLimit - availloan))as networth from trade.networth where tid = ? order by networth desc, cid " 
-        + (SQLTest.populateWithbatch ? " fetch first 1000 rows only " : ""),
+        + (SQLTest.populateWithbatch ? " fetch first 1000 rows only ": ""),
     "select cid, loanlimit, availloan from trade.networth where (loanlimit >? and loanlimit-availloan <= ?) and tid=? "+ queryLimitedNumberOfRows(),
     "select cid, cash, securities from trade.networth where (cash<? or securities >=?) and tid =?"  + queryLimitedNumberOfRows(),
     "select * from trade.networth where (cash > loanLimit - availloan) and tid =?" + queryLimitedNumberOfRows(),
@@ -98,7 +99,7 @@ public class TradeNetworthDMLStmt extends AbstractDMLStmt {
 
   //limit the number of rows to compare for large data set inserted
   protected static String queryLimitedNumberOfRows() {
-    return SQLTest.populateWithbatch? " order by cid fetch first 1000 rows only " : "" ;    
+    return SQLTest.populateWithbatch ?  " order by cid fetch first 1000 rows only " : "" ;
   }
   protected static ConcurrentHashMap<String, Integer> verifyRowCount = new ConcurrentHashMap<String, Integer>();
   protected static int maxNumOfTries = 2;  

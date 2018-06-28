@@ -245,7 +245,116 @@ public class DummyCachePerfStats extends CachePerfStats {
     return 0;
   }
 
+  @Override
+  public int getDeltaUpdates() {
+    return 0;
+  }
+
+  @Override
+  public long getDeltaUpdatesTime() {
+    return 0;
+  }
+
+  @Override
+  public int getDeltaFailedUpdates() {
+    return 0;
+  }
+
+  @Override
+  public int getDeltasPrepared() {
+    return 0;
+  }
+
+  @Override
+  public long getDeltasPreparedTime() {
+    return 0;
+  }
+
+  @Override
+  public int getDeltasSent() {
+    return 0;
+  }
+
+  @Override
+  public int getDeltaFullValuesSent() {
+    return 0;
+  }
+
+  @Override
+  public int getDeltaFullValuesRequested() {
+    return 0;
+  }
+
+  @Override
+  public long getTotalCompressionTime() {
+    return 0;
+  }
+
+  @Override
+  public long getTotalDecompressionTime() {
+    return 0;
+  }
+
+  @Override
+  public long getTotalCompressions() {
+    return 0;
+  }
+
+  @Override
+  public long getTotalDecompressions() {
+    return 0;
+  }
+
+  @Override
+  public long getTotalPreCompressedBytes() {
+    return 0;
+  }
+
+  @Override
+  public long getTotalPostCompressedBytes() {
+    return 0;
+  }
+
+  @Override
+  public long getTotalCompressionsSkipped() {
+    return 0;
+  }
+
   // //////////////////// Updating Stats //////////////////////
+
+  @Override
+  public long startCompression() {
+    return 0;
+  }
+
+  @Override
+  public void endCompression(long startTime, long startSize, long endSize) {
+  }
+
+  @Override
+  public void endCompressionSkipped(long startTime, long startSize) {
+  }
+
+  @Override
+  public void incDecompressedReplaced() {
+  }
+
+  @Override
+  public void incDecompressedReplaceSkipped() {
+  }
+
+  @Override
+  public void incCompressedReplaceSkipped() {
+  }
+
+  @Override
+  public long startDecompression() {
+    return 0;
+  }
+
+  @Override
+  public void endDecompression(long startTime) {
+  }
 
   @Override
   public long startLoad() {

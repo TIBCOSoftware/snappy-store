@@ -515,7 +515,7 @@ public class ArraySortedCollectionWithOverflow extends
     }
 
     @Override
-    protected final int readIntoBufferNonBlocking(final ByteBuffer buffer)
+    protected final int readIntoBufferNoWait(final ByteBuffer buffer)
         throws IOException {
       return readIntoBuffer(buffer);
     }

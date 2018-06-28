@@ -17,17 +17,15 @@
 
 package com.gemstone.gemfire.cache.query.internal;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.gemstone.gemfire.cache.query.Query;
 import com.gemstone.gemfire.cache.query.QueryExecutionLowMemoryException;
 import com.gemstone.gemfire.cache.query.QueryExecutionTimeoutException;
-import com.gemstone.gemfire.cache.query.internal.QueryExecutionCanceledException;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.CLQ;
-import com.gemstone.gemfire.internal.concurrent.CM;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 /**
@@ -63,13 +61,14 @@ public class QueryMonitor implements Runnable {
 
   private final long maxQueryExecutionTime;
 
-  private static final CLQ queryThreads = CFactory.createCLQ();
+  private static final ConcurrentLinkedQueue<QueryThreadTask> queryThreads =
+      new ConcurrentLinkedQueue<>();
 
   private Thread monitoringThread;
   private final AtomicBoolean stopped = new AtomicBoolean(Boolean.FALSE);
 
   /** For DUnit test purpose */
-  private CM queryMonitorTasks = null;
+  private ConcurrentHashMap<Thread, QueryThreadTask> queryMonitorTasks = null;
   
   //Variables for cancelling queries due to low memory
   private volatile static Boolean LOW_MEMORY = Boolean.FALSE;
@@ -106,7 +105,7 @@ public class QueryMonitor implements Runnable {
     /** For dunit test purpose */
     if (GemFireCacheImpl.getInstance() != null && GemFireCacheImpl.getInstance().TEST_MAX_QUERY_EXECUTION_TIME > 0) {
       if (this.queryMonitorTasks == null){
-        this.queryMonitorTasks = CFactory.createCM();
+        this.queryMonitorTasks = new ConcurrentHashMap<>();
       }
       this.queryMonitorTasks.put(queryThread, queryTask);
     }    
@@ -129,7 +128,7 @@ public class QueryMonitor implements Runnable {
       // START - DUnit Test purpose.
       if (GemFireCacheImpl.getInstance() != null && GemFireCacheImpl.getInstance().TEST_MAX_QUERY_EXECUTION_TIME > 0){
         long maxTimeSet = GemFireCacheImpl.getInstance().TEST_MAX_QUERY_EXECUTION_TIME;
-        QueryThreadTask queryTask = (QueryThreadTask)queryThreads.peek();
+        QueryThreadTask queryTask = queryThreads.peek();
 
         // This is to check if the QueryMonitoring thread slept longer than the expected time.
         // Its seen that in some cases based on OS thread scheduling the thread can sleep much
@@ -146,7 +145,7 @@ public class QueryMonitor implements Runnable {
         // This is to see if query finished before it could get canceled, this could happen because
         // of a faster machine.
         // Check if the query finished before the max_query_execution time.
-        queryTask = (QueryThreadTask)this.queryMonitorTasks.get(queryThread);
+        queryTask = this.queryMonitorTasks.get(queryThread);
         if (queryTask != null){
           this.queryMonitorTasks.remove(queryThread);
           if (!GemFireCacheImpl.getInstance().TEST_MAX_QUERY_EXECUTION_TIME_OVERRIDE_EXCEPTION && testException == null && ((System.currentTimeMillis() - queryTask.StartTime) < 
@@ -221,7 +220,7 @@ public class QueryMonitor implements Runnable {
       while(true){
         // Get the first query task from the queue. This query will have the shortest 
         // remaining time that needs to canceled first.
-        queryTask = (QueryThreadTask)queryThreads.peek();
+        queryTask = queryThreads.peek();
         if (queryTask == null){
           // Empty queue. 
           synchronized (this.queryThreads){
@@ -297,10 +296,10 @@ public class QueryMonitor implements Runnable {
 
   public void cancelAllQueriesDueToMemory() {
     synchronized (this.queryThreads) {
-      QueryThreadTask queryTask = (QueryThreadTask) queryThreads.poll();
+      QueryThreadTask queryTask = queryThreads.poll();
       while (queryTask != null) {
         cancelQueryDueToLowMemory(queryTask, LOW_MEMORY_USED_BYTES);
-        queryTask = (QueryThreadTask) queryThreads.poll();
+        queryTask = queryThreads.poll();
       }
       queryThreads.clear();
       queryThreads.notify();

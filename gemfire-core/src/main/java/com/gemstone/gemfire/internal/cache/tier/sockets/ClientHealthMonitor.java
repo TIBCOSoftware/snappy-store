@@ -25,8 +25,6 @@ import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.cache.CacheClientStatus;
 import com.gemstone.gemfire.internal.cache.IncomingGatewayStatus;
 import com.gemstone.gemfire.internal.cache.tier.Acceptor;
-import com.gemstone.gemfire.internal.concurrent.AIArray;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
 
@@ -39,6 +37,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 /**
  * Class <code>ClientHealthMonitor</code> is a server-side singleton that
@@ -126,7 +125,8 @@ public class ClientHealthMonitor
    * 
    * @see CacheClientNotifier#addClientProxy(CacheClientProxy)
    */
-  AIArray numOfClientsPerVersion = CFactory.createAIArray(Version.NUM_OF_VERSIONS);
+  AtomicIntegerArray numOfClientsPerVersion =
+      new AtomicIntegerArray(Version.NUM_OF_VERSIONS);
 
   /**
    * Factory method to construct or return the singleton

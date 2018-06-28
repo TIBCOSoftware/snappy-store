@@ -201,6 +201,16 @@ public interface FabricService {
   State status();
 
   /**
+   * Used to display the status of this service in SYS.MEMBERS.
+   * Normally same as {@link #status()} but can be overridden
+   * by child classes if they have other components to initialize
+   * before showing the service as running.
+   */
+  default State serviceStatus() {
+    return status();
+  }
+
+  /**
    * Test to see whether the FabricService is in the process of reconnecting
    * and recreating the cache after it has been removed from the system
    * by other members.<p>

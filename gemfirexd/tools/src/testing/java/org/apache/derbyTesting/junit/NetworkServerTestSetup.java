@@ -44,13 +44,13 @@ import junit.framework.Test;
  */
 final public class NetworkServerTestSetup extends BaseTestSetup {
 
-    /** Setting maximum wait time to 40 seconds.   On some platforms
+    /** Setting maximum wait time to 60 seconds.   On some platforms
      * it may take this long to start the server.  Increasing the wait
      *  time should not adversely affect those
      *  systems with fast port turnaround as the actual code loops for 
      *  SLEEP_TIME intervals, so should never see WAIT_TIME.
      */
-    private static final long WAIT_TIME = 40000;
+    private static final long WAIT_TIME = 60000;
     
     /** Sleep for 500 ms before pinging the network server (again) */
     private static final int SLEEP_TIME = 100;

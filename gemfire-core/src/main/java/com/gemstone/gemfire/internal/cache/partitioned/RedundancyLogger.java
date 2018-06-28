@@ -31,7 +31,6 @@ import java.util.concurrent.CountDownLatch;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.GemFireUtilLauncher;
-import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.BucketPersistenceAdvisor;
 import com.gemstone.gemfire.internal.cache.ColocationHelper;
@@ -166,7 +165,7 @@ public class RedundancyLogger extends RecoveryRunnable implements PersistentStat
         // reduce the first log time from 15secs so that higher layers can
         // report sooner to user
         if (!warningLogged) {
-          sleepMillis = SLEEP_PERIOD / 2;
+          sleepMillis = SLEEP_PERIOD / 5;
         }
         Thread.sleep(sleepMillis);          
 
@@ -225,6 +224,8 @@ public class RedundancyLogger extends RecoveryRunnable implements PersistentStat
      * Indicates that a completion message has been logged.
      */
     private volatile boolean loggedDoneMessage = true;
+
+    private volatile boolean firstNotification = true;
     
     public RegionStatus(PartitionedRegion region) {
       this.thisMember = createPersistentMemberID(region);
@@ -359,7 +360,16 @@ public class RedundancyLogger extends RecoveryRunnable implements PersistentStat
       /*
        * Log any offline members the region is waiting for.
        */
-      if(thereAreBucketsToBeRecovered && !offlineMembers.isEmpty()) {
+
+      if (firstNotification) {
+        if (sysCb != null) {
+          sysCb.waitingForDataSync(this.region, new HashSet(),
+              new HashSet(), this.thisMember, "");
+        }
+        this.firstNotification = false;
+      }
+      else if((thereAreBucketsToBeRecovered && !offlineMembers.isEmpty())) {
+
         Set<String> membersToWaitForLogEntries = new HashSet<String>();
         
         TransformUtils.transform(offlineMembers.entrySet(), membersToWaitForLogEntries, TransformUtils.persistentMemberEntryToLogEntryTransformer);
@@ -378,7 +388,6 @@ public class RedundancyLogger extends RecoveryRunnable implements PersistentStat
           sysCb.waitingForDataSync(this.region, offlineMembers.keySet(),
               missingBuckets, this.thisMember, message);
         }
-
         this.loggedDoneMessage = false;
       }
       /*

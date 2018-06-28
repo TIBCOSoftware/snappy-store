@@ -697,4 +697,7 @@ public class GemFireXDQueryObserverAdapter implements GemFireXDQueryObserver,
   public void testExecutionEngineDecision(QueryInfo queryInfo,
       ExecutionEngineRule.ExecutionEngine engine, String queryText) {
   }
+
+  public void regionPreInitialized(GemFireContainer container) {
+  }
 }

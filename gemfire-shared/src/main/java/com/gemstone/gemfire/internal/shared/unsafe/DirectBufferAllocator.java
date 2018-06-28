@@ -18,8 +18,10 @@
 package com.gemstone.gemfire.internal.shared.unsafe;
 
 import java.nio.ByteBuffer;
+import java.util.function.BiConsumer;
 
 import com.gemstone.gemfire.internal.shared.BufferAllocator;
+import org.apache.spark.unsafe.memory.MemoryAllocator;
 
 /**
  * Generic implementation of {@link BufferAllocator} for direct ByteBuffers
@@ -27,13 +29,33 @@ import com.gemstone.gemfire.internal.shared.BufferAllocator;
  */
 public class DirectBufferAllocator extends BufferAllocator {
 
+  /**
+   * Overhead of allocation on off-heap memory is kept fixed at 8 even though
+   * actual overhead will be dependent on the malloc implementation.
+   */
+  public static final int DIRECT_OBJECT_OVERHEAD = 8;
+
+  /**
+   * The owner of direct buffers that are stored in Regions and tracked in UMM.
+   */
+  public static final String DIRECT_STORE_OBJECT_OWNER =
+      "SNAPPYDATA_DIRECT_STORE_OBJECTS";
+
+  public static final String DIRECT_STORE_DATA_FRAME_OUTPUT =
+      "DIRECT_" + STORE_DATA_FRAME_OUTPUT;
+
   private static final DirectBufferAllocator globalInstance =
       new DirectBufferAllocator();
 
-  private static DirectBufferAllocator instance = globalInstance;
+  private static volatile DirectBufferAllocator instance = globalInstance;
 
   public static DirectBufferAllocator instance() {
     return instance;
+  }
+
+  public DirectBufferAllocator initialize() {
+    DirectBufferAllocator.setInstance(this);
+    return this;
   }
 
   public static synchronized void setInstance(DirectBufferAllocator allocator) {
@@ -47,21 +69,46 @@ public class DirectBufferAllocator extends BufferAllocator {
   protected DirectBufferAllocator() {
   }
 
+  public RuntimeException lowMemoryException(String op, int required) {
+    return new RuntimeException();
+  }
+
+  public void changeOwnerToStorage(ByteBuffer buffer, int capacity,
+      BiConsumer<String, Object> changeOwner) {
+  }
+
   @Override
   public ByteBuffer allocate(int size, String owner) {
-    return ByteBuffer.allocateDirect(size);
+    return allocateForStorage(size);
+  }
+
+  @Override
+  public ByteBuffer allocateWithFallback(int size, String owner) {
+    try {
+      return allocateForStorage(size);
+    } catch (RuntimeException re) {
+      if (instance() != globalInstance) {
+        return globalInstance.allocateForStorage(size);
+      } else {
+        throw re;
+      }
+    }
   }
 
   @Override
   public ByteBuffer allocateForStorage(int size) {
-    return ByteBuffer.allocateDirect(size);
+    ByteBuffer buffer = ByteBuffer.allocateDirect(size);
+    if (MemoryAllocator.MEMORY_DEBUG_FILL_ENABLED) {
+      fill(buffer, MemoryAllocator.MEMORY_DEBUG_FILL_CLEAN_VALUE);
+    }
+    return buffer;
   }
 
   @Override
   public void clearPostAllocate(ByteBuffer buffer) {
     // clear till the capacity and not limit since former will be a factor
     // of 8 and hence more efficient in Unsafe.setMemory
-    clearBuffer(buffer, 0, buffer.capacity());
+    fill(buffer, (byte)0, 0, buffer.capacity());
   }
 
   @Override
@@ -87,6 +134,12 @@ public class DirectBufferAllocator extends BufferAllocator {
       newBuffer.put(buffer);
       UnsafeHolder.releaseDirectBuffer(buffer);
       newBuffer.rewind(); // position at start as per the contract of expand
+      if (MemoryAllocator.MEMORY_DEBUG_FILL_ENABLED) {
+        // fill the remaining bytes
+        ByteBuffer buf = newBuffer.duplicate();
+        buf.position(currentUsed);
+        fill(buf, MemoryAllocator.MEMORY_DEBUG_FILL_CLEAN_VALUE);
+      }
       return newBuffer;
     } else {
       buffer.limit(currentUsed + required);
@@ -110,12 +163,6 @@ public class DirectBufferAllocator extends BufferAllocator {
     } else {
       return super.transfer(buffer, owner);
     }
-  }
-
-  @Override
-  public void release(ByteBuffer buffer) {
-    // reserved bytes will be decremented via FreeMemory implementations
-    UnsafeHolder.releaseDirectBuffer(buffer);
   }
 
   @Override

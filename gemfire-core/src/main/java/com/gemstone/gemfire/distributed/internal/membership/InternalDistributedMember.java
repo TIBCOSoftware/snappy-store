@@ -769,6 +769,11 @@ public final class InternalDistributedMember
   /** the cached string description of this object */
   private transient String cachedToString;
 
+  /** A unique string representation of this member that will never change */
+  public String canonicalString() {
+    return getIpAddress().getHostAddress() + '(' + getVmPid() + "):" + getPort();
+  }
+
   @Override
   public String toString() {
     return toString(null);

@@ -30,10 +30,10 @@ import java.util.Properties;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gnu.trove.THashMap;
-import com.gemstone.gnu.trove.TLongObjectHashMap;
-import com.gemstone.gnu.trove.TLongObjectProcedure;
+import com.koloboke.function.LongObjPredicate;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
@@ -59,6 +59,7 @@ import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.AuthenticationSer
 import com.pivotal.gemfirexd.internal.impl.sql.execute.ResultSetStatisticsVisitor;
 import com.pivotal.gemfirexd.internal.jdbc.InternalDriver;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import io.snappydata.collection.LongObjectHashMap;
 
 /**
  * Wrapper class for Connections that provides for statement caching, convert to
@@ -96,7 +97,7 @@ public final class GfxdConnectionWrapper {
    * statement which can happen when derby's statement cache also gets full. In
    * such a case the string shall be looked up from {@link #sqlMap}.
    */
-  private final TLongObjectHashMap stmntMap;
+  private final LongObjectHashMap<StmntWeakReference> stmntMap;
 
   /**
    * Connection ID of the incoming request.
@@ -117,7 +118,7 @@ public final class GfxdConnectionWrapper {
   private volatile boolean hasWaiters;
 
   /** map used when a statement is no longer available in {@link #stmntMap} */
-  private final TLongObjectHashMap sqlMap;
+  private final LongObjectHashMap<String> sqlMap;
 
   /** queue to clean weak EmbedStatement references from the map */
   private final ReferenceQueue<EmbedStatement> refQueue;
@@ -137,8 +138,8 @@ public final class GfxdConnectionWrapper {
       final EmbedConnection conn = createConnection(defaultSchema, isRemote,
           isRemoteDDL, props);
       this.embedConn = conn;
-      this.stmntMap = new TLongObjectHashMap();
-      this.sqlMap = new TLongObjectHashMap();
+      this.stmntMap = LongObjectHashMap.withExpectedSize(8);
+      this.sqlMap = LongObjectHashMap.withExpectedSize(8);
       this.refQueue = new ReferenceQueue<EmbedStatement>();
     }
     else {
@@ -254,14 +255,17 @@ public final class GfxdConnectionWrapper {
             } else {
               stmnt = (EmbedStatement)getConnection().prepareCall(sql, stmtId);
             }
-            this.stmntMap.put(stmtId, new StmntWeakReference(stmnt, stmtId,
+            this.stmntMap.justPut(stmtId, new StmntWeakReference(stmnt, stmtId,
                 this.refQueue));
-            this.sqlMap.put(stmtId, sql);
+            if (!(defaultSchema != null &&
+                defaultSchema.equalsIgnoreCase(SystemProperties.SNAPPY_HIVE_METASTORE))) {
+              this.sqlMap.justPut(stmtId, sql);
+            }
             if (GemFireXDUtils.TraceQuery | GemFireXDUtils.TraceNCJ) {
               SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
                   "GfxdConnectionWrapper: cached PreparedStatement with stmtId="
                       + stmtId + " for connId=" + this.incomingConnId
-                      + " SQL: " + sql + ", for " + this);
+                      + " SQL: " + sql + ", for " + this  + " SQLMapSize = "+ sqlMap.size());
             }
           }
         }
@@ -286,7 +290,7 @@ public final class GfxdConnectionWrapper {
           // cleanup statement map first
           cleanUpStmntMap();
           stmnt = (EmbedStatement)getConnection().createStatement(stmtId);
-          this.stmntMap.put(stmtId, new StmntWeakReference(stmnt, stmtId,
+          this.stmntMap.justPut(stmtId, new StmntWeakReference(stmnt, stmtId,
               this.refQueue));
           if (GemFireXDUtils.TraceQuery) {
             SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
@@ -716,7 +720,7 @@ public final class GfxdConnectionWrapper {
         // Iterate over the map & close the statements
         // no need to synchronize since we expect only one thread to access
         // a connection at a time in any case
-        this.stmntMap.forEachEntry(collectStmts);
+        this.stmntMap.forEachWhile(collectStmts);
         stmts = collectStmts.stmts;
         this.stmntMap.clear();
       }
@@ -803,7 +807,7 @@ public final class GfxdConnectionWrapper {
   /**
    * Test API only -- NOT THREAD-SAFE.
    */
-  public TLongObjectHashMap getStatementMapForTEST() {
+  public LongObjectHashMap<StmntWeakReference> getStatementMapForTEST() {
     return this.stmntMap;
   }
 
@@ -914,6 +918,10 @@ public final class GfxdConnectionWrapper {
     }
     final int reqIsolationLevel = tx.getIsolationLevel()
         .getJdbcIsolationLevel();
+    if (tx.isSnapshot()) {
+      tran.setActiveTXState(tx, false);
+      return;
+    }
     if (reqIsolationLevel == currentIsolationLevel) {
       // GFE TX could have changed so set the new one in the GFXD transaction
       tran.setActiveTXState(tx, true);
@@ -997,13 +1005,14 @@ public final class GfxdConnectionWrapper {
     }
   }
 
-  private static final class CollectStmts implements TLongObjectProcedure {
+  private static final class CollectStmts
+      implements LongObjPredicate<StmntWeakReference> {
 
     ArrayList<Object> stmts;
 
     @Override
-    public final boolean execute(final long id, Object stmt) {
-      stmt = ((StmntWeakReference)stmt).get();
+    public boolean test(final long id, StmntWeakReference stmtRef) {
+      Object stmt = stmtRef.get();
       if (stmt != null) {
         if (this.stmts == null) {
           this.stmts = new ArrayList<Object>();
@@ -1012,7 +1021,7 @@ public final class GfxdConnectionWrapper {
       }
       return true;
     }
-  };
+  }
 
   /**
    * This class will aid to clean up the statement map of WeakReference objects

@@ -43,6 +43,8 @@ import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.cache.control.MemoryThresholds;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import io.snappydata.collection.OpenHashSet;
+
 /**
  * 
  * @author ymahajan
@@ -116,7 +118,7 @@ public class MemberFunctionExecutor extends AbstractExecution {
   private ResultCollector executeFunction(final Function function,
       ResultCollector resultCollector) {
     final DM dm = this.ds.getDistributionManager();
-    final Set dest = new HashSet(this.members);
+    final Set<InternalDistributedMember> dest = new OpenHashSet<>(this.members);
     if (dest.isEmpty()) {
       throw new NoMemberFoundException(LocalizedStrings
           .MemberFunctionExecutor_NO_MEMBER_FOUND_FOR_EXECUTING_FUNCTION_0
@@ -129,20 +131,13 @@ public class MemberFunctionExecutor extends AbstractExecution {
         .getDistributionManagerId();
     final LocalResultCollector<?, ?> localRC = getLocalResultCollector(
         function, resultCollector); 
-    boolean remoteOnly = false;
-    boolean localOnly = false;
-    if (!dest.contains(localVM)) {
-      remoteOnly = true;
-    }
-    if(dest.size()==1 && dest.contains(localVM)){
-      localOnly = true ;	
-    }
+    final boolean remoteOnly = !dest.remove(localVM);
+    final boolean localOnly = !remoteOnly && dest.isEmpty();
     final TXStateInterface tx = flushTXPendingOps(dm);
     final MemberFunctionResultSender resultSender = new MemberFunctionResultSender(
         dm, tx, localRC, function, localOnly, remoteOnly, sender);
-    if (dest.contains(localVM)) {
+    if (!remoteOnly) {
       // if member is local VM
-      dest.remove(localVM);
       final FunctionContext context = new FunctionContextImpl(function.getId(),
           getArgumentsForMember(localVM.getId()), resultSender);
       executeFunctionOnLocalNode(function, context, resultSender, dm, tx);
@@ -150,10 +145,9 @@ public class MemberFunctionExecutor extends AbstractExecution {
 
     if (!dest.isEmpty()) {
       HashMap<InternalDistributedMember, Object> memberArgs = new HashMap<InternalDistributedMember, Object>();
-      Iterator<DistributedMember> iter = dest.iterator();
+      Iterator<InternalDistributedMember> iter = dest.iterator();
       while (iter.hasNext()) {
-        InternalDistributedMember recip = (InternalDistributedMember)iter
-            .next();
+        InternalDistributedMember recip = iter.next();
         memberArgs.put(recip, getArgumentsForMember(recip.getId()));
       }
       Assert.assertTrue(memberArgs.size() == dest.size());

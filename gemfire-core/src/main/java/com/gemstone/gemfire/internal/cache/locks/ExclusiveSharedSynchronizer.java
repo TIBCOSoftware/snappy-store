@@ -970,8 +970,6 @@ public abstract class ExclusiveSharedSynchronizer extends AtomicInteger
           continue;
         case READ_ONLY_MODE:
           // This is read-only lock case.
-          assert mode == READ_ONLY_MODE: mode;
-
           final int readOnlyCount = readOnlyCount(currentState);
           if (readOnlyCount == 0) {
             IllegalMonitorStateException imse = new IllegalMonitorStateException(

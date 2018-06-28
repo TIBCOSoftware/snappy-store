@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -43,6 +43,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
 
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import io.snappydata.thrift.HostAddress;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -73,6 +74,8 @@ public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
    */
   private volatile int timeout;
 
+  private final boolean socketToSameHost;
+
   private int inputBufferSize = SocketParameters.DEFAULT_BUFFER_SIZE;
   private int outputBufferSize = SocketParameters.DEFAULT_BUFFER_SIZE;
 
@@ -86,6 +89,8 @@ public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
       throws TTransportException {
     super(socket);
 
+    this.socketToSameHost = ClientSharedUtils.isSocketToSameHost(
+        socket.getLocalSocketAddress(), socket.getRemoteSocketAddress());
     if (isOpen()) {
       try {
         setProperties(socket, params.getReadTimeout(), params);
@@ -127,11 +132,14 @@ public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
     this.hostAddress = hostAddress;
     this.port = port;
 
-    setProperties(getSocket(), timeout, params);
+    final Socket socket = getSocket();
+    setProperties(socket, timeout, params);
 
     if (!isOpen()) {
       this.open();
     }
+    this.socketToSameHost = ClientSharedUtils.isSocketToSameHost(
+        socket.getLocalSocketAddress(), socket.getRemoteSocketAddress());
   }
 
   /**
@@ -183,6 +191,11 @@ public final class SnappyTSSLSocket extends TSocket implements SocketTimeout {
   public void setSoTimeout(int timeout) throws SocketException {
     getSocket().setSoTimeout(timeout);
     this.timeout = timeout;
+  }
+
+  @Override
+  public boolean isSocketToSameHost() {
+    return this.socketToSameHost;
   }
 
   /**

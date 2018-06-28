@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -29,7 +29,9 @@ public class ExternalTableMetaData {
       String compressionCodec,
       String baseTable,
       String dml,
-      String[] dependents) {
+      String[] dependents,
+      String dataSourcePath,
+      String driverClass) {
     this.entityName = entityName;
     this.schema = schema;
     this.tableType = tableType;
@@ -40,6 +42,8 @@ public class ExternalTableMetaData {
     this.baseTable = baseTable;
     this.dml = dml;
     this.dependents = dependents;
+    this.dataSourcePath = dataSourcePath;
+    this.driverClass = driverClass;
   }
 
   public String entityName;
@@ -54,6 +58,9 @@ public class ExternalTableMetaData {
   public String dml;
   public String[] dependents;
   public String provider;
+  public String shortProvider;
+  public String dataSourcePath;
+  public String driverClass;
   // columns for metadata queries
   public List<Column> columns;
 

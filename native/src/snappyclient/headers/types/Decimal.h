@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -47,7 +47,6 @@
 #else
 #include <gmp.h>
 #endif
-#include <boost/numeric/conversion/cast.hpp>
 
 namespace io {
 namespace snappydata {
@@ -130,11 +129,7 @@ namespace types {
     bool wholeDigits(uint8_t* bytes, const size_t maxLen,
         size_t& actualLen) const noexcept;
 
-    void copyTo(thrift::Decimal& target) const {
-      toByteArray(target.magnitude);
-      target.signum = signum();
-      target.scale = boost::numeric_cast<int32_t>(m_scale);
-    }
+    void copyTo(thrift::Decimal& target) const;
 
     size_t toString(std::string& str) const;
 

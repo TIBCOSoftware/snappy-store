@@ -26,13 +26,14 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 import com.gemstone.gemfire.SerializationException;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.tier.MessageType;
-import com.gemstone.gemfire.internal.concurrent.S;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.util.BlobHelper;
 
@@ -116,9 +117,9 @@ public class Message  {
   protected MessageStats msgStats = null;
   protected ServerConnection sc = null;
   private int MAX_DATA = -1;
-  private S dataLimiter = null;
+  private Semaphore dataLimiter = null;
 //  private int MAX_MSGS = -1;
-  private S msgLimiter = null;
+  private Semaphore msgLimiter = null;
   private boolean hdrRead = false;  
   private int chunkSize = 1024;//Default Chunk Size.
 
@@ -692,7 +693,7 @@ public class Message  {
               this.msgLimiter.acquire(1);
             } 
             else {
-              if (!this.msgLimiter.tryAcquireMs(1, timeToWait)) {
+              if (!this.msgLimiter.tryAcquire(1, timeToWait, TimeUnit.MILLISECONDS)) {
                 if (this.msgStats != null
                     && this.msgStats instanceof CacheServerStats) {
                   ((CacheServerStats)this.msgStats).incConnectionsTimedOut();
@@ -732,7 +733,8 @@ public class Message  {
                 // may have waited for msg limit so recalc time to wait
                 newTimeToWait -= (int)sc.getCurrentMessageProcessingTime();
               }
-              if (newTimeToWait <= 0 || !this.msgLimiter.tryAcquireMs(1, newTimeToWait)) {
+              if (newTimeToWait <= 0 ||
+                  !this.msgLimiter.tryAcquire(1, newTimeToWait, TimeUnit.MILLISECONDS)) {
                 throw new IOException(LocalizedStrings.Message_OPERATION_TIMED_OUT_ON_SERVER_WAITING_ON_CONCURRENT_DATA_LIMITER_AFTER_WAITING_0_MILLISECONDS.toLocalizedString(timeToWait));
               }
             }
@@ -1114,7 +1116,8 @@ public class Message  {
       throw new IOException(LocalizedStrings.Message_DEAD_CONNECTION.toLocalizedString());
     }
   }
-  public void recv(ServerConnection sc, int MAX_DATA, S dataLimiter, int MAX_MSGS, S msgLimiter)
+  public void recv(ServerConnection sc, int MAX_DATA,
+      Semaphore dataLimiter, int MAX_MSGS, Semaphore msgLimiter)
   throws IOException {
     this.sc = sc;
     this.MAX_DATA = MAX_DATA;

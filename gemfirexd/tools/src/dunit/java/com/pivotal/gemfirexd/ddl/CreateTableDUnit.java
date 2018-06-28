@@ -18,7 +18,6 @@ package com.pivotal.gemfirexd.ddl;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.net.InetAddress;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -222,8 +221,7 @@ public class CreateTableDUnit extends DistributedSQLTestBase {
       FabricServer server = FabricServiceManager.getFabricServerInstance();
       try {
         server.start(props);
-        server.startNetworkServer(InetAddress.getLocalHost()
-            .getCanonicalHostName(), this.netPort, null);
+        server.startNetworkServer("localhost", this.netPort, null);
       } catch (Exception ex) {
         throw new TestException("failed to start server", ex);
       }
@@ -2394,8 +2392,7 @@ public class CreateTableDUnit extends DistributedSQLTestBase {
     // create and start a DBSynchronizer
     final int derbyPort = AvailablePort
         .getRandomAvailablePort(AvailablePort.SOCKET);
-    final String derbyDbUrl = "jdbc:derby://"
-        + InetAddress.getLocalHost().getHostName() + ':' + derbyPort
+    final String derbyDbUrl = "jdbc:derby://localhost:" + derbyPort
         + "/newDB;create=true;";
     final NetworkServerControl derbyServer = DBSynchronizerTestBase
         .startNetworkServer(derbyPort);
@@ -2576,8 +2573,7 @@ public class CreateTableDUnit extends DistributedSQLTestBase {
   private static int derbyServerPort;
 
   public static ResultSet readPortfolio() throws Exception {
-    final String derbyDbUrl = "jdbc:derby://"
-        + InetAddress.getLocalHost().getHostName() + ':' + derbyServerPort
+    final String derbyDbUrl = "jdbc:derby://localhost:" + derbyServerPort
         + "/newDB;";
     final Connection conn = DriverManager.getConnection(derbyDbUrl);
     PreparedStatement ps = conn

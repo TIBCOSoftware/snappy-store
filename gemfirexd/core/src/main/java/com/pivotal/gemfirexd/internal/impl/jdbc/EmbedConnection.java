@@ -2077,11 +2077,13 @@ public abstract class EmbedConnection implements EngineConnection
 			commit();
 
 		this.autoCommit = autoCommit;
+		getLanguageConnection().setAutoCommit(autoCommit);
 	}
 	
 	public void setAutoCommit(boolean autoCommit, boolean isInit) throws SQLException {
 	  if (isInit) {
 	    this.autoCommit = autoCommit;
+	    getLanguageConnection().setAutoCommit(autoCommit);
 	  } else {
 	    setAutoCommit(autoCommit);
 	  }
@@ -3142,7 +3144,8 @@ public abstract class EmbedConnection implements EngineConnection
 	 */
 	protected final void commitIfNeeded() throws SQLException 
     {
-		if (autoCommit && needCommit) 
+		if ((autoCommit && needCommit) ||
+				((GemFireTransaction)getTR().getLcc().getTransactionExecute()).getImplcitSnapshotTxStarted())
         {
             try
             {
@@ -3174,7 +3177,8 @@ public abstract class EmbedConnection implements EngineConnection
 	 */
 	protected final void commitIfAutoCommit() throws SQLException 
     {
-		if (autoCommit) 
+		if (autoCommit ||
+				((GemFireTransaction)getLanguageConnection().getTransactionExecute()).getImplcitSnapshotTxStarted())
         {
             try
             {
@@ -3379,8 +3383,12 @@ public abstract class EmbedConnection implements EngineConnection
 				info.remove(Attribute.SOFT_UPGRADE_NO_FEATURE_CHECK);
 			}
 			
-			// try to start the service if it doesn't already exist
-			GemFireStore store = Misc.getMemStoreBootingNoThrow();
+			// Try to start the service if it doesn't already exist.
+			// Skip boot if internal connection property is set.
+			boolean booted = Boolean.parseBoolean(info.getProperty(
+					com.pivotal.gemfirexd.Attribute.INTERNAL_CONNECTION));
+			GemFireStore store = booted ? Misc.getMemStoreBooting()
+			    : Misc.getMemStoreBootingNoThrow();
 			if (store == null && !Monitor.startPersistentService(dbname, info)) {
 				// a false indicates the monitor cannot handle a service
 				// of the type indicated by the protocol within the name.

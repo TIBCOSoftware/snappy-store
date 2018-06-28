@@ -1277,6 +1277,7 @@ public class DDLPersistenceHDFSTest extends JdbcTestBase {
     cluster.shutdownDataNodes();
     cluster.shutdownNameNodes();
     TestUtil.shutDown();
+    System.clearProperty("test.build.data");
   }
   
   public void testBug50574() throws Exception {

@@ -18,14 +18,15 @@
 package com.pivotal.gemfirexd.ddl;
 
 import java.io.File;
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
@@ -39,15 +40,15 @@ import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverAdapter;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
-import com.pivotal.gemfirexd.internal.engine.db.FabricDatabase;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
-
+import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.dunit.VM;
+import io.snappydata.test.util.TestException;
 
 /**
  * @author kneeraj
@@ -323,7 +324,6 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
           new Object[] { GfxdConstants.TRACE_PERSIST_INDEX, "false" });
       invokeInEveryVM(IndexPersistenceDUnit.class, "setSystemProperty",
           new Object[] { GfxdConstants.TRACE_PERSIST_INDEX_FINEST, "false" });
-      stopAllVMs();
     }
   }
 
@@ -419,7 +419,6 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
       }
       invokeInEveryVM(IndexPersistenceDUnit.class, "setSystemProperty",
           new Object[] { GfxdConstants.GFXD_PERSIST_INDEXES, "false" });
-      stopAllVMs();
     }
   }
 
@@ -483,7 +482,6 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
       }
       invokeInEveryVM(IndexPersistenceDUnit.class, "setSystemProperty",
           new Object[] { GfxdConstants.GFXD_PERSIST_INDEXES, "false" });
-      stopAllVMs();
     }
   }
 
@@ -567,53 +565,240 @@ public class IndexPersistenceDUnit extends DistributedSQLTestBase {
     } finally {
       invokeInEveryVM(IndexPersistenceDUnit.class, "setSystemProperty",
           new Object[] { GfxdConstants.GFXD_PERSIST_INDEXES, "false" });
-    invokeInEveryVM(IndexPersistenceDUnit.class, "unsetTestOplogToTestForCompaction");
-      stopAllVMs();
+      invokeInEveryVM(IndexPersistenceDUnit.class, "unsetTestOplogToTestForCompaction");
     }
   }
-  
-  public static void deleteAllOplogFiles() throws IOException {
-    try {
-      File currDir = new File(".");
-      File[] files = currDir.listFiles();
-      getGlobalLogger().info("current dir is: " + currDir.getCanonicalPath());
 
-      for (File f : files) {
-        if (f.getAbsolutePath().contains("BACKUPGFXD-DEFAULT-DISKSTORE")) {
-          getGlobalLogger().info("deleting file: " + f + " from dir: " + currDir);
-          f.delete();
-        }
-        if (f.isDirectory()) {
-          File newDir = new File(f.getCanonicalPath());
-          File[] newFiles = newDir.listFiles();
-          for (File nf : newFiles) {
-            if (nf.getAbsolutePath().contains("BACKUPGFXD-DEFAULT-DISKSTORE")) {
-              getGlobalLogger().info(
-                  "deleting file: " + nf + " from dir: " + newDir);
-              nf.delete();
-            }
-          }
-        }
+  private void verifyRowsIndexScanSNAP1933(Connection conn, String[] tableNames,
+      String[] indexNames, int maxValInsert, String alias) throws Exception {
+    final int delta1 = 100;
+    int sz = tableNames.length;
+    Statement s = conn.createStatement();
+    for (int i =0; i < sz; i++) {
+      ResultSet rs = s.executeQuery("select count(*) "
+          + alias
+          + " from ODS."
+          + tableNames[i]
+          + " --gemfirexd-properties index="
+          + indexNames[i]
+          + "");
+      while(rs.next()) {
+        long l = rs.getLong(1);
+        assertEquals(maxValInsert, l);
       }
-      for (File f : files) {
-        if (f.getAbsolutePath().contains("GFXD-DD-DISKSTORE")) {
-          getGlobalLogger().info("deleting file: " + f + " from dir: " + currDir);
-          f.delete();
-        }
-        if (f.isDirectory()) {
-          File newDir = new File(f.getCanonicalPath());
-          File[] newFiles = newDir.listFiles();
-          for (File nf : newFiles) {
-            if (nf.getAbsolutePath().contains("GFXD-DD-DISKSTORE")) {
-              getGlobalLogger().info(
-                  "deleting file: " + nf + " from dir: " + newDir);
-              nf.delete();
-            }
-          }
-        }
-      }
-    } catch (IOException e) {
-      // ignore ...
     }
+  }
+
+  private void verifyRowsTableScanSNAP1933(Connection conn, String[] tableNames,
+      int maxValInsert) throws Exception {
+    final int delta1 = 100;
+    int sz = tableNames.length;
+    Statement s = conn.createStatement();
+    for (int i =0; i < sz; i++) {
+      ResultSet rs = s.executeQuery("select count(*) "
+          + " from ODS."
+          + tableNames[i]
+          + " --gemfirexd-properties index=null"
+          + "");
+      while(rs.next()) {
+        long l = rs.getLong(1);
+        assertEquals(maxValInsert, l);
+      }
+    }
+  }
+
+  private void updateRowsSNAP1933(Connection conn, String[] tableNames,
+      int delta) throws Exception {
+    final int delta1 = 100;
+    int sz = tableNames.length;
+    Statement s = conn.createStatement();
+    for (int i =0; i < sz; i++) {
+      for (int j = 0; j < 10; j++) {
+        int id = delta1 * j + 31 + delta;
+        int r = s.executeUpdate("update ODS."
+            + tableNames[i]
+            + " set cd_typ_ref_id=" + id + 10 + " where CD_VAL_ID=" +  id);
+        assert(r == 1);
+      }
+    }
+  }
+
+  private int restartServerSNAP1933(String[] tableNames, String[] indexNames, int maxValInsert,
+      int netPort, int restartServerNum, Properties serverInfo, int delta, String alias,
+      String persistIndexes) throws Exception {
+    stopVMNums(-restartServerNum);
+    Connection conn1 = TestUtil.getNetConnection(netPort, null, null);
+    updateRowsSNAP1933(conn1, tableNames, delta);
+    restartServerVMNums(new int[] { restartServerNum }, 0, null, serverInfo);
+    invokeInEveryVM(IndexPersistenceDUnit.class, "setSystemProperty",
+        new Object[] { GfxdConstants.GFXD_PERSIST_INDEXES, persistIndexes });
+
+    // Start network server on the VMs
+    final int netPort2 = startNetworkServer(restartServerNum, null, null);
+    Connection conn2_1 = TestUtil.getNetConnection(netPort2, null, null);
+    verifyRowsTableScanSNAP1933(conn2_1, tableNames, maxValInsert);
+    Connection conn2_2 = TestUtil.getNetConnection(netPort2, null, null);
+    verifyRowsIndexScanSNAP1933(conn2_2, tableNames, indexNames, maxValInsert, alias);
+
+    // ensure recovery is complete before restarting again
+    serverSQLExecute(1, "call sys.rebalance_all_buckets()");
+
+    return netPort2;
+  }
+
+  private void createTableSNAP1933(int redundancy, int buckets, boolean withEviction,
+      final String tableName, final String indexName,
+      final int maxValInsert) throws Exception {
+    String persistExtension = " PERSISTENT ASYNCHRONOUS";
+    if (withEviction) {
+      persistExtension = " EVICTION BY LRUCOUNT 1 EVICTACTION OVERFLOW PERSISTENT ASYNCHRONOUS";
+    }
+    serverSQLExecute(1, "Create table "
+        + " ODS." + tableName
+        + "(cd_val_id bigint GENERATED BY DEFAULT AS IDENTITY  NOT NULL,"
+        + " ver bigint NOT NULL,"
+        + " client_id bigint NOT NULL,"
+        + " cd_val varchar(50) NOT NULL,"
+        + " cd_typ_ref_id bigint NOT NULL,"
+        + " src_sys_ref_id varchar(10) NOT NULL,"
+        + " src_sys_rec_id varchar(150),"
+        + " vld_frm_dt TIMESTAMP NOT NULL,"
+        + " vld_to_dt TIMESTAMP,"
+        + " PRIMARY KEY (client_id,cd_val_id)"
+        + " ) PARTITION BY COLUMN (cd_val_id)"
+        + " REDUNDANCY " + redundancy
+        + " BUCKETS " + buckets
+        + persistExtension);
+
+    serverSQLExecute(1, "create index ODS." + indexName
+        + " on ODS." + tableName
+        + " (cd_typ_ref_id)");
+
+    serverExecute(1, new SerializableRunnable() {
+      @Override
+      public void run() {
+        try {
+          Connection conn = TestUtil.getConnection();
+          PreparedStatement pstmt = conn.prepareStatement("insert into ODS."
+              + tableName + " values(?,?,?,'nCZTBAdWBJslcVrJhumxuE',?,"
+              + "'fsHxXsyktJ','tENSZGopJOKFTNzKLnWPlAMnjNPJKXBfWhbFFK',"
+              + "'2012-01-18 15:13:43','2012-01-18 13:08:07')");
+          for (int i = 1; i < maxValInsert + 1; i++) {
+            int intVal = i;
+            pstmt.setInt(1, intVal);
+            pstmt.setInt(2, 1997 + intVal);
+            pstmt.setInt(3, intVal);
+            pstmt.setInt(4, 328647 + intVal);
+            pstmt.addBatch();
+          }
+          pstmt.executeBatch();
+        } catch (java.sql.SQLException sqle) {
+          throw new TestException(sqle.toString(), sqle);
+        }
+      }
+    });
+
+    sqlExecuteVerify(new int[]{}, new int[]{1, 2}, "select count(*) from ODS."
+        + tableName, null, "" + maxValInsert);
+  }
+
+  private void verifyAtLastSNAP1933(int maxValInsert, String[] tableNames,
+      String[] indexNames) throws Exception {
+    int sz = tableNames.length;
+    for (int i =0; i < sz; i++) {
+      sqlExecuteVerify(new int[]{}, new int[]{1, 2, 3}, "select count(*) from ODS."
+          + tableNames[i]
+          + " --gemfirexd-properties index="
+          + indexNames[i]
+          + "", null, "" + maxValInsert);
+    }
+  }
+
+  private void dropIndexesSNAP1933(String[] indexNames) throws Exception {
+    int sz = indexNames.length;
+    for (int i =0; i < sz; i++) {
+      serverSQLExecute(1, "Drop index " + " ODS." + indexNames[i]);
+    }
+  }
+
+  private void dropTablesSNAP1933(String[] tableNames) throws Exception {
+    int sz = tableNames.length;
+    for (int i =0; i < sz; i++) {
+      serverSQLExecute(1, "Drop table " + " ODS." + tableNames[i]);
+    }
+  }
+
+  private void verifySNAP1933(String persistIndexes) throws Exception {
+    try {
+      Properties serverInfo = new Properties();
+      // serverInfo.setProperty("log-level", "fine");
+      startServerVMs(3, 0, null, serverInfo);
+      // Start network server on the VMs
+      int netPort1 = startNetworkServer(1, null, null);
+      int netPort2 = startNetworkServer(2, null, null);
+      int netPort3 = startNetworkServer(3, null, null);
+      invokeInEveryVM(IndexPersistenceDUnit.class, "setSystemProperty",
+          new Object[] {GfxdConstants.GFXD_PERSIST_INDEXES, persistIndexes});
+
+      int maxValInsert = 1000;
+      String tableNames[] = {"CODE_VALUE_1_1_T", "CODE_VALUE_1_1_F", "CODE_VALUE_1_99_T", "CODE_VALUE_1_99_F"
+          , "CODE_VALUE_2_1_T", "CODE_VALUE_2_1_F", "CODE_VALUE_2_99_T", "CODE_VALUE_2_99_F"
+          , "CODE_VALUE_3_1_T", "CODE_VALUE_3_1_F", "CODE_VALUE_3_99_T", "CODE_VALUE_3_99_F"};
+      String indexNames[] = {"CODE_VALUE_1_1_T", "CODE_VALUE_1_1_F", "CODE_VALUE_1_99_T", "CODE_VALUE_1_99_F"
+          ,"CODE_VALUE_2_1_T", "CODE_VALUE_2_1_F", "CODE_VALUE_2_99_T", "CODE_VALUE_2_99_F"
+          ,"CODE_VALUE_3_1_T", "CODE_VALUE_3_1_F", "CODE_VALUE_3_99_T", "CODE_VALUE_3_99_F"};
+
+      createTableSNAP1933(1, 1, true, tableNames[0], indexNames[0], maxValInsert);
+      createTableSNAP1933(1, 1, false, tableNames[1], indexNames[1], maxValInsert);
+      createTableSNAP1933(1, 99, true, tableNames[2], indexNames[2], maxValInsert);
+      createTableSNAP1933(1, 99, false, tableNames[3], indexNames[3], maxValInsert);
+
+      createTableSNAP1933(2, 1, true, tableNames[4], indexNames[4], maxValInsert);
+      createTableSNAP1933(2, 1, false, tableNames[5], indexNames[5], maxValInsert);
+      createTableSNAP1933(2, 99, true, tableNames[6], indexNames[6], maxValInsert);
+      createTableSNAP1933(2, 99, false, tableNames[7], indexNames[7], maxValInsert);
+
+      createTableSNAP1933(3, 1, true, tableNames[8], indexNames[8], maxValInsert);
+      createTableSNAP1933(3, 1, false, tableNames[9], indexNames[9], maxValInsert);
+      createTableSNAP1933(3, 99, true, tableNames[10], indexNames[10], maxValInsert);
+      createTableSNAP1933(3, 99, false, tableNames[11], indexNames[11], maxValInsert);
+
+      netPort1 = restartServerSNAP1933(tableNames, indexNames, maxValInsert, netPort2, 1,
+          serverInfo, 0, "counta", persistIndexes);
+      netPort2 = restartServerSNAP1933(tableNames, indexNames, maxValInsert, netPort3, 2,
+          serverInfo, 1, "countb", persistIndexes);
+      netPort3 = restartServerSNAP1933(tableNames, indexNames, maxValInsert, netPort1, 3,
+          serverInfo, 2, "countc", persistIndexes);
+
+      netPort1 = restartServerSNAP1933(tableNames, indexNames, maxValInsert, netPort2, 1,
+          serverInfo, 3, "countd", persistIndexes);
+      netPort2 = restartServerSNAP1933(tableNames, indexNames, maxValInsert, netPort3, 2,
+          serverInfo, 4, "counte", persistIndexes);
+      netPort3 = restartServerSNAP1933(tableNames, indexNames, maxValInsert, netPort1, 3,
+          serverInfo, 5, "countf", persistIndexes);
+
+      netPort1 = restartServerSNAP1933(tableNames, indexNames, maxValInsert, netPort2, 1,
+          serverInfo, 6, "countg", persistIndexes);
+      netPort2 = restartServerSNAP1933(tableNames, indexNames, maxValInsert, netPort3, 2,
+          serverInfo, 7, "counth", persistIndexes);
+      netPort3 = restartServerSNAP1933(tableNames, indexNames, maxValInsert, netPort1, 3,
+          serverInfo, 8, "counti", persistIndexes);
+
+      verifyAtLastSNAP1933(maxValInsert, tableNames, indexNames);
+      dropIndexesSNAP1933(indexNames);
+      dropTablesSNAP1933(tableNames);
+      serverSQLExecute(1, "Drop schema " + " ODS RESTRICT");
+    } finally {
+      invokeInEveryVM(IndexPersistenceDUnit.class, "setSystemProperty",
+          new Object[] {GfxdConstants.GFXD_PERSIST_INDEXES, "true"});
+    }
+  }
+
+  public void testSNAP1933_persist_index_false() throws Exception {
+    verifySNAP1933("false");
+  }
+
+  public void testSNAP1933_persist_index_true() throws Exception {
+    verifySNAP1933("true");
   }
 }

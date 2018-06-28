@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -21,11 +21,9 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.sql.SQLException;
-import java.sql.Types;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.DiskAccessException;
@@ -37,9 +35,8 @@ import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedM
 import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
-import com.gemstone.gemfire.internal.cache.NoDataStoreAvailableException;
-import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.Version;
+import com.pivotal.gemfirexd.FabricServiceManager;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.DVDIOUtil;
@@ -53,7 +50,6 @@ import com.pivotal.gemfirexd.internal.iapi.sql.ParameterValueSet;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.SQLDecimal;
-import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericParameterValueSet;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
@@ -80,10 +76,14 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   // possible values for leadNodeFlags
   private static final byte IS_PREPARED_STATEMENT = 0x1;
   private static final byte IS_PREPARED_PHASE = 0x2;
+  private static final byte IS_UPDATE_OR_DELETE = 0x4;
+
+  private static final Pattern PARSE_EXCEPTION = Pattern.compile(
+      "(Pars[a-zA-Z]*Exception)|(Pars[a-zA-Z]*Error)");
 
   public LeadNodeExecutorMsg(String sql, String schema, LeadNodeExecutionContext ctx,
-      GfxdResultCollector<Object> rc, ParameterValueSet inpvs,
-      boolean isPreparedStatement, boolean isPreparedPhase) {
+      GfxdResultCollector<Object> rc, ParameterValueSet inpvs, boolean isPreparedStatement,
+      boolean isPreparedPhase, Boolean isUpdateOrDelete) {
     super(rc, null, false, true);
     this.schema = schema;
     this.sql = sql;
@@ -91,6 +91,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
     this.pvs = inpvs;
     if (isPreparedStatement) leadNodeFlags |= IS_PREPARED_STATEMENT;
     if (isPreparedPhase) leadNodeFlags |= IS_PREPARED_PHASE;
+    if (isUpdateOrDelete) leadNodeFlags |= IS_UPDATE_OR_DELETE;
   }
 
   /**
@@ -107,6 +108,8 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   public boolean isPreparedPhase() {
     return (leadNodeFlags & IS_PREPARED_PHASE) != 0;
   }
+
+  public boolean isUpdateOrDelete() { return (leadNodeFlags & IS_UPDATE_OR_DELETE) != 0; }
 
   @Override
   public Set<DistributedMember> getMembers() {
@@ -129,6 +132,8 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
 
   @Override
   protected void execute() throws Exception {
+    ClassLoader origLoader = Thread.currentThread().getContextClassLoader();
+    CallbackFactoryProvider.getClusterCallbacks().setLeadClassLoader();
     try {
       if (isPreparedStatement() && !isPreparedPhase()) {
         getParams();
@@ -143,7 +148,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
       final Version v = m.getVersionObject();
       exec = CallbackFactoryProvider.getClusterCallbacks().getSQLExecute(
           sql, schema, ctx, v, this.isPreparedStatement(), this.isPreparedPhase(), this.pvs);
-      SnappyResultHolder srh = new SnappyResultHolder(exec);
+      SnappyResultHolder srh = new SnappyResultHolder(exec, isUpdateOrDelete());
 
       srh.prepareSend(this);
       this.lastResultSent = true;
@@ -154,10 +159,14 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
       }
     } catch (Exception ex) {
       throw getExceptionToSendToServer(ex);
+    } finally {
+      Thread.currentThread().setContextClassLoader(origLoader);
     }
   }
 
   private static class SparkExceptionWrapper extends Exception {
+    private static final long serialVersionUID = -4668836542769295434L;
+
     public SparkExceptionWrapper(Throwable ex) {
       super(ex.getClass().getName() + ": " + ex.getMessage(), ex.getCause());
       this.setStackTrace(ex.getStackTrace());
@@ -167,13 +176,13 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   public static Exception getExceptionToSendToServer(Exception ex) {
     // Catch all exceptions and convert so can be caught at XD side
     // Check if the exception can be serialized or not
-    boolean wrapExcepton = false;
+    boolean wrapException = false;
     HeapDataOutputStream hdos = null;
     try {
       hdos = new HeapDataOutputStream();
       DataSerializer.writeObject(ex, hdos);
     } catch (Exception e) {
-      wrapExcepton = true;
+      wrapException = true;
     } finally {
       if (hdos != null) {
         hdos.close();
@@ -181,30 +190,53 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
     }
 
     Throwable cause = ex;
+    Throwable sparkEx = null;
     while (cause != null) {
-      if (cause.getClass().getName().contains("AnalysisException")) {
+      if (cause instanceof StandardException || cause instanceof SQLException) {
+        return (Exception)cause;
+      }
+      String causeName = cause.getClass().getName();
+      if (causeName.contains("parboiled") || PARSE_EXCEPTION.matcher(causeName).find()) {
         return StandardException.newException(
-            SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
-            (!wrapExcepton ? cause : new SparkExceptionWrapper(cause)), cause.getMessage());
-      } else if (cause.getClass().getName().contains("apache.spark.storage")) {
+            SQLState.LANG_SYNTAX_ERROR,
+            (!wrapException ? cause : new SparkExceptionWrapper(cause)),
+            cause.getMessage());
+      } else if (causeName.contains("AnalysisException") ||
+          causeName.contains("NoSuch") || causeName.contains("NotFound")) {
+        return StandardException.newException(
+            SQLState.LANG_SYNTAX_OR_ANALYSIS_EXCEPTION,
+            (!wrapException ? cause : new SparkExceptionWrapper(cause)),
+            cause.getMessage());
+      } else if (causeName.contains("apache.spark.storage")) {
         return StandardException.newException(
             SQLState.DATA_UNEXPECTED_EXCEPTION,
-            (!wrapExcepton ? cause : new SparkExceptionWrapper(cause)), cause.getMessage());
-      } else if (cause.getClass().getName().contains("apache.spark.sql")) {
+            (!wrapException ? cause : new SparkExceptionWrapper(cause)),
+            cause.getMessage());
+      } else if (causeName.contains("apache.spark.sql")) {
         Throwable nestedCause = cause.getCause();
         while (nestedCause != null) {
           if (nestedCause.getClass().getName().contains("ErrorLimitExceededException")) {
             return StandardException.newException(
                 SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
-                (!wrapExcepton ? nestedCause : new SparkExceptionWrapper(nestedCause)), nestedCause.getMessage());
+                (!wrapException ? nestedCause : new SparkExceptionWrapper(
+                    nestedCause)), nestedCause.getMessage());
           }
           nestedCause = nestedCause.getCause();
         }
         return StandardException.newException(
             SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
-            (!wrapExcepton ? cause : new SparkExceptionWrapper(cause)), cause.getMessage());
+            (!wrapException ? cause : new SparkExceptionWrapper(cause)),
+            cause.getMessage());
+      } else if (causeName.contains("SparkException")) {
+        sparkEx = cause;
       }
       cause = cause.getCause();
+    }
+    if (sparkEx != null) {
+      return StandardException.newException(
+          SQLState.LANG_UNEXPECTED_USER_EXCEPTION,
+          (!wrapException ? sparkEx : new SparkExceptionWrapper(sparkEx)),
+          sparkEx.getMessage());
     }
     return ex;
   }
@@ -215,11 +247,19 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
     try {
       super.executeFunction(enableStreaming);
     } catch (RuntimeException re) {
-      throw handleLeadNodeException(re);
+      throw handleLeadNodeRuntimeException(re);
     }
   }
 
-  public static RuntimeException handleLeadNodeException(
+  public static Exception handleLeadNodeException(Exception e) {
+    if (e instanceof RuntimeException) {
+      return handleLeadNodeRuntimeException((RuntimeException)e);
+    } else {
+      return e;
+    }
+  }
+
+  public static RuntimeException handleLeadNodeRuntimeException(
       RuntimeException re) {
     Throwable cause = re;
     if (re instanceof GemFireXDRuntimeException ||
@@ -246,8 +286,8 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   @Override
   protected LeadNodeExecutorMsg clone() {
     final LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(this.sql, this.schema, this.ctx,
-        (GfxdResultCollector<Object>)this.userCollector, this.pvs,
-        this.isPreparedStatement(), this.isPreparedPhase());
+        (GfxdResultCollector<Object>)this.userCollector, this.pvs, this.isPreparedStatement(),
+        this.isPreparedPhase(), this.isUpdateOrDelete());
     msg.exec = this.exec;
     return msg;
   }
@@ -328,6 +368,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   public void appendFields(final StringBuilder sb) {
     sb.append("sql: " + sql);
     sb.append(" ;schema: " + schema);
+    sb.append(" ;isUpdateOrDelete=").append(this.isUpdateOrDelete());
     sb.append(" ;isPreparedStatement=").append(this.isPreparedStatement());
     sb.append(" ;isPreparedPhase=").append(this.isPreparedPhase());
     sb.append(" ;pvs=").append(this.pvs);
@@ -369,6 +410,6 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   public void reset() {
     super.reset();
     this.pvsData = null;
-    this.pvs = null;
+    this.pvsTypes = null;
   }
 }

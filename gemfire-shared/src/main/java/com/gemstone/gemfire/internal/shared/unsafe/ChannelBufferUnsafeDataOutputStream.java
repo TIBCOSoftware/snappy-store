@@ -264,7 +264,7 @@ public class ChannelBufferUnsafeDataOutputStream extends
 
   /** Write a short in big-endian format on given off-heap address. */
   protected static long putShort(long addrPos, final int v) {
-    if (ClientSharedUtils.isLittleEndian) {
+    if (UnsafeHolder.littleEndian) {
       Platform.putShort(null, addrPos, Short.reverseBytes((short)v));
     } else {
       Platform.putShort(null, addrPos, (short)v);
@@ -274,7 +274,7 @@ public class ChannelBufferUnsafeDataOutputStream extends
 
   /** Write a long in big-endian format on given off-heap address. */
   protected static long putLong(long addrPos, final long v) {
-    if (ClientSharedUtils.isLittleEndian) {
+    if (UnsafeHolder.littleEndian) {
       Platform.putLong(null, addrPos, Long.reverseBytes(v));
     } else {
       Platform.putLong(null, addrPos, v);

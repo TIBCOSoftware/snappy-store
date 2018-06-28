@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -61,8 +62,6 @@ import com.gemstone.gemfire.internal.cache.tier.InterestType;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientUpdater;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ServerQueueStatus;
-import com.gemstone.gemfire.internal.concurrent.CDL;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.security.GemFireSecurityException;
 import com.gemstone.org.jgroups.util.StringId;
@@ -98,7 +97,7 @@ public class QueueManagerImpl implements QueueManager {
   // lock until there is a primary.
   protected final Object lock = new Object();
   
-  protected final CDL initializedLatch = CFactory.createCDL(1);
+  protected final CountDownLatch initializedLatch = new CountDownLatch(1);
 
   private ScheduledThreadPoolExecutor recoveryThread;
   private volatile boolean sentClientReady;

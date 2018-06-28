@@ -123,7 +123,7 @@ public class GfxdGatewaySenderStopMessage extends AbstractGfxdReplayableMessage 
    */
   @Override
   public boolean shouldBeConflated() {
-    return false;
+    return true;
   }
 
   /**
@@ -133,7 +133,7 @@ public class GfxdGatewaySenderStopMessage extends AbstractGfxdReplayableMessage 
   public String getRegionToConflate() {
     // match the region name with those returned by Create/Drop statements
     // so that these will be removed from queue after DROP
-    return SchemaDescriptor.STD_SYSTEM_SCHEMA_NAME + (this.isAsyncQueue
+    return SchemaDescriptor.STD_SYSTEM_SCHEMA_NAME + '.' + (this.isAsyncQueue
         ? CreateAsyncEventListenerConstantAction.REGION_PREFIX_FOR_CONFLATION
         : CreateGatewaySenderConstantAction.REGION_PREFIX_FOR_CONFLATION) + id;
   }

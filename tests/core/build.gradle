@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -30,9 +30,9 @@ idea {
 }
 
 dependencies {
-  provided project(subprojectBase + 'gemfire-jgroups')
-  provided project(subprojectBase + 'gemfire-core')
-  provided project(subprojectBase + 'gemfire-examples')
+  compileOnly project(subprojectBase + 'gemfire-jgroups')
+  compileOnly project(subprojectBase + 'gemfire-core')
+  compileOnly project(subprojectBase + 'gemfire-examples')
   compile project(subprojectBase + 'gemfire-junit')
 
   compile "junit:junit:${junitVersion}"
@@ -47,7 +47,7 @@ dependencies {
   compile 'org.jmock:jmock-legacy:2.5.1'
   compile 'edu.umd.cs.mtc:multithreadedtc:1.01'
   compile 'cglib:cglib-nodep:2.1_3'
-  compile 'org.objenesis:objenesis:1.0'
+  compile 'org.objenesis:objenesis:2.6'
   compile 'net.spy:spymemcached:2.12.0'
   compile 'com.vmware:vijava:5.1'
   compile 'org.jdom:jdom:1.1.3'
@@ -58,25 +58,35 @@ dependencies {
   compile "org.eclipse.jetty:jetty-util:${jettyVersion}"
   compile "org.eclipse.jetty:jetty-webapp:${jettyVersion}"
 
-  provided 'net.sourceforge.jline:jline:1.0.S2-B'
-  provided files("${System.getProperty('java.home')}/../lib/tools.jar")
-  provided "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-common:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
-  provided "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
-  provided "com.google.protobuf:protobuf-java:${protobufVersion}"
-  provided "com.sun.jersey:jersey-core:${sunJerseyVersion}"
-  provided "com.sun.jersey:jersey-server:${sunJerseyVersion}"
-  provided "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
-  provided "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
-  provided "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
-  provided "com.google.code.findbugs:jsr305:${jsr305Version}"
-  provided "org.springframework:spring-core:${springVersion}"
-  provided 'org.springframework.shell:spring-shell:1.0.0.RELEASE'
+  compile "org.apache.hbase:hbase-common:${hbaseVersion}"
+  compile "org.apache.hbase:hbase-protocol:${hbaseVersion}"
+  compile "org.apache.hbase:hbase-client:${hbaseVersion}"
+  compile "org.apache.hbase:hbase-server:${hbaseVersion}"
+  compile "com.sun.jersey:jersey-core:${sunJerseyVersion}"
+  compile "com.sun.jersey:jersey-server:${sunJerseyVersion}"
+  compile "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
+  compile "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
+  compile "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
+  compile 'org.cloudera.htrace:htrace-core:2.05'
 
-  provided "org.apache.hadoop:hadoop-common:${hadoopVersion}:tests"
-  provided "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}:tests"
+  compileOnly 'net.sourceforge.jline:jline:1.0.S2-B'
+  compileOnly files("${System.getProperty('java.home')}/../lib/tools.jar")
+  compileOnly "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-common:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
+  compileOnly "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
+  compileOnly "com.google.protobuf:protobuf-java:${protobufVersion}"
+  compileOnly "org.glassfish.jersey.core:jersey-server:${jerseyVersion}"
+  compileOnly "org.glassfish.jersey.containers:jersey-container-servlet-core:${jerseyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-server:${jettyVersion}"
+  compileOnly "org.eclipse.jetty:jetty-util:${jettyVersion}"
+  compileOnly "com.google.code.findbugs:jsr305:${jsr305Version}"
+  compileOnly "org.springframework:spring-core:${springVersion}"
+  compileOnly 'org.springframework.shell:spring-shell:1.0.0.RELEASE'
+
+  compileOnly "org.apache.hadoop:hadoop-common:${hadoopVersion}:tests"
+  compileOnly "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}:tests"
 }
 
 archivesBaseName = 'gemfire-hydra-tests'

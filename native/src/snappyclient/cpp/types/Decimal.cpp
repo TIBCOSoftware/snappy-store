@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -41,6 +41,7 @@
 
 #include "../impl/InternalUtils.h"
 #include <boost/lexical_cast.hpp>
+#include <boost/numeric/conversion/cast.hpp>
 
 using namespace io::snappydata;
 using namespace io::snappydata::client::types;
@@ -346,6 +347,12 @@ bool Decimal::wholeDigits(uint8_t* bytes, const size_t maxLen,
   } else {
     return false;
   }
+}
+
+void Decimal::copyTo(thrift::Decimal& target) const {
+  toByteArray(target.magnitude);
+  target.signum = signum();
+  target.scale = boost::numeric_cast<int32_t>(m_scale);
 }
 
 size_t Decimal::toString(std::string& str) const {

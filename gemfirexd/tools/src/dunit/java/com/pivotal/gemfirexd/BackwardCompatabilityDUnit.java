@@ -20,7 +20,6 @@ package com.pivotal.gemfirexd;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.net.InetAddress;
 import java.net.URI;
 import java.sql.*;
 import java.util.HashSet;
@@ -30,7 +29,6 @@ import java.util.Set;
 import com.gemstone.gemfire.cache.CacheException;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.internal.AvailablePort;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverAdapter;
@@ -260,8 +258,7 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
 
     Properties props = new Properties();
     props.setProperty(Attribute.TABLE_DEFAULT_PARTITIONED, "false");
-    props.setProperty("locators", SocketCreator.getLocalHost().getHostAddress()
-        + '[' + rollingVersionLocatorPort + ']');
+    props.setProperty("locators", "localhost[" + rollingVersionLocatorPort + ']');
 
     getLogWriter().info("Starting current version server" );
     startServerVMs(1, 0, null, props);
@@ -487,6 +484,7 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
                   + locatorDir);
           ProcessStart versionedLocator = startVersionedLocator(version,
               versionDir, locatorDir, false);
+          waitForProcesses(versionedLocator);
           int baseVersionLocatorPort = versionedLocator.port;
 
           getLogWriter().info("Starting earlier version servers");
@@ -496,7 +494,7 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
           int clientPort1 = versionedServer1.port;
           ProcessStart versionedServer2 = startVersionedServer(version,
               versionDir, serverTwoDir, -1, baseVersionLocatorPort, false);
-          waitForProcesses(versionedLocator, versionedServer1, versionedServer2);
+          waitForProcesses(versionedServer1, versionedServer2);
 
           // Add data with the client for that version
           doWithVersionedClient(prevProduct, version, versionDir, clientPort1, "addDataForClient");
@@ -527,6 +525,8 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
           // Current product is always GemFireXD
           product = PRODUCT_GEMFIREXD;
           ProcessStart currentLocator = startCurrentVersionLocator(locatorDir);
+          // wait for current locator to start
+          waitForProcesses(currentLocator);
           int currentVersionLocatorPort = currentLocator.port;
 
           ProcessStart currentServer1 = startCurrentVersionServer(serverOneDir,
@@ -534,7 +534,7 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
           int clientPort = currentServer1.port;
           ProcessStart currentServer2 = startCurrentVersionServer(serverTwoDir,
               currentVersionLocatorPort);
-          waitForProcesses(currentLocator, currentServer1, currentServer2);
+          waitForProcesses(currentServer1, currentServer2);
 
           getLogWriter().info("Verifying data using current GEMFIREXD DRIVER and JDBC URL jdbc:gemfirexd://");
           Connection connection = this.getNetConnection("localhost", clientPort, new Properties());
@@ -1372,9 +1372,7 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
         dropDatabaseObjects(null, clientPort);
 
         // execute a client from "verIdx" against the above server
-        final String localHostName = SocketCreator.getLocalHost().getHostName();
-        runVersionedClient(listIdx, verIdx, localHostName, clientPort, 10,
-            10000);
+        runVersionedClient(listIdx, verIdx, "localhost", clientPort, 10, 10000);
 
         // drop all tables and indexes for next server
         dropDatabaseObjects(null, clientPort);
@@ -1947,8 +1945,8 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
     if(withAuth){
       startOps = new String[] { utilLauncher, "locator", "start",
           "-dir=" + workingDir, 
-          "-log-file=" + logFile, "-peer-discovery-port=" + locatorPort1, 
-          "-auth-provider=BUILTIN",
+          "-log-file=" + logFile, "-peer-discovery-port=" + locatorPort1,
+          "-heap-size=512m", "-auth-provider=BUILTIN",
           "-gemfirexd.sql-authorization=TRUE",
           "-gemfirexd.user.SYSADMIN=SA",
           "-user=SYSADMIN",
@@ -1961,7 +1959,7 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
       startOps = new String[] { utilLauncher, "locator", "start",
           "-dir=" + workingDir, 
           "-log-file=" + logFile, "-peer-discovery-port=" + locatorPort1,
-          "-locators=localhost:" + locatorPort2,
+          "-heap-size=512m", "-locators=localhost:" + locatorPort2,
           "-J-Dgemfirexd.thrift-default=false",
           "-client-port=" + clientPort};
     }
@@ -2417,8 +2415,7 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
       insertData_TestBug47753(oldConn, "2");
       verifyData_TestBug47753(oldConn, getQuery_TestBug47753("2"));
 
-      final InetAddress localHost = SocketCreator.getLocalHost();
-      String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
+      String url = TestUtil.getNetProtocol("localhost", netPort);
       Connection newConn = DriverManager.getConnection(url,
           TestUtil.getNetProperties(connClientProps));
       serverExecute(3, clearStmtCache);
@@ -2467,8 +2464,7 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
       final int netPort = startNetworkServer(4, null, null);
 
       TestUtil.loadNetDriver();
-      final InetAddress localHost = SocketCreator.getLocalHost();
-      String url = TestUtil.getNetProtocol(localHost.getHostName(), netPort);
+      String url = TestUtil.getNetProtocol("localhost", netPort);
       Connection conn = DriverManager.getConnection(url,
           TestUtil.getNetProperties(connClientProps));
       serverExecute(4, clearStmtCache);

@@ -58,8 +58,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -79,7 +77,6 @@ import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.SerializationException;
 import com.gemstone.gemfire.cache.*;
-import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.OplogCancelledException;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
@@ -121,6 +118,7 @@ import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.sequencelog.EntryLogger;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
+import io.snappydata.collection.OpenHashSet;
 import com.gemstone.gemfire.internal.shared.UnsupportedGFXDVersionException;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.shared.unsafe.ChannelBufferUnsafeDataInputStream;
@@ -129,8 +127,8 @@ import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.util.IOUtils;
 import com.gemstone.gemfire.internal.util.TransformUtils;
 import com.gemstone.gemfire.pdx.internal.PdxWriterImpl;
-import com.gemstone.gnu.trove.THashSet;
 import com.gemstone.gnu.trove.TLongHashSet;
+import io.snappydata.collection.ObjectObjectHashMap;
 
 /**
  * Implements an operation log to write to disk.
@@ -843,6 +841,7 @@ public final class Oplog implements CompactableOplog {
       if (ex instanceof DiskAccessException) {
         throw (DiskAccessException) ex;
       }
+      logger.warning(LocalizedStrings.Oplog_FAILED_CREATING_OPERATION_LOG_BECAUSE_0, ex);
       throw new DiskAccessException(LocalizedStrings.Oplog_FAILED_CREATING_OPERATION_LOG_BECAUSE_0.toLocalizedString(ex), getParent());
     }
   }
@@ -1188,7 +1187,7 @@ public final class Oplog implements CompactableOplog {
   
   private void preblow(OplogFile olf, long maxSize) throws IOException {
     GemFireCacheImpl.StaticSystemCallbacks ssc = GemFireCacheImpl.getInternalProductCallbacks();
-    if (ssc != null && ssc.isSnappyStore() && ssc.isAccessor()
+    if (!getParent().isOfflineCompacting() && ssc != null && ssc.isSnappyStore() && ssc.isAccessor()
         && this.getParent().getName().equals(GemFireCacheImpl.getDefaultDiskStoreName())) {
       logger.warning(LocalizedStrings.SHOULDNT_INVOKE, "Pre blow is invoked on Accessor Node.");
       return;
@@ -1323,8 +1322,11 @@ public final class Oplog implements CompactableOplog {
     if (prevOlf != null) {
       synchronized (prevOplog.crf) {
         // release the old stream buffer
-        prevOlf.outputStream.close();
-        prevOlf.outputStream = null;
+        final OplogFile.FileChannelOutputStream outputStream = prevOlf.outputStream;
+        if (outputStream != null) {
+          outputStream.close();
+          prevOlf.outputStream = null;
+        }
       }
     }
     final int bufSize = Integer.getInteger("WRITE_BUF_SIZE", 32768);
@@ -1466,8 +1468,7 @@ public final class Oplog implements CompactableOplog {
     Map<String,File> baselineOplogMap = TransformUtils.transformAndMap(baselineOplogFiles,TransformUtils.fileNameTransformer);
     
     // Returned Map of baseline file to current oplog file
-    Map<File,File> baselineToOplogMap = new HashMap<File,File>();
-    
+    Map<File,File> baselineToOplogMap = ObjectObjectHashMap.withExpectedSize(16);
     for(Iterator<File> itr = allFiles.iterator(); itr.hasNext(); ) {
       File file = itr.next();
       // If the file is in the baseline, add it to the baseline map and remove
@@ -4955,7 +4956,7 @@ public final class Oplog implements CompactableOplog {
           try {
             krfFileCreate();
 
-            final HashSet<KRFEntry> notWrittenKRFs = new HashSet<Oplog.KRFEntry>();
+            final OpenHashSet<KRFEntry> notWrittenKRFs = new OpenHashSet<>();
             // sortedLiveEntries are now sorted
             // so we can start writing them to disk.
             if (sortedLiveEntries != null) {
@@ -5034,7 +5035,7 @@ public final class Oplog implements CompactableOplog {
    */
   @SuppressWarnings("unchecked")
   public long writeIRF(List<KRFEntry> sortedLiveEntries,
-      final HashSet<KRFEntry> notWrittenKRFs,
+      final OpenHashSet<KRFEntry> notWrittenKRFs,
       Set<SortedIndexContainer> dumpIndexes,
       Map<SortedIndexContainer, SortedIndexRecoveryJob> loadIndexes)
       throws IOException {
@@ -5078,7 +5079,7 @@ public final class Oplog implements CompactableOplog {
       }
       else if (!this.indexesWritten.isEmpty()) {
         // remove the indexes already written for this oplog
-        dumpIndexes = new THashSet(dumpIndexes);
+        dumpIndexes = new OpenHashSet<>(dumpIndexes);
         dumpIndexes.removeAll(this.indexesWritten);
       }
       if (logger.fineEnabled() || traceOn) {
@@ -5135,7 +5136,7 @@ public final class Oplog implements CompactableOplog {
     if (indexes != null) {
       ArrayList<DiskRegionInfo> targetRegions = new ArrayList<DiskRegionInfo>(
           this.regionMap.size());
-      THashSet usedRegionIDs = new THashSet(indexes.size());
+      OpenHashSet<String> usedRegionIDs = new OpenHashSet<>(indexes.size());
       for (SortedIndexContainer index : indexes) {
         usedRegionIDs.add(index.getBaseRegion().getRegionID());
       }
@@ -7290,8 +7291,8 @@ public final class Oplog implements CompactableOplog {
 
     List<KRFEntry> sortedLiveEntries;
 
-    HashMap<Long, DiskRegionInfo> targetRegions =
-        new HashMap<Long, DiskRegionInfo>(this.regionMap);
+    ObjectObjectHashMap<Long, DiskRegionInfo> targetRegions =
+        ObjectObjectHashMap.from(this.regionMap);
     synchronized (sync) {
       //Don't bother to include any stores that have reached the lru limit
       Iterator<DiskRecoveryStore> itr = diskRecoveryStores.values().iterator();
@@ -7450,8 +7451,8 @@ public final class Oplog implements CompactableOplog {
         || logger.fineEnabled();
 
     // store the affected indexes and the parent region against each disk region
-    final HashMap<Long, IndexData[]> indexRecoveryMap =
-        new HashMap<Long, IndexData[]>(this.regionMap.size());
+    final ObjectObjectHashMap<Long, IndexData[]> indexRecoveryMap =
+        ObjectObjectHashMap.withExpectedSize(this.regionMap.size());
     ArrayList<DiskRegionInfo> targetRegions = new ArrayList<DiskRegionInfo>(
         this.regionMap.size());
     this.idxkrf.getDiskIdToIndexDataMap(null, indexes, 0, indexRecoveryMap,
@@ -7653,9 +7654,9 @@ public final class Oplog implements CompactableOplog {
       }
 
       @Override
-      protected int writeBufferNonBlocking(final ByteBuffer buffer,
+      protected int writeBufferNoWait(final ByteBuffer buffer,
           final WritableByteChannel channel) throws IOException {
-        int numWritten = super.writeBufferNonBlocking(buffer, channel);
+        int numWritten = super.writeBufferNoWait(buffer, channel);
         if (numWritten > 0) {
           bytesFlushed += numWritten;
         }
@@ -8385,7 +8386,7 @@ public final class Oplog implements CompactableOplog {
     public Object prepareValueForCache(RegionEntryContext r, Object val, boolean isEntryUpdate,
         boolean valHasMetadataForGfxdOffHeapUpdate)
     { throw new IllegalStateException("Should never be called");  }
-    public void _removePhase1() {throw new IllegalStateException();}
+    public void _removePhase1(LocalRegion r) {throw new IllegalStateException();}
     public DiskId getDiskId() {throw new IllegalStateException();}
     public long getLastModified() {throw new IllegalStateException();}
     public boolean isRecovered() {throw new IllegalStateException();}
@@ -8398,7 +8399,7 @@ public final class Oplog implements CompactableOplog {
     public void setLastModified(long lastModifiedTime) { throw new IllegalStateException(); }
     public boolean isLockedForCreate() {throw new IllegalStateException();}
     public Object getRawKey() { throw new IllegalStateException(); }
-    public void setOwner(LocalRegion owner) { throw new IllegalStateException(); }
+    public void setOwner(LocalRegion owner, Object previousOwner) { throw new IllegalStateException(); }
     public Object getContainerInfo() { throw new IllegalStateException();
     }
 
@@ -8509,7 +8510,7 @@ public final class Oplog implements CompactableOplog {
       // TODO Auto-generated method stub
     }
     @Override
-    public void removePhase2() {
+    public void removePhase2(LocalRegion r) {
       // TODO Auto-generated method stub
     }
     @Override
@@ -8535,7 +8536,8 @@ public final class Oplog implements CompactableOplog {
       return false;
     }
     @Override
-    public boolean isOverflowedToDisk(LocalRegion r, DiskPosition dp) {
+    public boolean isOverflowedToDisk(LocalRegion r, DiskPosition dp,
+        boolean alwaysFetchPosition) {
       // TODO Auto-generated method stub
       return false;
     }
@@ -8553,11 +8555,6 @@ public final class Oplog implements CompactableOplog {
     public void setValueWithTombstoneCheck(Object value, EntryEvent event)
         throws RegionClearedException {
       // TODO Auto-generated method stub
-    }
-    @Override
-    public Object getTransformedValue() {
-      // TODO Auto-generated method stub
-      return null;
     }
     @Override
     public Object getValueInVM(RegionEntryContext context) {
@@ -8665,7 +8662,7 @@ public final class Oplog implements CompactableOplog {
       return false;
     }
     @Override
-    public void setValueToNull() {
+    public void setValueToNull(RegionEntryContext context) {
       // TODO Auto-generated method stub
     }
     @Override
@@ -8897,7 +8894,7 @@ public final class Oplog implements CompactableOplog {
       // both in sync and async disk write cases
       if (!krfExists
           && couldHaveKrf) {
-        pendingKrfTags = new HashMap<DiskEntry, VersionHolder>(200);
+        pendingKrfTags = ObjectObjectHashMap.withExpectedSize(200);
       } else {
         pendingKrfTags = null;
       }

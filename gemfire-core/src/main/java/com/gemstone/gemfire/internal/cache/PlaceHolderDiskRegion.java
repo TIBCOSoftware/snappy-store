@@ -44,7 +44,7 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
      * of the DiskInitFile.
      */
     PlaceHolderDiskRegion(DiskStoreImpl ds, long id, String name) {
-      super(ds, id);
+      super(ds, id, name);
       this.name = name;
       // do the remaining init in setConfig
     }
@@ -106,9 +106,6 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
       return (DiskEntry)re;
     }
     public DiskEntry initializeRecoveredEntry(Object key, DiskEntry.RecoveredEntry value) {
-      if(!LocalRegion.isMetaTable(getName())){
-        LocalRegion.regionPath.set(getName());
-      }
       RegionEntry re = getRecoveredEntryMap().initRecoveredEntry(key, value);
       if (re == null) {
         throw new InternalGemFireError(LocalizedStrings.LocalRegion_ENTRY_ALREADY_EXISTED_0.toLocalizedString(key));

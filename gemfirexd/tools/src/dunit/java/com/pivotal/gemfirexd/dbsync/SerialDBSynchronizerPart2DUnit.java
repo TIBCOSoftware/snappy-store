@@ -18,7 +18,6 @@ package com.pivotal.gemfirexd.dbsync;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.net.InetAddress;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -489,8 +488,7 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
     // start derby server
     Class.forName("org.apache.derby.jdbc.EmbeddedDriver").newInstance();
     NetworkServerControl netServer = startNetworkServer();
-    final String derbyDbUrl = "jdbc:derby://"
-        + InetAddress.getLocalHost().getHostName() + ':' + this.netPort
+    final String derbyDbUrl = "jdbc:derby://localhost:" + this.netPort
         + "/newDB;";
     Connection dbConn = DriverManager.getConnection(derbyDbUrl + "create=true",
         dbUser, dbPasswd);
@@ -767,8 +765,7 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
     try {
       server = startNetworkServer();
       createDerbyValidationArtefacts();
-      String derbyDbUrl = "jdbc:derby://"
-          + InetAddress.getLocalHost().getHostName() + ':' + this.netPort
+      String derbyDbUrl = "jdbc:derby://localhost:" + this.netPort
           + "/newDB;create=true;";
       if (TestUtil.currentUserName != null) {
         derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
@@ -849,8 +846,7 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
     try {
       server = startNetworkServer();
       createDerbyValidationArtefacts();
-      String derbyDbUrl = "jdbc:derby://"
-          + InetAddress.getLocalHost().getHostName() + ':' + this.netPort
+      String derbyDbUrl = "jdbc:derby://localhost:" + this.netPort
           + "/newDB;create=true;";
       if (TestUtil.currentUserName != null) {
         derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
@@ -949,8 +945,7 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
     try {
       server = startNetworkServer();
       createDerbyValidationArtefacts();
-      String derbyDbUrl = "jdbc:derby://"
-          + InetAddress.getLocalHost().getHostName() + ':' + this.netPort
+      String derbyDbUrl = "jdbc:derby://localhost:" + this.netPort
           + "/newDB;create=true;";
       if (TestUtil.currentUserName != null) {
         derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
@@ -1031,8 +1026,7 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
     try {
       server = startNetworkServer();
       createDerbyValidationArtefacts();
-      String derbyDbUrl = "jdbc:derby://"
-          + InetAddress.getLocalHost().getHostName() + ':' + this.netPort
+      String derbyDbUrl = "jdbc:derby://localhost:" + this.netPort
           + "/newDB;create=true;";
       if (TestUtil.currentUserName != null) {
         derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
@@ -1131,8 +1125,7 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
     try {
       server = startNetworkServer();
       createDerbyValidationArtefacts();
-      String derbyDbUrl = "jdbc:derby://"
-          + InetAddress.getLocalHost().getHostName() + ':' + this.netPort
+      String derbyDbUrl = "jdbc:derby://localhost:" + this.netPort
           + "/newDB;create=true;";
       if (TestUtil.currentUserName != null) {
         derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
@@ -1224,8 +1217,7 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
     try {
       server = startNetworkServer();
       createDerbyValidationArtefacts();
-      String derbyDbUrl = "jdbc:derby://"
-          + InetAddress.getLocalHost().getHostName() + ':' + this.netPort
+      String derbyDbUrl = "jdbc:derby://localhost:" + this.netPort
           + "/newDB;create=true;";
       if (TestUtil.currentUserName != null) {
         derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
@@ -1319,8 +1311,7 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
     try {
       server = startNetworkServer();
       createDerbyValidationArtefacts();
-      String derbyDbUrl = "jdbc:derby://"
-          + InetAddress.getLocalHost().getHostName() + ':' + this.netPort
+      String derbyDbUrl = "jdbc:derby://localhost:" + this.netPort
           + "/newDB;create=true;";
       if (TestUtil.currentUserName != null) {
         derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
@@ -1411,8 +1402,7 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
     try {
       server = startNetworkServer();
       createDerbyValidationArtefacts();
-      String derbyDbUrl = "jdbc:derby://"
-          + InetAddress.getLocalHost().getHostName() + ':' + this.netPort
+      String derbyDbUrl = "jdbc:derby://localhost:" + this.netPort
           + "/newDB;create=true;";
       if (TestUtil.currentUserName != null) {
         derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
@@ -1508,8 +1498,7 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
     try {
       server = startNetworkServer();
       createDerbyValidationArtefacts();
-      String derbyDbUrl = "jdbc:derby://"
-          + InetAddress.getLocalHost().getHostName() + ':' + this.netPort
+      String derbyDbUrl = "jdbc:derby://localhost:" + this.netPort
           + "/newDB;create=true;";
       if (TestUtil.currentUserName != null) {
         derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
@@ -1605,8 +1594,7 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
     try {
       server = startNetworkServer();
       createDerbyValidationArtefacts();
-      String derbyDbUrl = "jdbc:derby://"
-          + InetAddress.getLocalHost().getHostName() + ':' + this.netPort
+      String derbyDbUrl = "jdbc:derby://localhost:" + this.netPort
           + "/newDB;create=true;";
       if (TestUtil.currentUserName != null) {
         derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
@@ -1720,8 +1708,7 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
     Connection derbyConn = null;
     NetworkServerControl server = null;
     try {
-      String derbyDbUrl = "jdbc:derby://"
-          + InetAddress.getLocalHost().getHostName() + ':' + this.netPort
+      String derbyDbUrl = "jdbc:derby://localhost:" + this.netPort
           + "/newDB;create=true;";
       if (TestUtil.currentUserName != null) {
         derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
@@ -1859,8 +1846,7 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
       startServerVMs(3, -1, "SG1");
       startClientVMs(1, 0, null);
       // create table
-      String derbyDbUrl = "jdbc:derby://"
-          + InetAddress.getLocalHost().getHostName() + ':' + this.netPort
+      String derbyDbUrl = "jdbc:derby://localhost:" + this.netPort
           + "/newDB;";
       if (TestUtil.currentUserName != null) {
         derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
@@ -1965,8 +1951,7 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
     try {
       server = startNetworkServer();
       createDerbyValidationArtefacts();
-      String derbyDbUrl = "jdbc:derby://"
-          + InetAddress.getLocalHost().getHostName() + ':' + this.netPort
+      String derbyDbUrl = "jdbc:derby://localhost:" + this.netPort
           + "/newDB;create=true;";
       if (TestUtil.currentUserName != null) {
         derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
@@ -2064,8 +2049,7 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
     Connection derbyConn = null;
     NetworkServerControl server = null;
     try {
-      String derbyDbUrl = "jdbc:derby://"
-          + InetAddress.getLocalHost().getHostName() + ':' + this.netPort
+      String derbyDbUrl = "jdbc:derby://localhost:" + this.netPort
           + "/newDB;create=true;";
       if (TestUtil.currentUserName != null) {
         derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
@@ -2099,8 +2083,7 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
           + "DESCRIPTION varchar(1024),ADDRESS varchar(1024),ID1 int)");
       derbyConn.commit();
 
-      String dbsyncDerbyUrl = "jdbc:derby://"
-          + InetAddress.getLocalHost().getHostName() + ':' + this.netPort
+      String dbsyncDerbyUrl = "jdbc:derby://localhost:" + this.netPort
           + "/newDB;create=true" ;
       if (TestUtil.currentUserName != null) {
         dbsyncDerbyUrl += (",user=" + TestUtil.currentUserName + ",password="
@@ -2228,8 +2211,7 @@ public class SerialDBSynchronizerPart2DUnit extends DBSynchronizerTestBase {
     try {
       server = startNetworkServer();
       createDerbyValidationArtefacts();
-      String derbyDbUrl = "jdbc:derby://"
-          + InetAddress.getLocalHost().getHostName() + ':' + this.netPort
+      String derbyDbUrl = "jdbc:derby://localhost:" + this.netPort
           + "/newDB;create=true;";
       if (TestUtil.currentUserName != null) {
         derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="

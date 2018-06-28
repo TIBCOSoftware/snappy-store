@@ -1,0 +1,18 @@
+locatorHosts=1
+locatorVMsPerHost=1
+locatorThreadsPerVM=1
+
+A=client
+clientHosts=5
+clientVMsPerHost=5
+clientThreadsPerVM=3
+
+B=server
+serverHosts=5
+serverVMsPerHost=3
+serverThreadsPerVM=1
+
+api=GFXD
+
+clientHeapMB = 256
+serverHeapMB = 256

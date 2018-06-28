@@ -54,7 +54,7 @@ class StatementAttrs {
   StatementAttrs(StatementAttrs&&) noexcept;
   StatementAttrs& operator=(const StatementAttrs&);
   StatementAttrs& operator=(StatementAttrs&&) noexcept;
-  StatementAttrs() : resultSetType(0), updatable(0), holdCursorsOverCommit(0), requireAutoIncCols(0), batchSize(1024), fetchReverse(0), lobChunkSize(0), maxRows(0), maxFieldSize(0), timeout(0), cursorName(), possibleDuplicate(0), poolable(0), doEscapeProcessing(0), bucketIdsTable() {
+  StatementAttrs() : resultSetType(0), updatable(0), holdCursorsOverCommit(0), requireAutoIncCols(0), batchSize(8192), fetchReverse(0), lobChunkSize(0), maxRows(0), maxFieldSize(0), timeout(0), cursorName(), possibleDuplicate(0), poolable(0), doEscapeProcessing(0), bucketIdsTable() {
   }
 
   virtual ~StatementAttrs() noexcept;

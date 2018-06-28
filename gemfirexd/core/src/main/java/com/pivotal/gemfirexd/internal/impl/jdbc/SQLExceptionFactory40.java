@@ -104,7 +104,8 @@ public class SQLExceptionFactory40 extends SQLExceptionFactory {
       return new EmbedSQLIntegrityConstraintViolationException(message,
           messageId, next, severity, t, args);
     }
-    else if (sqlState.startsWith(SQLState.AUTHORIZATION_SPEC_PREFIX)) {
+    else if (sqlState.startsWith(SQLState.AUTHORIZATION_SPEC_PREFIX)
+        || sqlState.startsWith(SQLState.AUTH_FAILURE_PREFIX)) {
       return new EmbedSQLInvalidAuthorizationSpecException(message, messageId,
           next, severity, t, args);
     }

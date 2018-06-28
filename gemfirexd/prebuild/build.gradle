@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -16,9 +16,9 @@
  */
 
 dependencies {
-  compile project(subprojectBase + 'gemfirexd-shared')
+  compile project(subprojectBase + 'snappydata-store-shared')
 
-  provided files("${System.getProperty('java.home')}/../lib/tools.jar")
-  provided "org.apache.ant:ant:${antVersion}"
+  compileOnly files("${System.getProperty('java.home')}/../lib/tools.jar")
+  compileOnly "org.apache.ant:ant:${antVersion}"
 }
 jar.baseName = 'snappydata-store-prebuild'

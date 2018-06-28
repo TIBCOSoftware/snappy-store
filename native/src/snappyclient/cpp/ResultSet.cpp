@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -266,7 +266,8 @@ std::unique_ptr<ResultSet> ResultSet::getNextResults(
       return resultSet;
     }
   } else {
-    throw GET_SQLEXCEPTION2(SQLStateMessage::INVALID_CURSOR_STATE_MSG2);
+    // single forward-only result set that has been consumed
+    return std::unique_ptr<ResultSet>(nullptr);
   }
 }
 

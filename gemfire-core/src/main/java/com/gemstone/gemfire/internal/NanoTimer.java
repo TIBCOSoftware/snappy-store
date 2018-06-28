@@ -72,18 +72,12 @@ public final class NanoTimer {
      */
     try {
       isNativeTimer = GemFireCacheImpl.gfxdSystem()
-          && NativeCalls.getInstance().loadNativeLibrary() ? SharedLibrary
-          .register("gemfirexd") : false;
+          && NativeCalls.getInstance().loadNativeLibrary()
+          && SharedLibrary.register("gemfirexd");
 
       // test method call. can throw UnsatisfiedLinkError if unsuccessful.
       _nanoTime(NativeCalls.CLOCKID_REALTIME);
-    } catch (Exception e) {
-      isNativeTimer = false;
-      if (SharedLibrary.debug) {
-        SharedLibrary.logInitMessage(LogWriterImpl.WARNING_LEVEL,
-            "_nanoTime couldn't be invoked successfully.", e);
-      }
-    } catch (UnsatisfiedLinkError e) {
+    } catch (Exception | UnsatisfiedLinkError e) {
       isNativeTimer = false;
       if (SharedLibrary.debug) {
         SharedLibrary.logInitMessage(LogWriterImpl.WARNING_LEVEL,
@@ -118,7 +112,7 @@ public final class NanoTimer {
           for (int clockId : clockIds) {
             int sum = 0;
             long start = _nanoTime(clockId);
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 50; i++) {
               sum += i;
             }
             long end = _nanoTime(clockId);

@@ -16,7 +16,6 @@
  */
 package com.pivotal.gemfirexd.wan;
 
-import java.net.InetAddress;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -26,7 +25,6 @@ import java.util.Properties;
 import java.util.concurrent.Callable;
 
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.FabricLocator;
@@ -80,12 +78,10 @@ public class GfxdWanTestBase extends DistributedSQLTestBase{
     
     int siteOnePort = startNetworkServer(siteOneServerNum, null, null);
     int siteTwoPort = startNetworkServer(siteTwoServerNum, null, null);
-    final InetAddress localHost = SocketCreator.getLocalHost();
 
     getLogWriter().info("Comparing site results for query:" + query);
 
-    String firstUrl = TestUtil.getNetProtocol(localHost.getHostName(),
-        siteOnePort);
+    String firstUrl = TestUtil.getNetProtocol("localhost", siteOnePort);
     Properties props = new Properties();
 
     Connection conn = DriverManager.getConnection(firstUrl, props);
@@ -93,8 +89,7 @@ public class GfxdWanTestBase extends DistributedSQLTestBase{
     st.execute(query);
     ResultSet result = st.getResultSet();
 
-    String secondUrl = TestUtil.getNetProtocol(localHost.getHostName(),
-        siteTwoPort);
+    String secondUrl = TestUtil.getNetProtocol("localhost", siteTwoPort);
     Connection conn2 = DriverManager.getConnection(secondUrl, props);
     Statement st2 = conn2.createStatement();
     st2.execute(query);
@@ -548,8 +543,7 @@ public class GfxdWanTestBase extends DistributedSQLTestBase{
         + port + "],server=true,peer=true,hostname-for-clients=localhost");
     final FabricLocator locator = FabricServiceManager
         .getFabricLocatorInstance();
-    final InetAddress localHost = InetAddress.getLocalHost();
-    locator.start(localHost.getHostAddress(), port, props);
+    locator.start("localhost", port, props);
     return port;
   }
   
@@ -563,8 +557,7 @@ public class GfxdWanTestBase extends DistributedSQLTestBase{
     props.setProperty(DistributionConfig.START_LOCATOR_NAME, "localhost[" + port + "],server=true,peer=true,hostname-for-clients=localhost");
     props.setProperty(DistributionConfig.REMOTE_LOCATORS_NAME, "localhost[" + remoteLocPort + "]");
     final FabricLocator locator = FabricServiceManager.getFabricLocatorInstance();
-    final InetAddress localHost = InetAddress.getLocalHost();
-    locator.start(localHost.getHostAddress(), port, props);
+    locator.start("localhost", port, props);
     return port;
   }
   

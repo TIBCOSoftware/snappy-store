@@ -88,9 +88,8 @@ public class CacheDistributionAdvisor extends DistributionAdvisor  {
   private static final int ASYNC_EVENT_QUEUE_IDS_MASK = 0x200000;
   private static final int HAS_ACTIVE_GATEWAY_SENDER_MASK = 0x400000;
   private static final int HAS_ACTIVE_ASYNC_QUEUE_MASK = 0x800000;
-
+  private static final int IS_LOCATOR_MASK = 0x1000000;
   private static final int IS_OFF_HEAP_MASK = 0x2000000;
-  
   private static final int HAS_DB_SYNCH_OR_ASYNC_LISTENER_MASK = 0x4000000;
 
   // moved initializ* to DistributionAdvisor
@@ -634,6 +633,8 @@ public class CacheDistributionAdvisor extends DistributionAdvisor  {
       Assert.assertTrue(!this.scope.isLocal());
       return s;
     }
+
+    private boolean isLocator(int bits) {return (bits & IS_LOCATOR_MASK) != 0;}
 
     private boolean hasGatewaySenderIds(int bits) {
       return (bits & GATEWAY_SENDER_IDS_MASK) != 0;

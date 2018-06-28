@@ -14,9 +14,6 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-/**
- *
- */
 package com.gemstone.gemfire.internal.cache.tier.sockets;
 
 import java.io.EOFException;
@@ -29,6 +26,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Semaphore;
 import java.util.regex.Pattern;
 
 import com.gemstone.gemfire.CancelException;
@@ -71,17 +69,11 @@ import com.gemstone.gemfire.internal.cache.tier.Command;
 import com.gemstone.gemfire.internal.cache.tier.InterestType;
 import com.gemstone.gemfire.internal.cache.tier.MessageType;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.S;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.security.AuthorizeRequestPP;
 import com.gemstone.gemfire.internal.sequencelog.EntryLogger;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.security.GemFireSecurityException;
-
-import java.io.*;
-import java.util.*;
-import java.util.regex.Pattern;
 
 /**
  * @author ashahid
@@ -128,21 +120,21 @@ public abstract class BaseCommand implements Command {
   private static final int MAX_INCOMING_MSGS = Integer.getInteger(
       "BridgeServer.MAX_INCOMING_MSGS", -1).intValue();
 
-  private static final S incomingDataLimiter;
+  private static final Semaphore incomingDataLimiter;
 
-  private static final S incomingMsgLimiter;
+  private static final Semaphore incomingMsgLimiter;
   static {
-    S tmp;
+    Semaphore tmp;
     if (MAX_INCOMING_DATA > 0) {
       // backport requires that this is fair since we inc by values > 1
-      tmp = CFactory.createS(MAX_INCOMING_DATA, true);
+      tmp = new Semaphore(MAX_INCOMING_DATA, true);
     }
     else {
       tmp = null;
     }
     incomingDataLimiter = tmp;
     if (MAX_INCOMING_MSGS > 0) {
-      tmp = CFactory.createS(MAX_INCOMING_MSGS, false); // unfair for best
+      tmp = new Semaphore(MAX_INCOMING_MSGS, false); // unfair for best
       // performance
     }
     else {

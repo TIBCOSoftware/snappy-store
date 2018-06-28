@@ -2930,7 +2930,15 @@ public class CreateTableTest extends JdbcTestBase {
         stmt.executeBatch();
 
         // In case the statement completes successfully which is not
-        // expected
+        // expected. May not fail because replicated region insert
+        // checks for value being the same while lastModifiedTime should
+        // be different to qualify as a different update, so try again.
+        Thread.sleep(10);
+        stmt.addBatch(insertData);
+        stmt.addBatch(insertData);
+        stmt.addBatch(insertData);
+        stmt.executeBatch();
+
         fail("Unexpected: SQL statement should have failed");
       } catch (SQLException se) {
         // Verify the SQLException can be serialized (DERBY-790)
@@ -2940,12 +2948,13 @@ public class CreateTableTest extends JdbcTestBase {
             se.getSQLState(), se_ser);
         SqlExceptionTest.assertSQLExceptionEquals(se, se_ser);
       } finally {
-        stmt.execute("delete from tableWithPK where 1=1");
+        stmt.execute("delete from tableWithPK");
         if (i == 2) {
           stopNetServer();
         }
       }
     }
+    getStatement().execute("DROP TABLE tableWithPK");
   }
 
   public void testBug43889() throws Exception {

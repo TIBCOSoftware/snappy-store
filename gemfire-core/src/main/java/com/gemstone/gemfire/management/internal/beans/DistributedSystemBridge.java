@@ -520,7 +520,9 @@ public class DistributedSystemBridge {
       Map<DistributedMember, Set<PersistentID>> existingDataStores = PrepareBackupRequest
           .send(dm, recipients);
       Map<DistributedMember, Set<PersistentID>> successfulMembers = FinishBackupRequest
-          .send(dm, recipients, targetDir, null /*TODO rishi update this for new backup features */);
+          .send(dm, recipients, targetDir,
+              null /*TODO rishi update this for new backup features */,
+              FinishBackupRequest.DISKSTORE_ALL);
 
       Iterator<DistributedMember> it = successfulMembers.keySet().iterator();
 

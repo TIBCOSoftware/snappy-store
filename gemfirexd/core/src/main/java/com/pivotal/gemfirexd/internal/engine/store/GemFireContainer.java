@@ -339,6 +339,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   private AtomicReference<ExternalTableMetaData> externalTableMetaData =
       new AtomicReference<ExternalTableMetaData>(null);
 
+  private final IndexStats stats;
   /**
    * !!!:ezoerner:20080320 need to determine what exceptions this should throw
    * 
@@ -423,6 +424,14 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       this.region = null;
       this.singleSchema = this.baseContainer.getCurrentRowFormatter();
       this.oldTableInfos = null;
+
+      if (this.baseContainer.isApplicationTable() &&
+          !Misc.isSnappyHiveMetaTable(getSchemaName())) {
+        this.stats = new IndexStats(gfCache.getDistributedSystem(), qualifiedName);
+      }
+      else {
+        this.stats = null;
+      }
       // Write the index creation records to disk store if table is persistent.
       // It doesn't really matter if the index creation ultimately fails due
       // to some reason (e.g. uniqueness violation on some other node) and this
@@ -436,8 +445,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
             .getDiskStoreName();
         DiskStoreImpl store;
         if (diskStoreName != null && (store = Misc.getGemFireCache()
-            .findDiskStore(diskStoreName)) != null
-            && !store.isUsedForInternalUse()) {
+            .findDiskStore(diskStoreName)) != null) {
           store.writeIndexCreate(getUUID());
         }
       }
@@ -445,6 +453,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       this.encoder = null;
       return;
     }
+
+    this.stats = null;
 
     Region<?, ?> rootRegion = gfCache.getRegion(schemaName);
     // if schema not found, create it now
@@ -475,24 +485,57 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     initTableFlags();
   }
 
+  public void incPointStats() {
+    if (this.stats != null) {
+      this.stats.incPointLookupStats();
+    }
+  }
+
+  public void incRangeScanStats() {
+    if (this.stats != null) {
+      this.stats.incScanStats();
+    }
+  }
+
   public void invalidateHiveMetaData() {
     externalTableMetaData.set(null);
   }
 
   public ExternalTableMetaData fetchHiveMetaData(boolean refresh) {
-    if (refresh || externalTableMetaData.get() == null) {
+    ExternalTableMetaData metaData;
+    if (refresh || (metaData = externalTableMetaData.get()) == null) {
+      // for column store, get the row buffer table name
+      String schemaName = this.schemaName;
+      String tableName = this.tableName;
+      if (isColumnStore()) {
+        String fullName = getRowBufferTableName(this.qualifiedName);
+        int schemaIndex = fullName.indexOf('.');
+        schemaName = fullName.substring(0, schemaIndex);
+        tableName = fullName.substring(schemaIndex + 1);
+      }
+      ExternalCatalog extcat = Misc.getMemStore().getExistingExternalCatalog();
       // containers are created during initialization, ignore them
-      externalTableMetaData.compareAndSet(null,
-          Misc.getMemStore().getExternalCatalog().getHiveTableMetaData(
-              this.schemaName, this.tableName, true));
+      externalTableMetaData.compareAndSet(null, extcat.getHiveTableMetaData(
+              schemaName, tableName, true));
       if (isPartitioned()) {
-        ExternalTableMetaData metaData = externalTableMetaData.get();
+        metaData = externalTableMetaData.get();
+        if (metaData == null) return null;
         ((PartitionedRegion)this.region).setColumnBatchSizes(
             metaData.columnBatchSize, metaData.columnMaxDeltaRows,
-            GfxdConstants.SNAPPY_MIN_COLUMN_DELTA_ROWS);
+            SystemProperties.SNAPPY_MIN_COLUMN_DELTA_ROWS);
+        return metaData;
       }
+      return externalTableMetaData.get();
+    } else {
+      return metaData;
     }
-    return externalTableMetaData.get();
+  }
+
+  public static String getRowBufferTableName(String columnBatchTableName) {
+    String tableName = columnBatchTableName.replace(
+        SystemProperties.SHADOW_SCHEMA_NAME_WITH_SEPARATOR, "");
+    return tableName.substring(0, tableName.length() -
+        SystemProperties.SHADOW_TABLE_SUFFIX.length());
   }
 
   public boolean cachesGlobalIndex() {
@@ -1735,7 +1778,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
                     "Invoked localClear.RecoveryLock.unlock with locked="
                         + locked.get() + " for " + xact);
               }
-              if (locked.get()) {
+              if (locked.compareAndSet(true, false)) {
                 try {
                   rl.unlock();
                 } catch (Exception e) {
@@ -1755,7 +1798,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
             @Override
             public Compensation generateUndo(Transaction xact,
                 LimitObjectInput in) throws StandardException, IOException {
-              return null;
+              // release the lock in any case if it has been acquired
+              return this;
             }
           });
         }
@@ -1931,7 +1975,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
           && (indexManager = (GfxdIndexManager)r.getIndexUpdater()) != null) {
         indexManager.drop(tran);
       }
-      if(r == null){
+      if (this.skipListMap != null) {
         releaseIndexMemory();
       }
     }
@@ -1942,6 +1986,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
    */
   final void localDestroy(final GemFireTransaction tran)
       throws StandardException {
+    final LocalRegion region = this.region;
     if (this.skipListMap != null && this.baseContainer.isApplicationTable()) {
       this.skipListMap.clear();
       LocalRegion baseRegion;
@@ -1959,31 +2004,34 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
           }
           dsImpl.writeIndexDelete(this.uuid);
         }
+        if (this.stats != null) {
+          this.stats.close();
+        }
       }
     }
-    else if (this.region == null || this.region.isDestroyed()) {
+    else if (region == null || region.isDestroyed()) {
       final LanguageConnectionContext lcc;
         // [sumedh] A genuine case should be caught at the derby level
         // while other case where it can arise is receiving a GfxdDDLMessage
         // for a region destruction that has already been replayed using
         // the hidden _DDL_STMTS_REGION.
-        if ((this.region == null || ((!Misc.initialDDLReplayInProgress() && tran != null)
+        if ((region == null || ((!Misc.initialDDLReplayInProgress() && tran != null)
             && (lcc = tran.getLanguageConnectionContext()) != null
             && !lcc.isConnectionForRemote()))
             && GemFireXDUtils.TraceDDLReplay) {
 //        if (GemFireXDUtils.TraceDDLReplay) {
           SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLREPLAY,
               "GemFireContainer#destroy: region ["
-                  + (this.region != null ? this.region.getFullPath() : "null")
+                  + (region != null ? region.getFullPath() : "null")
                   + "] for table '" + this.qualifiedName
                   + "' already destroyed");
         throw new RegionDestroyedException(toString(), this.qualifiedName);
       }
     }
-    else if (this.region.isInitialized()) {
+    else if (region.isInitialized()) {
       // before dropping the table, ensure that WAN queues, if any, are
       // drained completely         
-      waitForGatewayQueuesToFlush();      
+      waitForGatewayQueuesToFlush();
       // Do not distribute region destruction to other caches since the
       // distribution is already handled by GfxdDDLMessages.
       // [sumedh] Special treatment for partitioned region to skip the parent
@@ -1991,25 +2039,24 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       // DML on the region so there is no problem with inconsistency for PR with
       // parent region existing on some nodes and not on others.
       if (this.regionAttributes.getDataPolicy().withPartitioning()) {      
-//        ((PartitionedRegion)this.region).localDestroyRegion(null, true);
+//        ((PartitionedRegion)region).localDestroyRegion(null, true);
         final LanguageConnectionContext lcc;
         if (!Misc.initialDDLReplayInProgress() && tran != null
             && (lcc = tran.getLanguageConnectionContext()) != null
             && !lcc.isConnectionForRemote()) {
-          ((PartitionedRegion)this.region).destroyRegion(null);
+          region.destroyRegion(null);
+        } else if (Misc.initialDDLReplayInProgress()) {
+          ((PartitionedRegion)region).localDestroyRegion(null, true);
         }
-	else if (Misc.initialDDLReplayInProgress()) {
-	  ((PartitionedRegion)this.region).localDestroyRegion(null, true);
-	}
       }
       else {        
-        this.region.localDestroyRegion();
+        region.localDestroyRegion();
       }
       removeIdentityRegionEntries(tran);
     }
     else {
       // cleanup a failed initialization
-      this.region.cleanupFailedInitialization();
+      region.cleanupFailedInitialization();
     }
     if (this.globalIndexMap != null) {
       this.globalIndexMap.destroyCache();
@@ -5055,6 +5102,14 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     return isPartitioned() && ((PartitionedRegion)this.region).needsBatching();
   }
 
+  public final boolean isColumnStore() {
+    // latter check is not useful currently since only column tables use
+    // object store, but still added the check for possible future use
+    // (e.g. local index table on column store)
+    return isObjectStore() &&
+        this.tableName.endsWith(SystemProperties.SHADOW_TABLE_SUFFIX);
+  }
+
   public final boolean isOffHeap() {
     final LocalRegion region = this.region;
     if (region != null) {
@@ -5175,6 +5230,15 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
   }
 
+  public final ExecRow newExecRow(final Object rawKey,
+      @Unretained final Object rawStoreRow) {
+    if (isObjectStore()) {
+      return this.encoder.toRow(rawKey, rawStoreRow, this);
+    } else {
+      return newExecRow(rawStoreRow);
+    }
+  }
+
   /**
    * Create the appropriate ExecRow instance for a complete base row given a
    * rawStoreRow and the ExtraTableInfo.
@@ -5211,7 +5275,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
               + rawStoreRow);
         }
       } else if (isObjectStore()) {
-        return this.encoder.toRow(entry, rawStoreRow, this);
+        return this.encoder.toRow(entry.getRawKey(), rawStoreRow, this);
       }
       else {
         assert rawStoreRow instanceof DataValueDescriptor[]:
@@ -5570,7 +5634,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
             !LocalRegion.isMetaTable(region.getFullPath())) {
           ExternalCatalog ec = Misc.getMemStore().getExternalCatalog();
           LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
-          if (ec != null && lcc != null && lcc.isQueryRoutingEnabled() &&
+          if (ec != null && lcc != null && lcc.isQueryRoutingFlagTrue() &&
               Misc.initialDDLReplayDone()) {
             if (ec.isColumnTable(schemaName, table.toString(), true)) {
               dvds[SYSTABLESRowFactory.SYSTABLES_TABLETYPE - 1] = new SQLChar("C");
@@ -5819,7 +5883,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
 
     @Override
-    public Object apply(EntryEvent<?, ?> event) {      
+    public Object apply(EntryEvent<?, ?> event) {
       return apply(event.getRegion(), event.getKey(),
           ((EntryEventImpl)event).getOldValueAsOffHeapDeserializedOrRaw(),
           event.getTransactionId() == null);
@@ -6439,7 +6503,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       return false;
     }
     LocalRegion baseRegion = getBaseRegion();
-    if (!baseRegion.reservedTable()) {
+    if (baseRegion != null && !baseRegion.reservedTable()) {
       return true;
     } else {
       return false;
@@ -6455,6 +6519,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     }
   }
 
+  public void resetInitialAccounting(){
+    intialAccounting = 0;
+  }
+
   public void accountIndexMemory(boolean askMemoryManager, boolean isDestroy) {
     if (!doAccounting()) {
       return;
@@ -6468,6 +6536,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     long totalOverhead = 0L;
     try {
       sizer.estimateIndexEntryValueSizes(baseTableContainerName, indexes, retEstimates, null);
+      Misc.getCacheLogWriter().info("Computing initial index overhead of region " +
+          "" + baseTableContainerName + " for index " + this.getName()) ;
       for (Map.Entry<String, Object[]> e : retEstimates.entrySet()) {
         long[] value = (long[]) e.getValue()[0];
         sum += value[0]; //constantOverhead
@@ -6479,14 +6549,13 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         if (askMemoryManager) {
           // Only acquire memory while initial index creation. Rest all index accounting will be done by
           // region put/delete
+          Misc.getCacheLogWriter().info("Total overhead computed = "+ sum + " intialAccounting = "+intialAccounting);
           baseRegion.acquirePoolMemory(0, sum - intialAccounting,
               false, null, false);
           intialAccounting = sum;
           sizeAccountedByIndex.set(sum);
         }
         totalRows = rowCount;
-       /* System.out.println("Index Name = " + this.getQualifiedTableName() +
-                " Index Stats" + sizeAccountedByIndex.get() + " And rowCount " + totalRows);*/
       }
 
       if (!isDestroy) {

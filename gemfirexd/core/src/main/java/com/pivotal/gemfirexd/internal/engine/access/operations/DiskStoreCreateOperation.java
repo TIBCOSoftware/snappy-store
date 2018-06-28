@@ -20,10 +20,12 @@ import java.io.IOException;
 
 import com.gemstone.gemfire.cache.DiskStore;
 import com.gemstone.gemfire.cache.DiskStoreFactory;
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.pivotal.gemfirexd.internal.catalog.UUID;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
+import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.io.LimitObjectInput;
@@ -34,12 +36,11 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.GfxdDiskStoreDescripto
 import com.pivotal.gemfirexd.internal.iapi.store.raw.Compensation;
 import com.pivotal.gemfirexd.internal.iapi.store.raw.Transaction;
 import com.pivotal.gemfirexd.internal.iapi.store.raw.log.LogInstant;
+import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 
 /**
- * 
  * @author ymahajan
- * 
  */
 public class DiskStoreCreateOperation extends MemOperation {
 
@@ -55,7 +56,6 @@ public class DiskStoreCreateOperation extends MemOperation {
     this.dsf = dsf;
     this.storeName = storeName;
     this.dirPathsAndSizes = dirPathsAndSizes;
-
   }
 
   @Override
@@ -66,18 +66,19 @@ public class DiskStoreCreateOperation extends MemOperation {
     DataDictionary dd = lcc.getDataDictionary();
     dd.startWriting(lcc);
     // Check to see if this diskstore already exists in the cache
-    if (Misc.getGemFireCache().findDiskStore(storeName) != null)
-    {
-    	throw StandardException.newException(
-			  SQLState.LANG_OBJECT_ALREADY_EXISTS,"DISKSTORE",storeName);
+    GemFireCacheImpl cache = Misc.getGemFireCache();
+    if (cache.findDiskStore(storeName) != null) {
+      throw StandardException.newException(
+          SQLState.LANG_OBJECT_ALREADY_EXISTS, "DISKSTORE", storeName);
     }
-    DiskStore ds = dsf.create(storeName.toUpperCase());
+    DiskStore ds = GemFireStore.createDiskStore(dsf,
+        SharedUtils.SQLToUpperCase(storeName), cache.getCancelCriterion());
     UUIDFactory factory = dd.getUUIDFactory();
     String diskStoreName = ds.getName();
     UUID id = factory.recreateUUID(diskStoreName);
 
     GfxdDiskStoreDescriptor dsd = new GfxdDiskStoreDescriptor(dd, id, ds,
-        dirPathsAndSizes.toString());
+        dirPathsAndSizes);
     dd.addDescriptor(dsd, null, DataDictionary.SYSDISKSTORES_CATALOG_NUM,
         false, tc);
 
@@ -91,5 +92,4 @@ public class DiskStoreCreateOperation extends MemOperation {
       throws StandardException, IOException {
     return new DiskStoreDropOperation(this.storeName);
   }
-
 }

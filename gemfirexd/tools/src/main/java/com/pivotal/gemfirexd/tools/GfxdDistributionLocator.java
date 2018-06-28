@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import com.gemstone.gemfire.cache.Cache;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.distributed.internal.DistributionConfigImpl;
 import com.gemstone.gemfire.internal.DistributionLocator;
@@ -70,6 +69,14 @@ public class GfxdDistributionLocator extends GfxdServerLauncher {
     this.waitForData = false;
   }
 
+  @Override
+  protected void initKnownOptions() {
+    super.initKnownOptions();
+    knownOptions.add(LOC_ADDRESS_ARG);
+    knownOptions.add(LOC_PORT_ARG);
+    knownOptions.add(JMX_MANAGER_ARG);
+  }
+
   /**
    * Prints usage information of this program.
    */
@@ -101,8 +108,13 @@ public class GfxdDistributionLocator extends GfxdServerLauncher {
   }
 
   @Override
-  protected boolean setDefaultHeapSize() {
-    return false;
+  protected long getDefaultHeapSizeMB(boolean hostData) {
+    return 1024L;
+  }
+
+  @Override
+  protected long getDefaultSmallHeapSizeMB(boolean hostData) {
+    return 512L;
   }
 
   @Override
@@ -238,12 +250,6 @@ public class GfxdDistributionLocator extends GfxdServerLauncher {
       this.port = DistributionLocator.DEFAULT_LOCATOR_PORT;
     }
     return options;
-  }
-
-  @Override
-  protected void startRebalanceFactory(final Cache cache,
-      final Map<String, Object> options) {
-    // nothing by default
   }
 
   @Override

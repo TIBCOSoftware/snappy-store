@@ -32,12 +32,11 @@ import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.util.StopWatch;
 import com.gemstone.gemfire.internal.util.concurrent.FutureResult;
 import com.gemstone.gemfire.internal.cache.PartitionedRegionHelper;
-import com.gemstone.gemfire.internal.concurrent.*;
-
 
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.distributed.internal.deadlock.UnsafeThreadLocal;
 import com.gemstone.gemfire.distributed.internal.locks.DLockQueryProcessor.DLockQueryReplyMessage;
@@ -2814,7 +2813,7 @@ public class DLockService extends DistributedLockService {
   }
 
   // ----------- new thread state for interruptible and threadId ------------
-  private final AI threadSequence = CFactory.createAI();
+  private final AtomicInteger threadSequence = new AtomicInteger();
   protected static class ThreadRequestState {
     protected final int threadId;
     protected boolean interruptible;
@@ -2917,8 +2916,8 @@ public class DLockService extends DistributedLockService {
    * Incrementing serial number used to identify order of DLS creation
    * @see DLockService#getSerialNumber()
    */
-  private static final AI serialNumberSequencer = 
-      CFactory.createAI(START_SERIAL_NUMBER);
+  private static final AtomicInteger serialNumberSequencer =
+      new AtomicInteger(START_SERIAL_NUMBER);
 
   /** 
    * Identifies the static order in which this DLS was created in relation 

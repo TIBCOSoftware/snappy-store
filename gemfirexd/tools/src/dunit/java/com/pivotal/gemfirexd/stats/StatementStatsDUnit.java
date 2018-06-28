@@ -779,9 +779,11 @@ public class StatementStatsDUnit extends DistributedSQLTestBase {
         numExecutesInProgress);
 
     long totExecTime = s.getLong(prefix + "TotalExecutionTime");
-    if (totExecTime < executeTime) {
-      throw new TestException(
-          "Total Execution time cannot be less than execute time");
+    // TotalExecutionTime notes in wall clock millis while ExecuteTime notes
+    // in nanoTime, so the two can be different by a few milliseconds
+    if ((executeTime - totExecTime) > 5000000L) {
+      throw new TestException("Total Execution time " + totExecTime +
+          " cannot be less than execute time " + executeTime);
     }
     
     // DVD type

@@ -613,7 +613,7 @@ public abstract class DistributedCacheOperation {
           }
         }
 
-        if (viewVersion > 0) {
+        if (viewVersion != -1) {
           region.getDistributionAdvisor().endOperation(viewVersion);
           viewVersion = -1;
         }
@@ -1304,8 +1304,10 @@ public abstract class DistributedCacheOperation {
         SystemFailure.checkFailure();
         thr = t;
       } finally {
-        checkVersionIsRecorded(this.versionTag, lclRgn,
-            event.getOperation().isEntry() ? (EntryEventImpl)event : null);
+        if (event != null) {
+          checkVersionIsRecorded(this.versionTag, lclRgn,
+              event.getOperation().isEntry() ? (EntryEventImpl)event : null);
+        }
         if (sendReply) {
           // logger.fine("basicProcess: <" + this + ">: sending reply");
           ReplyException rex = null;

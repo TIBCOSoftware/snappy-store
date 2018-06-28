@@ -34,14 +34,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
 import com.gemstone.gemfire.SystemFailure;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
-import com.gemstone.gemfire.internal.concurrent.BQ;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-import com.gemstone.gemfire.internal.Assert;
 
 
 /**
@@ -81,7 +80,7 @@ import com.gemstone.gemfire.internal.Assert;
  * timestamped line in the file.<p>
  * 
  * The <i>-threads</i> option will cause the program to also create threads
- * for each reader that are backed by bounded {@link BQ queues},
+ * for each reader that are backed by bounded {@link BlockingQueue}s,
  * as outlined in the diagram below.  This can consume more memory, so it is
  * wise to increase the Xmx of the java virtual machine if you are going to
  * use this option.<p>
@@ -676,7 +675,7 @@ public class MergeLogFiles {
     private String logFileName;
 
     /** The queue containing log entries */
-    private BQ queue;
+    private BlockingQueue queue;
     
     /** whether to suppress blank lines */
     private boolean suppressBlanks;
@@ -703,7 +702,7 @@ public class MergeLogFiles {
       this.logFile =
         new BufferedReader(new InputStreamReader(logFile));
       this.logFileName = logFileName;
-      this.queue = CFactory.createLBQ(QUEUE_CAPACITY);
+      this.queue = new LinkedBlockingQueue(QUEUE_CAPACITY);
 //        new UnsharedMessageQueue(QUEUE_CAPACITY,
 //                                 (75 * QUEUE_CAPACITY) / 100);
       this.suppressBlanks = suppressBlanks;

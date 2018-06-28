@@ -32,7 +32,6 @@ import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.offheap.OffHeapRegionEntryHelper;
 import com.gemstone.gemfire.internal.offheap.UnsafeMemoryChunk;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
-import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
@@ -681,7 +680,7 @@ public final class RowFormatter implements Serializable {
 
     // serialize in big-endian format to be compatible with DataOutput.writeInt
     // and also SQLInteger.computeHashCode
-    if (ClientSharedUtils.isLittleEndian) {
+    if (UnsafeHolder.littleEndian) {
       Platform.putInt(bytes, offset + Platform.BYTE_ARRAY_OFFSET,
           Integer.reverseBytes(intValue));
       return 4; // bytes in int (= Integer.SIZE / 8);
@@ -846,7 +845,7 @@ public final class RowFormatter implements Serializable {
    * @return the short value read.
    */
   public static short readShort(final long memOffset) {
-    if (ClientSharedUtils.isLittleEndian) {
+    if (UnsafeHolder.littleEndian) {
       return Short.reverseBytes(Platform.getShort(null, memOffset));
     } else {
       return Platform.getShort(null, memOffset);
@@ -856,7 +855,7 @@ public final class RowFormatter implements Serializable {
   public static short readShort(final byte[] bytes, int offset) {
     assert bytes != null;
 
-    if (ClientSharedUtils.isLittleEndian) {
+    if (UnsafeHolder.littleEndian) {
       return Short.reverseBytes(Platform.getShort(bytes,
           offset + Platform.BYTE_ARRAY_OFFSET));
     } else {
@@ -870,7 +869,7 @@ public final class RowFormatter implements Serializable {
    * @return the int value read.
    */
   public static int readInt(final long memOffset) {
-    if (ClientSharedUtils.isLittleEndian) {
+    if (UnsafeHolder.littleEndian) {
       return Integer.reverseBytes(Platform.getInt(null, memOffset));
     } else {
       return Platform.getInt(null, memOffset);
@@ -880,7 +879,7 @@ public final class RowFormatter implements Serializable {
   public static int readInt(final byte[] bytes, int offset) {
     assert bytes != null;
 
-    if (ClientSharedUtils.isLittleEndian) {
+    if (UnsafeHolder.littleEndian) {
       return Integer.reverseBytes(Platform.getInt(bytes,
           offset + Platform.BYTE_ARRAY_OFFSET));
     } else {
@@ -931,7 +930,7 @@ public final class RowFormatter implements Serializable {
 
     // serialize in big-endian format to be compatible with DataOutput.writeInt
     // and also SQLInteger.computeHashCode
-    if (ClientSharedUtils.isLittleEndian) {
+    if (UnsafeHolder.littleEndian) {
       Platform.putLong(bytes, offset + Platform.BYTE_ARRAY_OFFSET,
           Long.reverseBytes(longValue));
       return 8; // bytes in long (= Long.SIZE / 8);
@@ -947,7 +946,7 @@ public final class RowFormatter implements Serializable {
    * @return the long value read.
    */
   public static long readLong(final long memOffset) {
-    if (ClientSharedUtils.isLittleEndian) {
+    if (UnsafeHolder.littleEndian) {
       return Long.reverseBytes(Platform.getLong(null, memOffset));
     } else {
       return Platform.getLong(null, memOffset);
@@ -957,7 +956,7 @@ public final class RowFormatter implements Serializable {
   public static long readLong(final byte[] bytes, int offset) {
     assert bytes != null;
 
-    if (ClientSharedUtils.isLittleEndian) {
+    if (UnsafeHolder.littleEndian) {
       return Long.reverseBytes(Platform.getLong(bytes,
           offset + Platform.BYTE_ARRAY_OFFSET));
     } else {

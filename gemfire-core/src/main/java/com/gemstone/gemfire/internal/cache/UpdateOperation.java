@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.gemstone.gemfire.internal.cache;
 
@@ -25,7 +43,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.InternalGemFireError;
@@ -45,7 +62,6 @@ import com.gemstone.gemfire.internal.cache.EntryEventImpl.NewValueImporter;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
-import com.gemstone.gemfire.internal.util.Breadcrumbs;
 
 /**
  * Handles distribution messaging for updating an entry in a region.
@@ -164,7 +180,6 @@ public class UpdateOperation extends AbstractUpdateOperation
     static final int IS_PUT_DML = getNextByteMask(HAS_DELTA_WITH_FULL_VALUE);
 
     private long tailKey = 0L;
-    private UUID batchUUID = BucketRegion.zeroUUID;
 
     public UpdateMessage(){}
 
@@ -245,7 +260,6 @@ public class UpdateOperation extends AbstractUpdateOperation
             .getFilterInfo(rgn.getMyId()));
       }
       ev.setTailKey(tailKey);
-      ev.setBatchUUID(batchUUID);
       ev.setVersionTag(this.versionTag);
       
       ev.setInhibitAllNotifications(this.inhibitAllNotifications);
@@ -373,7 +387,6 @@ public class UpdateOperation extends AbstractUpdateOperation
           this.callbackArg, originRemote, getSender(), generateCallbacks);
       setOldValueInEvent(result);
       result.setTailKey(this.tailKey);
-      result.setBatchUUID(this.batchUUID);
       if (this.versionTag != null) {
         result.setVersionTag(this.versionTag);
       }
@@ -430,7 +443,6 @@ public class UpdateOperation extends AbstractUpdateOperation
         this.eventId = new EventID();
         InternalDataSerializer.invokeFromData(this.eventId, in);
         this.tailKey = InternalDataSerializer.readSignedVL(in);
-        this.batchUUID = InternalDataSerializer.readUUID(in);
       }
       else {
         this.eventId = null;
@@ -471,7 +483,9 @@ public class UpdateOperation extends AbstractUpdateOperation
       super.toData(out);
 
       byte extraFlags = this.deserializationPolicy;
-      if (this.eventId != null) extraFlags |= HAS_EVENTID;
+      if (this.eventId != null) {
+        extraFlags |= HAS_EVENTID;
+      }
       boolean sendDeltaWithFullValue = this.sendDeltaWithFullValue && this.event.getDeltaBytes() != null;
       if (sendDeltaWithFullValue) {
         extraFlags |= HAS_DELTA_WITH_FULL_VALUE;
@@ -497,7 +511,6 @@ public class UpdateOperation extends AbstractUpdateOperation
         else {
           InternalDataSerializer.writeSignedVL(0, out);
         }
-        InternalDataSerializer.writeUUID(this.event.getBatchUUID(), out);
       }
       Object key = this.key;
       if (key instanceof KeyWithRegionContext) {

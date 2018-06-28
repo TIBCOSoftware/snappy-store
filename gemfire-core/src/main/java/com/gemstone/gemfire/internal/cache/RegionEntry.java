@@ -193,7 +193,8 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
    * Mark this entry as having been removed from the map that contained it
    * by setting its value to Token.REMOVED_PHASE2
    */
-  public void removePhase2();
+  public void removePhase2(LocalRegion r);
+
   /**
    * Returns true if this entry does not exist.  This is true if removal
    * has started (value == Token.REMOVED_PHASE1) or has completed
@@ -238,7 +239,8 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
    * Returns true if this entry has overflowed to disk.
    * @param dp if overflowed then the position of the value is set in dp
    */
-  public boolean isOverflowedToDisk(LocalRegion r, DistributedRegion.DiskPosition dp);
+  public boolean isOverflowedToDisk(LocalRegion r,
+      DistributedRegion.DiskPosition dp, boolean alwaysFetchPosition);
 
   /**
    * Gets the key for this entry.
@@ -277,7 +279,7 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
   /**
    * Set the owner for this RegionEntry. Used only by GemFireXD.
    */
-  public void setOwner(LocalRegion owner);
+  public void setOwner(LocalRegion owner, Object previousOwner);
 
   /**
    * Obtain and return the value of this entry using {@link #_getValue()}.
@@ -312,16 +314,7 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
    * @throws RegionClearedException thrown if the region is concurrently cleared
    */
   public void setValueWithTombstoneCheck(@Unretained Object value, EntryEvent event) throws RegionClearedException;
-  
-  /**
-   * Returns the value as stored by the RegionEntry implementation.  For instance, if compressed this
-   * value would be the compressed form.
-   *  
-   * @since 7.5
-   */
-  @Retained
-  public Object getTransformedValue();
-  
+
   /**
    * Returns the value of an entry as it resides in the VM.
    * @return the value or EntryEvent.NOT_AVAILABLE token if it's not in
@@ -426,10 +419,9 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
   public Object getSerializedValueOnDisk(LocalRegion localRegion);
 
   /**
-   * Gets the value for this entry. For DiskRegions, unlike
-   * {@link #getValue(RegionEntryContext)} this will not fault in the value rather
-   * return a temporary copy. For GemFireXD this is used during table scans in
-   * queries when faulting in every value will be only an unnecessary overhead.
+   * Get the value in region or disk without faultin in raw form without any
+   * change in storage format (SnappyData off-heap will return off-heap
+   *   buffer with a retain so caller should do a release once done).
    */
   @Retained
   public Object getValueInVMOrDiskWithoutFaultIn(LocalRegion owner);
@@ -548,7 +540,7 @@ public interface RegionEntry extends ExclusiveSharedLockObject {
   /**
    * Sets the entry value to null.
    */
-  public void setValueToNull();
+  public void setValueToNull(RegionEntryContext context);
 
   public void returnToPool();
   

@@ -1064,20 +1064,54 @@ public final class PartitionedRegionHelper {
     return null;
     
   }
-  
+
+  /**
+   * Encode the partitioned region name to embed within the name that will
+   * be used by its bucket regions ({@link #getBucketName(String, int)}).
+   */
   public static String escapePRPath(String prFullPath) {
     String escaped = prFullPath.replace("_", "__");
     escaped = escaped.replace(LocalRegion.SEPARATOR_CHAR, '_');
     return escaped;
   }
 
-  public static final String TWO_SEPARATORS = LocalRegion.SEPARATOR
-      + LocalRegion.SEPARATOR;
-
+  /**
+   * Decode the result of {@link #escapePRPath(String)} from the bucket region
+   * name to obtain the partitioned region name ({@link #getPRPath(String)}).
+   */
   public static String unescapePRPath(String escapedPath) {
+    // below logic is broken if separators are mixed with underscores
+    // at the start of region name (e.g. "/__TEST" becomes five underscores
+    // and decodes to "__/TEST")
+    /*
     String path = escapedPath.replace('_', LocalRegion.SEPARATOR_CHAR);
     path = path.replace(TWO_SEPARATORS, "_");
     return path;
+    */
+    // this still does not support a pattern like "..._/_..." which results
+    // in ambiguous encoding clashing with ".../__..."
+    StringBuilder path = new StringBuilder(escapedPath.length());
+    int searchIndex = 0;
+    int sepIndex;
+    while ((sepIndex = escapedPath.indexOf('_', searchIndex)) != -1) {
+      // replace first of odd-numbered underscores with '/'
+      // while remaining pairs with single '_'
+      path.append(escapedPath, searchIndex, sepIndex);
+      int numSeps = 1;
+      while (++sepIndex < escapedPath.length() &&
+          escapedPath.charAt(sepIndex) == '_') {
+        numSeps++;
+      }
+      if ((numSeps & 0x1) != 0) path.append(LocalRegion.SEPARATOR_CHAR);
+      int numUnderscores = numSeps >>> 1;
+      while (numUnderscores-- > 0) {
+        path.append('_');
+      }
+      searchIndex = sepIndex;
+    }
+    // append remaining after last underscore
+    path.append(escapedPath, searchIndex, escapedPath.length());
+    return path.toString();
   }
 
   public static String getBucketName(String prPath, int bucketId) {

@@ -638,7 +638,7 @@ Guide.
             </msg>
             <msg>
                 <name>0A000.S.19</name>
-                <text>Only TYPE_FORWARD_ONLY resultsets supported in this version of GemFireXD.</text>
+                <text>Only TYPE_FORWARD_ONLY resultsets supported for this query.</text>
             </msg>
             <msg>
             	<name>0A000.S.20</name>
@@ -1303,7 +1303,8 @@ Guide.
 
             <msg>
                 <name>42000</name>
-                <text>Syntax error or access rule violation; see additional errors for details.</text>
+                <text>Syntax error or analysis exception: {0}</text>
+                <arg>error</arg>
             </msg>
 
             <msg>
@@ -3816,7 +3817,7 @@ Guide.
            </msg>
            <msg>
                 <name>X0Z27.S</name>
-                <text>An unexpected exception occured during procedure execution: {0}.</text>
+                <text>An unexpected exception occured during procedure execution: {0}. Refer log file for exception details.</text>
                 <arg>value</arg>
            </msg>
            <msg>
@@ -4868,7 +4869,7 @@ ln=lower-case two-letter ISO-639 language code, CO=upper-case two-letter ISO-316
 
             <msg>
                 <name>XJ016.S</name>
-                <text>Method '{0}' not allowed on prepared statement.</text>
+                <text>Method or query '{0}' not allowed on prepared statement.</text>
                 <arg>methodName</arg>
             </msg>
 
@@ -5418,6 +5419,10 @@ ln=lower-case two-letter ISO-639 language code, CO=upper-case two-letter ISO-316
             <msg>
                 <name>XJ217.S</name>
                 <text>The locator that was supplied for this CLOB/BLOB is invalid</text>
+            </msg>
+            <msg>
+                <name>XJ218.S</name>
+                <text>Operations on column tables are not supported when query routing is disabled or autocommit is false</text>
             </msg>
 
         </family>

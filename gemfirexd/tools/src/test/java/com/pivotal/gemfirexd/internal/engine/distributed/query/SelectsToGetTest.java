@@ -88,7 +88,6 @@ public class SelectsToGetTest extends JdbcTestBase {
     System.getProperty("optimize-ncj", "true");
     Properties p = new Properties();
     p.setProperty("mcast-port", available_port);
-    p.setProperty("SKIP_SPS_PRECOMPILE", "true");
     setupConnection(p);
     
     Connection conn = getConnection();
@@ -1566,10 +1565,8 @@ public class SelectsToGetTest extends JdbcTestBase {
         .getBoolean("gemfire.CacheServerLauncher.dontExitAfterLaunch");
     
     assert LAUNCH_PEER_SERVER == before;
-    
 
-    final String hostname = java.net.InetAddress.getLocalHost().getCanonicalHostName() + ".pune.gemstone.com";
-    
+    final String hostname = "localhost";
     if (LAUNCH_PEER_SERVER) {
       boolean locatorConfigured = false;
       int debugPort = 1044;

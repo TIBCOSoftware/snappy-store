@@ -29,6 +29,7 @@ import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.FinalizeObject;
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -64,7 +65,7 @@ public final class ConnectionSignaller extends Thread {
    * Maximum time (in millis) to wait for clean stop before forceful interrupt
    * of this thread.
    */
-  private static final int MAX_JOIN_WAIT = 2000;
+  private static final int MAX_JOIN_WAIT = 1000;
 
   /** the set of connection states to be processed */
   private final SortedSet<ConnectionStateKey> connectionList;
@@ -208,9 +209,12 @@ public final class ConnectionSignaller extends Thread {
           changeList.clear();
         }
 
+        // This clears the pending references of the offheap.
+        // Kept this call here to avoid creating a new thread.
+        UnsafeHolder.releasePendingReferences();
+
         // invoke the finalizer reference queue
         FinalizeObject.getServerHolder().invokePendingFinalizers();
-
       } catch (InterruptedException ie) {
         SystemFailure.checkFailure();
         // Some interruption other than shutdown has caused it so exit.
@@ -358,7 +362,7 @@ public final class ConnectionSignaller extends Thread {
         // try to stop the thread cleanly
         synchronized (instanceLock) {
           signaller.shouldContinue = false;
-          instanceLock.notify();
+          instanceLock.notifyAll();
         }
         // wait for sometime for the thread to stop
         signaller.join(MAX_JOIN_WAIT / 2);

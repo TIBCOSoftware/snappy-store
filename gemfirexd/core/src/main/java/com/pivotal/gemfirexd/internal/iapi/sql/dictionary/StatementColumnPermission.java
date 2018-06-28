@@ -42,6 +42,7 @@ package com.pivotal.gemfirexd.internal.iapi.sql.dictionary;
 
 import com.pivotal.gemfirexd.internal.catalog.UUID;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
@@ -126,7 +127,8 @@ public class StatementColumnPermission extends StatementTablePermission
                 }
                 // GemStone changes END
 
-		if( hasPermissionOnTable(dd, authorizationId, forGrant))
+		if( hasPermissionOnTable(dd, authorizationId, forGrant) || isSelectOnHiveMetastore
+				(getTableDescriptor(dd)))
 			return;
 		FormatableBitSet permittedColumns = null;
 		if( ! forGrant)

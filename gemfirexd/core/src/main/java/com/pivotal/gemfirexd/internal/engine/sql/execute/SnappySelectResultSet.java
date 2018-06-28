@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -47,7 +47,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.execute.ResultSetStatisticsVisito
 /**
  * Holds the resultSet obtained from lead node execution.
  */
-public final class SnappySelectResultSet
+public class SnappySelectResultSet
     extends AbstractGemFireResultSet implements NoPutResultSet {
 
   private ExecRow currentRow;
@@ -191,7 +191,8 @@ public final class SnappySelectResultSet
       nextExecRow();
       this.setCurrentRow(this.currentRow);
       return this.currentRow;
-    } catch(Exception ex) {
+    } catch (Exception ex) {
+      Misc.checkIfCacheClosing(ex);
       throw Misc.processFunctionException("SnappySelectResultSet:getNextRow ", ex, null, null);
     }
   }
@@ -207,8 +208,9 @@ public final class SnappySelectResultSet
         try {
           this.currentResultHolder = (SnappyResultHolder)srhIterator.next();
         } catch (Exception ex) {
+          Misc.checkIfCacheClosing(ex);
           throw Misc.processFunctionException("SnappySelectResultSet:next",
-              ex, null, null);
+                  ex, null, null);
         }
         // set the metadata which is sent in only the first resultHolder
         if (this.currentResultHolder != null) {
@@ -278,7 +280,7 @@ public final class SnappySelectResultSet
       this.currentResultHolder = this.firstResultHolder =
           (SnappyResultHolder)srhIterator.next();
     } catch (RuntimeException ex) {
-      ex = LeadNodeExecutorMsg.handleLeadNodeException(ex);
+      ex = LeadNodeExecutorMsg.handleLeadNodeRuntimeException(ex);
       throw Misc.processFunctionException("SnappySelectResultSet:setup",
           ex, null, null);
     }

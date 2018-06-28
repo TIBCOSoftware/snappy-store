@@ -40,8 +40,11 @@
 
 package com.pivotal.gemfirexd.internal.iapi.sql.conn;
 
+import java.util.List;
+
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
+import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.StatementPermission;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecPreparedStatement;
 /**
   The Authorizer verifies a connected user has the authorization 
@@ -133,7 +136,7 @@ public interface Authorizer
 
 // GemStone changes BEGIN
 	public void authorize(Activation activation, ExecPreparedStatement eps,
-	    int operation) throws StandardException;
+	    List<StatementPermission> perms, int operation) throws StandardException;
 // GemStone changes END
     /**
 	  Get the Authorization ID for this Authorizer.

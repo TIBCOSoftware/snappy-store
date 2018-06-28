@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.ListIterator;
 
 import com.gemstone.gemfire.internal.cache.ExternalTableMetaData;
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.pivotal.gemfirexd.internal.catalog.ExternalCatalog;
 import com.pivotal.gemfirexd.internal.engine.GfxdVTITemplate;
 import com.pivotal.gemfirexd.internal.engine.GfxdVTITemplateNoAllNodesRoute;
@@ -32,14 +33,19 @@ import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultColumnDescriptor;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSetMetaData;
+import com.pivotal.gemfirexd.internal.shared.common.reference.Limits;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A virtual table that shows the hive tables and their columns.
+ * A virtual table that shows the hive tables and their columns
+ * in a de-normalized form.
  */
 public class HiveTablesVTI extends GfxdVTITemplate
     implements GfxdVTITemplateNoAllNodesRoute {
+
+  public static final ThreadLocal<Boolean> SKIP_HIVE_TABLE_CALLS =
+      new ThreadLocal<>();
 
   private final Logger logger = LoggerFactory.getLogger(getClass().getName());
 
@@ -56,8 +62,9 @@ public class HiveTablesVTI extends GfxdVTITemplate
   @Override
   public boolean next() {
     if (this.tableMetas == null) {
-      ExternalCatalog hiveCatalog = Misc.getMemStore().getExternalCatalog();
-      if (hiveCatalog != null) {
+      final ExternalCatalog hiveCatalog;
+      if (!Boolean.TRUE.equals(HiveTablesVTI.SKIP_HIVE_TABLE_CALLS.get()) &&
+          (hiveCatalog = Misc.getMemStore().getExternalCatalog()) != null) {
         try {
           this.tableMetas = hiveCatalog.getHiveTables(true).iterator();
         } catch (Exception e) {
@@ -88,6 +95,7 @@ public class HiveTablesVTI extends GfxdVTITemplate
 
   @Override
   protected Object getObjectForColumn(int columnNumber) throws SQLException {
+    String provider = this.currentTableMeta.shortProvider;
     switch (columnNumber) {
       case 1: // SCHEMA
         return this.currentTableMeta.schema;
@@ -96,22 +104,39 @@ public class HiveTablesVTI extends GfxdVTITemplate
       case 3: // TYPE
         return this.currentTableMeta.tableType;
       case 4: // PROVIDER
-        return this.currentTableMeta.provider;
-      case 5: // COLUMN
+        // show large provider names only for ordinal 0 and avoid repetition
+        if (provider == null || provider.length() < 30) {
+          return provider;
+        } else if (this.currentTableColumns.nextIndex() == 1) {
+          return provider;
+        } else return "";
+      case 5: // SOURCEPATH
+        // only show for ordinal 0 and avoid repetition
+        if (this.currentTableColumns.nextIndex() == 1) {
+          return provider != null && (provider.startsWith("jdbc")
+              || provider.endsWith("JdbcRelationProvider"))
+              ? currentTableMeta.driverClass : currentTableMeta.dataSourcePath;
+        } else return "";
+      case 6: // COMPRESSION
+        String compression = this.currentTableMeta.compressionCodec;
+        return compression != null ? compression
+            : ("COLUMN".equals(this.currentTableMeta.tableType)
+            ? SystemProperties.SNAPPY_DEFAULT_COMPRESSION_CODEC : null);
+      case 7: // COLUMN
         return this.currentTableColumn.name;
-      case 6: // TYPEID
+      case 8: // TYPEID
         return this.currentTableColumn.typeId;
-      case 7: // TYPENAME
+      case 9: // TYPENAME
         return this.currentTableColumn.typeName;
-      case 8: // ORDINAL
+      case 10: // ORDINAL
         return this.currentTableColumns.nextIndex();
-      case 9: // PRECISION
+      case 11: // PRECISION
         return this.currentTableColumn.precision;
-      case 10: // SCALE
+      case 12: // SCALE
         return this.currentTableColumn.scale;
-      case 11: // MAXWIDTH
+      case 13: // MAXWIDTH
         return this.currentTableColumn.maxWidth;
-      case 12: // NULLABLE
+      case 14: // NULLABLE
         return this.currentTableColumn.nullable;
       default:
         throw new GemFireXDRuntimeException("unexpected column=" +
@@ -123,39 +148,47 @@ public class HiveTablesVTI extends GfxdVTITemplate
    * Metadata
    */
 
-  public static final String SCHEMA = "SCHEMANAME";
+  private static final String SCHEMA = "SCHEMANAME";
 
-  public static final String TABLE = "TABLENAME";
+  private static final String TABLE = "TABLENAME";
 
-  public static final String TYPE = "TABLETYPE";
+  private static final String TYPE = "TABLETYPE";
 
-  public static final String PROVIDER = "PROVIDER";
+  private static final String PROVIDER = "PROVIDER";
 
-  public static final String COLUMN = "COLUMNNAME";
+  private static final String SOURCEPATH = "SOURCEPATH";
 
-  public static final String TYPEID = "TYPEID";
+  private static final String COMPRESSION = "COMPRESSION";
 
-  public static final String TYPENAME = "TYPENAME";
+  private static final String COLUMN = "COLUMNNAME";
 
-  public static final String ORDINAL = "ORDINAL";
+  private static final String TYPEID = "TYPEID";
 
-  public static final String PRECISION = "PRECISION";
+  private static final String TYPENAME = "TYPENAME";
 
-  public static final String SCALE = "SCALE";
+  private static final String ORDINAL = "ORDINAL";
 
-  public static final String MAXWIDTH = "MAXWIDTH";
+  private static final String PRECISION = "PRECISION";
 
-  public static final String NULLABLE = "NULLABLE";
+  private static final String SCALE = "SCALE";
+
+  private static final String MAXWIDTH = "MAXWIDTH";
+
+  private static final String NULLABLE = "NULLABLE";
 
   private static final ResultColumnDescriptor[] columnInfo = {
       EmbedResultSetMetaData.getResultColumnDescriptor(SCHEMA,
-          Types.VARCHAR, false, 512),
+          Types.VARCHAR, false, 128),
       EmbedResultSetMetaData.getResultColumnDescriptor(TABLE,
           Types.VARCHAR, false, 512),
       EmbedResultSetMetaData.getResultColumnDescriptor(TYPE,
           Types.VARCHAR, false, 64),
       EmbedResultSetMetaData.getResultColumnDescriptor(PROVIDER,
-          Types.VARCHAR, false, 8192),
+          Types.VARCHAR, true, 8192),
+      EmbedResultSetMetaData.getResultColumnDescriptor(SOURCEPATH,
+          Types.VARCHAR, false, Limits.DB2_VARCHAR_MAXWIDTH),
+      EmbedResultSetMetaData.getResultColumnDescriptor(COMPRESSION,
+          Types.VARCHAR, true, 64),
       EmbedResultSetMetaData.getResultColumnDescriptor(COLUMN,
           Types.VARCHAR, false, 512),
       EmbedResultSetMetaData.getResultColumnDescriptor(TYPEID,

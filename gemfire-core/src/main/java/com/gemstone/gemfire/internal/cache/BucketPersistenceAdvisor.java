@@ -28,7 +28,6 @@ import java.util.concurrent.CountDownLatch;
 import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.persistence.PartitionOfflineException;
 import com.gemstone.gemfire.distributed.DistributedLockService;
-import com.gemstone.gemfire.distributed.internal.AbstractDistributionConfig;
 import com.gemstone.gemfire.distributed.internal.ReplyException;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
@@ -118,28 +117,50 @@ public class BucketPersistenceAdvisor extends PersistenceAdvisorImpl {
       }
     }
   }
-  
-  @Override
-  protected void logWaitingForMember(Set<PersistentMemberID> allMembersToWaitFor, Set<PersistentMemberID> offlineMembersToWaitFor) {
-    //We only log the bucket level information at fine level.
-    if(traceOn()) {
-      Set<String> membersToWaitForPrettyFormat = new HashSet<String>(); 
 
-      if(offlineMembersToWaitFor != null && !offlineMembersToWaitFor.isEmpty()) {
-        TransformUtils.transform(offlineMembersToWaitFor, membersToWaitForPrettyFormat, TransformUtils.persistentMemberIdToLogEntryTransformer);
-        logger
-        .info(LocalizedStrings.BucketPersistenceAdvisor_WAITING_FOR_LATEST_MEMBER,
-            new Object[] {proxyBucket.getPartitionedRegion().getFullPath(), proxyBucket.getBucketId(), TransformUtils.persistentMemberIdToLogEntryTransformer.transform(getPersistentID()),
-                membersToWaitForPrettyFormat, GemFireUtilLauncher.getScriptName()});
-      } else {
-        TransformUtils.transform(allMembersToWaitFor, membersToWaitForPrettyFormat, TransformUtils.persistentMemberIdToLogEntryTransformer);
-        logger.info(LocalizedStrings.DEBUG,"All persistent members being waited on are online, but they have not yet initialized");
-        logger
-        .info(LocalizedStrings.BucketPersistenceAdvisor_WAITING_FOR_LATEST_MEMBER, 
-            new Object[] {proxyBucket.getPartitionedRegion().getFullPath(), proxyBucket.getBucketId(), TransformUtils.persistentMemberIdToLogEntryTransformer.transform(getPersistentID()),
-                membersToWaitForPrettyFormat, GemFireUtilLauncher.getScriptName()});
-      }
+  @Override
+  protected boolean logWaitingForMembers() {
+    //We only log the bucket level information at fine level.
+    return traceOn();
+  }
+
+  @Override
+  protected String logMessageForOfflineMembers(
+      Set<PersistentMemberID> offlineMembersToWaitFor) {
+    Set<String> membersToWaitForPrettyFormat = new HashSet<String>();
+    TransformUtils.transform(offlineMembersToWaitFor, membersToWaitForPrettyFormat,
+        TransformUtils.persistentMemberIdToLogEntryTransformer);
+    String message = LocalizedStrings
+        .BucketPersistenceAdvisor_WAITING_FOR_LATEST_MEMBER
+        .toLocalizedString(proxyBucket.getPartitionedRegion().getFullPath(),
+            proxyBucket.getBucketId(),
+            TransformUtils.persistentMemberIdToLogEntryTransformer.transform(getPersistentID()),
+            membersToWaitForPrettyFormat, GemFireUtilLauncher.getScriptName());
+    if (logWaitingForMembers()) {
+      logger.info(LocalizedStrings.ONE_ARG, message);
     }
+    return message;
+  }
+
+  @Override
+  protected String logMessageForOnlineMembers(
+      Set<PersistentMemberID> allMembersToWaitFor) {
+    Set<String> membersToWaitForPrettyFormat = new HashSet<String>();
+    TransformUtils.transform(allMembersToWaitFor, membersToWaitForPrettyFormat,
+        TransformUtils.persistentMemberIdToLogEntryTransformer);
+    String message = LocalizedStrings
+        .BucketPersistenceAdvisor_WAITING_FOR_LATEST_MEMBER
+        .toLocalizedString(proxyBucket.getPartitionedRegion().getFullPath(),
+            proxyBucket.getBucketId(),
+            TransformUtils.persistentMemberIdToLogEntryTransformer.transform(getPersistentID()),
+            membersToWaitForPrettyFormat, GemFireUtilLauncher.getScriptName());
+    if (logWaitingForMembers()) {
+      logger.info(LocalizedStrings.DEBUG,
+          "All persistent members being waited on are online, " +
+              "but they have not yet initialized");
+      logger.info(LocalizedStrings.ONE_ARG, message);
+    }
+    return message;
   }
 
   @Override
@@ -435,7 +456,10 @@ public class BucketPersistenceAdvisor extends PersistenceAdvisorImpl {
   }
 
   public void setAtomicCreation(boolean atomicCreation) {
-    synchronized(lock) {
+    if (getPersistentID() != null) {
+      return;
+    }
+    synchronized (lock) {
       this.atomicCreation = atomicCreation;
     }
   }
@@ -450,4 +474,5 @@ public class BucketPersistenceAdvisor extends PersistenceAdvisorImpl {
         .getProxyBucketArray()[proxyBucket.getBucketId()];
     return colocatedProxyBucket.getPersistenceAdvisor();
   }
+
 }

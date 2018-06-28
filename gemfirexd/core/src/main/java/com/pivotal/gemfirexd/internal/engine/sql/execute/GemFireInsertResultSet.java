@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 
 package com.pivotal.gemfirexd.internal.engine.sql.execute;
 
@@ -22,14 +40,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Properties;
 
+import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.internal.cache.CachedDeserializableFactory;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
+import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.cache.VMIdAdvisor;
 
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
+import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.access.MemConglomerate;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -38,6 +59,7 @@ import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
 import com.pivotal.gemfirexd.internal.engine.store.AbstractCompactExecRow;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
+import com.pivotal.gemfirexd.internal.engine.store.RowEncoder;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.cache.ClassSize;
@@ -74,12 +96,14 @@ public final class GemFireInsertResultSet extends AbstractGemFireResultSet {
 
   private final GemFireContainer gfContainer;
 
+  private final RowEncoder.PreProcessRow processor;
+
   private final boolean hasSerialAEQorWAN;
 
   private boolean isPreparedBatch;
 
-  private boolean isPutDML = false;
-  
+  private boolean isPutDML;
+
   /**
    * @return the isPreparedBatch
    */
@@ -115,9 +139,18 @@ public final class GemFireInsertResultSet extends AbstractGemFireResultSet {
     final MemConglomerate conglom = this.tran
         .findExistingConglomerate(heapConglom);
     this.gfContainer = conglom.getGemFireContainer();
+    RowEncoder encoder = this.gfContainer.getRowEncoder();
+    this.processor = encoder != null
+        ? encoder.getPreProcessorForRows(this.gfContainer) : null;
     this.hasSerialAEQorWAN = this.gfContainer.getRegion().isSerialWanEnabled();
     this.thresholdListener = Misc.getMemStore().thresholdListener();
     this.isPutDML = activation.isPutDML();
+
+    final boolean isColumnTable = gfContainer.isRowBuffer();
+    final LanguageConnectionContext lcc = activation.getLanguageConnectionContext();
+    if (isColumnTable && !Misc.routeQuery(lcc) && !lcc.isSnappyInternalConnection()) {
+      throw StandardException.newException(SQLState.SNAPPY_OP_DISALLOWED_ON_COLUMN_TABLES);
+    }
   }
 
   @Override
@@ -134,7 +167,16 @@ public final class GemFireInsertResultSet extends AbstractGemFireResultSet {
         .getIndexUpdater() : null);
     final LanguageConnectionContext lcc = this.activation
         .getLanguageConnectionContext();
-    final TXStateInterface tx = this.gfContainer.getActiveTXState(this.tran);
+
+    TXStateInterface tx = this.gfContainer.getActiveTXState(this.tran);
+    // TOOD: decide on autocommit or this flag: Discuss
+    if (tx == null && (this.gfContainer.isRowBuffer() || reg.getCache().snapshotEnabledForTest())) {
+      this.tran.getTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+      ((GemFireTransaction)lcc.getTransactionExecute()).setActiveTXState(TXManagerImpl.getCurrentTXState(), false);
+      this.tran.setImplicitSnapshotTxStarted(true);
+    }
+    tx = this.gfContainer.getActiveTXState(this.tran);
+
     if (sqim != null && !this.isPutDML) {
       sqim.fireStatementTriggers(TriggerEvent.BEFORE_INSERT, lcc, this.tran, tx);
     }
@@ -177,7 +219,11 @@ public final class GemFireInsertResultSet extends AbstractGemFireResultSet {
         // insert any auto-generated keys into the row holder
         handleAutoGeneratedColumns(row);
 
-        this.gfContainer.insertRow(row.getRowArray(), this.tran, tx, lcc,
+        DataValueDescriptor[] rowArray = row.getRowArray();
+        if (this.processor != null) {
+          rowArray = this.processor.preProcess(rowArray);
+        }
+        this.gfContainer.insertRow(rowArray, this.tran, tx, lcc,
             this.isPutDML);
         this.rowCount++;
 
@@ -284,7 +330,11 @@ public final class GemFireInsertResultSet extends AbstractGemFireResultSet {
       return AbstractCompactExecRow.getRawRowSize(rawRow);
     }
     else {
-      rows.add(row.getClone().getRowArray());
+      DataValueDescriptor[] rowArray = row.getClone().getRowArray();
+      if (this.processor != null) {
+        rowArray = this.processor.preProcess(rowArray);
+      }
+      rows.add(rowArray);
       return row.estimateRowSize();
     }
   }

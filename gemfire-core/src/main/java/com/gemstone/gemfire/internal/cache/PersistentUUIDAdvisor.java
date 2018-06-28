@@ -47,6 +47,7 @@ public class PersistentUUIDAdvisor extends VMIdAdvisor {
    * generation can work across restarts to generate unique IDs.
    */
   public static final String UUID_PERSIST_REGION = "__UUID_PERSIST";
+  static final String UUID_PERSIST_REGION_PATH = "/" + UUID_PERSIST_REGION;
 
   protected final String fullPath;
   protected final GemFireCacheImpl cache;

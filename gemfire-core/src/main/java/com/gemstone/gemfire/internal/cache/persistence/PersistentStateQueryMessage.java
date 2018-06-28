@@ -41,11 +41,13 @@ import com.gemstone.gemfire.distributed.internal.ReplyMessage;
 import com.gemstone.gemfire.distributed.internal.ReplyProcessor21;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
+import com.gemstone.gemfire.internal.cache.BucketPersistenceAdvisor;
 import com.gemstone.gemfire.internal.cache.DistributedRegion;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegionHelper;
 import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 /**
  * @author dsmith
@@ -110,13 +112,16 @@ public class PersistentStateQueryMessage extends
           persistenceAdvisor = proxy.getPersistenceAdvisor();
         }
       }
+
       if(persistenceAdvisor != null) {
         if(id != null) {
           state = persistenceAdvisor.getPersistedStateOfMember(id);
+
         }
         if(initializingId != null && state == null) {
           state = persistenceAdvisor.getPersistedStateOfMember(initializingId);
         }
+
         myId = persistenceAdvisor.getPersistentID();
         myInitializingId = persistenceAdvisor.getInitializingID();
         onlineMembers = persistenceAdvisor.getPersistedOnlineOrEqualMembers();

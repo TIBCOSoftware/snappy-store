@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -17,8 +17,6 @@
 
 package com.pivotal.gemfirexd.internal.engine.reflect;
 
-import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
-import com.pivotal.gemfirexd.internal.engine.sql.execute.PrepStatementSnappyActivation;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.SnappyActivation;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.services.loader.GeneratedClass;
@@ -31,13 +29,15 @@ public class SnappyActivationClass implements GeneratedClass {
   private final boolean returnRows;
   private final int classLoaderVersion;
   boolean isPrepStmt;
+  boolean isUpdateOrDelete;
 
-  public SnappyActivationClass(LanguageConnectionContext lcc,
-      boolean returnRows, boolean isPrepStmt) {
+  public SnappyActivationClass(LanguageConnectionContext lcc, boolean returnRows,
+      boolean isPrepStmt, boolean isUpdateOrDelete) {
     this.returnRows = returnRows;
     this.classLoaderVersion = lcc.getLanguageConnectionFactory()
         .getClassFactory().getClassLoaderVersion();
     this.isPrepStmt = isPrepStmt;
+    this.isUpdateOrDelete = isUpdateOrDelete;
   }
 
   public int getClassLoaderVersion() {
@@ -52,10 +52,10 @@ public class SnappyActivationClass implements GeneratedClass {
     return "SnappyActivation";
   }
 
-  public final Object newInstance(final LanguageConnectionContext lcc,
-                                  final boolean addToLCC, final ExecPreparedStatement eps)
-    throws StandardException {
-    SnappyActivation sa = new SnappyActivation(lcc, eps, this.returnRows, this.isPrepStmt);
+  public final Object newInstance(final LanguageConnectionContext lcc, final boolean addToLCC,
+      final ExecPreparedStatement eps) throws StandardException {
+    SnappyActivation sa = new SnappyActivation(lcc, eps, this.returnRows, this.isPrepStmt,
+        this.isUpdateOrDelete);
     if (isPrepStmt) {
       sa.initialize_pvs();
     }

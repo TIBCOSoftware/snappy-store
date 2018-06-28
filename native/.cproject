@@ -32,9 +32,9 @@
 								<option id="gnu.cpp.compiler.option.dialect.flags.1322032013" name="Other dialect flags" superClass="gnu.cpp.compiler.option.dialect.flags" useByScannerDiscovery="true" value="-std=c++11" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1267859366" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/src/snappyclient/headers}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/boost-1.59.0/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/boost-1.65.1/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/unixODBC-2.3.4/include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/thrift-1.0.0-1/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/thrift-1.0.0-2/include}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.pic.838987422" name="Position Independent Code (-fPIC)" superClass="gnu.cpp.compiler.option.other.pic" useByScannerDiscovery="false" value="true" valueType="boolean"/>
 								<option id="gnu.cpp.compiler.option.other.other.2000252051" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="false" value="-c -fmessage-length=0 -DPIC" valueType="string"/>
@@ -52,8 +52,8 @@
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.so.debug.1323830487" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.so.debug">
 								<option defaultValue="true" id="gnu.cpp.link.so.debug.option.shared.78438023" name="Shared (-shared)" superClass="gnu.cpp.link.so.debug.option.shared" valueType="boolean"/>
 								<option id="gnu.cpp.link.option.paths.667657876" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/boost-1.59.0/lin64/lib}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/thrift-1.0.0-1/lin64/lib}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/boost-1.65.1/lin64/lib}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/thrift-1.0.0-2/lin64/lib}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.libs.1229587524" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="thrift"/>
@@ -116,9 +116,9 @@
 								<option id="gnu.cpp.compiler.option.dialect.flags.440429764" name="Other dialect flags" superClass="gnu.cpp.compiler.option.dialect.flags" useByScannerDiscovery="true" value="-std=c++11" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1138089048" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/src/snappyclient/headers}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/boost-1.59.0/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/boost-1.65.1/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/unixODBC-2.3.4/include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/thrift-1.0.0-1/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/thrift-1.0.0-2/include}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.other.1200452339" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="false" value="-c -fmessage-length=0 -DPIC" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.other.pic.1438544754" name="Position Independent Code (-fPIC)" superClass="gnu.cpp.compiler.option.other.pic" useByScannerDiscovery="false" value="true" valueType="boolean"/>
@@ -136,8 +136,8 @@
 							<tool id="cdt.managedbuild.tool.gnu.cpp.linker.so.release.858340960" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.so.release">
 								<option defaultValue="true" id="gnu.cpp.link.so.release.option.shared.2111260725" name="Shared (-shared)" superClass="gnu.cpp.link.so.release.option.shared" valueType="boolean"/>
 								<option id="gnu.cpp.link.option.paths.269824212" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/boost-1.59.0/lin64/lib}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/thrift-1.0.0-1/lin64/lib}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/boost-1.65.1/lin64/lib}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/thrift-1.0.0-2/lin64/lib}&quot;"/>
 								</option>
 								<option id="gnu.cpp.link.option.libs.359575058" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" srcPrefixMapping="" srcRootPath="" value="thrift"/>

@@ -58,6 +58,8 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.Cache;
@@ -82,8 +84,6 @@ import com.gemstone.gemfire.internal.cache.partitioned.AllBucketProfilesUpdateMe
 import com.gemstone.gemfire.internal.cache.tier.Acceptor;
 import com.gemstone.gemfire.internal.cache.tier.CachedRegionHelper;
 import com.gemstone.gemfire.internal.cache.wan.GatewayReceiverStats;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.tcp.ConnectionTable;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 
@@ -206,7 +206,7 @@ public class AcceptorImpl extends Acceptor implements Runnable
   /**
    * Current number of ServerConnection instances that are CLIENT_TO_SERVER cons.
    */
-  public final AI clientServerCnxCount = CFactory.createAI();
+  public final AtomicInteger clientServerCnxCount = new AtomicInteger();
 
   /** Has this acceptor been shut down */
   private volatile boolean shutdown = false;
@@ -318,6 +318,7 @@ public class AcceptorImpl extends Acceptor implements Runnable
     this.isGatewayReceiver = isGatewayReceiver;
     this.isGatewayReceiver = isGatewayReceiver;
     this.gatewayTransportFilters = transportFilter;
+    InetAddress bindAddress = getBindAddress();
     {
       int tmp_maxConnections = maxConnections;
       if (tmp_maxConnections < MINIMUM_MAX_CONNECTIONS) {
@@ -348,7 +349,7 @@ public class AcceptorImpl extends Acceptor implements Runnable
       }
       if (tmp_maxThreads > 0 && isWindows) {
         // bug #40472 and JDK bug 6230761 - NIO can't be used with IPv6 on Windows
-        if (getBindAddress() instanceof Inet6Address) {
+        if (bindAddress instanceof Inet6Address) {
           c.getLoggerI18n().warning(LocalizedStrings.AcceptorImpl_IGNORING_MAX_THREADS_DUE_TO_JROCKIT_NIO_BUG);
           tmp_maxThreads = 0;
         }
@@ -409,12 +410,12 @@ public class AcceptorImpl extends Acceptor implements Runnable
         // immediately restarted, which sometimes results in a bind exception
         for (;;) {
           try {
-            this.serverSock.bind(new InetSocketAddress(getBindAddress(), port),
+            this.serverSock.bind(new InetSocketAddress(bindAddress, port),
                              backLog);
             break;
           }
           catch (SocketException b) {
-            if (! treatAsBindException(b) || 
+            if (! treatAsBindException(b, bindAddress) ||
                 System.currentTimeMillis() > tilt) { 
               throw b;
             }
@@ -443,12 +444,12 @@ public class AcceptorImpl extends Acceptor implements Runnable
         for (;;) {
           try {
             this.serverSock = sc.createServerSocket(port, backLog,
-                getBindAddress(), c.getLoggerI18n(),
+                bindAddress, c.getLoggerI18n(),
                 this.gatewayTransportFilters, socketBufferSize);
             break;
           }
           catch (SocketException e) {
-            if (! treatAsBindException(e) ||
+            if (! treatAsBindException(e, bindAddress) ||
                 System.currentTimeMillis() > tilt) {
               throw e;
             }
@@ -1770,7 +1771,7 @@ public class AcceptorImpl extends Acceptor implements Runnable
    
    * @since 5.7
    */
-  private static String calcBindHostName(Cache cache, String bindName) {
+  public static String calcBindHostName(Cache cache, String bindName) {
     if (bindName != null && !bindName.equals("")) {
       return bindName;
     }
@@ -1795,11 +1796,15 @@ public class AcceptorImpl extends Acceptor implements Runnable
     return hostName;
   }
 
-  private InetAddress getBindAddress() throws IOException {
-    if (this.bindHostName == null || "".equals(this.bindHostName)) {
-      return null; // pick default local address
+  public InetAddress getBindAddress() throws IOException {
+    return getBindAddress(this.bindHostName);
+  }
+
+  public static InetAddress getBindAddress(String bindHostName) throws IOException {
+    if (bindHostName == null || "".equals(bindHostName)) {
+      return new InetSocketAddress(0).getAddress(); // pick default local address
     } else {
-      return InetAddress.getByName(this.bindHostName);
+      return InetAddress.getByName(bindHostName);
     }
   }
   
@@ -1873,7 +1878,11 @@ public class AcceptorImpl extends Acceptor implements Runnable
 
   //IBM J9 sometimes reports "listen failed" instead of BindException
   //see bug #40589
-  public static boolean treatAsBindException(SocketException se) {
+  public static boolean treatAsBindException(SocketException se, InetAddress bindAddress) {
+    // if bind address is not of this machine then fail
+    if (!SocketCreator.isLocalHost(bindAddress)) {
+      return false;
+    }
     if(se instanceof BindException) { 
       return true;
     }

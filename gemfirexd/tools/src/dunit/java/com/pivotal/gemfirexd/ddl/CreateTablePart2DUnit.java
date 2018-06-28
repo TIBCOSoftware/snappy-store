@@ -54,6 +54,7 @@ import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.dunit.VM;
 import io.snappydata.test.util.TestException;
 import junit.framework.AssertionFailedError;
+import org.apache.derbyTesting.junit.JDBC;
 
 @SuppressWarnings("serial")
 public class CreateTablePart2DUnit extends DistributedSQLTestBase {
@@ -1067,20 +1068,21 @@ public class CreateTablePart2DUnit extends DistributedSQLTestBase {
 
     // fire updates while inserts are in progress
     final Connection conn = TestUtil.jdbcConn;
-    int numResults;
-    final long start = System.currentTimeMillis();
-    while ((numResults = conn.createStatement().executeUpdate(
-        "update flights set miles = miles + 500 where miles <= 1000")) == 0) {
-      getLogWriter().info("missed updating " + numResults + " rows");
-      if ((System.currentTimeMillis() - start) > 180000) {
-        fail("Did not detect successful update for 180 secs");
-      }
+    int numResults = conn.createStatement().executeUpdate(
+        "update flights set miles = miles + 1500 where miles <= 1000");
+    if (numResults == 0) {
+      // check with a query (can happen due to retry where update was applied
+      //   but bucket moved, then retry updates nothing)
+      ResultSet rs = conn.createStatement().executeQuery(
+          "select * from flights where miles <= 1000");
+      JDBC.assertFullResultSet(rs, new Object[0][], false);
+      rs.close();
     }
 
     getLogWriter().info("updated " + numResults + " rows");
 
     numResults = conn.createStatement().executeUpdate("update flights "
-        + "set path_map = cast(X'0031' as blob(102400)) where miles <= 1500");
+        + "set path_map = cast(X'0031' as blob(102400)) where miles <= 2500");
     getLogWriter().info("updated " + numResults + " blobs");
 
     // wait for end of execution of the scripts

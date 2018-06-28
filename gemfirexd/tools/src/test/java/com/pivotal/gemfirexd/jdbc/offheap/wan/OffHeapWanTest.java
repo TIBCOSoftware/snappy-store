@@ -55,6 +55,11 @@ public class OffHeapWanTest extends WanTest {
     System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,"false");    
   }
 
+  @Override
+  public void testGatewayReceivers() throws Exception {
+    // skip in offheap since it is identical and can clash in parallel test runs
+  }
+
   protected String getCreateTestTableSQL() {
     return super.getCreateTestTableSQL() + " OFFHEAP";
   }  

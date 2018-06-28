@@ -22,7 +22,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Date;
 
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.org.jgroups.util.StringId;
 
@@ -110,7 +109,7 @@ public class PureLogWriter extends LogWriterImpl {
     }
     protected long getThreadId() {
       // fix for bug 37861
-      return CFactory.getThreadId();
+      return Thread.currentThread().getId();
     }
 
     /**

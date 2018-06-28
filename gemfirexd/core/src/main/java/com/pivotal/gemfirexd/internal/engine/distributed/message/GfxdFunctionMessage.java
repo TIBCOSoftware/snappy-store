@@ -313,7 +313,7 @@ public abstract class GfxdFunctionMessage<T> extends
         }
         msg.executeFunction(enableStreaming);
         // message dispatch is done at this point
-        if (viewVersion > 0) {
+        if (viewVersion != -1) {
           advisor.endOperation(viewVersion);
           if (TXStateProxy.LOG_VERSIONS) {
             SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
@@ -420,7 +420,7 @@ public abstract class GfxdFunctionMessage<T> extends
           throw e;
         }
       } finally {
-        if (viewVersion > 0) {
+        if (viewVersion != -1) {
           advisor.endOperation(viewVersion);
           if (TXStateProxy.LOG_VERSIONS) {
             SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,

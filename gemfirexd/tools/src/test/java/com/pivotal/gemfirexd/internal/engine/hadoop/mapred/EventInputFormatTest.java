@@ -505,7 +505,7 @@ public class EventInputFormatTest extends JdbcTestBase {
     FileStatus[] list = null;
     Configuration conf = new Configuration();
     FileSystem fs = FileSystem.get(conf);
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 100; i++) {
       list = fs.listStatus(new Path(HDFS_DIR + "/APP_MYTAB1/0/"));
       if (list.length == 1) {
         break;

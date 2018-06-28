@@ -338,8 +338,4 @@ public class CreateTableAsQueryExpressionTest extends JdbcTestBase {
     }
     assertTrue(gotException);
   }
-
-  public void testDummy() {
-	  
-  }
 }

@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.InternalGemFireException;
@@ -38,8 +39,6 @@ import com.gemstone.gemfire.internal.cache.ControllerAdvisor;
 import com.gemstone.gemfire.internal.cache.ControllerAdvisor.ControllerProfile;
 import com.gemstone.gemfire.internal.cache.FindDurableQueueProcessor;
 import com.gemstone.gemfire.internal.cache.GridAdvisor.GridProfile;
-import com.gemstone.gemfire.internal.concurrent.AI;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
 /**
@@ -58,9 +57,9 @@ public class ServerLocator implements TcpHandler, DistributionAdvisee {
   private Map<ServerLocation, DistributedMember> ownerMap = new HashMap<ServerLocation, DistributedMember>();
   private volatile ArrayList cachedLocators;
   private final Object cachedLocatorsLock = new Object();
-  
-  private final static AI profileSN = CFactory.createAI();
-  
+
+  private final static AtomicInteger profileSN = new AtomicInteger();
+
   private final String logFile;
   private final String hostName;
   private final String memberName;

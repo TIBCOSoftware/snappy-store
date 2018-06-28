@@ -19,11 +19,14 @@ package com.pivotal.gemfirexd.internal.engine.fabricservice;
 
 import java.sql.SQLException;
 import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.Future;
 
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.CacheFactory;
-import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.pivotal.gemfirexd.FabricServer;
+import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 
 /**
  * Implementation of {@link FabricServer} API. Future product versions may
@@ -32,6 +35,11 @@ import com.pivotal.gemfirexd.FabricServer;
  * @author soubhikc
  */
 public class FabricServerImpl extends FabricServiceImpl implements FabricServer {
+
+  private final Object initializationNotification = new Object();
+  private String regionPathToWaitFor = "";
+  private boolean notified;
+  private boolean initializedOrWait;
 
   @Override
   public boolean isServer() {
@@ -78,5 +86,74 @@ public class FabricServerImpl extends FabricServiceImpl implements FabricServer 
         }
       }
     }
+  }
+
+  /**
+   * This method invoked from GemFire to notify waiting for another JVM to
+   * initialize for disk GII.
+   * <p>
+   * NOTE: It is deliberately not synchronized since it can be invoked by a
+   * thread other than the booting thread itself which may be stuck waiting for
+   * disk region initialization.
+   */
+  public void notifyWaiting(String regionPath,
+      Set<PersistentMemberID> membersToWaitFor, Set<Integer> missingBuckets,
+      PersistentMemberID myId, String message) {
+    if (GemFireXDUtils.TraceFabricServiceBoot) {
+      logger.info("Accepting WAITING notification" +
+          (message != null ? ": " + message : ""));
+    }
+    if (missingBuckets != null && missingBuckets.isEmpty() && membersToWaitFor.isEmpty()) {
+      // only notify the FabricDataBase.postCreateDDLReplay
+      notifyTableWait(regionPath);
+    } else {
+      if (this.serverstatus != State.WAITING) {
+        this.previousServerStatus = this.serverstatus;
+      }
+      this.serverstatus = State.WAITING;
+      notifyTableWait(regionPath);
+      notifyWaitingInLauncher(regionPath, membersToWaitFor, missingBuckets, myId,
+          message);
+    }
+  }
+
+  public void notifyTableInitialized(boolean initialized, String regionPath) {
+    synchronized (initializationNotification) {
+      if(regionPath.equals(regionPathToWaitFor)) {
+        notified = true;
+        this.initializedOrWait = initialized;
+        initializationNotification.notifyAll();
+        regionPathToWaitFor = "";
+      }
+    }
+  }
+
+  private void notifyTableWait(String regionPath) {
+    synchronized (initializationNotification) {
+      if(regionPath.equals(regionPathToWaitFor)) {
+        notified = true;
+        this.initializedOrWait = true;
+        initializationNotification.notifyAll();
+        regionPathToWaitFor = "";
+      }
+    }
+  }
+
+  public void waitTableInitialized(Future<?> waitFor, String regionPath) throws InterruptedException {
+    synchronized (initializationNotification) {
+      this.regionPathToWaitFor = regionPath;
+      while (this.regionPathToWaitFor.equals(regionPath) && !notified && !waitFor.isDone()) {
+        initializationNotification.wait(500);
+      }
+      notified = false;
+    }
+  }
+
+  public boolean isInitializedOrWait() {
+    return initializedOrWait;
+  }
+
+  public boolean isNotified() {
+    return notified;
   }
 }

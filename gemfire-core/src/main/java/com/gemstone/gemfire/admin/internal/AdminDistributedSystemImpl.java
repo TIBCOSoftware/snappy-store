@@ -20,17 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.StringTokenizer;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -80,15 +70,7 @@ import com.gemstone.gemfire.internal.admin.GfManagerAgent;
 import com.gemstone.gemfire.internal.admin.GfManagerAgentConfig;
 import com.gemstone.gemfire.internal.admin.GfManagerAgentFactory;
 import com.gemstone.gemfire.internal.admin.SSLConfig;
-import com.gemstone.gemfire.internal.admin.remote.CompactRequest;
-import com.gemstone.gemfire.internal.admin.remote.DistributionLocatorId;
-import com.gemstone.gemfire.internal.admin.remote.MissingPersistentIDsRequest;
-import com.gemstone.gemfire.internal.admin.remote.PrepareRevokePersistentIDRequest;
-import com.gemstone.gemfire.internal.admin.remote.RemoteApplicationVM;
-import com.gemstone.gemfire.internal.admin.remote.RemoteGfManagerAgent;
-import com.gemstone.gemfire.internal.admin.remote.RemoteTransportConfig;
-import com.gemstone.gemfire.internal.admin.remote.RevokePersistentIDRequest;
-import com.gemstone.gemfire.internal.admin.remote.ShutdownAllRequest;
+import com.gemstone.gemfire.internal.admin.remote.*;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberPattern;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.util.concurrent.FutureResult;
@@ -2324,6 +2306,10 @@ implements com.gemstone.gemfire.admin.AdminDistributedSystem,
     return MissingPersistentIDsRequest.send(dm);
   }
 
+  public static Set<PersistentID> getWaitingPersistentMembers(DM dm) {
+    return WaitingPersistentIDRequest.send(dm);
+  }
+
   public void revokePersistentMember(InetAddress host,
       String directory) throws AdminException {
     connectAdminDS();
@@ -2377,6 +2363,37 @@ implements com.gemstone.gemfire.admin.AdminDistributedSystem,
         PrepareRevokePersistentIDRequest.cancel(dm, pattern);
       }
     }
+  }
+
+  public void unblockPersistentMember(UUID diskStoreID) throws AdminException {
+    connectAdminDS();
+    DM dm = getDistributionManager();
+    if(dm == null) {
+      throw new IllegalStateException(LocalizedStrings.AdminDistributedSystemImpl_CONNECT_HAS_NOT_BEEN_INVOKED_ON_THIS_ADMINDISTRIBUTEDSYSTEM.toLocalizedString());
+    }
+    unblockPersistentMember(dm, diskStoreID);
+  }
+
+  public static void unblockPersistentMember(DM dm, UUID diskStoreID) {
+    PersistentMemberPattern pattern = new PersistentMemberPattern(diskStoreID);
+    boolean found = false;
+
+    Set<PersistentID> details = getWaitingPersistentMembers(dm);
+
+    if (details != null) {
+      for (PersistentID id : details) {
+        if (id.getUUID().equals(diskStoreID)) {
+          found = true;
+          break;
+        }
+      }
+    }
+
+
+    if (!found) {
+      return;
+    }
+    UnblockPersistentIDRequest.send(dm, pattern);
   }
 
   /**
@@ -2451,9 +2468,12 @@ implements com.gemstone.gemfire.admin.AdminDistributedSystem,
     FlushToDiskRequest.send(dm, recipients);
     Map<DistributedMember, Set<PersistentID>> existingDataStores 
         = PrepareBackupRequest.send(dm, recipients);
-    Map<DistributedMember, Set<PersistentID>> successfulMembers 
-        = FinishBackupRequest.send(dm, recipients, targetDir, baselineDir);
-    
+    Map<DistributedMember, Set<PersistentID>> successfulMembers1
+        = FinishBackupRequest.send(dm, recipients, targetDir, baselineDir, FinishBackupRequest.DISKSTORE_DD);
+    Map<DistributedMember, Set<PersistentID>> successfulMembers2
+        = FinishBackupRequest.send(dm, recipients, targetDir, baselineDir, FinishBackupRequest.DISKSTORE_ALL_BUT_DD);
+    Map<DistributedMember, Set<PersistentID>> successfulMembers =
+        getAllSuccessfulMembers(successfulMembers1, successfulMembers2);
     // It's possible that when calling getMissingPersistentMembers, some members are 
     // still creating/recovering regions, and at FinishBackupRequest.send, the 
     // regions at the members are ready. Logically, since the members in successfulMembers
@@ -2469,7 +2489,19 @@ implements com.gemstone.gemfire.admin.AdminDistributedSystem,
     
     return new BackupStatusImpl(successfulMembers, missingMembers);
   }
-  
+
+  private static Map<DistributedMember, Set<PersistentID>> getAllSuccessfulMembers(
+      final Map<DistributedMember, Set<PersistentID>> first, final Map<DistributedMember, Set<PersistentID>> second) {
+    second.forEach((dm, idset) -> {
+      Set<PersistentID> val1 = first.get(dm);
+      if (val1 != null) {
+        idset.addAll(val1);
+      }
+      first.put(dm, idset);
+    } );
+    return first;
+  }
+
   public Map<DistributedMember, Set<PersistentID>> compactAllDiskStores() throws AdminException {
     connectAdminDS();
     DM dm = getDistributionManager();

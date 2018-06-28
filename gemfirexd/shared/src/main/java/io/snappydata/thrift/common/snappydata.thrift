@@ -18,7 +18,7 @@
 // ----------------------------------------------------------------
 // Changes for SnappyData data platform.
 //
-// Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+// Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you
 // may not use this file except in compliance with the License. You
@@ -458,7 +458,7 @@ exception SnappyException {
 }
 
 // default batch size
-const i32 DEFAULT_RESULTSET_BATCHSIZE                      = 1024
+const i32 DEFAULT_RESULTSET_BATCHSIZE                      = 8192
 // default LOB chunk size
 const i32 DEFAULT_LOB_CHUNKSIZE                            = 2097152 // 2MB
 
@@ -513,6 +513,13 @@ struct StatementAttrs {
  // (i.e. queries will scan only these bucketIds)
  18: optional set<i32>                                     bucketIds
  19: optional string                                       bucketIdsTable
+ // retain bucketIds for the connection till an explicit commit/rollback
+ 20: optional bool                                         retainBucketIds
+ // the last meta-data version recorded by client which will throw exception
+ // on mismatch so that caller can refresh meta-data (if being cached)
+ 21: optional i32                                          metadataVersion
+ // snapshot TXId to be used for current statement (to apply across connections)
+ 22: optional string                                       snapshotTransactionId
 }
 
 union ColumnValue {

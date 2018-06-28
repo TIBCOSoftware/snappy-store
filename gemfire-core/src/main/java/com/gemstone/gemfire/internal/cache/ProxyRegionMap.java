@@ -548,7 +548,7 @@ public final class ProxyRegionMap implements RegionMap {
       throw new UnsupportedOperationException(LocalizedStrings.ProxyRegionMap_NO_ENTRY_SUPPORT_ON_REGIONS_WITH_DATAPOLICY_0.toLocalizedString(DataPolicy.EMPTY));
     }
 
-    public void removePhase2() {
+    public void removePhase2(LocalRegion r) {
       throw new UnsupportedOperationException(LocalizedStrings.ProxyRegionMap_NO_ENTRY_SUPPORT_ON_REGIONS_WITH_DATAPOLICY_0.toLocalizedString(DataPolicy.EMPTY));
     }
 
@@ -569,7 +569,8 @@ public final class ProxyRegionMap implements RegionMap {
       throw new UnsupportedOperationException(LocalizedStrings.ProxyRegionMap_NO_ENTRY_SUPPORT_ON_REGIONS_WITH_DATAPOLICY_0.toLocalizedString(DataPolicy.EMPTY));
     }
 
-    public boolean isOverflowedToDisk(LocalRegion r, DistributedRegion.DiskPosition dp) {
+    public boolean isOverflowedToDisk(LocalRegion r,
+        DistributedRegion.DiskPosition dp, boolean alwaysFetchPosition) {
       throw new UnsupportedOperationException(LocalizedStrings.ProxyRegionMap_NO_ENTRY_SUPPORT_ON_REGIONS_WITH_DATAPOLICY_0.toLocalizedString(DataPolicy.EMPTY));
     }
 
@@ -617,7 +618,7 @@ public final class ProxyRegionMap implements RegionMap {
       throw new UnsupportedOperationException(LocalizedStrings.ProxyRegionMap_NO_ENTRY_SUPPORT_ON_REGIONS_WITH_DATAPOLICY_0.toLocalizedString(DataPolicy.EMPTY));
     }
 
-    public void setOwner(LocalRegion owner) {
+    public void setOwner(LocalRegion owner, Object previousOwner) {
       throw new UnsupportedOperationException(LocalizedStrings
           .ProxyRegionMap_NO_ENTRY_SUPPORT_ON_REGIONS_WITH_DATAPOLICY_0
               .toLocalizedString(DataPolicy.EMPTY));
@@ -628,11 +629,6 @@ public final class ProxyRegionMap implements RegionMap {
       throw new UnsupportedOperationException(LocalizedStrings.ProxyRegionMap_NO_ENTRY_SUPPORT_ON_REGIONS_WITH_DATAPOLICY_0.toLocalizedString(DataPolicy.EMPTY));
     }
 
-    @Override
-    public Object getTransformedValue() {
-      throw new UnsupportedOperationException(LocalizedStrings.ProxyRegionMap_NO_ENTRY_SUPPORT_ON_REGIONS_WITH_DATAPOLICY_0.toLocalizedString(DataPolicy.EMPTY));      
-    }
-    
     @Override
     public Object getValueInVM(RegionEntryContext context) {
       return null; // called by TXRmtEvent.createEvent
@@ -837,7 +833,7 @@ public final class ProxyRegionMap implements RegionMap {
     }
 
     @Override
-    public void setValueToNull() {
+    public void setValueToNull(RegionEntryContext context) {
       throw new UnsupportedOperationException(LocalizedStrings.ProxyRegionMap_NO_ENTRY_SUPPORT_ON_REGIONS_WITH_DATAPOLICY_0.toLocalizedString(DataPolicy.EMPTY));
     }
     

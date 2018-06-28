@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -73,7 +73,7 @@ void BufferedClientTransport::writeFrameSize() {
     assert(wBufSize_ > sizeof(sz));
 
     // Slip the frame size into the start of the buffer.
-    sz = ::htonl(static_cast<uint32_t>(wBase_ - (wBuf_.get() + sizeof(sz))));
+    sz = htonl(static_cast<uint32_t>(wBase_ - (wBuf_.get() + sizeof(sz))));
     ::memcpy(wBuf_.get(), &sz, sizeof(sz));
   }
 }

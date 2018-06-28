@@ -475,19 +475,19 @@ namespace Pivotal.Data.GemFireXD.Tests
           case "EMPLOYEE":
             Assert.AreEqual("", row["TABLE_CATALOG"], "#GS9.1");
             Assert.AreEqual("APP", row["TABLE_SCHEMA"], "#GS9.2");
-            Assert.AreEqual("TABLE", row["TABLE_TYPE"], "#GS9.3");
+            Assert.AreEqual("ROW TABLE", row["TABLE_TYPE"], "#GS9.3");
             --flag;
             break;
           case "CREDIT":
             Assert.AreEqual("", row["TABLE_CATALOG"], "#GS9.4");
             Assert.AreEqual("EMP", row["TABLE_SCHEMA"], "#GS9.5");
-            Assert.AreEqual("TABLE", row["TABLE_TYPE"], "#GS9.6");
+            Assert.AreEqual("ROW TABLE", row["TABLE_TYPE"], "#GS9.6");
             --flag;
             break;
           case "NUMERIC_FAMILY":
             Assert.AreEqual("", row["TABLE_CATALOG"], "#GS9.7");
             Assert.AreEqual("APP", row["TABLE_SCHEMA"], "#GS9.8");
-            Assert.AreEqual("TABLE", row["TABLE_TYPE"], "#GS9.9");
+            Assert.AreEqual("ROW TABLE", row["TABLE_TYPE"], "#GS9.9");
             --flag;
             break;
         }
@@ -497,25 +497,25 @@ namespace Pivotal.Data.GemFireXD.Tests
       // now test with restrictions
       flag = 3;
       tab1 = m_conn.GetSchema("Tables", new string[]
-                              { null, null, "%", "TABLE" });
+                              { null, null, "%", "ROW TABLE" });
       foreach (DataRow row in tab1.Rows) {
         switch (row["TABLE_NAME"].ToString()) {
           case "EMPLOYEE":
             Assert.AreEqual("", row["TABLE_CATALOG"], "#GS9.11");
             Assert.AreEqual("APP", row["TABLE_SCHEMA"], "#GS9.12");
-            Assert.AreEqual("TABLE", row["TABLE_TYPE"], "#GS9.13");
+            Assert.AreEqual("ROW TABLE", row["TABLE_TYPE"], "#GS9.13");
             --flag;
             break;
           case "CREDIT":
             Assert.AreEqual("", row["TABLE_CATALOG"], "#GS9.14");
             Assert.AreEqual("EMP", row["TABLE_SCHEMA"], "#GS9.15");
-            Assert.AreEqual("TABLE", row["TABLE_TYPE"], "#GS9.16");
+            Assert.AreEqual("ROW TABLE", row["TABLE_TYPE"], "#GS9.16");
             --flag;
             break;
           case "NUMERIC_FAMILY":
             Assert.AreEqual("", row["TABLE_CATALOG"], "#GS9.17");
             Assert.AreEqual("APP", row["TABLE_SCHEMA"], "#GS9.18");
-            Assert.AreEqual("TABLE", row["TABLE_TYPE"], "#GS9.19");
+            Assert.AreEqual("ROW TABLE", row["TABLE_TYPE"], "#GS9.19");
             --flag;
             break;
           default:

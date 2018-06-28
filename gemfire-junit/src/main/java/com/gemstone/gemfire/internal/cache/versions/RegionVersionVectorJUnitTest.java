@@ -33,6 +33,47 @@ import com.gemstone.gemfire.internal.shared.Version;
 
 public class RegionVersionVectorJUnitTest extends TestCase {
 
+
+  public void testRVVGII() {
+
+    DiskStoreID id1 = new DiskStoreID(1, 0);
+    DiskStoreID id2 = new DiskStoreID(2, 0);
+
+    DiskRegionVersionVector rvv1 = new DiskRegionVersionVector(id1);
+
+    for(int i=1;i<19;i++) {
+      rvv1.recordVersion(id1,i,null);
+    }
+    for(int i=1;i<10;i++) {
+      rvv1.recordVersion(id2,i,null);
+    }
+
+    System.out.println("This node init, rvv1= "+ rvv1.fullToString());
+
+    DiskRegionVersionVector rvv2 = new DiskRegionVersionVector(id2);
+
+    for(int i=1;i<20;i++) {
+      rvv2.recordVersion(id1,i,null);
+    }
+    for(int i=1;i<12;i++) {
+      rvv2.recordVersion(id2,i,null);
+    }
+
+
+    System.out.println("This node init, rvv2="+rvv2.fullToString());
+
+    rvv1.recordVersions(rvv2, null);
+
+
+    System.out.println("This node init, rvv1="+rvv1.fullToString());
+
+    rvv1.getCurrentVersion();
+    System.out.println("This node init, rvv1="+rvv1.fullToString());
+
+    assert(rvv1.fullToString().contentEquals("RegionVersionVector[00000000-0000-0001-0000-000000000000={rv19 gc0 localVersion=19 local exceptions=[]} others={00000000-0000-0001-0000-000000000000={rv19 bsv1 bs=[], 00000000-0000-0002-0000-000000000000={rv11 bsv11 bs=[0]}, gc={}]"));
+    assert(rvv1.contains(id1,19));
+  }
+
   public void testExceptionsWithContains() {
     DiskStoreID ownerId = new DiskStoreID(0, 0);
     DiskStoreID id1 = new DiskStoreID(0, 1);
@@ -43,7 +84,7 @@ public class RegionVersionVectorJUnitTest extends TestCase {
     doExceptionsWithContains(ownerId, rvv);
     doExceptionsWithContains(id1, rvv);
   }
-  
+
   public void testRVVSerialization() throws IOException, ClassNotFoundException {
     DiskStoreID ownerId = new DiskStoreID(0, 0);
     DiskStoreID id1 = new DiskStoreID(0, 1);

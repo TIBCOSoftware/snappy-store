@@ -18,10 +18,8 @@ package com.pivotal.gemfirexd.jdbc.offheap;
 
 import java.lang.reflect.Field;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.sql.Timestamp;
@@ -52,7 +50,6 @@ import com.gemstone.gemfire.internal.cache.PartitionedRegionDataStore;
 import com.gemstone.gemfire.internal.cache.TXState;
 import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl.Chunk;
 import com.pivotal.gemfirexd.TestUtil;
-import com.pivotal.gemfirexd.TestUtil.ScanTypeQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverAdapter;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.Misc;
@@ -78,7 +75,6 @@ import com.pivotal.gemfirexd.internal.impl.sql.execute.PlanUtils.Context;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.ResultSetStatisticsVisitor;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.SortResultSet;
 import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
-import com.pivotal.gemfirexd.jdbc.JdbcTestBase.RegionMapClearDetector;
 
 public class OffHeapOHACOptimizationTest extends JdbcTestBase {
   private RegionMapClearDetector rmcd = null;	
@@ -116,10 +112,10 @@ public class OffHeapOHACOptimizationTest extends JdbcTestBase {
 	CacheObserverHolder.setInstance(null);
 	GemFireXDQueryObserverHolder.clearInstance(); 
     super.tearDown();
-    System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "");
-    System.setProperty("gemfire."
-        + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "");
-    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY, "");
+    System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
+    System.clearProperty("gemfire."
+        + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
+    System.clearProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY);
   }
   
   
@@ -249,14 +245,6 @@ public class OffHeapOHACOptimizationTest extends JdbcTestBase {
       }
 
     } finally {
-      try {
-        DriverManager.getConnection("jdbc:derby:;shutdown=true");
-      } catch (SQLException sqle) {
-        if (sqle.getMessage().indexOf("shutdown") == -1) {
-          sqle.printStackTrace();
-          throw sqle;
-        }
-      }
       GemFireXDQueryObserverHolder.clearInstance();
     }
 
@@ -386,14 +374,6 @@ public class OffHeapOHACOptimizationTest extends JdbcTestBase {
       }
 
     } finally {
-      try {
-        DriverManager.getConnection("jdbc:derby:;shutdown=true");
-      } catch (SQLException sqle) {
-        if (sqle.getMessage().indexOf("shutdown") == -1) {
-          sqle.printStackTrace();
-          throw sqle;
-        }
-      }
       GemFireXDQueryObserverHolder.clearInstance();
     }
 
@@ -517,14 +497,6 @@ public class OffHeapOHACOptimizationTest extends JdbcTestBase {
       }
 
     } finally {
-      try {
-        DriverManager.getConnection("jdbc:derby:;shutdown=true");
-      } catch (SQLException sqle) {
-        if (sqle.getMessage().indexOf("shutdown") == -1) {
-          sqle.printStackTrace();
-          throw sqle;
-        }
-      }
       GemFireXDQueryObserverHolder.clearInstance();
     }
 
@@ -649,14 +621,6 @@ public class OffHeapOHACOptimizationTest extends JdbcTestBase {
       }
 
     } finally {
-      try {
-        DriverManager.getConnection("jdbc:derby:;shutdown=true");
-      } catch (SQLException sqle) {
-        if (sqle.getMessage().indexOf("shutdown") == -1) {
-          sqle.printStackTrace();
-          throw sqle;
-        }
-      }
       GemFireXDQueryObserverHolder.clearInstance();
     }
 
@@ -786,14 +750,6 @@ public class OffHeapOHACOptimizationTest extends JdbcTestBase {
       }
 
     } finally {
-      try {
-        DriverManager.getConnection("jdbc:derby:;shutdown=true");
-      } catch (SQLException sqle) {
-        if (sqle.getMessage().indexOf("shutdown") == -1) {
-          sqle.printStackTrace();
-          throw sqle;
-        }
-      }
       GemFireXDQueryObserverHolder.clearInstance();
     }
 
@@ -917,14 +873,6 @@ public class OffHeapOHACOptimizationTest extends JdbcTestBase {
       }
 
     } finally {
-      try {
-        DriverManager.getConnection("jdbc:derby:;shutdown=true");
-      } catch (SQLException sqle) {
-        if (sqle.getMessage().indexOf("shutdown") == -1) {
-          sqle.printStackTrace();
-          throw sqle;
-        }
-      }
       GemFireXDQueryObserverHolder.clearInstance();
     }
 
@@ -1050,14 +998,6 @@ public class OffHeapOHACOptimizationTest extends JdbcTestBase {
       }
 
     } finally {
-      try {
-        DriverManager.getConnection("jdbc:derby:;shutdown=true");
-      } catch (SQLException sqle) {
-        if (sqle.getMessage().indexOf("shutdown") == -1) {
-          sqle.printStackTrace();
-          throw sqle;
-        }
-      }
       GemFireXDQueryObserverHolder.clearInstance();
     }
 
@@ -1191,14 +1131,6 @@ public class OffHeapOHACOptimizationTest extends JdbcTestBase {
       }
 
     } finally {
-      try {
-        DriverManager.getConnection("jdbc:derby:;shutdown=true");
-      } catch (SQLException sqle) {
-        if (sqle.getMessage().indexOf("shutdown") == -1) {
-          sqle.printStackTrace();
-          throw sqle;
-        }
-      }
       GemFireXDQueryObserverHolder.clearInstance();
     }
 
@@ -1338,14 +1270,6 @@ public class OffHeapOHACOptimizationTest extends JdbcTestBase {
       }
 
     } finally {
-      try {
-        DriverManager.getConnection("jdbc:derby:;shutdown=true");
-      } catch (SQLException sqle) {
-        if (sqle.getMessage().indexOf("shutdown") == -1) {
-          sqle.printStackTrace();
-          throw sqle;
-        }
-      }
       GemFireXDQueryObserverHolder.clearInstance();
     }
 
@@ -1477,14 +1401,6 @@ public class OffHeapOHACOptimizationTest extends JdbcTestBase {
       }
 
     } finally {
-      try {
-        DriverManager.getConnection("jdbc:derby:;shutdown=true");
-      } catch (SQLException sqle) {
-        if (sqle.getMessage().indexOf("shutdown") == -1) {
-          sqle.printStackTrace();
-          throw sqle;
-        }
-      }
       GemFireXDQueryObserverHolder.clearInstance();
     }
 
@@ -1622,14 +1538,6 @@ public class OffHeapOHACOptimizationTest extends JdbcTestBase {
       }
 
     } finally {
-      try {
-        DriverManager.getConnection("jdbc:derby:;shutdown=true");
-      } catch (SQLException sqle) {
-        if (sqle.getMessage().indexOf("shutdown") == -1) {
-          sqle.printStackTrace();
-          throw sqle;
-        }
-      }
       GemFireXDQueryObserverHolder.clearInstance();
     }
 
@@ -1769,14 +1677,6 @@ public class OffHeapOHACOptimizationTest extends JdbcTestBase {
       }
 
     } finally {
-      try {
-        DriverManager.getConnection("jdbc:derby:;shutdown=true");
-      } catch (SQLException sqle) {
-        if (sqle.getMessage().indexOf("shutdown") == -1) {
-          sqle.printStackTrace();
-          throw sqle;
-        }
-      }
       GemFireXDQueryObserverHolder.clearInstance();
     }
 
@@ -1909,14 +1809,6 @@ public class OffHeapOHACOptimizationTest extends JdbcTestBase {
       }
 
     } finally {
-      try {
-        DriverManager.getConnection("jdbc:derby:;shutdown=true");
-      } catch (SQLException sqle) {
-        if (sqle.getMessage().indexOf("shutdown") == -1) {
-          sqle.printStackTrace();
-          throw sqle;
-        }
-      }
       GemFireXDQueryObserverHolder.clearInstance();
     }
 
@@ -2056,14 +1948,6 @@ public class OffHeapOHACOptimizationTest extends JdbcTestBase {
       }
 
     } finally {
-      try {
-        DriverManager.getConnection("jdbc:derby:;shutdown=true");
-      } catch (SQLException sqle) {
-        if (sqle.getMessage().indexOf("shutdown") == -1) {
-          sqle.printStackTrace();
-          throw sqle;
-        }
-      }
       GemFireXDQueryObserverHolder.clearInstance();
     }
 

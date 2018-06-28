@@ -117,9 +117,9 @@ public class OffHeapTest extends JdbcTestBase {
 	CacheObserverHolder.setInstance(null);
 	GemFireXDQueryObserverHolder.clearInstance();  
     super.tearDown();
-    System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "");
-    System.setProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "");
-    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,"");
+    System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
+    System.clearProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
+    System.clearProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY);
     
   }
 
@@ -2665,7 +2665,7 @@ public class OffHeapTest extends JdbcTestBase {
       }
 
     } finally {
-      System.setProperty("gemfire.partitionedRegionRetryTimeout", "");
+      System.clearProperty("gemfire.partitionedRegionRetryTimeout");
       LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER = false;
       CacheObserverHolder.setInstance(null);
       GemFireXDQueryObserverHolder.clearInstance();

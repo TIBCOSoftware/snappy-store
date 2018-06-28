@@ -31,13 +31,13 @@ import com.gemstone.gemfire.cache.Cache;
 import com.gemstone.gemfire.cache.CacheWriterException;
 import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.cache.EntryEvent;
+import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.asyncqueue.internal.AsyncEventQueueImpl;
 import com.gemstone.gemfire.cache.persistence.PartitionOfflineException;
 import com.gemstone.gemfire.cache.util.CacheWriterAdapter;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.internal.AvailablePort;
 import com.gemstone.gemfire.internal.GemFireTerminateError;
-import com.gemstone.gemfire.internal.SocketCreator;
 import com.gemstone.gemfire.internal.cache.LocalDataSet;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
@@ -107,7 +107,7 @@ public class BugsTest extends JdbcTestBase {
     super(name);
   }
 
-  public void testGEMXD_3_TMG16663_IndexRecoveryNPE() throws Exception {
+  public void testGEMXD_3_IndexRecoveryNPE() throws Exception {
     Connection conn = TestUtil.getConnection();
     Statement st = conn.createStatement();
     st.execute("Create table ODS.POSTAL_ADDRESS("
@@ -175,6 +175,7 @@ public class BugsTest extends JdbcTestBase {
     st = conn.createStatement();
     ResultSet rs;
     for (int i = 0; i < 250; i++) {
+      logger.info("Testing index 02 query for i = " + i);
       rs = st.executeQuery("select st, cty, client_id from ODS.POSTAL_ADDRESS "
           + "where CTY='CTY" + (i + 20) + "' AND CLIENT_ID=" + (i + 20));
       if ((i >= 200 && i < 250) || (i >= 100 && i < 150)) {
@@ -191,10 +192,11 @@ public class BugsTest extends JdbcTestBase {
       rs.close();
     }
     for (int i = 0; i < 250; i++) {
+      logger.info("Testing index 03 query for i = " + i);
       rs = st.executeQuery("select st, cty, client_id from ODS.POSTAL_ADDRESS "
           + "where ST='ST" + (i + 20) + "' AND CLIENT_ID=" + (i + 20));
       if (i >= 0 && i < 150) {
-        assertTrue(rs.next());
+        assertTrue("failed to find result for " + i, rs.next());
         assertEquals("ST" + (i + 20), rs.getString(1));
         if (i < 100) {
           assertEquals("CTY" + (i + 20), rs.getString(2));
@@ -469,22 +471,33 @@ public class BugsTest extends JdbcTestBase {
       this.deleteDirs[0] = locDir.getAbsolutePath();
       String remDirName;
       boolean hasExportDir;
-      String exportDir = "/srv/users/" + System.getenv().get("USER");
-      if (new File(exportDir).exists()) {
+      String userName = System.getenv("USER");
+      String exportDir = "/srv/users/" + userName;
+      File exportFile = new File(exportDir);
+      if (exportFile.exists() && exportFile.isDirectory()) {
         hasExportDir = true;
         remDirName = exportDir + "/preBlow-" + currTime;
       } else {
-        hasExportDir = false;
-        remDirName = "/home/" + System.getenv().get("USER")
-            + "/preBlow-" + currTime;
+        exportDir = "/export/shared/users/" + userName;
+        exportFile = new File(exportDir);
+        if (exportFile.mkdirs() ||
+            (exportFile.exists() && exportFile.isDirectory())) {
+          hasExportDir = true;
+          remDirName = exportDir + "/preBlow-" + currTime;
+        } else {
+          hasExportDir = false;
+          remDirName = "/home/" + System.getenv().get("USER") + "/preBlow-"
+              + currTime;
+        }
       }
       File remDir = new File(remDirName);
+      getLogger().info("Using remote directory " + remDir.getAbsolutePath());
       assertTrue(remDir.mkdir());
       this.deleteDirs[1] = remDir.getAbsolutePath();
       st.execute("create diskstore teststore_loc ('" + locDirName + "') MAXLOGSIZE 2");
-      String str1k = new String();
+      StringBuilder str1k = new StringBuilder();
       for (int i = 0; i < 1024; i++) {
-        str1k += "a";
+        str1k.append('a');
       }
       st.execute("create table emp(id int not null primary key, name varchar(20) not null, "
           + "addr varchar(2000) not null) persistent 'teststore_loc'");
@@ -493,7 +506,7 @@ public class BugsTest extends JdbcTestBase {
       for (int i = 0; i < 5000; i++) {
         ps.setInt(1, i);
         ps.setString(2, "name" + i);
-        ps.setString(3, str1k);
+        ps.setString(3, str1k.toString());
         int j = ps.executeUpdate();
         assertEquals(1, j);
       }
@@ -502,11 +515,11 @@ public class BugsTest extends JdbcTestBase {
       rs.next();
       assertEquals(5000, rs.getInt(1));
 
-      HashSet<String> preBlowDoneDirs = new HashSet<String>();
+      HashSet<String> preBlowDoneDirs = new HashSet<>();
       preBlowDoneDirs.addAll(NativeCalls.TEST_CHK_FALLOC_DIRS);
       NativeCalls.TEST_CHK_FALLOC_DIRS.clear();
       // Test remote now
-      NativeCalls.TEST_NO_FALLOC_DIRS = new HashSet<String>();
+      NativeCalls.TEST_NO_FALLOC_DIRS = new HashSet<>();
       st.execute("create diskstore teststore_rem ('" + remDirName + "') MAXLOGSIZE 2");
       st.execute("create table emp2(id int not null primary key, name varchar(20) not null, "
           + "addr varchar(2000) not null) persistent 'teststore_rem'");
@@ -514,7 +527,7 @@ public class BugsTest extends JdbcTestBase {
       for (int i = 0; i < 5000; i++) {
         ps.setInt(1, i);
         ps.setString(2, "name" + i);
-        ps.setString(3, str1k);
+        ps.setString(3, str1k.toString());
         int j = ps.executeUpdate();
         assertEquals(1, j);
       }
@@ -522,7 +535,7 @@ public class BugsTest extends JdbcTestBase {
       rs = st.getResultSet();
       rs.next();
       assertEquals(5000, rs.getInt(1));
-      HashSet<String> preBlowNotDoneDirs = new HashSet<String>();
+      HashSet<String> preBlowNotDoneDirs = new HashSet<>();
       preBlowNotDoneDirs.addAll(NativeCalls.TEST_NO_FALLOC_DIRS);
       if (hasExportDir) {
         assertTrue(NativeCalls.TEST_CHK_FALLOC_DIRS.isEmpty());
@@ -752,8 +765,8 @@ public class BugsTest extends JdbcTestBase {
    bw.flush();
    bw.close();
     }finally {
-      System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "");
-      System.setProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "");
+      System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
+      System.clearProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
       SelectQueryInfo.setTestFlagIgnoreSingleVMCriteria(false);
     }
    
@@ -869,8 +882,8 @@ public class BugsTest extends JdbcTestBase {
     
     psQuery.executeUpdate();
     }finally {
-      System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "");
-      System.setProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "");
+      System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
+      System.clearProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
       SelectQueryInfo.setTestFlagIgnoreSingleVMCriteria(false);
     }
    
@@ -1117,9 +1130,9 @@ public class BugsTest extends JdbcTestBase {
 
       }
     } finally {
-      System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "");
-      System.setProperty("gemfire."
-          + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "");
+      System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
+      System.clearProperty("gemfire."
+          + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
       SelectQueryInfo.setTestFlagIgnoreSingleVMCriteria(false);
     }
 
@@ -7668,7 +7681,7 @@ public class BugsTest extends JdbcTestBase {
 
     Class<?>[] expectedexceptionlist = new Class[] { SQLNonTransientConnectionException.class };
     // INSTALL/REPLACE/REMOVE_JAR
-    final String localHostName = SocketCreator.getLocalHost().getHostName();
+    final String localHostName = "localhost";
     try {
       TestUtil.addExpectedException(expectedexceptionlist);
       JarTools.main(new String[] { "install-jar", "-file=" + myjar,
@@ -8633,7 +8646,6 @@ public class BugsTest extends JdbcTestBase {
     Properties p = new Properties();
     p.setProperty("mcast-port", String.valueOf(AvailablePort
         .getRandomAvailablePort(AvailablePort.JGROUPS)));
-    p.setProperty("SKIP_SPS_PRECOMPILE", "true");
     setupConnection(p);
     int port = TestUtil.startNetserverAndReturnPort();
     
@@ -8895,6 +8907,39 @@ public class BugsTest extends JdbcTestBase {
       helper2Bug52352(props, "test", "test");
     } finally {
       TestUtil.shutDown();
+    }
+  }
+
+  public void testSNAP_2202() {
+    String[] regions = new String[] {
+        "/" + GfxdConstants.IDENTITY_REGION_NAME,
+        "/SCHEMA",
+        "/_SCHEMA",
+        "/__SCHEMA",
+        "/__SCHEMA_",
+        "/__SCH_EMA_",
+        "/_SCH__EMA_",
+        "/__SCH__EMA__",
+        "/SCHEMA/TEST",
+        "/_SCHEMA/TEST",
+        "/__SCHEMA/_TEST",
+        "/__SCHE_MA/TEST",
+        "/__SCHEMA/_TE__ST",
+        // the pattern "_/_" is unsupported
+        // "/__SC__HEMA_/_TE_ST__"
+        "/__SCHEMA/__TE__ST__"
+    };
+    int[] bucketIds = new int[] { 0, 1, 23, 101, 1001 };
+    for (String region : regions) {
+      for (int bucketId : bucketIds) {
+        // below is same as ProxyBucketRegion.fullPath initialization
+        String fullPath = Region.SEPARATOR +
+            PartitionedRegionHelper.PR_ROOT_REGION_NAME + Region.SEPARATOR +
+            PartitionedRegionHelper.getBucketName(region, bucketId);
+        String bucketName = PartitionedRegionHelper.getBucketName(fullPath);
+        assertEquals(region, PartitionedRegionHelper.getPRPath(bucketName));
+        assertEquals(bucketId, PartitionedRegionHelper.getBucketId(bucketName));
+      }
     }
   }
 }

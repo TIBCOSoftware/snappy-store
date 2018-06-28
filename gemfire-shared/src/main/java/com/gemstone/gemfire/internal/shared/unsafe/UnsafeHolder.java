@@ -41,10 +41,11 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
+import java.util.concurrent.locks.LockSupport;
+import java.util.function.BiConsumer;
 
 import com.gemstone.gemfire.internal.shared.ChannelBufferFramedInputStream;
 import com.gemstone.gemfire.internal.shared.ChannelBufferFramedOutputStream;
@@ -66,6 +67,7 @@ public abstract class UnsafeHolder {
   private static final class Wrapper {
 
     static final sun.misc.Unsafe unsafe;
+    static final boolean unaligned;
     static final Constructor<?> directBufferConstructor;
     static final Field cleanerField;
     static final Field cleanerRunnableField;
@@ -78,13 +80,15 @@ public abstract class UnsafeHolder {
       Field cleaner;
       Field runnableField = null;
       try {
+        final ClassLoader systemLoader = ClassLoader.getSystemClassLoader();
         // try using "theUnsafe" field
         Field field = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
         field.setAccessible(true);
         v = (sun.misc.Unsafe)field.get(null);
 
         // get the constructor of DirectByteBuffer that accepts a Runnable
-        Class<?> cls = Class.forName("java.nio.DirectByteBuffer");
+        Class<?> cls = Class.forName("java.nio.DirectByteBuffer",
+            false, systemLoader);
         dbConstructor = cls.getDeclaredConstructor(Long.TYPE, Integer.TYPE);
         dbConstructor.setAccessible(true);
 
@@ -102,6 +106,12 @@ public abstract class UnsafeHolder {
             }
           }
         }
+
+        Class<?> bitsClass = Class.forName("java.nio.Bits",
+            false, systemLoader);
+        Method m = bitsClass.getDeclaredMethod("unaligned");
+        m.setAccessible(true);
+        unaligned = Boolean.TRUE.equals(m.invoke(null));
 
       } catch (LinkageError le) {
         throw le;
@@ -142,6 +152,10 @@ public abstract class UnsafeHolder {
   }
 
   private static final boolean hasUnsafe;
+  // Limit to the chunk copied per Unsafe.copyMemory call to allow for
+  // safepoint polling by JVM.
+  public static final boolean littleEndian =
+      ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN;
 
   static {
     boolean v;
@@ -163,34 +177,6 @@ public abstract class UnsafeHolder {
     return hasUnsafe;
   }
 
-  @SuppressWarnings("serial")
-  public static abstract class FreeMemory extends AtomicLong implements Runnable {
-
-    protected FreeMemory(long address) {
-      super(address);
-    }
-
-    protected final long tryFree() {
-      // try hard to ensure freeMemory call happens only once
-      final long address = get();
-      return (address != 0 && compareAndSet(address, 0L)) ? address : 0L;
-    }
-
-    protected abstract String objectName();
-
-    @Override
-    public void run() {
-      final long address = tryFree();
-      if (address != 0) {
-        Platform.freeMemory(address);
-      }
-    }
-  }
-
-  public interface FreeMemoryFactory {
-    FreeMemory newFreeMemory(long address, int size);
-  }
-
   public static int getAllocationSize(int size) {
     // round to word size
     size = ((size + 7) >>> 3) << 3;
@@ -199,25 +185,27 @@ public abstract class UnsafeHolder {
   }
 
   public static ByteBuffer allocateDirectBuffer(int size,
-      FreeMemoryFactory factory) {
+      FreeMemory.Factory factory) {
     final int allocSize = getAllocationSize(size);
     final ByteBuffer buffer = allocateDirectBuffer(
-        Platform.allocateMemory(allocSize), allocSize, factory);
+        getUnsafe().allocateMemory(allocSize), allocSize, factory);
     buffer.limit(size);
     return buffer;
   }
 
-  private static ByteBuffer allocateDirectBuffer(long address, int size,
-      FreeMemoryFactory factory) {
+  public static ByteBuffer allocateDirectBuffer(long address, int size,
+      FreeMemory.Factory factory) {
     try {
       ByteBuffer buffer = (ByteBuffer)Wrapper.directBufferConstructor
           .newInstance(address, size);
-      sun.misc.Cleaner cleaner = sun.misc.Cleaner.create(buffer,
-          factory.newFreeMemory(address, size));
-      Wrapper.cleanerField.set(buffer, cleaner);
+      if (factory != null) {
+        sun.misc.Cleaner cleaner = sun.misc.Cleaner.create(buffer,
+            factory.newFreeMemory(address, size));
+        Wrapper.cleanerField.set(buffer, cleaner);
+      }
       return buffer;
     } catch (Exception e) {
-      Platform.throwException(e);
+      getUnsafe().throwException(e);
       throw new IllegalStateException("unreachable");
     }
   }
@@ -227,7 +215,7 @@ public abstract class UnsafeHolder {
   }
 
   public static ByteBuffer reallocateDirectBuffer(ByteBuffer buffer,
-      int newSize, Class<?> expectedClass, FreeMemoryFactory factory) {
+      int newSize, Class<?> expectedClass, FreeMemory.Factory factory) {
     sun.nio.ch.DirectBuffer directBuffer = (sun.nio.ch.DirectBuffer)buffer;
     final long address = directBuffer.address();
     long newAddress = 0L;
@@ -247,7 +235,7 @@ public abstract class UnsafeHolder {
         // use the efficient realloc call if possible
         if ((freeMemory instanceof FreeMemory) &&
             ((FreeMemory)freeMemory).tryFree() != 0L) {
-          newAddress = getUnsafe().reallocateMemory(address, newSize);
+          newAddress = Wrapper.unsafe.reallocateMemory(address, newSize);
         }
       } catch (IllegalAccessException e) {
         // fallback to full copy
@@ -258,7 +246,7 @@ public abstract class UnsafeHolder {
         throw new IllegalStateException("Expected class to be " +
             expectedClass.getName() + " in reallocate but was non-runnable");
       }
-      newAddress = Platform.allocateMemory(newSize);
+      newAddress = getUnsafe().allocateMemory(newSize);
       Platform.copyMemory(null, address, null, newAddress,
           Math.min(newSize, buffer.limit()));
     }
@@ -276,14 +264,14 @@ public abstract class UnsafeHolder {
    * argument specifies that target Runnable type that factory will produce.
    * If the existing Runnable already matches "to" then its a no-op.
    * <p>
-   * The provided {@link Consumer} is used to apply any action before actually
+   * The provided {@link BiConsumer} is used to apply any action before actually
    * changing the runnable field with the boolean argument indicating whether
    * the current field matches "from" or if it is something else.
    */
   public static void changeDirectBufferCleaner(
       ByteBuffer buffer, int size, Class<? extends FreeMemory> from,
-      Class<? extends FreeMemory> to, FreeMemoryFactory factory,
-      final Consumer<String> changeOwner) throws IllegalAccessException {
+      Class<? extends FreeMemory> to, FreeMemory.Factory factory,
+      final BiConsumer<String, Object> changeOwner) throws IllegalAccessException {
     sun.nio.ch.DirectBuffer directBuffer = (sun.nio.ch.DirectBuffer)buffer;
     final sun.misc.Cleaner cleaner = directBuffer.cleaner();
     if (cleaner != null) {
@@ -294,9 +282,9 @@ public abstract class UnsafeHolder {
       if (!to.isInstance(runnable)) {
         if (changeOwner != null) {
           if (from.isInstance(runnable)) {
-            changeOwner.accept(((FreeMemory)runnable).objectName());
+            changeOwner.accept(((FreeMemory)runnable).objectName(), runnable);
           } else {
-            changeOwner.accept(null);
+            changeOwner.accept(null, runnable);
           }
         }
         Runnable newFree = factory.newFreeMemory(directBuffer.address(), size);
@@ -309,22 +297,16 @@ public abstract class UnsafeHolder {
   }
 
   /**
-   * Release explicitly if the passed ByteBuffer is a direct one. Avoid using
+   * Release explicitly assuming passed ByteBuffer is a direct one. Avoid using
    * this directly rather use BufferAllocator.allocate/release where possible.
    */
-  public static void releaseIfDirectBuffer(ByteBuffer buffer) {
-    if (buffer != null && buffer.isDirect()) {
-      releaseDirectBuffer(buffer);
-    }
-  }
-
-  static void releaseDirectBuffer(ByteBuffer buffer) {
+  public static void releaseDirectBuffer(ByteBuffer buffer) {
     sun.misc.Cleaner cleaner = ((sun.nio.ch.DirectBuffer)buffer).cleaner();
     if (cleaner != null) {
       cleaner.clean();
       cleaner.clear();
     }
-    releasePendingReferences();
+    buffer.rewind().limit(0);
   }
 
   public static void releasePendingReferences() {
@@ -349,6 +331,27 @@ public abstract class UnsafeHolder {
 
   public static sun.misc.Unsafe getUnsafe() {
     return Wrapper.unsafe;
+  }
+
+  public static boolean tryMonitorEnter(Object obj, boolean checkSelf) {
+    if (checkSelf && Thread.holdsLock(obj)) {
+      return false;
+    } else if (!getUnsafe().tryMonitorEnter(obj)) {
+      // try once more after a small wait
+      LockSupport.parkNanos(100L);
+      if (!getUnsafe().tryMonitorEnter(obj)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  public static void monitorEnter(Object obj) {
+    getUnsafe().monitorEnter(obj);
+  }
+
+  public static void monitorExit(Object obj) {
+    getUnsafe().monitorExit(obj);
   }
 
   @SuppressWarnings("resource")

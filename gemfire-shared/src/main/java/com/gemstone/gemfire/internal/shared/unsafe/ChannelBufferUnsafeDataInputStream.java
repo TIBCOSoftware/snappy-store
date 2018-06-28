@@ -40,17 +40,13 @@ import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;
-
 import javax.annotation.Nonnull;
 
-import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import org.apache.spark.unsafe.Platform;
-
 
 /**
  * A buffered DataInput abstraction over channel using direct byte buffers, and
  * using internal Unsafe class for best performance.
- * Use this only when {@link UnsafeHolder#hasUnsafe()} returns true.
  * <p>
  * The implementation is not thread-safe by design. This particular class can be
  * used as an efficient, buffered DataInput implementation for file channels,
@@ -154,7 +150,7 @@ public class ChannelBufferUnsafeDataInputStream extends
       addrPos = this.addrPosition;
     }
     this.addrPosition += 2;
-    if (ClientSharedUtils.isLittleEndian) {
+    if (UnsafeHolder.littleEndian) {
       return Short.reverseBytes(Platform.getShort(null, addrPos));
     } else {
       return Platform.getShort(null, addrPos);
@@ -188,7 +184,7 @@ public class ChannelBufferUnsafeDataInputStream extends
       addrPos = this.addrPosition;
     }
     this.addrPosition += 8;
-    if (ClientSharedUtils.isLittleEndian) {
+    if (UnsafeHolder.littleEndian) {
       return Long.reverseBytes(Platform.getLong(null, addrPos));
     } else {
       return Platform.getLong(null, addrPos);

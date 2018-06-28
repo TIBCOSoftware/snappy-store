@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -29,6 +29,13 @@ import com.gemstone.gemfire.internal.cache.ExternalTableMetaData;
  * initializes and set into the GemFireStore instance.
  */
 public interface ExternalCatalog {
+
+  /**
+   * Wait for initialization of the catalog. Should always be invoked
+   * before calling any other method. Fails after waiting for some period
+   * of time.
+   */
+  boolean waitForInitialization();
 
   /**
    * Will be used by the execution engine to route to JobServer
@@ -81,5 +88,5 @@ public interface ExternalCatalog {
   public ExternalTableMetaData getHiveTableMetaData(String schema, String tableName,
       boolean skipLocks);
 
-  void stop();
+  void close();
 }

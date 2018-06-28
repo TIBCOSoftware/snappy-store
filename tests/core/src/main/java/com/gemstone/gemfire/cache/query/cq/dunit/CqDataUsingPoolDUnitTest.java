@@ -57,12 +57,9 @@ import com.gemstone.gemfire.internal.AvailablePortHelper;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.PoolFactoryImpl;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheServerTestUtil;
-import com.gemstone.gemfire.internal.concurrent.CLQ;
 
 import dunit.AsyncInvocation;
-import dunit.DistributedTestCase;
 import dunit.Host;
-import dunit.SerializableCallable;
 import dunit.SerializableRunnable;
 import dunit.VM;
 

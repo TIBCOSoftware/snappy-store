@@ -25,6 +25,7 @@ import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.internal.Config;
 import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.ManagerLogWriter;
+import com.gemstone.gemfire.internal.shared.LauncherBase;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.tcp.Connection;
 import com.gemstone.gemfire.memcached.GemFireMemcachedServer;
@@ -423,7 +424,7 @@ public interface DistributionConfig extends Config, ManagerLogWriter.LogConfig {
    */
   public boolean isLogFileModifiable();
   /** The name of the "logFile" property */
-  public static final String LOG_FILE_NAME = "log-file";
+  public static final String LOG_FILE_NAME = LauncherBase.LOG_FILE;
 
   /**
    * The default log file.
@@ -1991,7 +1992,7 @@ public interface DistributionConfig extends Config, ManagerLogWriter.LogConfig {
   public static final String GEMFIRE_PREFIX = "gemfire.";
 
   /** The prefix used for SnappyData properties set through java system properties */
-  public static final String SNAPPY_PREFIX = "snappydata.store.";
+  public static final String SNAPPY_PREFIX = SystemProperties.SNAPPY_PREFIX;
 
   /** For the "custom-" prefixed properties */
   public static final String USERDEFINED_PREFIX_NAME = "custom-";
@@ -2231,7 +2232,7 @@ public interface DistributionConfig extends Config, ManagerLogWriter.LogConfig {
   public int getJmxManagerUpdateRate();
   public void setJmxManagerUpdateRate(int value);
   public boolean isJmxManagerUpdateRateModifiable();
-  public static final int DEFAULT_JMX_MANAGER_UPDATE_RATE = 2000;
+  public static final int DEFAULT_JMX_MANAGER_UPDATE_RATE = 4000;
   public static final int MIN_JMX_MANAGER_UPDATE_RATE = 1000;
   public static final int MAX_JMX_MANAGER_UPDATE_RATE = 60000*5;
   public static final String JMX_MANAGER_UPDATE_RATE_NAME =

@@ -70,7 +70,7 @@ public abstract class GfxdWanCommonTestBase extends GfxdWanTestBase {
     // 1 accessor + sender + receiver
     startSites(2);
     // create gatewayreceiver
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     // create gatewaysender
     final String createGWS = getCreateGatewayDML();
@@ -110,7 +110,7 @@ public abstract class GfxdWanCommonTestBase extends GfxdWanTestBase {
     // 1 accessor + sender + receiver
     startSites(2);
     // create gatewayreceiver
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     // create gatewaysender
     final String createGWS = getCreateGatewayDML();
@@ -159,7 +159,7 @@ public abstract class GfxdWanCommonTestBase extends GfxdWanTestBase {
     // 1 accessor + sender + receiver
     startSites(2);
     // create gatewayreceiver
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     // create gatewaysender
     final String createGWS = getCreateGatewayDML();
@@ -222,7 +222,7 @@ public abstract class GfxdWanCommonTestBase extends GfxdWanTestBase {
     // 1 accessor + sender + receiver
     startSites(2);
     // create gatewayreceiver
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     // create gatewaysender
     final String createGWS = getCreateGatewayDML();
@@ -288,7 +288,7 @@ public abstract class GfxdWanCommonTestBase extends GfxdWanTestBase {
     addExpectedException(new String[] { SITE_A, SITE_B },
         new Object[] { CacheClosedException.class });
     // create gatewayreceiver
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     // create gatewaysender
     final String createGWS = getCreateGatewayDML();
@@ -332,7 +332,7 @@ public abstract class GfxdWanCommonTestBase extends GfxdWanTestBase {
     // 1 accessor + sender + receiver
     startSites(2);
     // create gatewayreceiver
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     // create gatewaysender
     final String createGWS = getCreateGatewayDML();
@@ -398,7 +398,7 @@ public abstract class GfxdWanCommonTestBase extends GfxdWanTestBase {
     addExpectedException(new String[] { SITE_A, SITE_B },
         new Object[] { ForceReattemptException.class });
     // create gatewayreceiver
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     // create gatewaysender
     final String createGWS = getCreateGatewayDML();
@@ -482,7 +482,7 @@ public abstract class GfxdWanCommonTestBase extends GfxdWanTestBase {
     addExpectedException(new String[] { SITE_A, SITE_B },
         new Object[] { ForceReattemptException.class });
     // create gatewayreceiver
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     // create gatewaysender
     final String createGWS = getCreateGatewayDML();
@@ -553,7 +553,7 @@ public abstract class GfxdWanCommonTestBase extends GfxdWanTestBase {
     // 1 accessor + sender + receiver
     startSites(2);
     // create gatewayreceiver
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     // create gatewaysender
     final String createGWS = getCreateGatewayDML();
@@ -624,7 +624,7 @@ public abstract class GfxdWanCommonTestBase extends GfxdWanTestBase {
     // 1 accessor + sender + receiver
     startSites(2);
     // create gatewayreceiver
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     // create gatewaysender
     final String createGWS = getCreateGatewayDML();
@@ -670,7 +670,7 @@ public abstract class GfxdWanCommonTestBase extends GfxdWanTestBase {
     // 1 accessor + sender + receiver
     startSites(2);
     // create gatewayreceiver
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     // create gatewaysender
     final String createGWS = getCreateGatewayDML();
@@ -782,7 +782,7 @@ public abstract class GfxdWanCommonTestBase extends GfxdWanTestBase {
     // 1 accessor + sender + receiver
     startSites(2);
     // create gatewayreceiver
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     // create gatewaysender
     final String createGWS = getCreateGatewayDML();
@@ -820,7 +820,7 @@ public abstract class GfxdWanCommonTestBase extends GfxdWanTestBase {
     // 1 accessor + sender + receiver
     startSites(2);
     // create gatewayreceiver
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     // create gatewaysender
     final String createGWS = getCreateGatewayDML();
@@ -888,7 +888,7 @@ public abstract class GfxdWanCommonTestBase extends GfxdWanTestBase {
         ForceReattemptException.class
         });
     // create gatewayreceiver
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     // create gatewaysender
     final String createGWS = getCreateGatewayDML();
@@ -954,7 +954,7 @@ public abstract class GfxdWanCommonTestBase extends GfxdWanTestBase {
     addExpectedException(new String[] { SITE_A, SITE_B },
         new Object[] { PRLocallyDestroyedException.class });
     // create gatewayreceiver
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     // create gatewaysender
     final String createGWS = getCreateGatewayDML();
@@ -1013,7 +1013,7 @@ public abstract class GfxdWanCommonTestBase extends GfxdWanTestBase {
     addExpectedException(new String[] { SITE_A, SITE_B },
         new Object[] { PRLocallyDestroyedException.class });
     // create gatewayreceiver
-    final String createGWR = "create gatewayreceiver myrcvr() server groups(sgSender)";
+    final String createGWR = "create gatewayreceiver myrcvr(bindaddress 'localhost') server groups(sgSender)";
     executeSql(SITE_B, createGWR);
     // create gatewaysender
     final String createGWS = getCreateGatewayDML();

@@ -125,7 +125,19 @@ public class UnsharedImageState implements ImageState {
       this.wasRegionClearedDuringGII = false;
     }
   }
-  
+
+  private volatile boolean requestedDelta;
+
+  @Override
+  public void setRequestedUnappliedDelta(boolean flag) {
+    requestedDelta = flag;
+  }
+
+  @Override
+  public boolean requestedUnappliedDelta() {
+    return requestedDelta;
+  }
+
   public boolean getRegionInvalidated() {
     if (isReplicate()) {
       return this.regionInvalidated;
@@ -337,36 +349,26 @@ public class UnsharedImageState implements ImageState {
    */
   @Override
   public boolean addPendingTXRegionState(TXRegionState txrs) {
-    if (lockPendingTXRegionStates(true, false)) {
-      try {
-        if (this.pendingTXRegionStates != null) {
-          // don't add if the advisor has not been initialized yet, that is the
-          // initial CreateRegionMessage replies are still on the wire so all
-          // operations on TXRegionState are essentially ignored
-          final LocalRegion region = txrs.region;
-          if (region.isProfileExchanged()) {
-            Object old;
-            if ((old = this.pendingTXRegionStates.putIfAbsent(txrs.getTXState()
-                .getTransactionId(), txrs)) != null) {
-              Assert.fail("ImageState#addPendingTXRegionState: failed to add "
-                  + txrs + ", existing=" + old);
-            }
-            if (TXStateProxy.LOG_FINE) {
-              final LogWriterI18n logger = region.getLogWriterI18n();
-              logger.info(LocalizedStrings.DEBUG,
-                  "ImageState#addPendingTXRegionState: adding " + txrs);
-            }
-          }
-          return true;
+    if (this.pendingTXRegionStates != null) {
+      // don't add if the advisor has not been initialized yet, that is the
+      // initial CreateRegionMessage replies are still on the wire so all
+      // operations on TXRegionState are essentially ignored
+      final LocalRegion region = txrs.region;
+      if (region.isProfileExchanged()) {
+        Object old;
+        if ((old = this.pendingTXRegionStates.putIfAbsent(txrs.getTXState()
+            .getTransactionId(), txrs)) != null) {
+          Assert.fail("ImageState#addPendingTXRegionState: failed to add "
+              + txrs + ", existing=" + old);
         }
-        else {
-          return false;
+        if (TXStateProxy.LOG_FINE) {
+          final LogWriterI18n logger = region.getLogWriterI18n();
+          logger.info(LocalizedStrings.DEBUG,
+              "ImageState#addPendingTXRegionState: adding " + txrs);
         }
-      } finally {
-        unlockPendingTXRegionStates(true);
       }
-    }
-    else {
+      return true;
+    } else {
       return false;
     }
   }

@@ -81,8 +81,8 @@ public class StatementStatsTest extends JdbcTestBase {
       st.execute("drop table course ");
     }
     
-    rs = dbm.getTables((String)null, null,
-        "games".toUpperCase(), new String[] { "TABLE" });
+    rs = dbm.getTables(null, null,
+        "games".toUpperCase(), new String[] { "ROW TABLE" });
     found = rs.next();
     rs.close();
 

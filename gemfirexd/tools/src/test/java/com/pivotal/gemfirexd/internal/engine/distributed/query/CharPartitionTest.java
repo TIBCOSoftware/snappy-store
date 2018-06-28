@@ -27,7 +27,7 @@ import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
 import junit.framework.TestSuite;
 import junit.textui.TestRunner;
 
-public class CharPartitionTest extends JdbcTestBase{
+public class CharPartitionTest extends JdbcTestBase {
 
   private static volatile Connection derbyConn = null;
   
@@ -131,7 +131,7 @@ public class CharPartitionTest extends JdbcTestBase{
   private void partitionBy(String partitionStrategy) throws Exception {
 
     try {
-
+      Class.forName("org.apache.derby.jdbc.EmbeddedDriver").newInstance();
 
       // create a table with char columns of different lengths
 

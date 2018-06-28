@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -1159,7 +1159,7 @@ public abstract class Converters {
       } else if (c == Float.class) {
         setFloat(row, columnPosition, (Float)o);
       } else if (c == Integer.class) {
-        setInteger(row, (Integer)o, columnPosition);
+        setInteger(row, columnPosition, (Integer)o);
       } else if (c == Byte.class) {
         setByte(row, columnPosition, (Byte)o);
       } else if (c == Short.class) {

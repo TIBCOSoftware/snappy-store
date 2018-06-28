@@ -60,7 +60,8 @@ public class VersionedStatsDiskLRURegionEntryHeap extends VMStatsDiskLRURegionEn
   protected long getlastModifiedField() {
     return lastModifiedUpdater.get(this);
   }
-  protected boolean compareAndSetLastModifiedField(long expectedValue, long newValue) {
+  protected final boolean compareAndSetLastModifiedField(long expectedValue,
+      long newValue) {
     return lastModifiedUpdater.compareAndSet(this, expectedValue, newValue);
   }
   @Override
@@ -68,7 +69,7 @@ public class VersionedStatsDiskLRURegionEntryHeap extends VMStatsDiskLRURegionEn
     return this.hash;
   }
   @Override
-  protected void setEntryHash(int v) {
+  protected final void setEntryHash(int v) {
     this.hash = v;
   }
   @Override
@@ -79,7 +80,7 @@ public class VersionedStatsDiskLRURegionEntryHeap extends VMStatsDiskLRURegionEn
   public final void setNextEntry(final HashEntry<Object, Object> n) {
     this.next = n;
   }
-  protected void initialize(RegionEntryContext drs, Object value) {
+  protected final void initialize(RegionEntryContext drs, Object value) {
     boolean isBackup;
     if (drs instanceof LocalRegion) {
       isBackup = ((LocalRegion)drs).getDiskRegion().isBackup();
@@ -128,15 +129,15 @@ public class VersionedStatsDiskLRURegionEntryHeap extends VMStatsDiskLRURegionEn
     Helper.initialize(this, drs, value);
   }
   protected DiskId id;
-  public DiskId getDiskId() {
+  public final DiskId getDiskId() {
     return this.id;
   }
   @Override
-  public void setDiskId(RegionEntry old) {
+  public final void setDiskId(RegionEntry old) {
     this.id = ((AbstractDiskRegionEntry)old).getDiskId();
   }
   @Override
-  public void setDelayedDiskId(LocalRegion r) {
+  public final void setDelayedDiskId(LocalRegion r) {
     DiskStoreImpl ds = r.getDiskStore();
     long maxOplogSize = ds.getMaxOplogSize();
     this.id = DiskId.createDiskId(maxOplogSize, false , ds.needsLinkedList());
@@ -231,7 +232,7 @@ public class VersionedStatsDiskLRURegionEntryHeap extends VMStatsDiskLRURegionEn
     this.missCount = 0;
   }
   @Override
-  public boolean hasStats() {
+  public final boolean hasStats() {
     return true;
   }
   private VersionSource memberID;
@@ -240,25 +241,25 @@ public class VersionedStatsDiskLRURegionEntryHeap extends VMStatsDiskLRURegionEn
   private int regionVersionLowBytes;
   private byte entryVersionHighByte;
   private byte distributedSystemId;
-  public int getEntryVersion() {
+  public final int getEntryVersion() {
     return ((entryVersionHighByte << 16) & 0xFF0000) | (entryVersionLowBytes & 0xFFFF);
   }
-  public long getRegionVersion() {
+  public final long getRegionVersion() {
     return (((long)regionVersionHighBytes) << 32) | (regionVersionLowBytes & 0x00000000FFFFFFFFL);
   }
-  public long getVersionTimeStamp() {
+  public final long getVersionTimeStamp() {
     return getLastModified();
   }
-  public void setVersionTimeStamp(long time) {
+  public final void setVersionTimeStamp(long time) {
     setLastModified(time);
   }
-  public VersionSource getMemberID() {
+  public final VersionSource getMemberID() {
     return this.memberID;
   }
-  public int getDistributedSystemId() {
+  public final int getDistributedSystemId() {
     return this.distributedSystemId;
   }
-  public void setVersions(VersionTag tag) {
+  public final void setVersions(VersionTag tag) {
     this.memberID = tag.getMemberID();
     int eVersion = tag.getEntryVersion();
     this.entryVersionLowBytes = (short)(eVersion & 0xffff);
@@ -276,14 +277,14 @@ public class VersionedStatsDiskLRURegionEntryHeap extends VMStatsDiskLRURegionEn
     }
     this.distributedSystemId = (byte)(tag.getDistributedSystemId() & 0xff);
   }
-  public void setMemberID(VersionSource memberID) {
+  public final void setMemberID(VersionSource memberID) {
     this.memberID = memberID;
   }
   @Override
-  public VersionStamp getVersionStamp() {
+  public final VersionStamp getVersionStamp() {
     return this;
   }
-  public VersionTag asVersionTag() {
+  public final VersionTag asVersionTag() {
     VersionTag tag = VersionTag.create(memberID);
     tag.setEntryVersion(getEntryVersion());
     tag.setRegionVersion(this.regionVersionHighBytes, this.regionVersionLowBytes);
@@ -291,19 +292,19 @@ public class VersionedStatsDiskLRURegionEntryHeap extends VMStatsDiskLRURegionEn
     tag.setDistributedSystemId(this.distributedSystemId);
     return tag;
   }
-  public void processVersionTag(LocalRegion r, VersionTag tag,
+  public final void processVersionTag(LocalRegion r, VersionTag tag,
       boolean isTombstoneFromGII, boolean hasDelta,
       VersionSource thisVM, InternalDistributedMember sender, boolean checkForConflicts) {
     basicProcessVersionTag(r, tag, isTombstoneFromGII, hasDelta, thisVM, sender, checkForConflicts);
   }
   @Override
-  public void processVersionTag(EntryEvent cacheEvent) {
+  public final void processVersionTag(EntryEvent cacheEvent) {
     super.processVersionTag(cacheEvent);
   }
-  public short getRegionVersionHighBytes() {
+  public final short getRegionVersionHighBytes() {
     return this.regionVersionHighBytes;
   }
-  public int getRegionVersionLowBytes() {
+  public final int getRegionVersionLowBytes() {
     return this.regionVersionLowBytes;
   }
   private Object key;
@@ -312,7 +313,7 @@ public class VersionedStatsDiskLRURegionEntryHeap extends VMStatsDiskLRURegionEn
     return this.key;
   }
   @Override
-  protected void _setRawKey(Object key) {
+  protected final void _setRawKey(Object key) {
     this.key = key;
   }
   private volatile Object value;
@@ -332,12 +333,27 @@ public class VersionedStatsDiskLRURegionEntryHeap extends VMStatsDiskLRURegionEn
     return o == Token.DESTROYED || o == Token.REMOVED_PHASE1 || o == Token.REMOVED_PHASE2;
   }
   @Override
-  protected Object getValueField() {
+  protected final Object getValueField() {
     return this.value;
   }
   @Override
-  protected void setValueField(Object v) {
+  protected final void setValueField(Object v) {
     this.value = v;
+  }
+  @Override
+  public final Token getValueAsToken() {
+    Object v = this.value;
+    if (v == null) {
+      return null;
+    } else if (v instanceof Token) {
+      return (Token)v;
+    } else {
+      return Token.NOT_A_TOKEN;
+    }
+  }
+  @Override
+  public final boolean isValueNull() {
+    return this.value == null;
   }
   private static RegionEntryFactory factory = new RegionEntryFactory() {
     public final RegionEntry createEntry(RegionEntryContext context, Object key, Object value) {

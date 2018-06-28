@@ -94,7 +94,7 @@ public class BlobTest extends JdbcTestBase {
     final Statement stmt = conn.createStatement();
     stmt.execute(tableDDL);
 
-    final int numThreads = 50;
+    final int numThreads = 20;
     Thread[] ts = new Thread[numThreads];
     final Exception[] failure = new Exception[1];
     final CyclicBarrier barrier = new CyclicBarrier(numThreads);

@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2016 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -158,7 +158,7 @@ final class LinuxNativeCalls extends POSIXNativeCalls {
         throws LastErrorException;
 
     @Override
-    protected List<?> getFieldOrder() {
+    protected List<String> getFieldOrder() {
       return Arrays.asList("tv_sec", "tv_nsec");
     }
   }
@@ -195,7 +195,7 @@ final class LinuxNativeCalls extends POSIXNativeCalls {
         throws LastErrorException;
 
     @Override
-    protected List<?> getFieldOrder() {
+    protected List<String> getFieldOrder() {
       return Arrays.asList("tv_sec", "tv_nsec");
     }
   }
@@ -274,7 +274,7 @@ final class LinuxNativeCalls extends POSIXNativeCalls {
     @SuppressWarnings("unused")
     public int[] fsid = new int[2];
 
-    protected List<?> getFieldOrder() {
+    protected List<String> getFieldOrder() {
       return Arrays.asList("fsid");
     }
   }
@@ -284,7 +284,7 @@ final class LinuxNativeCalls extends POSIXNativeCalls {
     @SuppressWarnings("unused")
     public int[] fspare = new int[5];
 
-    protected List<?> getFieldOrder() {
+    protected List<String> getFieldOrder() {
       return Arrays.asList("fspare");
     }
   }
@@ -326,7 +326,7 @@ final class LinuxNativeCalls extends POSIXNativeCalls {
         throws LastErrorException;
 
     @Override
-    protected List<?> getFieldOrder() {
+    protected List<String> getFieldOrder() {
       return Arrays.asList("f_type", "f_bsize", "f_blocks",
           "f_bfree", "f_bavail", "f_files", "f_ffree", "f_fsid", "f_namelen",
           "f_frsize", "f_spare");
@@ -365,7 +365,7 @@ final class LinuxNativeCalls extends POSIXNativeCalls {
     @SuppressWarnings("unused")
     public long[] fspare = new long[5];
 
-    protected List<?> getFieldOrder() {
+    protected List<String> getFieldOrder() {
       return Arrays.asList("fspare");
     }
   }
@@ -424,7 +424,7 @@ final class LinuxNativeCalls extends POSIXNativeCalls {
         throws LastErrorException;
 
     @Override
-    protected List<?> getFieldOrder() {
+    protected List<String> getFieldOrder() {
       return Arrays.asList("f_type", "f_bsize", "f_blocks",
           "f_bfree", "f_bavail", "f_files", "f_ffree", "f_fsid", "f_namelen",
           "f_frsize", "f_spare");

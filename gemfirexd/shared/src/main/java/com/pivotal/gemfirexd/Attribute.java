@@ -19,6 +19,7 @@ package com.pivotal.gemfirexd;
 
 import java.sql.Statement;
 
+import com.gemstone.gemfire.internal.shared.LauncherBase;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 
 /**
@@ -184,13 +185,7 @@ public interface Attribute {
   /**
    * The GemFireXD log file path property.
    */
-  String LOG_FILE = "log-file";
-
-  /**
-   * The property used to specify the initial SQL scripts to be executed before
-   * anything else including initial DDL replay.
-   */
-  String CONFIG_SCRIPTS = "config-scripts";
+  String LOG_FILE = LauncherBase.LOG_FILE;
 
   /**
    * The VM level property to specify the default initial capacity used for
@@ -239,7 +234,7 @@ public interface Attribute {
    * The GemFireXD property used to specify whether this VM should host data or
    * not (i.e. whether data-store or an accessor).
    */
-  String GFXD_HOST_DATA = "host-data";
+  String GFXD_HOST_DATA = LauncherBase.HOST_DATA;
 
   /** property name for enabling persistence of data dictionary */
   String GFXD_PERSIST_DD = "persist-dd";
@@ -463,6 +458,8 @@ public interface Attribute {
    * Connection property to enable/disable query routing for Spark.
    */
   String ROUTE_QUERY = "route-query";
+
+  String INTERNAL_CONNECTION = "internal-connection";
 
   /**
    * Embedded connection property to create tables as persistent by default

@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -87,8 +87,6 @@ public:
   static const std::string QUERY_HDFS;
   static const std::string LOG_FILE;
   static const std::string LOG_LEVEL;
-  static const std::string LOG_APPEND;
-  static const std::string LOG_FILE_STAMP;
   static const std::string SECURITY_MECHANISM;
   static const std::string SSL;
   static const std::string SSL_PROPERTIES;

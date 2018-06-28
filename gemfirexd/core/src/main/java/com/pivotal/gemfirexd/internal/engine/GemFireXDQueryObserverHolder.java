@@ -1687,4 +1687,12 @@ public final class GemFireXDQueryObserverHolder implements GemFireXDQueryObserve
       observer.testExecutionEngineDecision(queryInfo, engine, queryText);
     }
   }
+
+  @Override
+  public void regionPreInitialized(GemFireContainer container) {
+    final GemFireXDQueryObserver[] observers = this.observerCollection;
+    for (GemFireXDQueryObserver observer : observers) {
+      observer.regionPreInitialized(container);
+    }
+  }
 }

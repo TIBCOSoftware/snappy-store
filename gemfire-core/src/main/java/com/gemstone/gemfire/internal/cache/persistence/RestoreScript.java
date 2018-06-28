@@ -20,13 +20,11 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import com.gemstone.gemfire.internal.FileUtil;
-import com.gemstone.gemfire.internal.concurrent.CFactory;
 
 /**
  * This class is used to automatically generate a restore script for a backup. 
@@ -124,7 +122,7 @@ public class RestoreScript {
     } finally {
       writer.close();
     }
-    CFactory.setExecutable(outputFile, true, true);
+    outputFile.setExecutable(true, true);
   }
 
   //TODO prpersist - We've got this code replicated
