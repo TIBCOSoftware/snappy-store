@@ -500,7 +500,7 @@ public final class PutAllPRMessage extends PartitionMessageWithDirectReply {
         // final boolean hasRedundancy = bucketRegion.getRedundancyLevel() > 0;
         try {
           if (tx == null || tx.isSnapshot()) {
-            bucketRegion.doLockForPrimary(false);
+            bucketRegion.doLockForPrimary(false, false);
             lockedForPrimary = true;
           } else {
             lockedForPrimary = false;

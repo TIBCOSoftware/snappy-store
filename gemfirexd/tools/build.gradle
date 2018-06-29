@@ -31,7 +31,6 @@ dependencies {
   // ddlutils dependencies
   compile 'commons-beanutils:commons-beanutils:1.9.3'
   compile 'commons-codec:commons-codec:1.10'
-  compile 'commons-collections:commons-collections:3.2.2'
   compile 'commons-configuration:commons-configuration:1.10'
   compile 'commons-pool:commons-pool:1.6'
   compile 'commons-dbcp:commons-dbcp:1.4'

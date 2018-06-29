@@ -121,9 +121,13 @@ public class BlobSetMethodsTest extends JdbcTestBase {
     blob.truncate (BUFFER_SIZE);
     assertEquals ("truncate failed", BUFFER_SIZE, blob.length());
     rs.close();
-    con.commit();
+
+    stmt.execute ("drop table blobtest");
+    waitTillAllClear();
+
     stmt.close();
     pstmt.close();
+    con.commit();
   }
   
   /**
@@ -236,6 +240,10 @@ public class BlobSetMethodsTest extends JdbcTestBase {
     byte[] bytes2 = blob.getBytes(1, bytes1.length);
     assertTrue(Arrays.equals(bytes1, bytes2));
     assertFalse(rs.next());
+
+    st.execute ("drop table BLOBCLOB");
+    waitTillAllClear();
+    st.close();
   }
 
   public void waitTillAllClear() {  

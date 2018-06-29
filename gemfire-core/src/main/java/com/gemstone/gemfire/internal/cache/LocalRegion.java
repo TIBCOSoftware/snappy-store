@@ -8533,6 +8533,11 @@ public class LocalRegion extends AbstractRegion
     if (tx != null) {
       tx.rmRegion(this);
     }
+    // cleanup snapshot entries for the region in all transactions
+    for (TXStateProxy txProxy : getCache().getTxManager()
+        .getHostedTransactionsInProgress()) {
+      txProxy.cleanSnapshotEntriesForRegion(this);
+    }
   }
 
   public void invokeDestroyCallbacks(final EnumListenerEvent eventType,

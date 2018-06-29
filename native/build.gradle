@@ -73,12 +73,14 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
       getLinuxFlavour(out)
       flavour = out.toString().replaceAll('[ \r\n\f]', '').toLowerCase()
     }
-    if (flavour.startsWith('ubuntu14') || flavour.startsWith('linuxmint17')) {
+    if (flavour.startsWith('ubuntu14') || flavour.startsWith('linuxmint17') ||
+        flavour.startsWith('elementary0.3')) {
       dependencies += [ "thrift-${thriftVersion}-ubuntu14.04.tar.bz2",
                         "boost-${boostVersion}-ubuntu14.04.tar.bz2",
                         "unixODBC-${unixodbcVersion}-ubuntu14.04.tar.bz2",
                         "googletest-${googletestVersion}-ubuntu14.04.tar.bz2" ]
-    } else if (flavour.startsWith('ubuntu16') || flavour.startsWith('linuxmint18')) {
+    } else if (flavour.startsWith('ubuntu16') || flavour.startsWith('linuxmint18') ||
+        flavour.startsWith('elementary0.4')) {
       thriftVersion = newThriftVersion
       boostVersion = newBoostVersion
       unixodbcVersion = newUnixodbcVersion
@@ -89,6 +91,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
                         "unixODBC-${unixodbcVersion}-ubuntu16.04.tar.bz2",
                         "googletest-${googletestVersion}-ubuntu16.04.tar.bz2" ]
     } else if (flavour.startsWith('redhat6') || flavour.startsWith('redhat7') ||
+        flavour.startsWith('fedora') ||
         flavour.startsWith('centos6') || flavour.startsWith('centos7')) {
       thriftVersion = newThriftVersion
       boostVersion = newBoostVersion

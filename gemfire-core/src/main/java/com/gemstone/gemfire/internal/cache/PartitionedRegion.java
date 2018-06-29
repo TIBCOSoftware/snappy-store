@@ -11878,7 +11878,7 @@ public class PartitionedRegion extends LocalRegion implements
    * to clear the partitioned region.
    */
   public void clearLocalPrimaries() {
- // rest of it should be done only if this is a store while RecoveryLock
+    // rest of it should be done only if this is a store while RecoveryLock
     // above still required even if this is an accessor
     if (getLocalMaxMemory() > 0) {
       // acquire the primary bucket locks
@@ -11887,34 +11887,62 @@ public class PartitionedRegion extends LocalRegion implements
       // (probably not required to do this in loop after the recovery lock)
       // [sumedh] do we need both recovery lock and bucket locks?
       boolean done = false;
-      Set<BucketRegion> lockedRegions = null;
+      final ArrayList<BucketRegion> lockedRegions = new ArrayList<>();
       while (!done) {
-        lockedRegions = getDataStore().getAllLocalPrimaryBucketRegions();
+        // release locks on any buckets locked in previous iteration
+        if (!lockedRegions.isEmpty()) {
+          for (BucketRegion br : lockedRegions) {
+            try {
+              br.doUnlockForPrimaryMove();
+            } catch (Exception ignored) {
+            }
+          }
+          lockedRegions.clear();
+        }
+        final Set<BucketRegion> primaryBucketSet =
+            getDataStore().getAllLocalPrimaryBucketRegions();
+        // re-arrange to a consistent ordering
+        final BucketRegion[] primaryBuckets = primaryBucketSet.toArray(
+            new BucketRegion[primaryBucketSet.size()]);
+        java.util.Arrays.sort(primaryBuckets,
+            (b1, b2) -> Integer.compare(b1.getId(), b2.getId()));
+        // keep trying until all primaries are locked
         done = true;
-        for (BucketRegion br : lockedRegions) {
+        for (BucketRegion br : primaryBuckets) {
           try {
-            br.doLockForPrimary(false);
+            if (!br.doLockForPrimary(false, true)) {
+              done = false;
+              getCancelCriterion().checkCancelInProgress(null);
+              break;
+            }
+            lockedRegions.add(br);
           } catch (RegionDestroyedException rde) {
             done = false;
+            getCancelCriterion().checkCancelInProgress(rde);
             break;
           } catch (PrimaryBucketException pbe) {
             done = false;
+            getCancelCriterion().checkCancelInProgress(pbe);
             break;
           } catch (Exception e) {
-            // ignore any other exception
-            getLogWriterI18n().fine(
-                "GemFireContainer#clear: ignoring exception "
-                    + "in bucket lock acquire", e);
+            // log any other exception
+            getLogWriterI18n().warning(LocalizedStrings.ONE_ARG,
+                "GemFireContainer#clear: exception in bucket lock acquire", e);
+            done = false;
+            getCancelCriterion().checkCancelInProgress(e);
+            break;
           }
         }
       }
-      
-      //hoplogs - pause HDFS dispatcher while we 
-      //clear the buckets to avoid missing some files
-      //during the clear
-      pauseHDFSDispatcher();
 
+      boolean dispatcherPaused = false;
       try {
+        // hoplogs - pause HDFS dispatcher while we
+        // clear the buckets to avoid missing some files
+        // during the clear
+        pauseHDFSDispatcher();
+        dispatcherPaused = true;
+
         // now clear the bucket regions; we go through the primary bucket
         // regions so there is distribution for every bucket but that
         // should be performant enough
@@ -11929,11 +11957,11 @@ public class PartitionedRegion extends LocalRegion implements
           }
         }
       } finally {
-        resumeHDFSDispatcher();
+        if (dispatcherPaused) resumeHDFSDispatcher();
         // release the bucket locks
         for (BucketRegion br : lockedRegions) {
           try {
-            br.doUnlockForPrimary();
+            br.doUnlockForPrimaryMove();
           } catch (Exception e) {
             // ignore all exceptions at this stage
             getLogWriterI18n().fine(
@@ -11941,11 +11969,11 @@ public class PartitionedRegion extends LocalRegion implements
                     + "in bucket lock release", e);
           }
         }
+        lockedRegions.clear();
       }
     }
-    
   }
-  
+
   /**Destroy all data in HDFS, if this region is using HDFS persistence.*/
   private void destroyHDFSData() {
     if(getHDFSStoreName() == null) {

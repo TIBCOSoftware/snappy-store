@@ -1737,9 +1737,11 @@ public final class PartitionedRegionDataStore implements HasCachePerfStats
         if (!forceRemovePrimary && bucketAdvisor.isPrimary()) {
           return false;
         }
-
         // recurse down to each tier of children to remove first
-        removeBucketForColocatedChildren(bucketId, forceRemovePrimary);
+        boolean childBucketRemoved = removeBucketForColocatedChildren(bucketId, forceRemovePrimary);
+        if (!childBucketRemoved) {
+          return false;
+        }
 
         if (bucketRegion.getPartitionedRegion().isShadowPR()) {
           if (bucketRegion.getPartitionedRegion().getColocatedWithRegion() != null) {

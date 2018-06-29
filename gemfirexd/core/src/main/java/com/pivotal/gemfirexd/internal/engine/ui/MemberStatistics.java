@@ -20,11 +20,12 @@ package com.pivotal.gemfirexd.internal.engine.ui;
 import java.util.HashMap;
 import java.util.UUID;
 
-import org.apache.commons.collections4.queue.CircularFifoQueue;
+import org.apache.commons.collections.buffer.CircularFifoBuffer;
 
+@SuppressWarnings("unused")
 public class MemberStatistics {
 
-  public static final int MAX_SAMPLE_SIZE = 180;
+  static final int MAX_SAMPLE_SIZE = 180;
 
   // Date in TimeMillis
   private long lastUpdatedOn;
@@ -44,6 +45,7 @@ public class MemberStatistics {
   private boolean isLeadActive;
   private boolean isDataServer;
 
+  private int cores;
   private int cpuActive;
   private long clientsCount;
   private String status;
@@ -67,26 +69,32 @@ public class MemberStatistics {
   private long offHeapMemoryUsed;
   private long offHeapMemorySize;
 
-  private CircularFifoQueue<Long> timeLine = new CircularFifoQueue(MAX_SAMPLE_SIZE);
-  private CircularFifoQueue<Integer> cpuUsageTrend = new CircularFifoQueue(MAX_SAMPLE_SIZE);
-  private CircularFifoQueue<Double> jvmUsageTrend = new CircularFifoQueue(MAX_SAMPLE_SIZE);
+  private final CircularFifoBuffer timeLine =
+      new CircularFifoBuffer(MAX_SAMPLE_SIZE);
+  private final CircularFifoBuffer cpuUsageTrend =
+      new CircularFifoBuffer(MAX_SAMPLE_SIZE);
+  private final CircularFifoBuffer jvmUsageTrend =
+      new CircularFifoBuffer(MAX_SAMPLE_SIZE);
 
-  private CircularFifoQueue<Double> heapUsageTrend = new CircularFifoQueue(MAX_SAMPLE_SIZE);
-  private CircularFifoQueue<Double> heapStoragePoolUsageTrend =
-      new CircularFifoQueue(MAX_SAMPLE_SIZE);
-  private CircularFifoQueue<Double> heapExecutionPoolUsageTrend =
-      new CircularFifoQueue(MAX_SAMPLE_SIZE);
+  private final CircularFifoBuffer heapUsageTrend =
+      new CircularFifoBuffer(MAX_SAMPLE_SIZE);
+  private final CircularFifoBuffer heapStoragePoolUsageTrend =
+      new CircularFifoBuffer(MAX_SAMPLE_SIZE);
+  private final CircularFifoBuffer heapExecutionPoolUsageTrend =
+      new CircularFifoBuffer(MAX_SAMPLE_SIZE);
 
-  private CircularFifoQueue<Double> offHeapUsageTrend = new CircularFifoQueue(MAX_SAMPLE_SIZE);
-  private CircularFifoQueue<Double> offHeapStoragePoolUsageTrend =
-      new CircularFifoQueue(MAX_SAMPLE_SIZE);
-  private CircularFifoQueue<Double> offHeapExecutionPoolUsageTrend =
-      new CircularFifoQueue(MAX_SAMPLE_SIZE);
+  private final CircularFifoBuffer offHeapUsageTrend =
+      new CircularFifoBuffer(MAX_SAMPLE_SIZE);
+  private final CircularFifoBuffer offHeapStoragePoolUsageTrend =
+      new CircularFifoBuffer(MAX_SAMPLE_SIZE);
+  private final CircularFifoBuffer offHeapExecutionPoolUsageTrend =
+      new CircularFifoBuffer(MAX_SAMPLE_SIZE);
 
-  private CircularFifoQueue<Double> aggrMemoryUsageTrend = new CircularFifoQueue(MAX_SAMPLE_SIZE);
+  private final CircularFifoBuffer aggrMemoryUsageTrend =
+      new CircularFifoBuffer(MAX_SAMPLE_SIZE);
 
-  private CircularFifoQueue<Double> diskStoreDiskSpaceTrend =
-      new CircularFifoQueue(MAX_SAMPLE_SIZE);
+  private final CircularFifoBuffer diskStoreDiskSpaceTrend =
+      new CircularFifoBuffer(MAX_SAMPLE_SIZE);
 
   public static final int TREND_TIMELINE = 0;
   public static final int TREND_CPU_USAGE = 1;
@@ -118,9 +126,9 @@ public class MemberStatistics {
     updateMemberStatistics(memberStatsMap);
   }
 
-  public void updateMemberStatistics(HashMap memberStatsMap){
+  public void updateMemberStatistics(HashMap memberStatsMap) {
 
-    if(!this.getDiskStoreUUID().equals(memberStatsMap.get("diskStoreUUID"))) {
+    if (!this.getDiskStoreUUID().equals(memberStatsMap.get("diskStoreUUID"))) {
       // wrong member stats passed
       return;
     }
@@ -142,6 +150,7 @@ public class MemberStatistics {
     this.isDataServer = (boolean)memberStatsMap.get("dataServer");
     this.clientsCount = (long)memberStatsMap.get("clients");
 
+    this.cores = (int)memberStatsMap.get("cores");
     int cpuActive = (int)memberStatsMap.get("cpuActive");
     this.cpuActive = cpuActive;
     synchronized (this.cpuUsageTrend) {
@@ -169,7 +178,7 @@ public class MemberStatistics {
 
     this.heapStoragePoolUsed = heapStoragePoolUsed;
     this.heapStoragePoolSize = heapStoragePoolSize;
-    this.heapExecutionPoolUsed= heapExecutionPoolUsed;
+    this.heapExecutionPoolUsed = heapExecutionPoolUsed;
     this.heapExecutionPoolSize = heapExecutionPoolSize;
     this.heapMemoryUsed = heapMemoryUsed;
     this.heapMemorySize = heapMemorySize;
@@ -346,6 +355,10 @@ public class MemberStatistics {
     isDataServer = dataServer;
   }
 
+  public int getCores() {
+    return this.cores;
+  }
+
   public int getCpuActive() {
     return cpuActive;
   }
@@ -502,41 +515,40 @@ public class MemberStatistics {
     Object[] returnArray = null;
     switch (trendType) {
       case TREND_TIMELINE:
-          returnArray = this.timeLine.toArray();
+        returnArray = this.timeLine.toArray();
         break;
       case TREND_CPU_USAGE:
-          returnArray = this.cpuUsageTrend.toArray();
+        returnArray = this.cpuUsageTrend.toArray();
         break;
       case TREND_JVM_HEAP_USAGE:
-          returnArray = this.jvmUsageTrend.toArray();
+        returnArray = this.jvmUsageTrend.toArray();
         break;
       case TREND_HEAP_USAGE:
-          returnArray = this.heapUsageTrend.toArray();
+        returnArray = this.heapUsageTrend.toArray();
         break;
       case TREND_HEAP_STORAGE_USAGE:
-          returnArray = this.heapStoragePoolUsageTrend.toArray();
+        returnArray = this.heapStoragePoolUsageTrend.toArray();
         break;
       case TREND_HEAP_EXECUTION_USAGE:
-          returnArray = this.heapExecutionPoolUsageTrend.toArray();
+        returnArray = this.heapExecutionPoolUsageTrend.toArray();
         break;
       case TREND_OFFHEAP_USAGE:
-          returnArray = this.offHeapUsageTrend.toArray();
+        returnArray = this.offHeapUsageTrend.toArray();
         break;
       case TREND_OFFHEAP_STORAGE_USAGE:
-          returnArray = this.offHeapStoragePoolUsageTrend.toArray();
+        returnArray = this.offHeapStoragePoolUsageTrend.toArray();
         break;
       case TREND_OFFHEAP_EXECUTION_USAGE:
-          returnArray = this.offHeapExecutionPoolUsageTrend.toArray();
+        returnArray = this.offHeapExecutionPoolUsageTrend.toArray();
         break;
       case TREND_AGGR_MEMORY_USAGE:
-          returnArray = this.aggrMemoryUsageTrend.toArray();
+        returnArray = this.aggrMemoryUsageTrend.toArray();
         break;
       case TREND_DISKSTORE_DISKSPACE_USAGE:
-          returnArray = this.diskStoreDiskSpaceTrend.toArray();
+        returnArray = this.diskStoreDiskSpaceTrend.toArray();
         break;
     }
 
     return returnArray;
   }
-
 }

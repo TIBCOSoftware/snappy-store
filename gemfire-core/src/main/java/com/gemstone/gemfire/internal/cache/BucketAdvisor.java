@@ -272,6 +272,13 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
   }
 
   /**
+   * Returns the lock to use when moving the primary.
+   */
+  Lock getActivePrimaryMoveLock() {
+    return this.activePrimaryMoveLock;
+  }
+
+  /**
    * Try to lock the primary bucket to make sure no operation is on-going at
    * current bucket.  
    * 
@@ -285,7 +292,7 @@ public final class BucketAdvisor extends CacheDistributionAdvisor  {
       }
     }
   }
-  
+
   /**
    * Makes this <code>BucketAdvisor</code> give up being a primary and become
    * a secondary. Does nothing if not currently the primary.

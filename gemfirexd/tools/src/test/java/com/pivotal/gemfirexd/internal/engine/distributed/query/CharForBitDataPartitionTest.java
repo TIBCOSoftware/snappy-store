@@ -49,29 +49,32 @@ public class CharForBitDataPartitionTest extends JdbcTestBase {
   public static void main(String[] args) {
     TestRunner.run(new TestSuite(CharForBitDataPartitionTest.class));
   }
-  
+
   public static ResultSet executeQueryOnDerby(String sql) throws Exception {
     if (derbyConn == null) {
       String derbyDbUrl = "jdbc:derby:newDB;create=true;";
       if (TestUtil.currentUserName != null) {
         derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
             + TestUtil.currentUserPassword + ';');
-      }      
+      }
+      // for some reason auto-load of Derby driver fails occasionally in full suite
+      loadDerbyDriver();
       derbyConn = DriverManager.getConnection(derbyDbUrl);
     }
     ResultSet rs = null;
     rs = derbyConn.createStatement().executeQuery(sql);
     return rs;
-
   }
-  
+
   public static int executeUpdateOnDerby(String sql) throws Exception {
     if (derbyConn == null) {
       String derbyDbUrl = "jdbc:derby:newDB;create=true;";
       if (TestUtil.currentUserName != null) {
         derbyDbUrl += ("user=" + TestUtil.currentUserName + ";password="
             + TestUtil.currentUserPassword + ';');
-      }      
+      }
+      // for some reason auto-load of Derby driver fails occasionally in full suite
+      loadDerbyDriver();
       derbyConn = DriverManager.getConnection(derbyDbUrl);
     }
     int ret = 0;

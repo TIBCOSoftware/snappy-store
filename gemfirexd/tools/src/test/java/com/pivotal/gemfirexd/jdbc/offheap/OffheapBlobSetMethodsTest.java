@@ -16,9 +16,6 @@
  */
 package com.pivotal.gemfirexd.jdbc.offheap;
 
-import junit.framework.TestSuite;
-import junit.textui.TestRunner;
-
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.internal.cache.CacheObserverHolder;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
@@ -27,7 +24,8 @@ import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.management.GfxdManagementService;
 import com.pivotal.gemfirexd.jdbc.BlobSetMethodsTest;
 import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
-import com.pivotal.gemfirexd.jdbc.JdbcTestBase.RegionMapClearDetector;
+import junit.framework.TestSuite;
+import junit.textui.TestRunner;
 
 public class OffheapBlobSetMethodsTest extends BlobSetMethodsTest {
   private RegionMapClearDetector rmcd = null;	
@@ -51,16 +49,19 @@ public class OffheapBlobSetMethodsTest extends BlobSetMethodsTest {
     CacheObserverHolder.setInstance(rmcd);
     GemFireXDQueryObserverHolder.putInstance(rmcd);
   }
-  
+
   @Override
   public void tearDown() throws Exception {
     LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER = false;
-	CacheObserverHolder.setInstance(null);
-	GemFireXDQueryObserverHolder.clearInstance();   
-    super.tearDown();
-    System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
-    System.clearProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
-    System.clearProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY);
+    CacheObserverHolder.setInstance(null);
+    GemFireXDQueryObserverHolder.clearInstance();
+    try {
+      super.tearDown();
+    } finally {
+      System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
+      System.clearProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
+      System.clearProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY);
+    }
   }
 
   @Override
