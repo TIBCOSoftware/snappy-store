@@ -38,6 +38,11 @@ public class ClusterStatistics {
     private static final ClusterStatistics INSTANCE = new ClusterStatistics();
   }
 
+  private int totalCores = 0;
+  private int locatorCores = 0;
+  private int leadCores = 0;
+  private int dataServerCores = 0;
+
   private final CircularFifoBuffer timeLine =
       new CircularFifoBuffer(MAX_SAMPLE_SIZE);
   private final CircularFifoBuffer cpuUsageTrend =
@@ -94,9 +99,24 @@ public class ClusterStatistics {
     int totalCpuActive = 0;
     int cpuCount = 0;
 
+    totalCores = 0;
+    locatorCores = 0;
+    leadCores = 0;
+    dataServerCores = 0;
+
     for (MemberStatistics ms : memberStatsMap.values()) {
 
       lastMemberUpdatedTime = ms.getLastUpdatedOn();
+
+      // CPU cores
+      if(ms.isLocator()){
+        this.locatorCores += ms.getCores();
+      } else if(ms.isLead()) {
+        this.leadCores += ms.getCores();
+      } else {
+        this.dataServerCores += ms.getCores();
+      }
+      this.totalCores += ms.getCores();
 
       // CPU Usage
       String host = ms.getHost();
@@ -171,6 +191,22 @@ public class ClusterStatistics {
           SnappyUtils.bytesToGivenUnits(sumDiskStoreDiskSpace, SnappyUtils.STORAGE_SIZE_UNIT_GB));
     }
 
+  }
+
+  public int getTotalCores() {
+    return totalCores;
+  }
+
+  public int getLocatorCores() {
+    return locatorCores;
+  }
+
+  public int getLeadCores() {
+    return leadCores;
+  }
+
+  public int getDataServerCores() {
+    return dataServerCores;
   }
 
   public Object[] getUsageTrends(int trendType) {
