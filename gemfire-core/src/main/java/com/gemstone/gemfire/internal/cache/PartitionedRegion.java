@@ -7277,6 +7277,9 @@ public class PartitionedRegion extends LocalRegion implements
       }
     }
 
+    private boolean DISALLOW_REMOTE_FETCH = Boolean.getBoolean(
+        "snappydata.DISALLOW_REMOTE_FETCH");
+
     // For snapshot isolation, Get the iterator on the txRegionstate maps entry iterator too
     public boolean hasNext() {
       if (this.moveNext) {
@@ -7371,6 +7374,12 @@ public class PartitionedRegion extends LocalRegion implements
                 logger.fine("PRLocalScanIterator#hasNext: bucket not "
                     + "available for ID " + bucketId + ", PR: "
                     + PartitionedRegion.this.toString() + ". Fetching from remote node");
+              }
+              if (DISALLOW_REMOTE_FETCH) {
+                throw new BucketMovedException(LocalizedStrings
+                    .PartitionedRegionDataStore_BUCKET_ID_0_NOT_FOUND_ON_VM_1
+                    .toLocalizedString(new Object[] { bucketStringForLogs(bucketId),
+                        getMyId() }), bucketId, getFullPath());
               }
               setRemoteBucketEntriesIterator(bucketId);
               this.remoteEntryFetched = true;
@@ -7568,7 +7577,7 @@ public class PartitionedRegion extends LocalRegion implements
     }
     catch (FunctionException fe) {
       checkShutdown();
-      this.logger.warning(LocalizedStrings.PR_CONTAINSVALUE_WARNING,fe.getCause());  
+      this.logger.warning(LocalizedStrings.PR_CONTAINSVALUE_WARNING,fe.getCause());
     }
     return false;
   }

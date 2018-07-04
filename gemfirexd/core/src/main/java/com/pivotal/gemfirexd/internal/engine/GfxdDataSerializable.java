@@ -280,6 +280,8 @@ public abstract class GfxdDataSerializable implements GfxdSerializable {
         () -> new LeadNodeGetStatsMessage());
     DSFIDFactory.registerGemFireXDClass(PROJECTION_ROW,
         () -> new ProjectionRow());
+    DSFIDFactory.registerGemFireXDClass(LEAD_NODE_DATA_MSG,
+        () -> new GetLeadNodeInfoAsStringMessage());
 
     // register SnappyData specific types
     CallbackFactoryProvider.getStoreCallbacks().registerTypes();
