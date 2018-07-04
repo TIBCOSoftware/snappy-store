@@ -375,6 +375,7 @@ abstract class AbstractRegionMap implements RegionMap {
     for (RegionEntry re : r.getRegionMap().regionEntries()) {
       re.setOwner(r, currentOwner);
     }
+    r.relaseMemoryForInternalRegions();
   }
 
   @Override
@@ -913,10 +914,6 @@ abstract class AbstractRegionMap implements RegionMap {
 
         int valueSize  = _getOwner().calculateRegionEntryValueSize(re);
         _getOwner().calculateEntryOverhead(re);
-        // Always take the value size from recovery thread.
-        if (!re.isTombstone()) {
-          _getOwner().acquirePoolMemory(0, 0, true, null, false);
-        }
         _getOwner().updateSizeOnCreate(re.getRawKey(), valueSize);
       }
       // Since lru was not being done during recovery call it now.
@@ -1017,13 +1014,20 @@ abstract class AbstractRegionMap implements RegionMap {
         } // synchronized
       }
       if (owner != null) {
-        owner.updateSizeOnCreate(key, owner.calculateRegionEntryValueSize(newRe));
+        int newSize = owner.calculateRegionEntryValueSize(newRe);
+        owner.updateSizeOnCreate(key, newSize);
         if (newRe.isTombstone()) {
           // refresh the tombstone so it doesn't time out too soon
           owner.scheduleTombstone(newRe, newRe.getVersionStamp().asVersionTag());
         }
         
         incEntryCount(1); // we are creating an entry that was recovered from disk including tombstone
+
+        // If owner is a local region i.e during backup account for entry overhead and value here.
+        // If owner is null i.e. in the case of recovery accounting is done in PlaceHolderDiskRegion
+        if (!newRe.isTombstone()) {
+          owner.acquirePoolMemory(0, newSize, true, null, true);
+        }
       }
       lruEntryUpdate(newRe);
       needsCallback = true;
@@ -1067,7 +1071,11 @@ abstract class AbstractRegionMap implements RegionMap {
           if (re.isTombstone()) {
             owner.scheduleTombstone(re, re.getVersionStamp().asVersionTag());
           }
-          owner.updateSizeOnPut(key, oldSize, owner.calculateRegionEntryValueSize(re));
+          int newSize = owner.calculateRegionEntryValueSize(re);
+          owner.updateSizeOnPut(key, oldSize, newSize);
+          // If owner is a local region i.e during backup account for entry overhead and value here.
+          // If owner is null i.e. in the case of recovery accounting is done in PlaceHolderDiskRegion
+          owner.acquirePoolMemory(oldSize, newSize, false, null, true);
         } else {
           PlaceHolderDiskRegion phd = (PlaceHolderDiskRegion)_getOwnerObject();
           DiskEntry.Helper.updateRecoveredEntry(phd, (DiskEntry)re, value, phd);
