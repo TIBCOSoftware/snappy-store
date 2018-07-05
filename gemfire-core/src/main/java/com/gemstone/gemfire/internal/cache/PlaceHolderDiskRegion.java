@@ -112,7 +112,7 @@ import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
     }
     public DiskEntry initializeRecoveredEntry(Object key, DiskEntry.RecoveredEntry value) {
       RegionEntry re = getRecoveredEntryMap().initRecoveredEntry(key, value);
-      if (!re.isTombstone()) {
+      if (!re.isTombstone() && callback.isSnappyStore()) {
         long size = calculateEntryOverhead(re);
         callback.acquireStorageMemory(getFullPath(), size, null, false, false);
       }

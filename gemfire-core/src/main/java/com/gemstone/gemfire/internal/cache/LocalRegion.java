@@ -3464,7 +3464,7 @@ public class LocalRegion extends AbstractRegion
     if (this.concurrencyChecksEnabled && this.versionVector == null) {
       createVersionVector();
     }
-    
+
     DiskRegion dskRgn = getDiskRegion();
     
     if(dskRgn != null && dskRgn.isRecreated()) {
