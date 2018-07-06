@@ -210,11 +210,7 @@ import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 
     protected long calculateEntryOverhead(RegionEntry entry) {
       if (entryOverHead == -1L && callback.isSnappyStore()) {
-        synchronized (this) {
-          if (entryOverHead == -1L) {
             entryOverHead = getEntryOverhead(entry);
-          }
-        }
       }
       return entryOverHead;
     }
