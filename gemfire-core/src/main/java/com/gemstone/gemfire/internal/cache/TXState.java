@@ -17,13 +17,7 @@
 
 package com.gemstone.gemfire.internal.cache;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -73,6 +67,7 @@ import com.gemstone.gnu.trove.THash;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.TObjectHashingStrategy;
 import com.gemstone.gnu.trove.TObjectProcedure;
+import io.snappydata.collection.OpenHashSet;
 
 /**
  * TXState is the entity that tracks the transaction state on a per thread
@@ -92,9 +87,6 @@ public final class TXState implements TXStateInterface {
   // in this VM.
   private final ConcurrentTHashSet<TXRegionState> regions;
 
-  private final BlockingQueue<Object> committedEntryReference = new LinkedBlockingQueue<Object>();
-  private final BlockingQueue<RegionEntry> unCommittedEntryReference = new LinkedBlockingQueue<RegionEntry>();
-  private final BlockingQueue<LocalRegion> regionReference = new LinkedBlockingQueue<LocalRegion>();
   private final BlockingQueue<VersionInformation> queue = new LinkedBlockingQueue<VersionInformation>();
 
   static final TXRegionState[] ZERO_REGIONS = new TXRegionState[0];
@@ -532,12 +524,25 @@ public final class TXState implements TXStateInterface {
         txr.cleanup(lockPolicy, lockPolicy.getWriteLockMode(), false, true,
             null);
         txr.processPendingExpires();
+        txr.cleanupSnapshotRegionEntries();
       } finally {
         txr.unlock();
       }
     }
     if (isEmpty()) {
       getProxy().removeSelfFromHostedIfEmpty(null);
+    }
+  }
+
+  void cleanSnapshotEntriesForRegion(LocalRegion r) {
+    final TXRegionState txr = this.regions.get(r);
+    if (txr != null) {
+      txr.lock();
+      try {
+        txr.cleanupSnapshotRegionEntries();
+      } finally {
+        txr.unlock();
+      }
     }
   }
 
@@ -860,36 +865,9 @@ public final class TXState implements TXStateInterface {
       } finally {
         observer.afterIndividualRollback(this.proxy, callbackArg);
       }
-
-      try {
-        rollBackUncommittedEntries();
-      } catch (Throwable t) {
-        Error err;
-        if (t instanceof Error && SystemFailure.isJVMFailureError(
-            err = (Error)t)) {
-          SystemFailure.initiateFailure(err);
-          // If this ever returns, rethrow the error. We're poisoned
-          // now, so don't let this thread continue.
-          throw err;
-        }
-        cleanEx = processCleanupException(t, cleanEx);
-      }
     }
     else {
       cleanup(false, null);
-      try {
-        rollBackUncommittedEntries();
-      } catch (Throwable t) {
-        Error err;
-        if (t instanceof Error && SystemFailure.isJVMFailureError(
-            err = (Error)t)) {
-          SystemFailure.initiateFailure(err);
-          // If this ever returns, rethrow the error. We're poisoned
-          // now, so don't let this thread continue.
-          throw err;
-        }
-        cleanEx = processCleanupException(t, cleanEx);
-      }
     }
   }
 
@@ -1355,8 +1333,24 @@ public final class TXState implements TXStateInterface {
       */
 
       txrs.lock();
+      boolean isLocked = true;
       try {
         cleanEx = txrs.cleanup(lockPolicy, writeMode, commit, false, cleanEx);
+        if (!commit) {
+          Object[] entries = txrs.getAndClearSnapshotRegionEntries();
+          // release lock after this point because actual rollback will
+          // also acquire RegionEntry lock which can cause a deadlock
+          txrs.unlock();
+          isLocked = false;
+          if (entries != null) {
+            List<RegionEntry> uncommittedEntryReference = Arrays.asList(
+                (RegionEntry[])entries[0]);
+            List<Object> committedEntryReference = Arrays.asList(
+                (Object[])entries[1]);
+            rollBackUncommittedEntries(uncommittedEntryReference,
+                committedEntryReference, txrs.region);
+          }
+        }
       } catch (Throwable t) {
         Error err;
         if (t instanceof Error && SystemFailure.isJVMFailureError(
@@ -1368,7 +1362,7 @@ public final class TXState implements TXStateInterface {
         }
         cleanEx = processCleanupException(t, cleanEx);
       } finally {
-        txrs.unlock();
+        if (isLocked) txrs.unlock();
         if (releaseTXRSGIILocks) {
           txrs.unlockPendingGII();
         }
@@ -1392,7 +1386,9 @@ public final class TXState implements TXStateInterface {
   }
 
   //rollback can be done locally for snapshot just as commit is done
-  private void rollBackUncommittedEntries() throws RegionClearedException {
+  private void rollBackUncommittedEntries(List<RegionEntry> unCommittedEntryReference,
+      List<Object> committedEntryReference, LocalRegion region)
+      throws RegionClearedException {
     // we need to take entry lock on primary otherwise the following can happen
     // on primary : we replace uncommitted entry with committed entry
     // on primary new write comes, which goes to secondary
@@ -1400,13 +1396,13 @@ public final class TXState implements TXStateInterface {
     // to avoid this we can compare the version or keep the uncommitted RE reference too in
     // the txStateand don't conflict on secondary.
 
+    if (region.isDestroyed()) return;
     Iterator<RegionEntry> itr1 = unCommittedEntryReference.iterator();
     Iterator<Object> itr2 = committedEntryReference.iterator();
-    Iterator<LocalRegion> itr3 = regionReference.iterator();
 
     if (TXStateProxy.LOG_FINEST) {
-      GemFireCacheImpl.getInstance().getLogger().info("Rolling back the changes.. " + unCommittedEntryReference.size()
-          + " " + committedEntryReference.size() + " " + regionReference.size());
+      GemFireCacheImpl.getInstance().getLogger().info("Rolling back the changes.. "
+          + unCommittedEntryReference.size() + " " + committedEntryReference.size());
     }
     RegionEntry uncommitted;
     RegionEntry committed;
@@ -1422,8 +1418,8 @@ public final class TXState implements TXStateInterface {
       else {
         committed = null;
       }
-      LocalRegion region = itr3.next();
       synchronized (uncommitted) {
+        try {
         if (committed != null) {
           originalStamp = committed.getVersionStamp();
           stamp = uncommitted.getVersionStamp();
@@ -1474,6 +1470,13 @@ public final class TXState implements TXStateInterface {
           event.setOriginRemote(true);
           event.setOperation(Operation.DESTROY);
           uncommitted.destroy(region, event, false, true, null, false, false);
+        }
+        } catch (RegionDestroyedException | PrimaryBucketException |
+            BucketMovedException e) {
+          // ignore these and move to next entries
+          region.getLogWriterI18n().info(LocalizedStrings.ONE_ARG,
+              "Skipping rollback for " + uncommitted +
+                  " due to region/bucket destroy");
         }
       }
 
@@ -4252,9 +4255,12 @@ public final class TXState implements TXStateInterface {
   }
 
   public void addCommittedRegionEntryReference(Object re, RegionEntry newRe, LocalRegion region) {
-    committedEntryReference.add(re);
-    unCommittedEntryReference.add(newRe);
-    regionReference.add(region);
+    TXRegionState txrs = writeRegion(region);
+    txrs.lock();
+    try {
+      txrs.addSnapshotRegionEntry(re, newRe);
+    } finally {
+      txrs.unlock();
+    }
   }
-
 }

@@ -17,6 +17,7 @@
 
 package com.gemstone.gemfire.internal.cache;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -69,6 +70,10 @@ public final class TXRegionState extends ReentrantLock {
 
   // A map of Objects (entry keys) -> TXEntryState
   private final THashMapWithCreate entryMods;
+
+  // uncommitted/commit list for snapshot isolation
+  private ArrayDeque<RegionEntry> unCommittedEntryReference;
+  private ArrayDeque<Object> committedEntryReference;
 
   TObjectLongHashMapDSFID tailKeysForParallelWAN;
 
@@ -840,6 +845,37 @@ public final class TXRegionState extends ReentrantLock {
     }
     */
     return this.tmpEntryCount;
+  }
+
+  /**
+   * Track uncommitted entry for snapshot isolation.
+   */
+  void addSnapshotRegionEntry(Object re, RegionEntry newRe) {
+    if (unCommittedEntryReference == null) {
+      unCommittedEntryReference = new ArrayDeque<>(4);
+      committedEntryReference = new ArrayDeque<>(4);
+    }
+    // add at front so will be rolled back in reverse order (LIFO)
+    unCommittedEntryReference.addFirst(newRe);
+    committedEntryReference.addFirst(re);
+  }
+
+  Object[] getAndClearSnapshotRegionEntries() {
+    if (unCommittedEntryReference != null) {
+      RegionEntry[] uncommittedEntries = unCommittedEntryReference.toArray(
+          new RegionEntry[unCommittedEntryReference.size()]);
+      Object[] committedEntries = committedEntryReference.toArray(
+          new Object[committedEntryReference.size()]);
+      cleanupSnapshotRegionEntries();
+      return new Object[] { uncommittedEntries, committedEntries };
+    } else {
+      return null;
+    }
+  }
+
+  void cleanupSnapshotRegionEntries() {
+    unCommittedEntryReference = null;
+    committedEntryReference = null;
   }
 
   @Override

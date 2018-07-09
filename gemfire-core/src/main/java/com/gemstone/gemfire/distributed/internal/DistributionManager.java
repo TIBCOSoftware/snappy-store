@@ -3355,8 +3355,8 @@ public final class DistributionManager
         int managerType = member.getVmKind();
         if (managerType == ADMIN_ONLY_DM_TYPE)
           continue;
-        if (managerType == LOCATOR_DM_TYPE) // DARREL TODO: is it now ok for the locator to be the elder?
-          continue;
+        /*if (managerType == LOCATOR_DM_TYPE) // DARREL TODO: is it now ok for the locator to be the elder?
+          continue;*/
         
         // Fix for #45566.  Using a surprise member as the elder can cause a
         // deadlock.
@@ -3379,8 +3379,8 @@ public final class DistributionManager
       int managerType = member.getVmKind();
       if (managerType == ADMIN_ONLY_DM_TYPE)
         continue;
-      if (managerType == LOCATOR_DM_TYPE) // DARREL TODO: is it now ok for the locator to be the elder?
-        continue;
+/*      if (managerType == LOCATOR_DM_TYPE) // DARREL TODO: is it now ok for the locator to be the elder?
+        continue;*/
 
       // Fix for #45566.  Using a surprise member as the elder can cause a
       // deadlock.

@@ -27,7 +27,7 @@ class snappydataConstants {
   static const int8_t DRIVER_JDBC = 1;
   static const int8_t DRIVER_ODBC = 2;
   static const int32_t DEFAULT_SESSION_TOKEN_SIZE = 16;
-  static const int32_t DEFAULT_RESULTSET_BATCHSIZE = 262144;
+  static const int32_t DEFAULT_RESULTSET_BATCHSIZE = 8192;
   static const int32_t DEFAULT_LOB_CHUNKSIZE = 2097152;
   static const int8_t TRANSACTION_NONE = 0;
   static const int8_t TRANSACTION_READ_UNCOMMITTED = 1;

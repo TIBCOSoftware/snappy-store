@@ -236,6 +236,8 @@ public class ClientServerDUnit extends ClientServerTestBase {
   /** check Gemfire properties passed in the URL string; see bug #40155 */
   public void testURLGemfireProperties() throws Exception {
     TestUtil.deletePersistentFiles = true;
+    Properties props = new Properties();
+    setOtherCommonProperties(props,0, null);
     TestUtil.loadDriver();
     Connection conn = DriverManager.getConnection(TestUtil.getProtocol()
         + ";mcast-port=0;host-data=true;locators=" + getLocatorString());
@@ -283,6 +285,8 @@ public class ClientServerDUnit extends ClientServerTestBase {
     Properties props = new Properties();
     props.setProperty("mcast-port", "0");
     props.setProperty("locators", getLocatorString());
+    Properties props1 = new Properties();
+    setOtherCommonProperties(props1,0, null);
     TestUtil.deletePersistentFiles = true;
     TestUtil.loadDriver();
     Connection conn = DriverManager

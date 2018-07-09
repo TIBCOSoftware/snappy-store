@@ -2229,6 +2229,13 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     }
   }
 
+  public final void cleanSnapshotEntriesForRegion(LocalRegion r) {
+    final TXState localState = this.localTXState;
+    if (localState != null) {
+      localState.cleanSnapshotEntriesForRegion(r);
+    }
+  }
+
   public final void rollback(final Object callbackArg)
       throws TransactionException {
     rollback(callbackArg, null);

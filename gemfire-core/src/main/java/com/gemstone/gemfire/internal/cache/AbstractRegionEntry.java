@@ -136,8 +136,11 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   
   protected AbstractRegionEntry(RegionEntryContext context,
       @Retained(ABSTRACT_REGION_ENTRY_PREPARE_VALUE_FOR_CACHE) Object value) {
-    
-    setValue(context,this.prepareValueForCache(context, value, false, false),false);
+
+    value = prepareValueForCache(context, value, false, false);
+    // no stats if initialized with null or token value
+    setValue(value != null && !(value instanceof Token) ? context : null,
+        value,false);
 //    setLastModified(System.currentTimeMillis()); [bruce] this must be set later so we can use ==0 to know this is a new entry in checkForConflicts
   }
 
@@ -1475,14 +1478,14 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
             setValueField(val);
             _setRawKey(null);
           }
-          if (!isOffHeap && context != null) {
-            context.updateMemoryStats(rawOldVal, val);
-          }
           // also upgrade GemFireXD schema information if required; there is no
           // problem of concurrency since GFXD DDL cannot happen concurrently
           // with DML operations
           if (val != null) {
             setContainerInfo(null, val);
+          }
+          if (!isOffHeap && context != null) {
+            context.updateMemoryStats(rawOldVal, val);
           }
           return;
         } catch (IllegalAccessException e) {
@@ -1507,6 +1510,17 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
         OffHeapHelper.releaseWithNoTracking(oldValue);
       }
       throw sysCb.checkCacheForNullKeyValue("RegionEntry#_setValue");
+    }
+  }
+
+  /**
+   * Set the RegionEntry into SerializedDiskBuffer value, if present,
+   * so that the value can access data from disk when required independently.
+   */
+  protected void initContextForDiskBuffer(RegionEntryContext context,
+      Object value) {
+    if (value instanceof SerializedDiskBuffer) {
+      ((SerializedDiskBuffer)value).setDiskEntry(null, context);
     }
   }
 
@@ -1706,6 +1720,8 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     try {
     // update the memory stats if required
     if (owner != previousOwner && !isOffHeap()) {
+      // set the context into the value if required
+      initContextForDiskBuffer(owner, val);
       // add for new owner
       if (owner != null) owner.updateMemoryStats(null, val);
       // reduce from previous owner

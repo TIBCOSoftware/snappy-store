@@ -29,10 +29,10 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import javax.annotation.Generated;
 
+import com.gemstone.gemfire.internal.shared.BufferAllocator;
 import com.gemstone.gemfire.internal.shared.ByteBufferReference;
 import com.gemstone.gemfire.internal.shared.ClientSharedData;
 import com.gemstone.gemfire.internal.shared.FetchRequest;
-import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import io.snappydata.thrift.common.SocketTimeout;
 import io.snappydata.thrift.common.TProtocolDirectBinary;
 import io.snappydata.thrift.common.ThriftUtils;
@@ -113,8 +113,8 @@ public class BlobChunk implements org.apache.thrift.TBase<BlobChunk, BlobChunk._
         reference.release();
       }
       this.chunkReference = null;
-    } else {
-      UnsafeHolder.releaseIfDirectBuffer(this.chunk);
+    } else if (this.chunk != null) {
+      BufferAllocator.releaseBuffer(this.chunk);
     }
     this.chunk = ClientSharedData.NULL_BUFFER;
   }

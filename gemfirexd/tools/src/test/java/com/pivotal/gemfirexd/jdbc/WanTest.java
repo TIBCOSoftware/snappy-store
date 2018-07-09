@@ -1548,7 +1548,7 @@ public class WanTest extends JdbcTestBase {
       assertEquals("OK", hubRs.getString(1));
       runningPort = hubRs.getInt(2);
       assertTrue((GatewayReceiver.DEFAULT_START_PORT <= runningPort)
-          && (GatewayReceiver.DEFAULT_END_PORT > runningPort));
+          && (GatewayReceiver.DEFAULT_END_PORT >= runningPort));
       assertEquals(GatewayReceiver.DEFAULT_START_PORT, hubRs.getInt(3));
       assertEquals(GatewayReceiver.DEFAULT_END_PORT, hubRs.getInt(4));
       assertEquals("", hubRs.getString(5));
@@ -1655,7 +1655,7 @@ public class WanTest extends JdbcTestBase {
       runningPort = hubRs.getInt(2);
       assertTrue("unexpected running port " + runningPort,
           (GatewayReceiver.DEFAULT_START_PORT <= runningPort)
-              && (GatewayReceiver.DEFAULT_END_PORT > runningPort));
+              && (GatewayReceiver.DEFAULT_END_PORT >= runningPort));
       assertEquals(GatewayReceiver.DEFAULT_START_PORT, hubRs.getInt(3));
       assertEquals(GatewayReceiver.DEFAULT_END_PORT, hubRs.getInt(4));
       assertEquals("SG1", hubRs.getString(5));

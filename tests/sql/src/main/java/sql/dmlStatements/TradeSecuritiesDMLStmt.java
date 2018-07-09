@@ -81,7 +81,7 @@ public class TradeSecuritiesDMLStmt extends AbstractDMLStmt {
   protected static String[] select = {"select sec_id, symbol, price, exchange, tid from trade.securities where tid = ? ",                                    
                                    (reproduceTicket48725 ? "select cast(avg( distinct price) as decimal (30, 20)) as avg_distinct_price from trade.securities where tid=? and symbol >?"
                                        : "select cast(avg( price) as decimal (30, 20)) as avg_price from trade.securities where tid=? and symbol >?"),
-                                    "select " + (addSecidInProjection? "sec_id, " : "") + "price, symbol, exchange from trade.securities where (price<? or price >=?) and tid =? " +
+                                    /*"select " + (addSecidInProjection? "sec_id, " : "") + "price, symbol, exchange from trade.securities where (price<? or price >=?) and tid =? " +
                                     (RemoteTestModule.getCurrentThread().getThreadId() %2 ==0?
                                     " order by  " +
                                     " CASE when exchange ='" + exchanges[0] + "' then symbol END desc, " + 
@@ -96,8 +96,9 @@ public class TradeSecuritiesDMLStmt extends AbstractDMLStmt {
                                     " CASE when exchange ='" + exchanges[4] + "' then sec_id END desc, " + 
                                     " CASE when exchange ='" + exchanges[5] + "' then symbol END asc, " + 
                                     " CASE when exchange ='" + exchanges[6] + "' then symbol END desc " +
-                                    " fetch first 10 rows only":
-                                    ""),
+                                    " fetch first 10 rows only)":
+                                    ""),*/
+                                    "select sec_id from trade.securities where tid=?",
                                     "select sec_id, symbol, price, " +
                                     (isEdge? "cast " : "") +
                                     "(case  " +
@@ -128,6 +129,7 @@ public class TradeSecuritiesDMLStmt extends AbstractDMLStmt {
                                      "select price, symbol, exchange from trade.securities where (price<? or price >=?) ",
                                      "select sec_id, symbol, price, exchange from trade.securities  where (price >=? and price<?) and exchange =?"
                                      };
+
   protected static String[] delete = {"delete from trade.securities where (sec_id = ? or price = ? ) and tid = ?",
                                      "delete from trade.securities where (symbol= ? and exchange = ? ) and tid = ?",
                                      "delete from trade.securities where sec_id=?" //for concTest w/ non unique keys
@@ -398,7 +400,7 @@ public class TradeSecuritiesDMLStmt extends AbstractDMLStmt {
         SQLHelper.handleDerbySQLException(se, exceptionList);
       }
       try {
-        gfeRS = query (gConn, whichQuery, sec_id, symbol, price, exchange, tid); 
+        gfeRS = query (gConn, whichQuery, sec_id, symbol, price, exchange, tid);
         if (gfeRS == null) {
           if (isHATest) {
             Log.getLogWriter().info("Testing HA and did not get GFXD result set after retry");
@@ -1536,12 +1538,26 @@ public class TradeSecuritiesDMLStmt extends AbstractDMLStmt {
     success[0] = true;
     String txId =  SQLDistTxTest.curTxId.get() == null ? "" : "TXID:" + (Integer)SQLDistTxTest.curTxId.get() + " ";
     String database = SQLHelper.isDerbyConn(conn)?"Derby - " :"gemfirexd - " + txId;
-    String query = " QUERY: " + select[whichQuery];
+    String query, query1;
+    query1 = select[whichQuery];
+    /*
+    boolean isSnappyConnection = SQLHelper.isDerbyConn(conn)? false : true;
+    if (SQLPrms.isSnappyMode()) {
+      if (whichQuery == 2) {
+        if (isSnappyConnection) {
+          query1 = query1 + " LIMIT 10";
+        } else
+          query1 = query1 + " fetch first 10 rows only";
+      }
+    }
+    */
+
+    query = " QUERY: " + query1;
     //Log.getLogWriter().info("data will be used in the query sec_id:" +sec_id + " symbol: " + symbol 
     //    + " exchang: " + exchange + " first price: " + price + " second price: " + price1 );     
 
     try {
-      stmt = conn.prepareStatement(select[whichQuery]);
+      stmt = conn.prepareStatement(query1);
       /*
       stmt = getStmt(conn, select[whichQuery]);  
       if (setCriticalHeap && stmt == null) {
@@ -1565,9 +1581,9 @@ public class TradeSecuritiesDMLStmt extends AbstractDMLStmt {
         //"select price, symbol, exchange from trade.securities where (price<? or price >=?) and tid =?"
         Log.getLogWriter().info(database + "querying trade.securities with 1_PRICE:" + price 
             + ",2_PRICE:" + price1 + ",TID:" +tid + query);   
-        stmt.setBigDecimal(1, price);
-        stmt.setBigDecimal(2, price1);
-        stmt.setInt(3, tid);
+        //stmt.setBigDecimal(1, price);
+        //stmt.setBigDecimal(2, price1);
+        stmt.setInt(1, tid);
         break;
       case 3:
         //"select sec_id, symbol, price, exchange from trade.securities  where (price >=? and price<?) and exchagne =? and tid =?"

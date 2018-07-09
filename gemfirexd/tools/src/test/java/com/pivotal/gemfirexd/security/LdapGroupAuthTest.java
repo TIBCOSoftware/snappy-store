@@ -17,6 +17,7 @@
 
 package com.pivotal.gemfirexd.security;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -85,6 +86,9 @@ public class LdapGroupAuthTest extends JUnit4TestBase {
     if (failure != null) {
       throw failure;
     }
+    // delete persistent DataDictionary files
+    TestUtil.deleteDir(new File("datadictionary"));
+    TestUtil.deleteDir(new File("globalIndex"));
   }
 
   // gemGroup1: gemfire1, gemfire2, gemfire3

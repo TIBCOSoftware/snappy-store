@@ -155,7 +155,7 @@ public abstract class AbstractDMLStmt implements DMLStmtIF {
       true) && !SQLTest.hasDerbyServer;
 
   static {
-    if (SQLTest.isSnappyTest) {
+    if (SQLTest.isSnappyTest || SQLPrms.isSnappyMode()) {
       //do nothing
     } else if (SQLTest.isEdge) lock = SQLBB.getBB().getSharedLock();
     else dls = getLockService();

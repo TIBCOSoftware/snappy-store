@@ -77,6 +77,7 @@ import com.pivotal.gemfirexd.internal.engine.distributed.GfxdListResultCollector
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.QueryCancelFunction;
 import com.pivotal.gemfirexd.internal.engine.distributed.QueryCancelFunction.QueryCancelFunctionArgs;
+import com.pivotal.gemfirexd.internal.engine.distributed.message.GetLeadNodeInfoAsStringMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.LeadNodeGetStatsMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.LeadNodeSmartConnectorOpMsg;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -1671,6 +1672,24 @@ public class GfxdSystemProcedures extends SystemProcedures {
             null, null, null, null, addOrDropCol, columnName, columnType, columnNullable);
 
     sendConnectorOpToLead(ctx);
+  }
+
+  public static void GET_DEPLOYED_JARS(String[] jarStrings) throws SQLException {
+    try {
+      if (GemFireXDUtils.TraceSysProcedures) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+            "executing GET_DEPLOYED_JARS ");
+      }
+      GfxdListResultCollector collector = new GfxdListResultCollector();
+      GetLeadNodeInfoAsStringMessage msg = new GetLeadNodeInfoAsStringMessage(
+          collector, GetLeadNodeInfoAsStringMessage.DataReqType.GET_JARS, (Object[])null);
+      msg.executeFunction();
+      List result = (ArrayList) collector.getResult();
+      String resJarStrings = (String) result.get(0);
+      jarStrings[0] = resJarStrings;
+    } catch (StandardException se) {
+      throw PublicAPI.wrapStandardException(se);
+    }
   }
 
   private static void sendConnectorOpToLead(LeadNodeSmartConnectorOpContext ctx)

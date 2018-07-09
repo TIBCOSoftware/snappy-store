@@ -372,10 +372,7 @@ abstract class AbstractRegionMap implements RegionMap {
       // [sumedh] indexes are now updated by IndexRecoveryTask
     }
     // iterate over the entries of the map to call setOwner for each RegionEntry
-    final Iterator<RegionEntry> iter = r.getRegionMap().regionEntries()
-        .iterator();
-    while (iter.hasNext()) {
-      final RegionEntry re = iter.next();
+    for (RegionEntry re : r.getRegionMap().regionEntries()) {
       re.setOwner(r, currentOwner);
     }
   }
@@ -883,7 +880,7 @@ abstract class AbstractRegionMap implements RegionMap {
             continue;
           }
           RegionEntry newRe = getEntryFactory().createEntry(owner, key, value);
-          copyRecoveredEntry(oldRe, newRe, currentTime);
+          copyRecoveredEntry(oldRe, newRe, owner, currentTime);
           // newRe is now in this._getMap().
           if (newRe.isTombstone()) {
             VersionTag tag = newRe.getVersionStamp().asVersionTag();
@@ -935,7 +932,8 @@ abstract class AbstractRegionMap implements RegionMap {
     
   }
   
-  protected void copyRecoveredEntry(RegionEntry oldRe, RegionEntry newRe, long dummyVersionTs) {
+  protected void copyRecoveredEntry(RegionEntry oldRe, RegionEntry newRe,
+      LocalRegion owner, long dummyVersionTs) {
     long lastModifiedTime = oldRe.getLastModified();
     if (lastModifiedTime != 0) {
       newRe.setLastModified(lastModifiedTime);
@@ -956,7 +954,7 @@ abstract class AbstractRegionMap implements RegionMap {
 
     if (newRe instanceof AbstractOplogDiskRegionEntry) {
       AbstractOplogDiskRegionEntry newDe = (AbstractOplogDiskRegionEntry)newRe;
-      newDe.setDiskIdForRegion(oldRe);
+      newDe.setDiskIdForRegion(owner, oldRe);
       _getOwner().getDiskRegion().replaceIncompatibleEntry((DiskEntry) oldRe, newDe);
     }
     _getMap().put(newRe.getKey(), newRe);

@@ -17,11 +17,16 @@
 package sql.sqlutil;
 
 import java.io.Serializable;
+import java.util.Arrays;
+
+import com.gemstone.gemfire.cache.query.Struct;
 import com.gemstone.gemfire.cache.query.internal.StructImpl;
 import com.gemstone.gemfire.cache.query.internal.types.StructTypeImpl;
 import com.gemstone.gemfire.cache.query.types.ObjectType;
 import com.gemstone.gemfire.cache.query.types.StructType;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import hydra.Log;
+import sql.SQLPrms;
 
 public class GFXDStructImpl extends StructImpl implements Serializable {
   private StructTypeImpl type;
@@ -37,7 +42,19 @@ public class GFXDStructImpl extends StructImpl implements Serializable {
     this.type = type;
     this.values = values;
   }
-  
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof Struct)) return false;
+    Struct s = (Struct)obj;
+    if(!SQLPrms.isSnappyMode()) {
+      if (!Arrays.equals(getFieldTypes(), s.getStructType().getFieldTypes())) return false;
+      if (!Arrays.equals(getFieldNames(), s.getStructType().getFieldNames())) return false;
+    }
+    if (!Arrays.equals(getFieldValues(), s.getFieldValues())) return false;
+    return true;
+  }
+
   public Object get(String fieldName) {
     return this.values[this.type.getFieldIndex(fieldName)];
   }
@@ -57,8 +74,7 @@ public class GFXDStructImpl extends StructImpl implements Serializable {
     }
     return this.values;
   }  
-  
-  
+
   public StructType getStructType() {
     return this.type;
   }

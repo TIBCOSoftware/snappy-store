@@ -5498,8 +5498,7 @@ public class PartitionedRegion extends LocalRegion implements
     profile.isGatewayEnabled = this.enableGateway;
     // fillInProfile MUST set serialNumber
     profile.serialNumber = getSerialNumber();
-    
-    //TODO - prpersist - this is a bit of a hack, but we're 
+    //TODO - prpersist - this is a bit of a hack, but we're
     //reusing this boolean to indicate that this member has finished disk recovery.
     profile.regionInitialized = recoveredFromDisk;
     
@@ -7117,6 +7116,7 @@ public class PartitionedRegion extends LocalRegion implements
     private final boolean includeValues;
 
     private Iterator<RegionEntry> bucketEntriesIter;
+    private DiskRegionIterator diskRegionIterator;
     private boolean remoteEntryFetched;
 
     private Object currentEntry;
@@ -7271,7 +7271,14 @@ public class PartitionedRegion extends LocalRegion implements
       if (bucketEntriesIter instanceof CloseableIterator<?>) {
         ((CloseableIterator<?>)bucketEntriesIter).close();
       }
+      if (diskRegionIterator != bucketEntriesIter &&
+          diskRegionIterator instanceof CloseableIterator<?>) {
+        ((CloseableIterator<?>)diskRegionIterator).close();
+      }
     }
+
+    private boolean DISALLOW_REMOTE_FETCH = Boolean.getBoolean(
+        "snappydata.DISALLOW_REMOTE_FETCH");
 
     // For snapshot isolation, Get the iterator on the txRegionstate maps entry iterator too
     public boolean hasNext() {
@@ -7321,9 +7328,9 @@ public class PartitionedRegion extends LocalRegion implements
           for (;;) {
             if (!this.bucketIdsIter.hasNext()) {
               // check for an open disk iterator
-              if (bucketEntriesIter instanceof DiskRegionIterator) {
-                if (((DiskRegionIterator)bucketEntriesIter)
-                    .initDiskIterator()) {
+              if (this.diskRegionIterator != null) {
+                if (this.diskRegionIterator.initDiskIterator()) {
+                  this.bucketEntriesIter = this.diskRegionIterator;
                   this.diskIteratorInitialized = true;
                   break;
                 }
@@ -7331,6 +7338,7 @@ public class PartitionedRegion extends LocalRegion implements
               // no more buckets need to be visited
               close();
               this.bucketEntriesIter = null;
+              this.diskRegionIterator = null;
               this.moveNext = false;
               return false;
             }
@@ -7367,6 +7375,12 @@ public class PartitionedRegion extends LocalRegion implements
                     + "available for ID " + bucketId + ", PR: "
                     + PartitionedRegion.this.toString() + ". Fetching from remote node");
               }
+              if (DISALLOW_REMOTE_FETCH) {
+                throw new BucketMovedException(LocalizedStrings
+                    .PartitionedRegionDataStore_BUCKET_ID_0_NOT_FOUND_ON_VM_1
+                    .toLocalizedString(new Object[] { bucketStringForLogs(bucketId),
+                        getMyId() }), bucketId, getFullPath());
+              }
               setRemoteBucketEntriesIterator(bucketId);
               this.remoteEntryFetched = true;
             }
@@ -7380,7 +7394,7 @@ public class PartitionedRegion extends LocalRegion implements
     private void setLocalBucketEntryIterator(BucketRegion br, int bucketId) {
       this.currentBucketId = bucketId;
       this.currentBucketRegion = br;
-      if (this.bucketEntriesIter == null) {
+      if (this.diskRegionIterator == null) {
         if (this.includeValues) {
           this.bucketEntriesIter = this.createIterator.apply(br, numEntries);
         } else {
@@ -7394,20 +7408,14 @@ public class PartitionedRegion extends LocalRegion implements
             ((HDFSIterator)bucketEntriesIter).setTXState(this.txState);
           }
         }
-      } else if (this.bucketEntriesIter instanceof DiskRegionIterator) {
+        if (this.bucketEntriesIter instanceof DiskRegionIterator) {
+          this.diskRegionIterator = (DiskRegionIterator)this.bucketEntriesIter;
+        }
+      } else {
         // wait for region recovery etc.
         br.getDiskIteratorCacheSize(1.0);
-        ((DiskRegionIterator)this.bucketEntriesIter).setRegion(br);
-      } else {
-        this.bucketEntriesIter = br.entries.regionEntries().iterator();
-        if (this.bucketEntriesIter instanceof HDFSIterator) {
-          if (this.forUpdate) {
-            ((HDFSIterator)bucketEntriesIter).setForUpdate();
-          }
-          if (this.txState != null) {
-            ((HDFSIterator)bucketEntriesIter).setTXState(this.txState);
-          }
-        }
+        this.diskRegionIterator.setRegion(br);
+        this.bucketEntriesIter = this.diskRegionIterator;
       }
     }
 
@@ -7569,7 +7577,7 @@ public class PartitionedRegion extends LocalRegion implements
     }
     catch (FunctionException fe) {
       checkShutdown();
-      this.logger.warning(LocalizedStrings.PR_CONTAINSVALUE_WARNING,fe.getCause());  
+      this.logger.warning(LocalizedStrings.PR_CONTAINSVALUE_WARNING,fe.getCause());
     }
     return false;
   }
@@ -11879,7 +11887,7 @@ public class PartitionedRegion extends LocalRegion implements
    * to clear the partitioned region.
    */
   public void clearLocalPrimaries() {
- // rest of it should be done only if this is a store while RecoveryLock
+    // rest of it should be done only if this is a store while RecoveryLock
     // above still required even if this is an accessor
     if (getLocalMaxMemory() > 0) {
       // acquire the primary bucket locks
@@ -11888,34 +11896,62 @@ public class PartitionedRegion extends LocalRegion implements
       // (probably not required to do this in loop after the recovery lock)
       // [sumedh] do we need both recovery lock and bucket locks?
       boolean done = false;
-      Set<BucketRegion> lockedRegions = null;
+      final ArrayList<BucketRegion> lockedRegions = new ArrayList<>();
       while (!done) {
-        lockedRegions = getDataStore().getAllLocalPrimaryBucketRegions();
+        // release locks on any buckets locked in previous iteration
+        if (!lockedRegions.isEmpty()) {
+          for (BucketRegion br : lockedRegions) {
+            try {
+              br.doUnlockForPrimaryMove();
+            } catch (Exception ignored) {
+            }
+          }
+          lockedRegions.clear();
+        }
+        final Set<BucketRegion> primaryBucketSet =
+            getDataStore().getAllLocalPrimaryBucketRegions();
+        // re-arrange to a consistent ordering
+        final BucketRegion[] primaryBuckets = primaryBucketSet.toArray(
+            new BucketRegion[primaryBucketSet.size()]);
+        java.util.Arrays.sort(primaryBuckets,
+            (b1, b2) -> Integer.compare(b1.getId(), b2.getId()));
+        // keep trying until all primaries are locked
         done = true;
-        for (BucketRegion br : lockedRegions) {
+        for (BucketRegion br : primaryBuckets) {
           try {
-            br.doLockForPrimary(false);
+            if (!br.doLockForPrimary(false, true)) {
+              done = false;
+              getCancelCriterion().checkCancelInProgress(null);
+              break;
+            }
+            lockedRegions.add(br);
           } catch (RegionDestroyedException rde) {
             done = false;
+            getCancelCriterion().checkCancelInProgress(rde);
             break;
           } catch (PrimaryBucketException pbe) {
             done = false;
+            getCancelCriterion().checkCancelInProgress(pbe);
             break;
           } catch (Exception e) {
-            // ignore any other exception
-            getLogWriterI18n().fine(
-                "GemFireContainer#clear: ignoring exception "
-                    + "in bucket lock acquire", e);
+            // log any other exception
+            getLogWriterI18n().warning(LocalizedStrings.ONE_ARG,
+                "GemFireContainer#clear: exception in bucket lock acquire", e);
+            done = false;
+            getCancelCriterion().checkCancelInProgress(e);
+            break;
           }
         }
       }
-      
-      //hoplogs - pause HDFS dispatcher while we 
-      //clear the buckets to avoid missing some files
-      //during the clear
-      pauseHDFSDispatcher();
 
+      boolean dispatcherPaused = false;
       try {
+        // hoplogs - pause HDFS dispatcher while we
+        // clear the buckets to avoid missing some files
+        // during the clear
+        pauseHDFSDispatcher();
+        dispatcherPaused = true;
+
         // now clear the bucket regions; we go through the primary bucket
         // regions so there is distribution for every bucket but that
         // should be performant enough
@@ -11930,11 +11966,11 @@ public class PartitionedRegion extends LocalRegion implements
           }
         }
       } finally {
-        resumeHDFSDispatcher();
+        if (dispatcherPaused) resumeHDFSDispatcher();
         // release the bucket locks
         for (BucketRegion br : lockedRegions) {
           try {
-            br.doUnlockForPrimary();
+            br.doUnlockForPrimaryMove();
           } catch (Exception e) {
             // ignore all exceptions at this stage
             getLogWriterI18n().fine(
@@ -11942,11 +11978,11 @@ public class PartitionedRegion extends LocalRegion implements
                     + "in bucket lock release", e);
           }
         }
+        lockedRegions.clear();
       }
     }
-    
   }
-  
+
   /**Destroy all data in HDFS, if this region is using HDFS persistence.*/
   private void destroyHDFSData() {
     if(getHDFSStoreName() == null) {

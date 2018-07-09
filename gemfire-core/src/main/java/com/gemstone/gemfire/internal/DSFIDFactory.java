@@ -815,6 +815,10 @@ public final class DSFIDFactory implements DataSerializableFixedID {
         () -> new UnblockPersistentIDRequest());
     registerDSFID(UNBLOCK_PERSISTENT_ID_RESPONSE,
         () -> new UnblockPersistentIDResponse());
+    registerDSFID(STARTUP_SEQUENCE_QUERY_REQUEST,
+        () -> new StartupSequenceQueryMesasge());
+    registerDSFID(STARTUP_SEQUENCE_QUERY_REPLY,
+        () -> new StartupSequenceQueryMesasge.StartupSequenceQueryReplyMesasge());
     typesRegistered = true;
   }
 

@@ -858,6 +858,9 @@ public class CacheServerLauncher extends LauncherBase {
             this.disconnect(cache);
             status.state = SHUTDOWN;
             writeStatus(status);
+            // No point reconnecting if explicit stop has been called
+            system.stopReconnecting();
+            waitTillReconnectStopped(system);
             externalShutDown = false;
         } else {
           Thread.sleep(150);
@@ -869,20 +872,47 @@ public class CacheServerLauncher extends LauncherBase {
 //        System.out.println("System is disconnected.  isReconnecting = " + system.isReconnecting());
         boolean reconnected = false;
         if (system.isReconnecting()) {
-          reconnected = system.waitUntilReconnected(-1, TimeUnit.SECONDS);
-          if (reconnected) {
-            system = (InternalDistributedSystem)system.getReconnectedSystem();
-            cache = GemFireCacheImpl.getInstance();
+          while (true) {
+            // Timed check is there so that if explicit stop has been called then
+            // we stop faster rather waiting for the entire reconnect attempt to get over
+            reconnected = system.waitUntilReconnected(150, TimeUnit.MILLISECONDS);
+            status = readStatus();
+            if (status.state == SHUTDOWN_PENDING) {
+              // No point reconnecting if explicit stop has been called
+              system.stopReconnecting();
+              waitTillReconnectStopped(system);
+              externalShutDown = false;
+            }
+
+            if (reconnected) {
+              system = (InternalDistributedSystem) system.getReconnectedSystem();
+              cache = GemFireCacheImpl.getInstance();
+              break;
+            }
+            if (status.state == SHUTDOWN_PENDING) {
+              break;
+            }
           }
         }
         if (!reconnected) {
           // shutdown-all disconnected the DS
-          if( externalShutDown) {
+          if (externalShutDown) {
             //delete the status file
             deleteStatus();
           }
           System.exit(0);
         }
+      }
+    }
+  }
+
+  private void waitTillReconnectStopped(InternalDistributedSystem system) throws Exception {
+    while (true) {
+      if (system.isReconnecting()) {
+        Thread.sleep(150);
+      }
+      else {
+        break;
       }
     }
   }

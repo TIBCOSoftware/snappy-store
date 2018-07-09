@@ -638,8 +638,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       if (lockForGII) {
         // the container GII lock is to synchronize with any index list changes
         // in refreshIndexListAndConstraintDesc()
-        lockForGII(false, tc);
-        lockedForGII = true;
+        lockedForGII = lockForGII(false, tc);
       }
 
       // check for region destroyed
@@ -4355,7 +4354,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
   }
 
   @Override
-  public boolean clearIndexes(LocalRegion region, DiskRegion dr, boolean lockForGII,
+  public boolean clearIndexes(LocalRegion region, DiskRegion dr,
       boolean holdIndexLock, Iterator<?> bucketEntriesIter, int bucketId) {
     EmbedConnection conn = null;
     GemFireContainer gfc = null;
@@ -4396,9 +4395,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
         }
       }
       if (needToAcquireWriteLockOnGIILock) {
-        if (lockForGII) {
-          giiLockAcquired = lockForGII(holdIndexLock, tc);
-        }
+        giiLockAcquired = lockForGII(holdIndexLock, tc);
       }
 
       // for the case of replicated region, simply blow away the entire
@@ -4454,7 +4451,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       handleException(t, "GfxdIndexManager#clearIndexes: unexpected exception",
           lcc, null, null);
     } finally {
-      if (!holdIndexLock) {
+      if (!holdIndexLock && giiLockAcquired) {
         unlockForGII(false, tc);
       }
       if (tableLockAcquired) {

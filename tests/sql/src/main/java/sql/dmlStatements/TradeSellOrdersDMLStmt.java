@@ -117,7 +117,7 @@ public class TradeSellOrdersDMLStmt extends AbstractDMLStmt {
     "select oid, sid, ask, cid, status from trade.sellorders  " +
     "where ((status =? and ask <?) OR (status =? and ask >?))  and cid not IN (?, ?, ?, ?, ?) and tid =?", 
     "select oid, sid, ask, cid, " +
-    (RemoteTestModule.getMyVmid()%2 ==0 ? "order_time": "second(order_time)" ) +
+    (RemoteTestModule.getMyVmid()%2 ==0 || SQLPrms.isSnappyMode() ? "order_time": "second(order_time)" ) +
     ", status from trade.sellorders  " +
     "where (((order_time >? and ask <?) and (status =? and ask >?))  OR cid IN (?, ?, ?, ?, ?)) and tid =?", // avoid #39766
     (RemoteTestModule.getCurrentThread().getThreadId() %2 ==0 || !reproduce51276? 
@@ -143,7 +143,7 @@ public class TradeSellOrdersDMLStmt extends AbstractDMLStmt {
     "where ((status =? and ask <?) OR (status =? and ask >?))  and cid IN (?, ?, ?, ?, ?) ",
     //add the trim function to work around #46998
     "select oid, sid, ask, cid, " + 
-    (RemoteTestModule.getMyVmid()%2 ==0 ? "order_time": "trim(char(order_time))" ) +
+    (RemoteTestModule.getMyVmid()%2 ==0  || SQLPrms.isSnappyMode()  ? "order_time": "trim(char(order_time))" ) +
     ", status from trade.sellorders  " +
     "where ((order_time >? and ask <?) and (status =? and ask >?))  OR cid IN (?, ?, ?, ?, ?)",
     "select oid, cid, order_time, sid from trade.sellorders where (order_time < ?)",

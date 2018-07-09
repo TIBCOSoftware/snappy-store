@@ -446,14 +446,24 @@ public final class DDLConflatable extends GfxdDataSerializable implements
    */
   public String getSchemaForTable() {
     assert isCreateTable() || isAlterTable();
-    
-    final int dotIndex = this.fullTableName.indexOf('.');
-    if (dotIndex == -1) {
-      return null;
-    }
-    return this.fullTableName.substring(0, dotIndex);
+    return getSchemaForTable_internal();
   }
-  
+
+  private String getSchemaForTable_internal() {
+    if (this.fullTableName != null) {
+      final int dotIndex = this.fullTableName.indexOf('.');
+      if (dotIndex == -1) {
+        return null;
+      }
+      return this.fullTableName.substring(0, dotIndex);
+    }
+    return null;
+  }
+
+  public String getSchemaForTableNoThrow() {
+    return getSchemaForTable_internal();
+  }
+
   public final String getColocatedWithTable() {
     return this.colocatedWithTable;
   }

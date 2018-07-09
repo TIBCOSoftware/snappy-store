@@ -1826,7 +1826,6 @@ public class PRHARedundancyProvider
         allBucketsRecoveredFromDisk = null;
         throw e;
       }
-    
       /*
        * Spawn a separate thread for bucket that we previously hosted
        * to recover that bucket.

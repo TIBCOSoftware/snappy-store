@@ -2116,6 +2116,8 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 		s.setString(1, swapNull(catalog));
 		s.setString(2, swapNull(schemaPattern));
 		s.setString(3, swapNull(tableNamePattern));
+		s.setString(4, swapNull(schemaPattern));
+		s.setString(5, swapNull(tableNamePattern));
 		return s.executeQuery();
 	}
 

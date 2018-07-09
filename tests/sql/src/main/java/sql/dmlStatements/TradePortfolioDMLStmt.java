@@ -79,8 +79,9 @@ public class TradePortfolioDMLStmt extends AbstractDMLStmt {
                                       }; 
   protected static String[] select = {"select * from trade.portfolio where tid = ?",
                                     "select sid, cid, subTotal from trade.portfolio where (subTotal >? and subTotal <= ?) and tid=? ",
-                                    (reproduceTicket48840 ? "select count(distinct cid) as num_distinct_cid from trade.portfolio where (subTotal<? or subTotal >=?) and tid =?"
-                                        : "select count (cid) as num_cid from trade.portfolio where (subTotal<? or subTotal >=?) and tid =?"),
+                                    (reproduceTicket48840 ? "select CAST(count(distinct cid) as " +
+                                        "integer) as num_distinct_cid from trade.portfolio where (subTotal<? or subTotal >=?) and tid =?"
+                                        : "select CAST(count(cid) as integer) as num_cid from trade.portfolio where (subTotal<? or subTotal >=?) and tid =?"),
                                     "select distinct sid from trade.portfolio where (qty >=? and subTotal >= ?) and tid =?",
                                     "select sid, cid, qty from trade.portfolio  where (qty >=? and availQty<?) and tid =?",
                                     "select * from trade.portfolio where sid =? and cid=? and tid = ?",
