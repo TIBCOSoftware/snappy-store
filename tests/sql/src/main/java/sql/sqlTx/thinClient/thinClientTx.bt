@@ -1,3 +1,18 @@
+sql/sqlTx/thinClient/concUpdateTxClientHA.conf
+    locatorHosts = 1 locatorVMsPerHost =1 locatorThreadsPerVM = 1
+    serverHosts=1 serverVMsPerHost=5 serverThreadsPerVM=1
+    clientHosts = 1 clientVMsPerHost =6 clientThreadsPerVM = 5
+    nobatching=true
+    redundantCopies = 1
+    
+sql/sqlTx/thinClient/concUpdateTxClientHA.conf
+    locatorHosts = 1 locatorVMsPerHost =1 locatorThreadsPerVM = 1
+    serverHosts=1 serverVMsPerHost=5 serverThreadsPerVM=1
+    clientHosts = 1 clientVMsPerHost =6 clientThreadsPerVM = 5
+    nobatching=false
+    redundantCopies = 1
+ 
+
 sql/sqlTx/thinClient/multiTablesTxClient.conf
     locatorHosts = 1 locatorVMsPerHost =1 locatorThreadsPerVM = 1
     serverHosts=1 serverVMsPerHost=2, 5 serverThreadsPerVM=1
@@ -78,20 +93,7 @@ sql/sqlTx/thinClient/randomPartitionTablesIndexTxNoBatchingClientHA.conf
     workIterationsPerThread=500  
     redundantCopies = 1
     
-sql/sqlTx/thinClient/concUpdateTxClientHA.conf
-    locatorHosts = 1 locatorVMsPerHost =1 locatorThreadsPerVM = 1
-    serverHosts=1 serverVMsPerHost=5 serverThreadsPerVM=1
-    clientHosts = 1 clientVMsPerHost =6 clientThreadsPerVM = 5
-    nobatching=true
-    redundantCopies = 1
-    
-sql/sqlTx/thinClient/concUpdateTxClientHA.conf
-    locatorHosts = 1 locatorVMsPerHost =1 locatorThreadsPerVM = 1
-    serverHosts=1 serverVMsPerHost=5 serverThreadsPerVM=1
-    clientHosts = 1 clientVMsPerHost =6 clientThreadsPerVM = 5
-    nobatching=false
-    redundantCopies = 1
-    
+   
 sql/sqlTx/thinClient/randomPartitionTablesIndexUniqTxClient.conf
     locatorHosts = 1 locatorVMsPerHost =1 locatorThreadsPerVM = 1
     serverHosts=1 serverVMsPerHost=5 serverThreadsPerVM=1

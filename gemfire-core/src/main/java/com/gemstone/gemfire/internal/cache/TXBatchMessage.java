@@ -157,24 +157,45 @@ public final class TXBatchMessage extends TXMessage {
           region = baseRegion = null;
         }
         final int numOps = this.pendingOps.size();
+        // take pendingTXRegionStates lock first so that
+        // GII thread doesn't block on TXRegionState.
+        //ArrayList<LocalRegion> lockedRegions = new ArrayList<>();
+        /*for (LocalRegion r : pendingOpsRegions) {
+          if (!r.isInitialized() && r.getImageState().lockPendingTXRegionStates(true, false)) {
+            lockedRegions.add(r);
+          }
+        }*/
+        boolean lockedPendingTXregionState = false;
         for (int index = 0; index < numOps; index++) {
           entry = this.pendingOps.get(index);
           if (pendingOpsRegion == null) {
             region = this.pendingOpsRegions.get(index);
             if (region.isUsedForPartitionedRegionBucket()) {
               baseRegion = region.getPartitionedRegion();
-            }
-            else {
+            } else {
               baseRegion = region;
             }
           }
           if (txState.isCoordinator()) {
             region.waitForData();
           }
-          txrs = txState.writeRegion(region);
-          if (txrs != null) {
-            txState.applyPendingOperation(entry, lockFlags, txrs, region,
-                baseRegion, eventTemplate, true, Boolean.TRUE, this);
+          if (!region.isInitialized() &&
+              region.getImageState().lockPendingTXRegionStates(true, false)) {
+            //lockedRegions.add(region);
+            lockedPendingTXregionState = true;
+          }
+          try {
+            txrs = txState.writeRegion(region);
+            if (txrs != null) {
+              txState.applyPendingOperation(entry, lockFlags, txrs, region,
+                  baseRegion, eventTemplate, true, Boolean.TRUE, this);
+            }
+          } finally {
+            //for (LocalRegion r : lockedRegions) {
+            if (lockedPendingTXregionState) {
+              region.getImageState().unlockPendingTXRegionStates(true);
+              lockedPendingTXregionState = false;
+            }
           }
         }
       } finally {
