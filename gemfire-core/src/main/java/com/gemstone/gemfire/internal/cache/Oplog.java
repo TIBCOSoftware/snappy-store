@@ -7385,7 +7385,8 @@ public final class Oplog implements CompactableOplog {
           this.logger.info(LocalizedStrings.ONE_ARG,
               "Oplog::recoverValuesIfNeeded: stopping recovery of " +
                   diskRegionId + " as memory consumed is 90% of maxStorageSize");
-          continue;
+          // Breaking the loop here as all regions will face the same memory constraint.
+          break;
         }
 
         synchronized(diskEntry) {
