@@ -81,9 +81,12 @@ public class StartupSequenceQueryMesasge extends
       if (region instanceof DistributedRegion) {
         persistenceAdvisor = ((DistributedRegion)region).getPersistenceAdvisor();
         PersistentMembershipView view = persistenceAdvisor.getMembershipView();
+        HashSet<PersistentMemberID> onlineOrEqual = persistenceAdvisor.getPersistedOnlineOrEqualMembers();
         // find out a member whose DDLReplay is completed.
         Map<InternalDistributedMember, PersistentMemberID> onlineMembers = view.getOnlineMembers();
-
+        if (dm.getLoggerI18n().fineEnabled()) {
+          dm.getLoggerI18n().fine("The view is " + view);
+        }
         boolean isInitialized = false;
         // Check how many online members
         for (InternalDistributedMember m : onlineMembers.keySet()) {
@@ -97,9 +100,17 @@ public class StartupSequenceQueryMesasge extends
         if (!isInitialized) {
           // check which are offline members
           offlineMembers = view.getOfflineMembers();
-          offlineMembers.forEach(pId -> {
-            diskStoreId.add(pId.diskStoreId);
-          });
+          //remove equal members too.
+          offlineMembers.removeAll(onlineOrEqual);
+          if (offlineMembers != null) {
+            offlineMembers.forEach(pId -> {
+              if (dm.getLoggerI18n().fineEnabled()) {
+                dm.getLoggerI18n().fine("The offline members are " + pId + " the disk store " +
+                        "id : " + pId.diskStoreId);
+              }
+              diskStoreId.add(pId.diskStoreId);
+            });
+          }
         }
       } else if (region == null) {
         dm.getLoggerI18n().info(LocalizedStrings.DEBUG, "This shouldn't have happened. ");
@@ -128,7 +139,8 @@ public class StartupSequenceQueryMesasge extends
         StartupSequenceQueryMesasge.StartupSequenceQueryReplyMesasge persistentReplyMessage =
             new StartupSequenceQueryMesasge.StartupSequenceQueryReplyMesasge();
         //persistentReplyMessage.diskStoreId = diskStoreId;
-        persistentReplyMessage.persistentMemberIDS.addAll(offlineMembers);
+        if (offlineMembers != null)
+          persistentReplyMessage.persistentMemberIDS.addAll(offlineMembers);
         replyMsg = persistentReplyMessage;
       } else {
         replyMsg = new ReplyMessage();

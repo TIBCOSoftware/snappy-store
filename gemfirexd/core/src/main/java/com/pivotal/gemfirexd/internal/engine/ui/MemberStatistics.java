@@ -128,7 +128,10 @@ public class MemberStatistics {
 
   public void updateMemberStatistics(HashMap memberStatsMap) {
 
-    if (!this.getDiskStoreUUID().equals(memberStatsMap.get("diskStoreUUID"))) {
+    String id = (String)memberStatsMap.get("id");
+    UUID diskStoreUUID = (UUID)memberStatsMap.get("diskStoreUUID");
+    if ((this.getDiskStoreUUID() != null && !this.getDiskStoreUUID().equals(diskStoreUUID))
+        || (this.getId() != null && !this.getId().equals(id))) {
       // wrong member stats passed
       return;
     }
