@@ -4843,8 +4843,11 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
           DiskStoreObserver.startAsyncValueRecovery(DiskStoreImpl.this);
           // defer regions marked in first pass
           for (Oplog oplog : oplogSet) {
-            oplog.recoverValuesIfNeeded(currentAsyncValueRecoveryMap,
-                deferredRegions, currentAsyncValueRecoveryMap);
+            // If returns false further recovery is not possible due to UMM limit.
+            if (!oplog.recoverValuesIfNeeded(currentAsyncValueRecoveryMap,
+                deferredRegions, currentAsyncValueRecoveryMap)){
+              break;
+            }
           }
         } catch (CancelException ignore) {
           // do nothing
@@ -4886,8 +4889,11 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
               }
             }
             for (Oplog oplog : oplogSet) {
-              oplog.recoverValuesIfNeeded(deferredRegions, null,
-                  currentAsyncValueRecoveryMap);
+              // If returns false further recovery is not possible due to UMM limit.
+              if (!oplog.recoverValuesIfNeeded(deferredRegions, null,
+                  currentAsyncValueRecoveryMap)){
+                break;
+              }
             }
           } catch (CancelException ignore) {
             // do nothing
