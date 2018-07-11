@@ -17,6 +17,7 @@
 
 package com.pivotal.gemfirexd.internal.engine.ui;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -96,6 +97,9 @@ public class ClusterStatistics {
     long sumDiskStoreDiskSpace = 0;
 
     Set<String> hostsList = new HashSet<>();
+    Map<String, Boolean> locatorHostsVisitedMap = new HashMap<>();
+    Map<String, Boolean> leadHostsVisitedMap = new HashMap<>();
+    Map<String, Boolean> dataServerHostsVisitedMap = new HashMap<>();
     int totalCpuActive = 0;
     int cpuCount = 0;
 
@@ -104,22 +108,50 @@ public class ClusterStatistics {
     leadCores = 0;
     dataServerCores = 0;
 
+    // populate members hosts details maps
+    for (MemberStatistics ms : memberStatsMap.values()) {
+      if(ms.isLocator()) {
+        locatorHostsVisitedMap.put(ms.getHost(), false);
+      } else if(ms.isLead()) {
+        leadHostsVisitedMap.put(ms.getHost(), false);
+      } else {
+        dataServerHostsVisitedMap.put(ms.getHost(), false);
+      }
+    }
+
     for (MemberStatistics ms : memberStatsMap.values()) {
 
       lastMemberUpdatedTime = ms.getLastUpdatedOn();
 
+      String host = ms.getHost();
+      int msCPUCores = ms.getCores();
+
       // CPU cores
-      if(ms.isLocator()){
-        this.locatorCores += ms.getCores();
+      if(ms.isLocator()) {
+        if(!locatorHostsVisitedMap.get(host)
+            && !leadHostsVisitedMap.containsKey(host)
+            && !dataServerHostsVisitedMap.containsKey(host)) {
+          locatorHostsVisitedMap.put(host, true);
+          this.locatorCores += msCPUCores;
+          this.totalCores += msCPUCores;
+        }
       } else if(ms.isLead()) {
-        this.leadCores += ms.getCores();
-      } else {
-        this.dataServerCores += ms.getCores();
+        if(!leadHostsVisitedMap.get(host)
+            && !dataServerHostsVisitedMap.containsKey(host)) {
+          leadHostsVisitedMap.put(host, true);
+          this.leadCores += msCPUCores;
+          this.totalCores += msCPUCores;
+        }
+      } else { // data server
+        if(!dataServerHostsVisitedMap.get(host)) {
+          dataServerHostsVisitedMap.put(host, true);
+          this.dataServerCores += msCPUCores;
+          this.totalCores += msCPUCores;
+        }
       }
-      this.totalCores += ms.getCores();
+
 
       // CPU Usage
-      String host = ms.getHost();
       if (!hostsList.contains(host) && !ms.isLocator()) {
         hostsList.add(host);
         totalCpuActive += ms.getCpuActive();
