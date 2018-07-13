@@ -39,9 +39,6 @@ public class ClusterStatistics {
   }
 
   private int totalCores = 0;
-  private int locatorCores = 0;
-  private int leadCores = 0;
-  private int dataServerCores = 0;
 
   private final CircularFifoBuffer timeLine =
       new CircularFifoBuffer(MAX_SAMPLE_SIZE);
@@ -95,33 +92,28 @@ public class ClusterStatistics {
     long sumAggrMemoryUsed;
     long sumDiskStoreDiskSpace = 0;
 
-    Set<String> hostsList = new HashSet<>();
+    Set<String> hostsListForCPU = new HashSet<>();
+    Set<String> hostsListForCores = new HashSet<>();
     int totalCpuActive = 0;
     int cpuCount = 0;
 
     totalCores = 0;
-    locatorCores = 0;
-    leadCores = 0;
-    dataServerCores = 0;
 
     for (MemberStatistics ms : memberStatsMap.values()) {
 
       lastMemberUpdatedTime = ms.getLastUpdatedOn();
 
+      String host = ms.getHost();
+
       // CPU cores
-      if(ms.isLocator()){
-        this.locatorCores += ms.getCores();
-      } else if(ms.isLead()) {
-        this.leadCores += ms.getCores();
-      } else {
-        this.dataServerCores += ms.getCores();
+      if(!hostsListForCores.contains(host)){
+        hostsListForCores.add(host);
+        this.totalCores += ms.getCores();
       }
-      this.totalCores += ms.getCores();
 
       // CPU Usage
-      String host = ms.getHost();
-      if (!hostsList.contains(host) && !ms.isLocator()) {
-        hostsList.add(host);
+      if (!hostsListForCPU.contains(host) && !ms.isLocator()) {
+        hostsListForCPU.add(host);
         totalCpuActive += ms.getCpuActive();
         cpuCount++;
       }
@@ -195,18 +187,6 @@ public class ClusterStatistics {
 
   public int getTotalCores() {
     return totalCores;
-  }
-
-  public int getLocatorCores() {
-    return locatorCores;
-  }
-
-  public int getLeadCores() {
-    return leadCores;
-  }
-
-  public int getDataServerCores() {
-    return dataServerCores;
   }
 
   public Object[] getUsageTrends(int trendType) {
