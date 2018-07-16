@@ -38,7 +38,7 @@ public class ClusterStatistics {
     private static final ClusterStatistics INSTANCE = new ClusterStatistics();
   }
 
-  private int totalCores = 0;
+  private int totalCPUCores = 0;
 
   private final CircularFifoBuffer timeLine =
       new CircularFifoBuffer(MAX_SAMPLE_SIZE);
@@ -92,12 +92,12 @@ public class ClusterStatistics {
     long sumAggrMemoryUsed;
     long sumDiskStoreDiskSpace = 0;
 
-    Set<String> hostsListForCPU = new HashSet<>();
-    Set<String> hostsListForCores = new HashSet<>();
+    Set<String> hostsListForCPUUsage = new HashSet<>();
+    Set<String> hostsListForCPUCores = new HashSet<>();
     int totalCpuActive = 0;
     int cpuCount = 0;
 
-    totalCores = 0;
+    totalCPUCores = 0;
 
     for (MemberStatistics ms : memberStatsMap.values()) {
 
@@ -106,14 +106,14 @@ public class ClusterStatistics {
       String host = ms.getHost();
 
       // CPU cores
-      if(!hostsListForCores.contains(host)){
-        hostsListForCores.add(host);
-        this.totalCores += ms.getCores();
+      if(!hostsListForCPUCores.contains(host)){
+        hostsListForCPUCores.add(host);
+        this.totalCPUCores += ms.getCores();
       }
 
       // CPU Usage
-      if (!hostsListForCPU.contains(host) && !ms.isLocator()) {
-        hostsListForCPU.add(host);
+      if (!hostsListForCPUUsage.contains(host) && !ms.isLocator()) {
+        hostsListForCPUUsage.add(host);
         totalCpuActive += ms.getCpuActive();
         cpuCount++;
       }
@@ -185,8 +185,8 @@ public class ClusterStatistics {
 
   }
 
-  public int getTotalCores() {
-    return totalCores;
+  public int getTotalCPUCores() {
+    return totalCPUCores;
   }
 
   public Object[] getUsageTrends(int trendType) {
