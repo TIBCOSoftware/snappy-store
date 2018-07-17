@@ -7278,15 +7278,17 @@ public final class Oplog implements CompactableOplog {
    * If the defer regions argument is non-null, then disk regions that are marked to be
    * deferred ({@link DiskRegionFlag#DEFER_RECOVERY}) are skipped from recovery
    * and those regions are filled in the passed map as the result.
-   * @param diskRecoveryStores 
+   * @param diskRecoveryStores
+   * @return if further recovery is possible or not.
+   * This is to avoid unnecessary SortedLiveEntries if UMM limit has been reached.
    */
-  public void recoverValuesIfNeeded(
+  public boolean recoverValuesIfNeeded(
       Map<Long, DiskRecoveryStore> diskRecoveryStores,
       Map<Long, DiskRecoveryStore> deferredRegions, Object sync) {
     //Early out if we start closing the parent.
     if (getParent().isClosing() || diskRecoveryStores.isEmpty()
         || this.regionMap.isEmpty()) {
-      return;
+      return true;
     }
 
     List<KRFEntry> sortedLiveEntries;
@@ -7338,13 +7340,13 @@ public final class Oplog implements CompactableOplog {
 
     if (targetRegions.isEmpty()) {
       // no regions to recover
-      return;
+      return true;
     }
 
     sortedLiveEntries = getSortedLiveEntries(targetRegions.values());
     if(sortedLiveEntries == null) {
       //There are no live entries in this oplog to recover.
-      return;
+      return true;
     }
 
     if (this.logger.infoEnabled()) {
@@ -7355,7 +7357,7 @@ public final class Oplog implements CompactableOplog {
     for(KRFEntry entry : sortedLiveEntries) {
       //Early out if we start closing the parent.
       if(getParent().isClosing() || diskRecoveryStores.isEmpty()) {
-        return;
+        return true;
       }
 
       DiskEntry diskEntry = entry.getDiskEntry();
@@ -7385,7 +7387,8 @@ public final class Oplog implements CompactableOplog {
           this.logger.info(LocalizedStrings.ONE_ARG,
               "Oplog::recoverValuesIfNeeded: stopping recovery of " +
                   diskRegionId + " as memory consumed is 90% of maxStorageSize");
-          continue;
+          // Returning false here as all regions will face the same memory constraint.
+          return false;
         }
 
         synchronized(diskEntry) {
@@ -7418,6 +7421,7 @@ public final class Oplog implements CompactableOplog {
         }
       }
     }
+    return true;
   }
 
   public static String getParentRegionID(DiskRegionView drv) {

@@ -16,14 +16,22 @@
  */
 package com.gemstone.gemfire.internal.cache;
 
+import java.util.Collections;
+import java.util.Set;
+
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.cache.DiskAccessException;
+import com.gemstone.gemfire.cache.LowMemoryException;
+import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.internal.cache.lru.LRUStatistics;
 import com.gemstone.gemfire.internal.cache.persistence.DiskRecoveryStore;
 import com.gemstone.gemfire.internal.cache.persistence.DiskRegionView;
 import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
+import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 
 /**
    * Used to represent a recovered disk region. Once the region actually exists
@@ -38,6 +46,8 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
   public final class PlaceHolderDiskRegion extends AbstractDiskRegion
       implements DiskRecoveryStore {
     private final String name;
+    private volatile long entryOverHead = -1L;
+    private StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
 
     /**
      * This constructor is used when creating a region found during recovery
@@ -107,11 +117,21 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
     }
     public DiskEntry initializeRecoveredEntry(Object key, DiskEntry.RecoveredEntry value) {
       RegionEntry re = getRecoveredEntryMap().initRecoveredEntry(key, value);
+      if (!(re.isTombstone() || re.isInvalidOrRemoved()) && callback.isSnappyStore()) {
+        long size = calculateEntryOverhead(re);
+        boolean success =
+            callback.acquireStorageMemory(getFullPath(), size, null, false, false);
+        if (!success){
+          Set<DistributedMember> sm = Collections.singleton(GemFireCacheImpl.getExisting().getMyId());
+          throw new LowMemoryException("Could not obtain memory of size " + size, sm);
+        }
+      }
       if (re == null) {
         throw new InternalGemFireError(LocalizedStrings.LocalRegion_ENTRY_ALREADY_EXISTED_0.toLocalizedString(key));
       }
       return (DiskEntry)re;
     }
+
     public DiskEntry updateRecoveredEntry(Object key, RegionEntry entry,
         DiskEntry.RecoveredEntry value) {
       return (DiskEntry)getRecoveredEntryMap().updateRecoveredEntry(key, entry, value);
@@ -196,5 +216,27 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
       this.numEntriesInVM.set(numEntriesInVM);
       this.numOverflowOnDisk.set(numOverflowOnDisk);
       this.numOverflowBytesOnDisk.set(numOverflowBytesOnDisk);
+    }
+
+    protected long calculateEntryOverhead(RegionEntry entry) {
+      if (entryOverHead == -1L && callback.isSnappyStore()) {
+            entryOverHead = getEntryOverhead(entry);
+      }
+      return entryOverHead;
+    }
+
+    private long getEntryOverhead(RegionEntry entry) {
+      long entryOverhead = ReflectionSingleObjectSizer.INSTANCE.sizeof(entry);
+      Object key = entry.getRawKey();
+      if (key != null) {
+        entryOverhead += CachedDeserializableFactory.calcMemSize(key);
+      }
+      if (entry instanceof DiskEntry) {
+        DiskId diskId = ((DiskEntry)entry).getDiskId();
+        if (diskId != null) {
+          entryOverhead += ReflectionSingleObjectSizer.INSTANCE.sizeof(diskId);
+        }
+      }
+      return entryOverhead;
     }
   }
