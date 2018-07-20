@@ -41,7 +41,7 @@ public abstract class ManagementUtils implements ManagementConstants {
 
   public static final String NA = "NA";
   public static final GfxdMemberMetaData MEMBER_METADATA_NA = new GfxdMemberMetaData(NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA);
-  public static final TableMetadata      TABLE_METADATA_NA  = new TableMetadata(NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA);
+  public static final TableMetadata      TABLE_METADATA_NA  = new TableMetadata(NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA);
 
   public static final String PRODUCT_NAME = GemFireXDVersion.getProductName();
 

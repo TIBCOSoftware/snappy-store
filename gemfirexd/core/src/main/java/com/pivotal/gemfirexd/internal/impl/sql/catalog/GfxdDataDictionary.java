@@ -89,9 +89,13 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ConstantAction;
+import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecIndexRow;
+import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
 import com.pivotal.gemfirexd.internal.iapi.store.access.ConglomerateController;
 import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.types.SQLVarchar;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.CreateAsyncEventListenerNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.CreateGatewayReceiverNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.CreateGatewaySenderNode;
@@ -840,7 +844,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
       this.diagVTINames.put(tableName, className);
       final TableDescriptor td = new TableDescriptor(this, tableName,
           sysSchema, TableDescriptor.VTI_TYPE,
-          TableDescriptor.DEFAULT_LOCK_GRANULARITY);
+          TableDescriptor.DEFAULT_LOCK_GRANULARITY, TableDescriptor.DEFAULT_ROW_LEVEL_SECURITY_ENABLED);
       td.setUUID(getUUIDFactory().createUUID());
       long conglomId = Misc.getMemStore().getNextConglomId();
       ConglomerateDescriptor cd = getDataDescriptorGenerator()

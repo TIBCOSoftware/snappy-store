@@ -1918,7 +1918,7 @@ public abstract class DataDictionaryImpl
 			TableDescriptor td =
 				new TableDescriptor(this, tableName, sd,
 						TableDescriptor.VTI_TYPE,
-						TableDescriptor.DEFAULT_LOCK_GRANULARITY);
+						TableDescriptor.DEFAULT_LOCK_GRANULARITY, TableDescriptor.DEFAULT_ROW_LEVEL_SECURITY_ENABLED);
 			
 			// ensure a vti class exists
 			if (getVTIClass(td, false) != null)
@@ -2382,6 +2382,54 @@ public abstract class DataDictionaryImpl
 					 bArray,
 					 (int[])null,
 					 tc);
+	}
+
+	/**
+	 * Update the row level security for the specified table.
+	 *
+	 * @param td				The TableDescriptor for the table
+	 * @param schema			The SchemaDescriptor for the table
+	 * @param rlsEnabled	The flag for row level security enabled
+	 * @param tc				The TransactionController to use.
+	 *
+	 * @exception StandardException		Thrown on error
+	 */
+	public void updateRowLevelSecurityFlag(TableDescriptor td, SchemaDescriptor schema,
+			boolean rlsEnabled, TransactionController tc)
+			throws StandardException
+	{
+		ConglomerateController	heapCC;
+		ExecIndexRow keyRow1 = null;
+		ExecRow row;
+		DataValueDescriptor schemaIDOrderable;
+		DataValueDescriptor		tableNameOrderable;
+		TabInfoImpl					ti = coreInfo[SYSTABLES_CORE_NUM];
+		SYSTABLESRowFactory  rf = (SYSTABLESRowFactory) ti.getCatalogRowFactory();
+
+		/* Use tableIdOrderable and schemaIdOrderable in both start
+		 * and stop position for index 1 scan.
+		 */
+		tableNameOrderable = new SQLVarchar(td.getName());
+		schemaIDOrderable = getIDValueAsCHAR(schema.getUUID());
+
+		/* Set up the start/stop position for the scan */
+		keyRow1 = (ExecIndexRow) exFactory.getIndexableRow(2);
+		keyRow1.setColumn(1, tableNameOrderable);
+		keyRow1.setColumn(2, schemaIDOrderable);
+
+		// build the row to be stuffed into SYSTABLES.
+		row = rf.makeRow(td, schema);
+		// update row in catalog (no indexes)
+		boolean[] bArray = new boolean[2];
+		for (int index = 0; index < 2; index++)
+		{
+			bArray[index] = false;
+		}
+		ti.updateRow(keyRow1, row,
+				SYSTABLESRowFactory.SYSTABLES_INDEX1_ID,
+				bArray,
+				new int[]{SYSTABLESRowFactory.SYSTABLES_ROW_LEVEL_SECURITY_ENABLED},
+				tc);
 	}
 
 	/**
@@ -7196,7 +7244,7 @@ public abstract class DataDictionaryImpl
 						"SYSTABLES",
 						sd,
 						TableDescriptor.BASE_TABLE_TYPE,
-						TableDescriptor.ROW_LOCK_GRANULARITY);
+						TableDescriptor.ROW_LOCK_GRANULARITY, TableDescriptor.DEFAULT_ROW_LEVEL_SECURITY_ENABLED);
 			td.setUUID(getUUIDForCoreTable("SYSTABLES", sd.getUUID().toString(), tc));
 			conglomID = coreInfo[SYSTABLES_CORE_NUM].getHeapConglomerate();
 		}
@@ -7206,7 +7254,7 @@ public abstract class DataDictionaryImpl
 						"SYSCOLUMNS",
 						sd,
 						TableDescriptor.BASE_TABLE_TYPE,
-						TableDescriptor.ROW_LOCK_GRANULARITY);
+						TableDescriptor.ROW_LOCK_GRANULARITY, TableDescriptor.DEFAULT_ROW_LEVEL_SECURITY_ENABLED);
 			td.setUUID(getUUIDForCoreTable("SYSCOLUMNS", sd.getUUID().toString(), tc));
 			conglomID = coreInfo[SYSCOLUMNS_CORE_NUM].getHeapConglomerate();
 		}
@@ -7535,7 +7583,7 @@ public abstract class DataDictionaryImpl
     if (td == null) {
       td = ddg.newTableDescriptor(ti.getTableName(), sd,
           TableDescriptor.SYSTEM_TABLE_TYPE,
-          TableDescriptor.ROW_LOCK_GRANULARITY);
+          TableDescriptor.ROW_LOCK_GRANULARITY, TableDescriptor.DEFAULT_ROW_LEVEL_SECURITY_ENABLED);
       ti.setTableDescriptor(td);
       assert td != null: "TableDescriptor cannot be null.";
     }
@@ -7877,7 +7925,7 @@ public abstract class DataDictionaryImpl
     td = ti.getTableDescriptor();
     if (td == null) {
       td = ddg.newTableDescriptor(name, sd, TableDescriptor.SYSTEM_TABLE_TYPE,
-          TableDescriptor.ROW_LOCK_GRANULARITY);
+          TableDescriptor.ROW_LOCK_GRANULARITY, TableDescriptor.DEFAULT_ROW_LEVEL_SECURITY_ENABLED);
     }
 // GemStone changes END
 		td.setUUID(crf.getCanonicalTableUUID());

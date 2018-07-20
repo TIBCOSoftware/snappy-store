@@ -218,7 +218,7 @@ class AlterTableConstantAction extends DDLSingleTableConstantAction
 
     private	TableDescriptor 		        td;
 
-
+    private     int rowLevelSecurityAction = ROW_LEVEL_SECURITY_UNCHANGED;
 
     // CONSTRUCTORS
     private LanguageConnectionContext lcc;
@@ -227,6 +227,10 @@ class AlterTableConstantAction extends DDLSingleTableConstantAction
     private TransactionController tc;
     private Activation activation;
     private boolean isSet;
+
+    public final static int ROW_LEVEL_SECURITY_ENABLED = 2;
+	  public final static int ROW_LEVEL_SECURITY_DISABLED = 1;
+	  public final static int ROW_LEVEL_SECURITY_UNCHANGED = 0;
 
 	/**
 	 *	Make the AlterAction for an ALTER TABLE statement.
@@ -244,6 +248,7 @@ class AlterTableConstantAction extends DDLSingleTableConstantAction
 	 *	@param sequential	        If compress table/drop column, 
      *	                            whether or not sequential
 	 *  @param truncateTable	    Whether or not this is a truncate table
+	 *  @param rowLevelSecurityAction	    If Row Level Security is modified
 	 */
 
 	AlterTableConstantAction(
@@ -259,7 +264,7 @@ class AlterTableConstantAction extends DDLSingleTableConstantAction
     boolean                                 isSet,
     int				            behavior,
     boolean			            sequential,
-    boolean                     truncateTable)
+    boolean                     truncateTable, int rowLevelSecurityAction)
 	{
 		super(tableId);
 		this.sd                     = sd;
@@ -267,6 +272,7 @@ class AlterTableConstantAction extends DDLSingleTableConstantAction
 		this.tableConglomerateId    = tableConglomerateId;
 		this.tableType              = tableType;
 		this.columnInfo             = columnInfo;
+		this.rowLevelSecurityAction = rowLevelSecurityAction;
 		// GemStone changes BEGIN
     if (Misc.getMemStoreBooting().isHadoopGfxdLonerMode()
         && constraintActions != null) {
@@ -795,6 +801,14 @@ class AlterTableConstantAction extends DDLSingleTableConstantAction
 		if (compressTable)
 		{
 			compressTable(activation);
+		}
+
+		if (this.rowLevelSecurityAction != ROW_LEVEL_SECURITY_UNCHANGED) {
+			// update the TableDescriptor
+			td.setRowLevelSecurityEnabledFlag(this.rowLevelSecurityAction
+					== AlterTableConstantAction.ROW_LEVEL_SECURITY_ENABLED);
+			// update the DataDictionary
+			dd.updateLockGranularity(td, sd, lockGranularity, tc);
 		}
 
 		// Are we doing a truncate table?
@@ -1955,6 +1969,8 @@ class AlterTableConstantAction extends DDLSingleTableConstantAction
 		} 
 		// else we are simply changing the default value
 	}
+
+
 
     /**
      * routine to process compress table or ALTER TABLE <t> DROP COLUMN <c>;

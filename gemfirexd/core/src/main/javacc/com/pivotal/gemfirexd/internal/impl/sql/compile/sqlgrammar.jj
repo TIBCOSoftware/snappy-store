@@ -16346,6 +16346,7 @@ alterTableBody(TableName tableName) throws StandardException :
 	int[]				behavior = new int[1];
 	boolean[]			sequential = new boolean[1];
 	boolean[]           isSet = new boolean[1];
+	int[] rowLevelSecurityAction = new int[1];
 // GemStone changes BEGIN
 	GfxdAttributesMutator mutator = new GfxdAttributesMutator();
 // GemStone changes END
@@ -16370,7 +16371,7 @@ alterTableBody(TableName tableName) throws StandardException :
 |
 // GemStone changes BEGIN
 	lockGranularity = alterTableAction( tableName, tableElementList, mutator,
-		changeType, isSet, behavior, sequential )
+		changeType, isSet, behavior, sequential, rowLevelSecurityAction)
 	/* lockGranularity = alterTableAction( tableElementList, changeType, behavior, sequential ) */
 // GemStone changes END
 	{
@@ -16389,6 +16390,7 @@ alterTableBody(TableName tableName) throws StandardException :
 							// GemStone changes END		
 							behavior,
 							sequential,
+							Integer.valueOf(rowLevelSecurityAction[0]),
 							getContextManager());
 	}
 }
@@ -16445,10 +16447,11 @@ ReuseFactory.getInteger(StatementType.RENAME_COLUMN),
 char
 alterTableAction(TableName tableName, TableElementList tableElementList,
 	GfxdAttributesMutator mutator, int[] changeType, boolean[] isSet, int[] behavior,
-	boolean[] sequential) throws StandardException :
+	boolean[] sequential, int[] rowLevelSecurityAction) throws StandardException :
 {
 	int					evictionLimit;
 	int					expirationKind;
+	boolean enableRLS = false;
 	ExpirationAttributes[] exprAttrs = new ExpirationAttributes[1];
 	String gatewayId = null;
 	String hdfsStoreName = null;
@@ -16457,7 +16460,8 @@ alterTableAction(TableName tableName, TableElementList tableElementList,
 	long startMillis = 0, intervalMillis = 0;
 /*
 char
-alterTableAction(TableElementList tableElementList, int[] changeType, int[] behavior, boolean[] sequential) throws StandardException :
+alterTableAction(TableElementList tableElementList, int[] changeType, int[] behavior,
+boolean[] sequential, int[] rowLevelSecurityAction) throws StandardException :
 {
 */
 // GemStone changes END
@@ -16513,6 +16517,29 @@ alterTableAction(TableElementList tableElementList, int[] changeType, int[] beha
 		tableElementList.addTableElement(tableElement);
 		return lockGranularity;
 	}
+|
+   (
+     <ENABLE>
+     {
+       enableRLS = true;
+     }
+     |
+     <DISABLE>
+     {
+       enableRLS = false;
+     }
+   ) <ROW> <LEVEL> <SECURITY>
+   {
+     if (enableRLS) {
+       rowLevelSecurityAction[0] =
+       com.pivotal.gemfirexd.internal.impl.sql.execute.AlterTableConstantAction.ROW_LEVEL_SECURITY_ENABLED;
+     } else {
+       rowLevelSecurityAction[0] =
+       com.pivotal.gemfirexd.internal.impl.sql.execute.AlterTableConstantAction.ROW_LEVEL_SECURITY_DISABLED;
+     }
+   }
+
+
 // GemStone changes BEGIN
 |
 	<SET>

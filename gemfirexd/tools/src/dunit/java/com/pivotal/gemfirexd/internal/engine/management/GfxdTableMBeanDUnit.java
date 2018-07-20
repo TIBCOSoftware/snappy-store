@@ -678,7 +678,8 @@ public class GfxdTableMBeanDUnit extends GfxdManagementTestBase {
             resultSet.getString(SYSTABLESRowFactory.SYSTABLES_ASYNCLISTENERS),
             resultSet.getString(SYSTABLESRowFactory.SYSTABLES_GATEWAYENABLED),
             resultSet.getString(SYSTABLESRowFactory.SYSTABLES_SENDERIDS),
-            resultSet.getString(SYSTABLESRowFactory.SYSTABLES_OFFHEAPENABLED ));
+            resultSet.getString(SYSTABLESRowFactory.SYSTABLES_OFFHEAPENABLED ),
+            resultSet.getString(SYSTABLESRowFactory.SYSTABLES_ROW_LEVEL_SECURITY_ENABLED));
         
         logInfo("replicated tableMetadataFromResultSet="+tableMetadataFromResultSet.toString());
         assertTrue(tableMetadataStr.toString().equals(tableMetadataFromResultSet.toString()) );      

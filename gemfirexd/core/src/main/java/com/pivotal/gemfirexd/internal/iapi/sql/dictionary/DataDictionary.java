@@ -584,6 +584,19 @@ public interface DataDictionary
 		throws StandardException;
 
 	/**
+	 * Update the lockGranularity for the specified table.
+	 *
+	 * @param td				The TableDescriptor for the table
+	 * @param schema			The SchemaDescriptor for the table
+	 * @param rlsEnabled	The flag for row level security enabled
+	 * @param tc				The TransactionController to use.
+	 *
+	 * @exception StandardException		Thrown on error
+	 */
+	public void updateRowLevelSecurityFlag(TableDescriptor td, SchemaDescriptor schema,
+			boolean rlsEnabled, TransactionController tc) throws StandardException;
+
+	/**
 	 * Drop all table descriptors for a schema.
 	 *
 	 * @param schema	A descriptor for the schema to drop the tables

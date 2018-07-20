@@ -58,9 +58,9 @@ public class GfxdAlterTableNode extends AlterTableNode {
 
   public void init(Object objectName, Object tableElementList, Object mutator,
       Object lockGranularity, Object changeType, Object isSet,
-      Object behavior, Object sequential) throws StandardException {
+      Object behavior, Object sequential, Object rowLevelSecurity ) throws StandardException {
     super.init(objectName, tableElementList, lockGranularity, changeType,
-        isSet, behavior, sequential);
+        isSet, behavior, sequential, rowLevelSecurity);
     this.mutator = (GfxdAttributesMutator)mutator;
   }
 

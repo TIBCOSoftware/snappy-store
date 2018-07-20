@@ -109,7 +109,7 @@ public class DataDescriptorGenerator
 	 *			If null, use the current (default) schema.
 	 * @param tableType	The type of the table: base table or view.
 	 * @param lockGranularity	The lock granularity.
-	 *
+	 * @param rlsEnabled	Row Level Security Enabled.
 	 * @return	The descriptor for the table.
 	 */
 	public TableDescriptor	newTableDescriptor
@@ -117,11 +117,12 @@ public class DataDescriptorGenerator
 		String 				tableName,
 		SchemaDescriptor	schema,
 		int					tableType,
-		char				lockGranularity
+		char				lockGranularity,
+	  boolean      rlsEnabled
     )
 	{
 		return new TableDescriptor
-			(dataDictionary, tableName, schema, tableType, lockGranularity);
+			(dataDictionary, tableName, schema, tableType, lockGranularity, rlsEnabled);
 	}
 
 	/**
