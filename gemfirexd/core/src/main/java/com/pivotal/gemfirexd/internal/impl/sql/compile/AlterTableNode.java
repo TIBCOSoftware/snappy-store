@@ -164,7 +164,7 @@ public class AlterTableNode extends DDLStatementNode
 		this.behavior = bh[0];
 		boolean[]	seq = (boolean[]) sequential;
 		this.sequential = seq[0];
-		this.rowLevelSecurityAction = ((Integer)rowLevelSecurityAction).intValue();
+		this.rowLevelSecurityAction = ((Integer)rowLevelSecurity).intValue();
 		// GemStone changes BEGIN
 		this.isSet = ((boolean[])isSet)[0];
 		// GemStone changes END

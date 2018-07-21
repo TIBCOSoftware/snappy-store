@@ -16537,6 +16537,8 @@ boolean[] sequential, int[] rowLevelSecurityAction) throws StandardException :
        rowLevelSecurityAction[0] =
        com.pivotal.gemfirexd.internal.impl.sql.execute.AlterTableConstantAction.ROW_LEVEL_SECURITY_DISABLED;
      }
+     changeType[0] = DDLStatementNode.MODIFY_TYPE;
+     return lockGranularity;
    }
 
 
