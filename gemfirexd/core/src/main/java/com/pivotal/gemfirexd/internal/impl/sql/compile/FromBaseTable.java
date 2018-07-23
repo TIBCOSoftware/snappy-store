@@ -3202,6 +3202,9 @@ implements Cloneable
 		}
 		else
 		{
+			if (tableDescriptor.getRowLevelSecurityEnabledFlag()) {
+				throw StandardException.newException(SQLState.ROW_LEVEL_SECURITY_ENABLED);
+			}
 			/* This represents a table - query is dependent on the TableDescriptor */
 			compilerContext.createDependency(tableDescriptor);
 
