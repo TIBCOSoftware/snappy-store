@@ -1602,7 +1602,7 @@ public class GenericStatement
           return  GemFireXDUtils.isSet(this.execFlags, QUERY_HDFS);
         }
 
-        protected boolean getRouteQuery() {
+        public boolean getRouteQuery() {
         	return  GemFireXDUtils.isSet(this.execFlags, ROUTE_QUERY);
         }
 
