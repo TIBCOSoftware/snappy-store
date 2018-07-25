@@ -43,6 +43,8 @@ public class JoinTest extends SQLTest {
   }
 	
 	public static void  HydraTask_createViewsForJoin() {
+		if(joinTest==null)
+			joinTest = new JoinTest();
 		joinTest.createViews();
 	}
 	
