@@ -1317,7 +1317,9 @@ public class PoolImpl implements InternalPool {
       props.setProperty((String)entry.getKey(), (String)entry.getValue());
     }
     ProxyCache proxy = new ProxyCache(props, (GemFireCacheImpl)cache, this);
-    this.proxyCacheList.add(proxy);
+    synchronized (this) {
+      this.proxyCacheList.add(proxy);
+    }
     return proxy;
   }
 
@@ -1385,8 +1387,14 @@ public class PoolImpl implements InternalPool {
     } 
   }
 
-  public ArrayList<ProxyCache> getProxyCacheList() {
-    return this.proxyCacheList;
+  public List<ProxyCache> getProxyCacheList() {
+    synchronized (this) {
+      return new ArrayList<ProxyCache>(this.proxyCacheList);
+    }
+  }
+
+  public synchronized void removeProxyCache(ProxyCache pc) {
+    this.proxyCacheList.remove(pc);
   }
 
   private void authenticateIfRequired(Op op) {

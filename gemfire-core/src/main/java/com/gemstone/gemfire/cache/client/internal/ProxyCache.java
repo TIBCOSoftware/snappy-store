@@ -84,7 +84,7 @@ public class ProxyCache implements RegionService {
         ProxyCacheCloseOp.executeOn(iter.next(), (PoolImpl)this.userAttributes.getPool(),
             getProperties(), keepAlive);
       }
-      ((PoolImpl)this.userAttributes.getPool()).getProxyCacheList().remove(this);
+      ((PoolImpl)this.userAttributes.getPool()).removeProxyCache(this);
     } finally {
       // @todo I think some NPE will be caused by this code.
       // It would be safer to not null things out.

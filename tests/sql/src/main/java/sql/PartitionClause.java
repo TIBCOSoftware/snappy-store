@@ -1377,9 +1377,16 @@ public class PartitionClause {
         String portfClause = null;
       //add replicate customers case
         if (((String)partitionInfoMap.get("trade.customers")).equalsIgnoreCase("replicate")) {
-          portfClause = " partition by column (cid) ";
+          if(SQLPrms.isSnappyMode())
+            portfClause = " partition_by 'cid' ";
+          else
+            portfClause = " partition by column (cid) ";
+
         } else {
-          portfClause = " partition by column (cid) colocate with (trade.customers)";
+          if(SQLPrms.isSnappyMode())
+            portfClause = " partition_by 'cid', colocate_with 'trade.customers'";
+          else
+            portfClause = " partition by column (cid) colocate with (trade.customers)";
         }
         partitionClause = getPartitionSG(portfClause, serverGroup);
       } else {
@@ -1458,8 +1465,14 @@ public class PartitionClause {
       } else if (testMultiTableJoin) {
         //add replicate customers case
         if (((String)partitionInfoMap.get("trade.customers")).equalsIgnoreCase("replicate")) {
+          if(SQLPrms.isSnappyMode())
+            netClause = " partition_by 'cid' ";
+          else
           netClause = " partition by column (cid) ";
         } else {
+          if(SQLPrms.isSnappyMode())
+            netClause = " partition_by 'cid', colocate_with 'trade.customers' ";
+          else
           netClause = " partition by column (cid) colocate with (trade.customers)";
         }
       	partitionClause = getPartitionSG(netClause, serverGroup);
@@ -1539,8 +1552,14 @@ public class PartitionClause {
         String soClause = null;
         //add replicate customers case
         if (((String)partitionInfoMap.get("trade.customers")).equalsIgnoreCase("replicate")) {
-          soClause = " partition by column (cid) colocate with (trade.portfolio)";;
+          if(SQLPrms.isSnappyMode())
+            soClause = " partition_by 'cid' ";
+          else
+          soClause = " partition by column (cid) colocate with (trade.portfolio)";
         } else {
+          if(SQLPrms.isSnappyMode())
+            soClause = " partition_by 'cid', colocate_with 'trade.customers'";
+          else
           soClause = " partition by column (cid) colocate with (trade.customers)";
         }
         partitionClause = getPartitionSG(soClause, serverGroup);        
@@ -1598,8 +1617,14 @@ public class PartitionClause {
         String boClause = null;
         //add replicate customers case
         if (((String)partitionInfoMap.get("trade.customers")).equalsIgnoreCase("replicate")) {
+          if(SQLPrms.isSnappyMode())
+            boClause = " partition_by 'cid' ";
+          else
           boClause = " partition by column (cid) ";
         } else {
+          if(SQLPrms.isSnappyMode())
+            boClause = " partition_by 'cid', colocate_with 'trade.customers' ";
+          else
           boClause = " partition by column (cid) colocate with (trade.customers)";
         }
         partitionClause = getPartitionSG(boClause, serverGroup);
@@ -1655,8 +1680,14 @@ public class PartitionClause {
         String historyClause = null;
         //add replicate customers case
         if (((String)partitionInfoMap.get("trade.customers")).equalsIgnoreCase("replicate")) {
+          if(SQLPrms.isSnappyMode())
+            historyClause = " partition_by 'cid' ";
+          else
           historyClause = " partition by column (cid) ";
         } else {
+          if(SQLPrms.isSnappyMode())
+            historyClause = " partition_by 'cid', colocate_with 'trade.customers' ";
+          else
           historyClause = " partition by column (cid) colocate with (trade.customers)";
         }
         partitionClause = getPartitionSG(historyClause, serverGroup);
@@ -1749,8 +1780,12 @@ public class PartitionClause {
         partitionClause = getPartitionSG(soClause, serverGroup);
       } 
       else if (testMultiTableJoin) {
+        String soClause ="";
         //no in multitable join, if table added in the join, needs to be modified here as well.
-        String soClause = " partition by column (cid) colocate with (trade.customers)";
+        if(SQLPrms.isSnappyMode())
+          soClause = " partition_by 'cid', colocate_with 'trade.customers' ";
+        else
+         soClause = " partition by column (cid) colocate with (trade.customers)";
         partitionClause = getPartitionSG(soClause, serverGroup);        
       }
       else {
@@ -1762,21 +1797,27 @@ public class PartitionClause {
     } 
     
     else if (tableName.equalsIgnoreCase("emp.department")){
-      if (partition.equals("replicate"))
+      if (partition.equals("replicate")){
+        if(SQLPrms.isSnappyMode())
+          partitionClause = " ";
+        else
         partitionClause = " replicate ";
+      }
       else
     	partitionClause = " "; //TODO need to modify when the tables are used
     }
     else if (tableName.equalsIgnoreCase("emp.employees")){
-      if (partition.equals("replicate"))
+      if (partition.equals("replicate")){
+        if(SQLPrms.isSnappyMode())
+          partitionClause = " ";
+        else
         partitionClause = " replicate ";
+      }
       else {
-        {
           if(SQLPrms.isSnappyMode())
             partitionClause = " partition_by 'eid' ";
           else
             partitionClause = " partition by column (eid) "; //TODO need to modify when the tables are used
-        }
         
         ArrayList<String> partitionKey = new ArrayList<String>();
         partitionKey.add("eid");
@@ -1798,9 +1839,16 @@ public class PartitionClause {
       }
     }
     else if (tableName.equalsIgnoreCase("trade.customerprofile")){
-      if (partition.equals("replicate"))
+      if (partition.equals("replicate")){
+        if(SQLPrms.isSnappyMode())
+          partitionClause = " ";
+        else
         partitionClause = " replicate ";
+      }
       else {
+        if(SQLPrms.isSnappyMode())
+          partitionClause = " partition_by 'cid'";
+        else
     	  partitionClause = " partition by column (cid) "; //TODO need to modify when the tables are used
     	  if (testMultiTableJoin) {
     	    counters.increment(SQLBB.numOfPRs); //PR only, used for quick HA coverage
@@ -1810,14 +1858,22 @@ public class PartitionClause {
       }
     }
     else if (tableName.equalsIgnoreCase("trade.trades")){
-      if (partition.equals("replicate"))
+      if (partition.equals("replicate")){
+        if(SQLPrms.isSnappyMode())
+          partitionClause = " ";
+        else
         partitionClause = " replicate ";
+      }
       else
         partitionClause = " "; //TODO need to modify when the tables are used
     }
     else if (tableName.equalsIgnoreCase("default1.employees")){
-      if (partition.equals("replicate"))
+      if (partition.equals("replicate")){
+        if(SQLPrms.isSnappyMode())
+          partitionClause = " ";
+        else
         partitionClause = " replicate ";
+      }
       else
         partitionClause = " "; //TODO need to modify when the tables are used
     }

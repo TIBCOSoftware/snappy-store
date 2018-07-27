@@ -38,10 +38,7 @@ public class ClusterStatistics {
     private static final ClusterStatistics INSTANCE = new ClusterStatistics();
   }
 
-  private int totalCores = 0;
-  private int locatorCores = 0;
-  private int leadCores = 0;
-  private int dataServerCores = 0;
+  private int totalCPUCores = 0;
 
   private final CircularFifoBuffer timeLine =
       new CircularFifoBuffer(MAX_SAMPLE_SIZE);
@@ -95,33 +92,28 @@ public class ClusterStatistics {
     long sumAggrMemoryUsed;
     long sumDiskStoreDiskSpace = 0;
 
-    Set<String> hostsList = new HashSet<>();
+    Set<String> hostsListForCPUUsage = new HashSet<>();
+    Set<String> hostsListForCPUCores = new HashSet<>();
     int totalCpuActive = 0;
     int cpuCount = 0;
 
-    totalCores = 0;
-    locatorCores = 0;
-    leadCores = 0;
-    dataServerCores = 0;
+    totalCPUCores = 0;
 
     for (MemberStatistics ms : memberStatsMap.values()) {
 
       lastMemberUpdatedTime = ms.getLastUpdatedOn();
 
+      String host = ms.getHost();
+
       // CPU cores
-      if(ms.isLocator()){
-        this.locatorCores += ms.getCores();
-      } else if(ms.isLead()) {
-        this.leadCores += ms.getCores();
-      } else {
-        this.dataServerCores += ms.getCores();
+      if(!hostsListForCPUCores.contains(host)){
+        hostsListForCPUCores.add(host);
+        this.totalCPUCores += ms.getCores();
       }
-      this.totalCores += ms.getCores();
 
       // CPU Usage
-      String host = ms.getHost();
-      if (!hostsList.contains(host) && !ms.isLocator()) {
-        hostsList.add(host);
+      if (!hostsListForCPUUsage.contains(host) && !ms.isLocator()) {
+        hostsListForCPUUsage.add(host);
         totalCpuActive += ms.getCpuActive();
         cpuCount++;
       }
@@ -193,20 +185,8 @@ public class ClusterStatistics {
 
   }
 
-  public int getTotalCores() {
-    return totalCores;
-  }
-
-  public int getLocatorCores() {
-    return locatorCores;
-  }
-
-  public int getLeadCores() {
-    return leadCores;
-  }
-
-  public int getDataServerCores() {
-    return dataServerCores;
+  public int getTotalCPUCores() {
+    return totalCPUCores;
   }
 
   public Object[] getUsageTrends(int trendType) {

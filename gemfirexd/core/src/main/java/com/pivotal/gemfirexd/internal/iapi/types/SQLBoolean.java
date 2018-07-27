@@ -604,6 +604,7 @@ public final class SQLBoolean
 			*/
 // GemStone changes BEGIN
 			this.value = getBoolean(theValue);
+			this.isnull = false;
 			/* (original code)
 			String cleanedValue = StringUtil.SQLToUpperCase(theValue.trim());
 			if (cleanedValue.equals("TRUE"))
@@ -1225,6 +1226,7 @@ public final class SQLBoolean
       final int columnWidth) {
     assert columnWidth == 1: columnWidth;
     this.value = (inBytes[offset] == 1);
+    this.isnull = false;
     return 1;
   }
 
@@ -1235,6 +1237,7 @@ public final class SQLBoolean
   public int readBytes(long memOffset, final int columnWidth, ByteSource bs) {
     assert columnWidth == 1: columnWidth;
     this.value = (Platform.getByte(null, memOffset) == 1);
+    this.isnull = false;
     return 1;
   }
 
