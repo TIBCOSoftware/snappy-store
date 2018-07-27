@@ -207,10 +207,13 @@ public class CustPortfSoJoinStmt extends AbstractJoinStmt {
     success[0] = true;
    try{     
       Boolean hasHdfs = TestConfig.tab().booleanAt(SQLPrms.hasHDFS, false);      
-      String database = SQLHelper.isDerbyConn(conn)?"Derby - " :"gemfirexd - ";        
-      String query = (! SQLHelper.isDerbyConn(conn) && hasHdfs ) ? " QUERY: " +  uniqSelectHdfs[whichQuery] : " QUERY: " +  uniqSelect[whichQuery];        
-      stmt = (! SQLHelper.isDerbyConn(conn) && hasHdfs )  ? conn.prepareStatement(uniqSelectHdfs[whichQuery]) :  conn.prepareStatement(uniqSelect[whichQuery]) ; 
-            
+      String database = SQLHelper.isDerbyConn(conn)?"Derby - " :"gemfirexd - ";
+      String sql = (!SQLHelper.isDerbyConn(conn) && hasHdfs) ? uniqSelectHdfs[whichQuery] :
+          uniqSelect[whichQuery];
+      if(whichQuery==4 && SQLHelper.isDerbyConn(conn)) sql = sql.replace("and","on");
+      String query =  " QUERY: " +  sql;
+      stmt =  conn.prepareStatement(sql) ;
+ 
       switch (whichQuery){
       case 0:
         Log.getLogWriter().info(database + "Querying CustPortSO  with TID:"+ tid + query);
