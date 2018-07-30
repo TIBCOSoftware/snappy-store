@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
  *
@@ -18,6 +17,7 @@
 
 package com.pivotal.gemfirexd.jdbc;
 
+import com.sun.xml.internal.fastinfoset.stax.events.Util;
 import org.apache.tomcat.jdbc.pool.DataSource;
 import org.apache.tomcat.jdbc.pool.PoolProperties;
 
@@ -34,25 +34,60 @@ class TomcatConnectionPool {
     private TomcatConnectionPool(Properties prop) {
 
         PoolProperties p = new PoolProperties();
-        p.setUrl(prop.getProperty("url"));
-        p.setDriverClassName(prop.getProperty("driver"));
-        p.setUsername(prop.getProperty("user"));
-        p.setPassword(prop.getProperty("password"));
-        p.setInitialSize(Integer.parseInt(prop.getProperty("pool-size")));
-        String waitTime = prop.getProperty("wait-time") == null ?
-                "60" : prop.getProperty("wait-time");
-        p.setMaxWait(Integer.parseInt(waitTime));
+        String url = prop.getProperty("url");
+        if(!Util.isEmptyString(url)) {
+            p.setUrl(prop.getProperty("url"));
+        }
+
+        String driverClassName = prop.getProperty("driverClassName");
+        if(!Util.isEmptyString(driverClassName)) {
+            p.setDriverClassName(driverClassName);
+        }
+
+        String maxTotal = (prop.getProperty("maxTotal"));
+        if(!Util.isEmptyString(maxTotal)) {
+            p.setInitialSize(Integer.parseInt(maxTotal));
+        }
+
+        String maxIdle = prop.getProperty("maxIdle");
+        if(!Util.isEmptyString(maxIdle)){
+            p.setMaxIdle(Integer.parseInt(maxIdle));
+        }
+
+        String waitTime = prop.getProperty("maxWaitMillis");
+        if(!Util.isEmptyString(waitTime)) {
+            p.setMaxWait(Integer.parseInt(waitTime));
+        }
+
+        String removeAbandoned = prop.getProperty("removeAbandoned");
+        if(!Util.isEmptyString(removeAbandoned)){
+            p.setRemoveAbandoned(Boolean.parseBoolean(removeAbandoned));
+        }
+
+        String removeAbandonedTimeout = prop.getProperty("removeAbandonedTimeout");
+        if(!Util.isEmptyString(removeAbandonedTimeout)) {
+            p.setRemoveAbandonedTimeout(Integer.parseInt(removeAbandonedTimeout));
+        }
+
+        String username = prop.getProperty("username");
+        if(!Util.isEmptyString(username)) {
+            p.setUsername(username);
+        }
+
+        String password = prop.getProperty("password");
+        if(!Util.isEmptyString(password)) {
+            p.setPassword(password);
+        }
 
         StringBuffer buffer = new StringBuffer();
         Set<String> keys = prop.stringPropertyNames();
-        String commaSeparatedProps = keys.stream()
+        String userProperties = keys.stream()
                 .map(i -> i.toString() +"="+ prop.getProperty(i.toString()))
                 .collect(Collectors.joining(","));
 
-        p.setConnectionProperties(commaSeparatedProps);
+        p.setConnectionProperties(userProperties);
 
         datasource = new DataSource();
-
         datasource.setPoolProperties(p);
     }
 
