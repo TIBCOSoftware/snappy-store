@@ -1437,45 +1437,6 @@ public final class GfxdSystemProcedureMessage extends
       }
     },
 
-    repairCatalog {
-      @Override
-      boolean allowExecution(Object[] params) {
-        // allow execution only on lead node
-        final boolean isLead = GemFireXDUtils.getGfxdAdvisor().getMyProfile().hasSparkURL();
-        return isLead;
-      }
-
-      @Override
-      public void processMessage(Object[] params, DistributedMember sender) throws
-          StandardException {
-        Object repair = params[0];
-        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
-            "GfxdSystemProcedureMessage: invoking REPAIR_CATALOG() procedure");
-        try {
-          GfxdSystemProcedures.runCatalogConsistencyChecks();
-        } catch (SQLException sq) {
-          throw StandardException.unexpectedUserException(sq);
-        }
-      }
-
-      @Override
-      public Object[] readParams(DataInput in, short flags) throws IOException,
-          ClassNotFoundException {
-        return new Object[] { DataSerializer.readInteger(in) };
-      }
-
-      @Override
-      public void writeParams(Object[] params, DataOutput out)
-          throws IOException {
-        DataSerializer.writeInteger((Integer)params[0], out);
-      }
-
-      @Override
-      String getSQLStatement(Object[] params) throws StandardException {
-        return "CALL SYS.REPAIR_CATALOG()";
-      }
-    },
-    
     forceHDFSWriteonlyFileRollover {
 
       @Override

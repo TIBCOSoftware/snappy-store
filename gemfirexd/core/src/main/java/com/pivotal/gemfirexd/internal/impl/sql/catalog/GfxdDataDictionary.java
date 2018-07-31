@@ -2000,8 +2000,16 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
     }
 
     {
+
+      // procedure argument names
+      String[] argNames = new String[] { "REMOVE_INCONSISTENT_ENTRIES", "REMOVE_TABLES_WITH_DATA" };
+      // procedure argument types
+      TypeDescriptor[] argTypes = new TypeDescriptor[] {
+          DataTypeDescriptor.getCatalogType(Types.BOOLEAN),
+          DataTypeDescriptor.getCatalogType(Types.BOOLEAN) };
+
       super.createSystemProcedureOrFunction("REPAIR_CATALOG", sysUUID,
-          null, null, 0, 0, RoutineAliasInfo.READS_SQL_DATA,
+          argNames, argTypes, 0, 0, RoutineAliasInfo.READS_SQL_DATA,
           null, newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, true);
     }
 
