@@ -2149,6 +2149,8 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
 
   public static final String HIVETABLES_TABLENAME = "HIVETABLES";
 
+  public static final String SYSPOLICIES_TABLENAME = "SYSPOLICIES";
+
   public static final String DISKSTOREIDS_TABLENAME = "DISKSTOREIDS";
 
   public static final String SNAPPY_TABLE_STATS = "TABLESTATS";
@@ -2175,6 +2177,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
       { HIVETABLES_TABLENAME, HiveTablesVTI.class.getName() },
       { DISKSTOREIDS_TABLENAME, DiskStoreIDs.class.getName() },
       { SNAPPY_TABLE_STATS, SnappyTableStatsVTI.class.getName() },
+      { SYSPOLICIES_TABLENAME, SnappyTableStatsVTI.class.getName() },
   };
 
   private final HashMap<String, TableDescriptor> diagVTIMap =
