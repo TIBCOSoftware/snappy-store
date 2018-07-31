@@ -384,11 +384,6 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
    */
   private volatile ExternalCatalog externalCatalog;
 
-  private volatile Future<?> externalCatalogInit;
-
-  public static final ThreadLocal<Boolean> externalCatalogInitThread =
-      new ThreadLocal<>();
-
   private Region<String, String> snappyGlobalCmdRgn;
 
   /**
@@ -2436,10 +2431,6 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     }
   }
 
-  public void setExternalCatalogInit(Future<?> init) {
-    this.externalCatalogInit = init;
-  }
-
   public static boolean handleCatalogInit(Future<?> init) {
     try {
       init.get(60, TimeUnit.SECONDS);
@@ -2482,20 +2473,9 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
   }
 
   public ExternalCatalog getExternalCatalog() {
-    return getExternalCatalog(true);
-  }
-
-  public ExternalCatalog getExternalCatalog(boolean fullInit) {
     final ExternalCatalog externalCatalog;
     if ((externalCatalog = this.externalCatalog) != null &&
         externalCatalog.waitForInitialization()) {
-      if (fullInit) {
-        final Future<?> init = this.externalCatalogInit;
-        if (init != null && !Boolean.TRUE.equals(externalCatalogInitThread.get())
-            && !handleCatalogInit(init)) {
-          return null;
-        }
-      }
       return externalCatalog;
     } else {
       return null;
