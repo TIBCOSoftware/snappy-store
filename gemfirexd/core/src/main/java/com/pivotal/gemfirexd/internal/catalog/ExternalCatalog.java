@@ -84,11 +84,6 @@ public interface ExternalCatalog {
   public List<ExternalTableMetaData> getHiveTables(boolean skipLocks);
 
   /**
-   * Get the Policies & its data.
-   */
-  public List<PolicyTableData> getPolicies(boolean skipLocks);
-
-  /**
    * Returns the meta data of the Hive Table
    */
   public ExternalTableMetaData getHiveTableMetaData(String schema, String tableName,
