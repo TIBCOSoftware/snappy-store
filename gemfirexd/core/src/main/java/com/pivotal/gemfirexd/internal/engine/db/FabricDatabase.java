@@ -602,7 +602,10 @@ public final class FabricDatabase implements ModuleControl,
                 GemFireXDUtils.waitForNodeInitialization();
                 embedConnection = GemFireXDUtils.createNewInternalConnection(
                     false);
-                checkSnappyCatalogConsistency(embedConnection, false, false);
+                checkSnappyCatalogConsistency(embedConnection, true, false);
+                // publish the column table stats at this point because that
+                // requires the hive metastore
+                memStore.getDatabase().publishColumnStats();
               } catch (StandardException | SQLException e) {
                 throw new GemFireXDRuntimeException(e);
               } finally {
@@ -687,10 +690,6 @@ public final class FabricDatabase implements ModuleControl,
         gfDBTablesMap, internalColumnTablesSet, externalCatalog, removeInconsistentEntries, removeTablesWithData);
     removeInconsistentHiveEntries(hiveDBTablesMap, gfDBTablesMap,
         externalCatalog, removeInconsistentEntries, removeTablesWithData);
-
-    // publish the column table stats at this point because that
-    // requires the hive metastore
-    memStore.getDatabase().publishColumnStats();
   }
 
   /**
@@ -728,7 +727,7 @@ public final class FabricDatabase implements ModuleControl,
           dropTables(embedConn, storeEntry.getKey(), storeTablesList, removeTablesWithData);
         } else {
           SanityManager.DEBUG_PRINT("warning",
-              "Use system procedure SYS.REPAIR_CATALOG() remove inconsistency");
+              "Use system procedure SYS.REPAIR_CATALOG() to remove inconsistency");
         }
       }
 
@@ -757,7 +756,7 @@ public final class FabricDatabase implements ModuleControl,
               tablesMissingColumnBuffer, externalCatalog);
         } else {
           SanityManager.DEBUG_PRINT("warning",
-              "Use system procedure SYS.REPAIR_CATALOG() remove inconsistency");
+              "Use system procedure SYS.REPAIR_CATALOG() to remove inconsistency");
         }
       }
     }
@@ -797,7 +796,7 @@ public final class FabricDatabase implements ModuleControl,
               externalCatalog);
         } else {
           SanityManager.DEBUG_PRINT("warning",
-              "Use system procedure SYS.REPAIR_CATALOG() remove inconsistency");
+              "Use system procedure SYS.REPAIR_CATALOG() to remove inconsistency");
         }
       }
     }
