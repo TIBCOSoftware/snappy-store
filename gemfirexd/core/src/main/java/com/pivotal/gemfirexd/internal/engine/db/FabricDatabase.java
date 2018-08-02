@@ -582,6 +582,7 @@ public final class FabricDatabase implements ModuleControl,
      * changeOrAppend(Constant * .STORE_PROPERTY_PREFIX +com.pivotal.gemfirexd.Attribute.
      * SERVER_GROUPS, LeadImpl.LEADER_SERVERGROUP)
      */
+    final GemFireCacheImpl cache = GemFireCacheImpl.getExisting();
     HashSet<String> leadGroup = CallbackFactoryProvider.getClusterCallbacks().getLeaderGroup();
     final boolean isLead = this.memStore.isSnappyStore() && (leadGroup != null && leadGroup
         .size() > 0) && (ServerGroupUtils.isGroupMember(leadGroup)
@@ -590,19 +591,29 @@ public final class FabricDatabase implements ModuleControl,
     if (this.memStore.isSnappyStore() && (this.memStore.getMyVMKind() ==
         GemFireStore.VMKind.DATASTORE || (isLead /*&& servers.size() > 0*/))) {
       this.memStore.initExternalCatalog();
-      EmbedConnection embedConnection = null;
-      try {
-        GemFireXDUtils.waitForNodeInitialization();
-        embedConnection = GemFireXDUtils.createNewInternalConnection(
-            false);
-        checkSnappyCatalogConsistency(embedConnection, false, false);
-      } finally {
-        if (embedConnection != null) {
-          try {
-            embedConnection.close();
-          } catch (Exception ignore) {
-          }
-        }
+      if (isLead /*&& servers.size() > 0*/) {
+        // submit the task to check for catalog consistency
+        this.memStore.setExternalCatalogInit(cache.getDistributionManager()
+            .getFunctionExcecutor().submit(() -> {
+              // don't wait for self in catalog initialization
+              GemFireStore.externalCatalogInitThread.set(Boolean.TRUE);
+              EmbedConnection embedConnection = null;
+              try {
+                GemFireXDUtils.waitForNodeInitialization();
+                embedConnection = GemFireXDUtils.createNewInternalConnection(
+                    false);
+                checkSnappyCatalogConsistency(embedConnection, false, false);
+              } catch (StandardException | SQLException e) {
+                throw new GemFireXDRuntimeException(e);
+              } finally {
+                if (embedConnection != null) {
+                  try {
+                    embedConnection.close();
+                  } catch (Exception ignore) {
+                  }
+                }
+              }
+            }));
       }
     }
   }
@@ -628,7 +639,7 @@ public final class FabricDatabase implements ModuleControl,
       boolean removeInconsistentEntries, boolean removeTablesWithData)
       throws StandardException, SQLException {
     final GemFireStore memStore = Misc.getMemStoreBooting();
-    final ExternalCatalog externalCatalog = memStore.getExternalCatalog();
+    final ExternalCatalog externalCatalog = memStore.getExternalCatalog(false);
     if (externalCatalog == null) {
       return;
     }
