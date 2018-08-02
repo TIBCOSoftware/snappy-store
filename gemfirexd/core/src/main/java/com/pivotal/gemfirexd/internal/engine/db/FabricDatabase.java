@@ -592,6 +592,7 @@ public final class FabricDatabase implements ModuleControl,
       this.memStore.initExternalCatalog();
       EmbedConnection embedConnection = null;
       try {
+        GemFireXDUtils.waitForNodeInitialization();
         embedConnection = GemFireXDUtils.createNewInternalConnection(
             false);
         checkSnappyCatalogConsistency(embedConnection, false, false);
