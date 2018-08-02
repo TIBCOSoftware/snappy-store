@@ -58,10 +58,13 @@ public class ClientTypeRegistration implements TypeRegistration {
   public int defineType(PdxType newType) {
     verifyConfiguration(); 
     Collection<Pool> pools = getAllPools();
-    
+    String poolToUse = TypeRegistry.getGridNameForPdxType();
     ServerConnectivityException lastException = null;
     for(Pool pool: pools) {
       try {
+        if (poolToUse != null && !pool.getName().equalsIgnoreCase(poolToUse)) {
+          continue;
+        }
         int result = GetPDXIdForTypeOp.execute((ExecutablePool) pool, newType);
         newType.setTypeId(result);
         sendTypeToAllPools(newType, result, pools, pool);
@@ -69,6 +72,10 @@ public class ClientTypeRegistration implements TypeRegistration {
       } catch(ServerConnectivityException e) {
         //ignore, try the next pool.
         lastException = e;
+      }
+
+      if (poolToUse != null) {
+        break;
       }
     }
     if(lastException != null) {
@@ -105,9 +112,12 @@ public class ClientTypeRegistration implements TypeRegistration {
   public PdxType getType(int typeId) {
     verifyConfiguration();
     Collection<Pool> pools = getAllPools();
-    
+    String poolToUse = TypeRegistry.getGridNameForPdxType();
     ServerConnectivityException lastException = null;
     for(Pool pool: pools) {
+      if (poolToUse != null && !pool.getName().equalsIgnoreCase(poolToUse)) {
+          continue;
+      }
       try {
         PdxType type = GetPDXTypeByIdOp.execute((ExecutablePool) pool, typeId);
         if(type != null) {
@@ -117,6 +127,10 @@ public class ClientTypeRegistration implements TypeRegistration {
         getLogger().fine("Received an exception getting pdx type from pool " + pool + ", " + e);
         //ignore, try the next pool.
         lastException = e;
+      }
+
+      if (poolToUse != null) {
+        break;
       }
     }
     
@@ -189,9 +203,12 @@ public class ClientTypeRegistration implements TypeRegistration {
   public int getEnumId(Enum<?> v) {
     EnumInfo ei = new EnumInfo(v);
     Collection<Pool> pools = getAllPools();
-
+    String gridToUse = TypeRegistry.getGridNameForPdxType();
     ServerConnectivityException lastException = null;
     for(Pool pool: pools) {
+      if (gridToUse != null && !pool.getName().equalsIgnoreCase(gridToUse)) {
+        continue;
+      }
       try {
         int result = GetPDXIdForEnumOp.execute((ExecutablePool) pool, ei);
         sendEnumIdToAllPools(ei, result, pools, pool);
@@ -199,6 +216,10 @@ public class ClientTypeRegistration implements TypeRegistration {
       } catch(ServerConnectivityException e) {
         //ignore, try the next pool.
         lastException = e;
+      }
+
+      if (gridToUse != null) {
+        break;
       }
     }
     if (lastException != null) {
@@ -237,9 +258,12 @@ public class ClientTypeRegistration implements TypeRegistration {
 
   public int defineEnum(EnumInfo newInfo) {
     Collection<Pool> pools = getAllPools();
-    
+    String gridToUse = TypeRegistry.getGridNameForPdxType();
     ServerConnectivityException lastException = null;
     for(Pool pool: pools) {
+      if (gridToUse != null && !pool.getName().equalsIgnoreCase(gridToUse)) {
+        continue;
+      }
       try {
         int result = GetPDXIdForEnumOp.execute((ExecutablePool) pool, newInfo);
         sendEnumIdToAllPools(newInfo, result, pools, pool);
@@ -247,6 +271,9 @@ public class ClientTypeRegistration implements TypeRegistration {
       } catch(ServerConnectivityException e) {
         //ignore, try the next pool.
         lastException = e;
+      }
+      if (gridToUse != null) {
+        break;
       }
     }
     
@@ -263,9 +290,12 @@ public class ClientTypeRegistration implements TypeRegistration {
 
   public EnumInfo getEnumById(int enumId) {
     Collection<Pool> pools = getAllPools();
-    
+    String gridToUse = TypeRegistry.getGridNameForPdxType();
     ServerConnectivityException lastException = null;
     for(Pool pool: pools) {
+      if (gridToUse != null && !pool.getName().equalsIgnoreCase(gridToUse)) {
+        continue;
+      }
       try {
         EnumInfo result = GetPDXEnumByIdOp.execute((ExecutablePool) pool, enumId);
         if(result != null) {
@@ -275,6 +305,10 @@ public class ClientTypeRegistration implements TypeRegistration {
         getLogger().fine("Received an exception getting pdx type from pool " + pool + ", " + e);
         //ignore, try the next pool.
         lastException = e;
+      }
+
+      if (gridToUse != null) {
+        break;
       }
     }
     
@@ -380,14 +414,20 @@ public class ClientTypeRegistration implements TypeRegistration {
   @Override
   public void addImportedType(int typeId, PdxType importedType) {
     Collection<Pool> pools = getAllPools();
-    
+    String gridToUse = TypeRegistry.getGridNameForPdxType();
     ServerConnectivityException lastException = null;
     for(Pool pool: pools) {
+      if (gridToUse != null && !pool.getName().equalsIgnoreCase(gridToUse)) {
+        continue;
+      }
       try {
         sendTypeToAllPools(importedType, typeId, pools, pool);
       } catch(ServerConnectivityException e) {
         //ignore, try the next pool.
         lastException = e;
+      }
+      if(gridToUse != null) {
+        break;
       }
     }
     if(lastException != null) {
@@ -403,14 +443,21 @@ public class ClientTypeRegistration implements TypeRegistration {
   @Override
   public void addImportedEnum(int enumId, EnumInfo importedInfo) {
     Collection<Pool> pools = getAllPools();
-    
+    String gridToUse = TypeRegistry.getGridNameForPdxType();
     ServerConnectivityException lastException = null;
     for(Pool pool: pools) {
+      if (gridToUse != null && !pool.getName().equalsIgnoreCase(gridToUse)) {
+        continue;
+      }
       try {
         sendEnumIdToAllPools(importedInfo, enumId, pools, pool);
       } catch(ServerConnectivityException e) {
         //ignore, try the next pool.
         lastException = e;
+      }
+
+      if(gridToUse != null) {
+        break;
       }
     }
     
