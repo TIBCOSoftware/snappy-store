@@ -604,9 +604,6 @@ public final class FabricDatabase implements ModuleControl,
           }
         }
       }
-      // publish the column table stats at this point because that
-      // requires the hive metastore
-      memStore.getDatabase().publishColumnStats();
     }
   }
 
@@ -679,6 +676,10 @@ public final class FabricDatabase implements ModuleControl,
         gfDBTablesMap, internalColumnTablesSet, externalCatalog, removeInconsistentEntries, removeTablesWithData);
     removeInconsistentHiveEntries(hiveDBTablesMap, gfDBTablesMap,
         externalCatalog, removeInconsistentEntries, removeTablesWithData);
+
+    // publish the column table stats at this point because that
+    // requires the hive metastore
+    memStore.getDatabase().publishColumnStats();
   }
 
   /**
