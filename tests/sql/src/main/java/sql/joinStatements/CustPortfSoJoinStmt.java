@@ -76,8 +76,10 @@ public class CustPortfSoJoinStmt extends AbstractJoinStmt {
    "select f.cid, cust_name, f.sid, so.sid, f.qty, subTotal, ask from trade.customers c, trade.portfolio f, trade.sellorders so where c.cid= f.cid and c.cid = so.cid and f.tid = so.tid and status=? and f.tid = ? order by ask",
    "select f.cid, cust_name, f.sid, so.sid, so.qty, subTotal, oid, order_time, ask from trade.customers c, trade.portfolio f, trade.sellorders so where c.cid= f.cid and f.sid = so.sid and c.cid = so.cid and subTotal >10000 and c.cid>? and f.tid = ? order by order_time",
    "select f.cid, cust_name, f.sid, so.sid, so.qty, subTotal, order_time, ask from trade.customers c, trade.portfolio f, trade.sellorders so where c.cid= f.cid and f.sid = so.sid and c.cid = so.cid and so.cid<? and ask >? and ask <? and f.tid = ? order by so.qty desc, subtotal",
-   "select * from trade.customers c LEFT OUTER JOIN trade.portfolio f LEFT OUTER JOIN trade.sellorders so on f.cid = so.cid on c.cid= f.cid where f.tid = ? ",
-   "select * from (trade.customers c LEFT JOIN trade.portfolio f on c.cid= f.cid) LEFT JOIN trade.sellorders so on f.cid = so.cid where f.tid = ? order by so.cid, so.oid"
+   "select * from trade.customers c LEFT OUTER JOIN trade.portfolio f LEFT OUTER JOIN trade.sellorders so on f.cid = so.cid " +
+       (SQLPrms.isSnappyMode() ? " and " : " on ") +
+       "c.cid= f.cid where f.tid = ? ",
+   "select * from trade.customers c LEFT JOIN trade.portfolio f on c.cid= f.cid LEFT JOIN trade.sellorders so on f.cid = so.cid where f.tid = ? order by so.cid, so.oid"
   };
 
   protected static String[] nonUniqSelect = {
@@ -85,7 +87,9 @@ public class CustPortfSoJoinStmt extends AbstractJoinStmt {
    "select f.cid, cust_name, f.sid, so.sid, f.qty, subTotal, ask from trade.customers c, trade.portfolio f, trade.sellorders so where c.cid= f.cid and c.cid = so.cid and f.tid = so.tid and status=?  order by ask",
    "select f.cid, cust_name, f.sid, so.sid, so.qty, subTotal, oid, order_time, ask from trade.customers c, trade.portfolio f, trade.sellorders so where c.cid= f.cid and f.sid = so.sid and c.cid = so.cid and subTotal >10000 and f.cid>? order by order_time",
    "select f.cid, cust_name, f.sid, so.sid, so.qty, subTotal, order_time, ask from trade.customers c, trade.portfolio f, trade.sellorders so where c.cid= f.cid and f.sid = so.sid and c.cid = so.cid and so.cid<? and ask >? and ask <? order by so.qty desc, subtotal",
-   "select * from trade.customers c LEFT OUTER JOIN trade.portfolio f LEFT OUTER JOIN trade.sellorders so on f.cid = so.cid on c.cid= f.cid where so.sid < 100 and so.qty > 500" ,  
+   "select * from trade.customers c LEFT OUTER JOIN trade.portfolio f LEFT OUTER JOIN trade.sellorders so on f.cid = so.cid " +
+       (SQLPrms.isSnappyMode() ? " and " : " on ") +
+       "c.cid= f.cid where so.sid < 100 and so.qty > 500" ,
   };
   
 
@@ -203,10 +207,13 @@ public class CustPortfSoJoinStmt extends AbstractJoinStmt {
     success[0] = true;
    try{     
       Boolean hasHdfs = TestConfig.tab().booleanAt(SQLPrms.hasHDFS, false);      
-      String database = SQLHelper.isDerbyConn(conn)?"Derby - " :"gemfirexd - ";        
-      String query = (! SQLHelper.isDerbyConn(conn) && hasHdfs ) ? " QUERY: " +  uniqSelectHdfs[whichQuery] : " QUERY: " +  uniqSelect[whichQuery];        
-      stmt = (! SQLHelper.isDerbyConn(conn) && hasHdfs )  ? conn.prepareStatement(uniqSelectHdfs[whichQuery]) :  conn.prepareStatement(uniqSelect[whichQuery]) ; 
-            
+      String database = SQLHelper.isDerbyConn(conn)?"Derby - " :"gemfirexd - ";
+      String sql = (!SQLHelper.isDerbyConn(conn) && hasHdfs) ? uniqSelectHdfs[whichQuery] :
+          uniqSelect[whichQuery];
+      if(whichQuery==4 && SQLHelper.isDerbyConn(conn)) sql = sql.replace("and","on");
+      String query =  " QUERY: " +  sql;
+      stmt =  conn.prepareStatement(sql) ;
+ 
       switch (whichQuery){
       case 0:
         Log.getLogWriter().info(database + "Querying CustPortSO  with TID:"+ tid + query);

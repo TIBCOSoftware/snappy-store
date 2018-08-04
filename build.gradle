@@ -66,6 +66,7 @@ allprojects {
     jackson1Version = '1.9.13'
     kolobokeVersion = '1.0.0'
     kolobokeCompileVersion = '0.5.1'
+    snappyDunitVersion = '1.0.3.6'
 
     // product and release properties
     PRODUCT_NAME = 'SnappyData RowStore'
@@ -81,7 +82,7 @@ allprojects {
     PRODUCT_MAJOR = '1'
     PRODUCT_MINOR = '6'
     PRODUCT_MAINT = '2'
-    PRODUCT_CLASSIFIER = '-SNAPSHOT'
+    PRODUCT_CLASSIFIER = ''
     PRODUCT_RELEASE_STAGE = ''
     PRODUCT_VERSION = "${PRODUCT_MAJOR}.${PRODUCT_MINOR}.${PRODUCT_MAINT}${PRODUCT_CLASSIFIER}"
     vendorName = 'SnappyData, Inc.'

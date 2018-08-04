@@ -2771,33 +2771,32 @@ public class GfxdSystemProcedures extends SystemProcedures {
   }
 
   /**
-   * Repair Snappy catalog (Hive MetaStore and data dictionary) by removing
-   * inconsistent entries in the catalog.
+   * This procedure checks whether catalog is consistent by comparing Hive meta store
+   * with Store data dictionary and optionally repairs the catalog (Hive MetaStore and
+   * data dictionary) by removing inconsistent entries in the catalog. By default this procedure
+   * will add warning messages in the log file for inconsistent entries and currently does not
+   * print anything on console
+   *
+   * @param removeInconsistentEntries if true remove inconsistent entries from catalog
+   * @param removeTablesWithData remove entries for tables even if those contain data (by default not removed)
    * @throws SQLException
    * @throws StandardException
    */
-  public static void REPAIR_CATALOG() throws SQLException, StandardException {
+  public static void REPAIR_CATALOG(Boolean removeInconsistentEntries, Boolean removeTablesWithData)
+      throws SQLException, StandardException {
     if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in procedure REPAIR_CATALOG()");
+          "in procedure REPAIR_CATALOG() removeInconsistentEntries=" +
+              removeInconsistentEntries + " removeTablesWithData=" + removeTablesWithData);
     }
-    final boolean isLead = GemFireXDUtils.getGfxdAdvisor().getMyProfile().hasSparkURL();
-    final Object[] params = new Object[]{1}; //dummy (unused)
-    if (isLead || Misc.getDistributedSystem().isLoner()) {
-      // in case proc invoked on lead directly
-      runCatalogConsistencyChecks();
-    } else {
-      // publish a message if not lead
-      publishMessage(params, false,
-          GfxdSystemProcedureMessage.SysProcMethod.repairCatalog, false, false);
-    }
+    runCatalogConsistencyChecks(removeInconsistentEntries, removeTablesWithData);
   }
 
-  public static void runCatalogConsistencyChecks()
+  private static void runCatalogConsistencyChecks(boolean removeInconsistentEntries, boolean removeTablesWithData)
       throws SQLException, StandardException {
     EmbedConnection conn = GemFireXDUtils.createNewInternalConnection(false);
     try {
-      FabricDatabase.checkSnappyCatalogConsistency(conn);
+      FabricDatabase.checkSnappyCatalogConsistency(conn, removeInconsistentEntries, removeTablesWithData);
       CallbackFactoryProvider.getStoreCallbacks().registerRelationDestroyForHiveStore();
     } finally {
       conn.close();

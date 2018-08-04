@@ -75,8 +75,10 @@ public class PartitionClause {
 
   protected static String[] customersPartitionClauseForSnappy = {
       " ",
+      " partition_by 'tid' ",
       " partition_by 'since' ",
       " partition_by 'cust_name' ",
+      " partition_by 'cid'",
       " " //replicate
   };
 
@@ -97,12 +99,18 @@ public class PartitionClause {
           }
           break;
         case 1:
-          partitionKey.add("since");
+          partitionKey.add("tid");
           break;
         case 2:
-            partitionKey.add("cust_name");
+          partitionKey.add("since");
           break;
         case 3:
+            partitionKey.add("cust_name");
+          break;
+        case 4:
+          partitionKey.add("cid");
+          break;
+        case 5:
           //replicated table, no partition key
           counters.subtract(SQLBB.numOfPRs, 2); //no gloabl hash index and no PR
           customersPRs = 0;

@@ -3117,7 +3117,13 @@ public class SQLTest {
     if (setCriticalHeap) resetCanceledFlag();
     if (setTx && isHATest) resetNodeFailureFlag();
     if (setTx && testEviction) resetEvictionConflictFlag();
-
+    if (SQLPrms.isSnappyMode()) {
+      try {
+        gConn.createStatement().execute("set spark.sql.crossJoin.enabled=true");
+      } catch(SQLException se) {
+        throw new TestException("Got exception while enabling crossJoin in snappy",se);
+      }
+    }
     //perform the opeartions
     queryOnJoinOp(dConn, gConn);
 
@@ -3133,6 +3139,7 @@ public class SQLTest {
   }
   
   protected void queryOnJoinOp(Connection dConn, Connection gConn) {
+
     int[] joinTables = SQLPrms.getJoinTables();
     int join = joinTables[random.nextInt(joinTables.length)]; //get random table to perform dml
     sql.joinStatements.JoinTableStmtIF joinQueryStmt= joinFactory.createQueryStmt(join); //dmlStmt of a table

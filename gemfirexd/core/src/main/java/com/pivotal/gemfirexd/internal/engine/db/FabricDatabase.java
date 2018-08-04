@@ -41,7 +41,6 @@
 
 package com.pivotal.gemfirexd.internal.engine.db;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.security.PrivilegedExceptionAction;
@@ -64,7 +63,6 @@ import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.gemfire.internal.GFToSlf4jBridge;
 import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.cache.*;
-import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gnu.trove.THashMap;
@@ -604,7 +602,10 @@ public final class FabricDatabase implements ModuleControl,
                 GemFireXDUtils.waitForNodeInitialization();
                 embedConnection = GemFireXDUtils.createNewInternalConnection(
                     false);
-                checkSnappyCatalogConsistency(embedConnection);
+                checkSnappyCatalogConsistency(embedConnection, true, false);
+                // publish the column table stats at this point because that
+                // requires the hive metastore
+                memStore.getDatabase().publishColumnStats();
               } catch (StandardException | SQLException e) {
                 throw new GemFireXDRuntimeException(e);
               } finally {
@@ -632,10 +633,13 @@ public final class FabricDatabase implements ModuleControl,
    * Detect catalog inconsistencies (between store DD and Hive MetaStore)
    * and remove those
    * @param embedConn
+   * @param removeInconsistentEntries if true remove inconsistent entries from catalog
+   * @param removeTablesWithData remove entries for tables even if there is data in tables
    * @throws StandardException
    * @throws SQLException
    */
-  public static void checkSnappyCatalogConsistency(EmbedConnection embedConn)
+  public static void checkSnappyCatalogConsistency(EmbedConnection embedConn,
+      boolean removeInconsistentEntries, boolean removeTablesWithData)
       throws StandardException, SQLException {
     final GemFireStore memStore = Misc.getMemStoreBooting();
     final ExternalCatalog externalCatalog = memStore.getExternalCatalog(false);
@@ -683,13 +687,9 @@ public final class FabricDatabase implements ModuleControl,
 //     SanityManager.DEBUG_PRINT("info", "tables in hive store = " + hiveDBTablesMap);
 //     SanityManager.DEBUG_PRINT("info", "tables in DD  = " + gfDBTablesMap);
     removeInconsistentDDEntries(embedConn, hiveDBTablesMap,
-        gfDBTablesMap, internalColumnTablesSet, externalCatalog);
+        gfDBTablesMap, internalColumnTablesSet, externalCatalog, removeInconsistentEntries, removeTablesWithData);
     removeInconsistentHiveEntries(hiveDBTablesMap, gfDBTablesMap,
-        externalCatalog);
-
-    // publish the column table stats at this point because that
-    // requires the hive metastore
-    memStore.getDatabase().publishColumnStats();
+        externalCatalog, removeInconsistentEntries, removeTablesWithData);
   }
 
   /**
@@ -700,13 +700,16 @@ public final class FabricDatabase implements ModuleControl,
    * @param hiveDBTablesMap  schema to tables map of hive metastore entries
    * @param gfDBTablesMap   schema to tables map of DD entries
    * @param internalColumnTablesSet internal column buffer tables
+   * @param removeInconsistentEntries if true remove inconsistent entries from catalog
+   * @param removeTablesWithData remove entries for tables even if there is data in tables
    * @throws SQLException
    */
   private static void removeInconsistentDDEntries(EmbedConnection embedConn,
       HashMap<String, List<String>> hiveDBTablesMap,
       HashMap<String, List<String>> gfDBTablesMap,
       Set<String> internalColumnTablesSet,
-      ExternalCatalog externalCatalog) throws SQLException {
+      ExternalCatalog externalCatalog, boolean removeInconsistentEntries,
+      boolean removeTablesWithData) throws SQLException {
     for (Map.Entry<String, List<String>> storeEntry : gfDBTablesMap.entrySet()) {
       List<String> hiveTableList = hiveDBTablesMap.get(storeEntry.getKey());
       List<String> storeTablesList = new LinkedList<>(storeEntry.getValue());
@@ -716,11 +719,16 @@ public final class FabricDatabase implements ModuleControl,
         storeTablesList.removeAll(hiveTableList);
       }
       if (!storeTablesList.isEmpty()) {
-        SanityManager.DEBUG_PRINT("info",
+        SanityManager.DEBUG_PRINT("warning",
             "Catalog inconsistency detected: following tables " +
                 "in datadictionary are not in Hive metastore: " +
                 "schema = " + storeEntry.getKey() + " tables = " + storeTablesList);
-        dropTables(embedConn, storeEntry.getKey(), storeTablesList);
+        if (removeInconsistentEntries) {
+          dropTables(embedConn, storeEntry.getKey(), storeTablesList, removeTablesWithData);
+        } else {
+          SanityManager.DEBUG_PRINT("warning",
+              "Use system procedure SYS.REPAIR_CATALOG() to remove inconsistency");
+        }
       }
 
       // DD contains row buffer but not the column buffer of the table
@@ -738,13 +746,18 @@ public final class FabricDatabase implements ModuleControl,
         }
       }
       if (!tablesMissingColumnBuffer.isEmpty()) {
-        SanityManager.DEBUG_PRINT("info",
+        SanityManager.DEBUG_PRINT("warning",
             "Catalog inconsistency detected: following column tables " +
                 "do not have column buffer: " +
                 "schema = " + storeEntry.getKey() + " tables = " + tablesMissingColumnBuffer);
-        dropTables(embedConn, storeEntry.getKey(), tablesMissingColumnBuffer);
-        removeTableFromHivestore(storeEntry.getKey(),
-            tablesMissingColumnBuffer, externalCatalog);
+        if (removeInconsistentEntries) {
+          dropTables(embedConn, storeEntry.getKey(), tablesMissingColumnBuffer, removeTablesWithData);
+          removeTableFromHivestore(storeEntry.getKey(),
+              tablesMissingColumnBuffer, externalCatalog);
+        } else {
+          SanityManager.DEBUG_PRINT("warning",
+              "Use system procedure SYS.REPAIR_CATALOG() to remove inconsistency");
+        }
       }
     }
   }
@@ -753,11 +766,13 @@ public final class FabricDatabase implements ModuleControl,
    * Remove Hive entries for which there is no DD entry
    * @param hiveDBTablesMap schema to tables map of hive metastore entries
    * @param gfDBTablesMap schema to tables map of DD entries
+   * @param removeInconsistentEntries if true remove inconsistent entries from catalog
+   * @param removeTablesWithData remove entries for tables even if there is data in tables
    */
   private static void removeInconsistentHiveEntries(
       HashMap<String, List<String>> hiveDBTablesMap,
       HashMap<String, List<String>> gfDBTablesMap,
-      ExternalCatalog externalCatalog) {
+      ExternalCatalog externalCatalog, boolean removeInconsistentEntries, boolean removeTablesWithData) {
     // remove tables that are in Hive store but not in datadictionary
     for (Map.Entry<String, List<String>> hiveEntry : hiveDBTablesMap.entrySet()) {
       List<String> storeTableList = gfDBTablesMap.get(hiveEntry.getKey());
@@ -772,12 +787,17 @@ public final class FabricDatabase implements ModuleControl,
       }
 
       if (!hiveTableList.isEmpty()) {
-        SanityManager.DEBUG_PRINT("info",
+        SanityManager.DEBUG_PRINT("warning",
             "Catalog inconsistency detected: following tables " +
                 "in Hive metastore are not in datadictionary: " +
                 "schema = " + hiveEntry.getKey() + " tables = " + hiveTableList);
-        removeTableFromHivestore(hiveEntry.getKey(), hiveTableList,
-            externalCatalog);
+        if (removeInconsistentEntries) {
+          removeTableFromHivestore(hiveEntry.getKey(), hiveTableList,
+              externalCatalog);
+        } else {
+          SanityManager.DEBUG_PRINT("warning",
+              "Use system procedure SYS.REPAIR_CATALOG() to remove inconsistency");
+        }
       }
     }
   }
@@ -785,18 +805,18 @@ public final class FabricDatabase implements ModuleControl,
   private static final void removeTableFromHivestore(String schema,
       List<String> tables, ExternalCatalog externalCatalog) {
     for (String table : tables) {
-      SanityManager.DEBUG_PRINT("info", "Removing table " +
+      SanityManager.DEBUG_PRINT("warning", "Removing table " +
           schema + "." + table + " from Hive metastore");
       externalCatalog.removeTable(schema, table, false);
     }
   }
 
   private static final void dropTables(EmbedConnection embedConn,
-      String schema, List<String> tables) throws SQLException {
+      String schema, List<String> tables, boolean removeTablesWithData) throws SQLException {
     for (String table : tables) {
       try {
         String tableName = schema + "." + table;
-        SanityManager.DEBUG_PRINT("info", "FabricDatabase.dropTables " +
+        SanityManager.DEBUG_PRINT("warning", "FabricDatabase.dropTables " +
             " processing " + tableName);
 
         // drop column batch table
@@ -805,21 +825,21 @@ public final class FabricDatabase implements ModuleControl,
             columnBatchTableName(tableName);
         // set to true only if column batch table is present and could not be removed
         boolean columnBatchTableExists = false;
-        final Region<?, ?> targetRegion =
+        final Region<?, ?> columnBuffer =
             Misc.getRegionForTable(columnBatchTableName, false);
-        if (targetRegion != null) {
+        if (columnBuffer != null) {
           // make sure that corresponding row buffer also does not contain data
-          final Region<?, ?> rowTableRegion =
+          final Region<?, ?> rowBuffer =
               Misc.getRegionForTable(tableName, false);
-          if (targetRegion.size() == 0 &&
-              (rowTableRegion == null || rowTableRegion.size() == 0)) {
-            SanityManager.DEBUG_PRINT("info", "Dropping table " +
+          boolean tableContainsData = (columnBuffer.size() != 0) || (rowBuffer != null && rowBuffer.size() != 0);
+          if (!tableContainsData || (tableContainsData && removeTablesWithData)) {
+            SanityManager.DEBUG_PRINT("warning", "Dropping table " +
                 columnBatchTableName);
             embedConn.createStatement().execute(
                 "DROP TABLE IF EXISTS " + columnBatchTableName);
           } else {
             columnBatchTableExists = true;
-            SanityManager.DEBUG_PRINT("info", "Not dropping table " +
+            SanityManager.DEBUG_PRINT("warning", "Not dropping table " +
                 columnBatchTableName + " as it is not empty");
           }
         }
@@ -831,7 +851,7 @@ public final class FabricDatabase implements ModuleControl,
           final Region<?, ?> rowTableRegion =
               Misc.getRegionForTable(tableName, false);
           if (rowTableRegion != null) {
-            if (rowTableRegion.size() == 0) {
+            if (rowTableRegion.size() == 0 || removeTablesWithData) {
               SanityManager.DEBUG_PRINT("info", "Dropping table " + tableName);
               embedConn.createStatement().execute(
                   "DROP TABLE IF EXISTS " + tableName);
