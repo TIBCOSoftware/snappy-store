@@ -1,5 +1,7 @@
 package client.pool;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.sql.*;
@@ -7,40 +9,99 @@ import java.util.Properties;
 
 public class JDBCConnectionPoolTest {
 
-    @Test
-    public void withoutPool(){
 
-        for(int i=0; i<20; i++) {
-            Connection conn = null;
-            Statement stmt = null;
-            try {
+    private final String JDBC_DRIVER = "io.snappydata.jdbc.ClientDriver";
+    private final String DB_URL = "jdbc:snappydata://localhost:1527/";
+    private final String TABLE_NAME = "TEST";
 
-                Class.forName("io.snappydata.jdbc.ClientDriver");
-                conn = DriverManager.getConnection("jdbc:snappydata://localhost:24302/", "APP", "APP");
-                stmt = conn.createStatement();
-                ResultSet resultSet = stmt.executeQuery("select * from AIRLINE fetch first row only");
+    //  Database credentials
+    private final String USER = "APP";
+    private final String PASSWORD = "APP";
 
-                while (resultSet.next()) {
-                    //System.out.print(" " + resultSet.getString(1));
-                }
+    private final int THREAD_COUNT = 30;
 
-                assert true;
+    private final int POOL_SIZE = 20;
 
-            } catch (SQLException e) {
-                e.printStackTrace();
-                assert false;
 
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
-                assert false;
 
-            } finally {
-                try {
-                    conn.close();
-                } catch (SQLException e) {
-                    assert false;
-                }
+    @Before
+    public void setup() {
+
+        Connection conn = null;
+        Statement stmt = null;
+        PreparedStatement preparedStatement = null;
+        try {
+            Class.forName(JDBC_DRIVER);
+            conn = DriverManager.getConnection(DB_URL, USER, PASSWORD);
+            stmt = conn.createStatement();
+            String sql = "DROP TABLE IF EXISTS " + TABLE_NAME;
+            stmt.executeUpdate(sql);
+
+            sql = "CREATE TABLE " + TABLE_NAME +
+                    "(id INTEGER , " +
+                    " col1 VARCHAR(255), " +
+                    " col2 VARCHAR(255), " +
+                    " age INTEGER ) ";
+
+            stmt.executeUpdate(sql);
+            preparedStatement = conn.prepareStatement("insert into " + TABLE_NAME + " VALUES (?,?,?,?)");
+
+            for (int i = 1; i < 100000; i++) {
+                preparedStatement.setInt(1, i);
+                preparedStatement.setString(2, "Col_1_Value_" + i);
+                preparedStatement.setString(3, "Col_2_Value_" + i);
+                preparedStatement.setInt(4, i);
+                preparedStatement.execute();
             }
+
+        } catch (SQLException se) {
+            se.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (stmt != null)
+                    stmt.close();
+            } catch (SQLException se) {
+            }
+
+            try {
+                if (preparedStatement != null)
+                    preparedStatement.close();
+            } catch (SQLException se) {
+            }
+
+            try {
+                if (conn != null)
+                    conn.close();
+            } catch (SQLException se) {
+                se.printStackTrace();
+            }
+        }
+    }
+
+    @Test
+    public void withoutPool() {
+
+        try {
+
+            Properties properties = new Properties();
+            properties.setProperty("url", DB_URL);
+            properties.setProperty("driverClassName", JDBC_DRIVER);
+            properties.setProperty("username", USER);
+            properties.setProperty("password", PASSWORD);
+            properties.setProperty("use-pool", "false");
+
+            runMultipleConnectionTest(properties);
+
+            Thread.sleep(5000);
+
+            assert (true);
+
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            assert false;
+
         }
     }
 
@@ -48,133 +109,96 @@ public class JDBCConnectionPoolTest {
     @Test
     public void withPool() {
 
-        Connection conn = null;
-        Statement stmt = null;
+        Properties properties = new Properties();
+        properties.setProperty("url", DB_URL);
+        properties.setProperty("driverClassName", JDBC_DRIVER);
+        properties.setProperty("use-pool", "true");
+        properties.setProperty("maxTotal", String.valueOf(POOL_SIZE));
+        properties.setProperty("maxIdle", "8");
+        properties.setProperty("maxWaitMillis", "10000");
+        properties.setProperty("username", "APP");
+        properties.setProperty("password", "APP");
+        properties.setProperty("removeAbandoned", "true");
+        properties.setProperty("removeAbandonedTimeout", "300");
+
+        runMultipleConnectionTest(properties);
+
         try {
-            Properties properties = new Properties();
-            properties.setProperty("url", "jdbc:snappydata://localhost:24302/");
-            properties.setProperty("driverClassName", "io.snappydata.jdbc.ClientDriver");
-            properties.setProperty("use-pool", "true");
-            properties.setProperty("maxTotal", "7");
-            properties.setProperty("maxIdle", "8");
-            properties.setProperty("maxWaitMillis","10000");
-            properties.setProperty("username", "APP");
-            properties.setProperty("password", "APP");
-            properties.setProperty("removeAbandoned","true");
-            properties.setProperty("removeAbandonedTimeout","300");
-            conn = DriverManager.getConnection("jdbc:snappydata://localhost:24302/", properties);
-            stmt = conn.createStatement();
-            ResultSet resultSet = stmt.executeQuery("select * from AIRLINE fetch first row only");
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
 
-            while(resultSet.next()){
-                //System.out.println(resultSet.getString(1) +  " " +resultSet.getString(2));
-                resultSet.getString(1);
-            }
-            conn.close();
+        }
 
-            Thread.sleep(2000);
+    }
 
-            runMultipleConnectionTest(properties);
+    private void runMultipleConnectionTest(Properties prop) {
+        for (int i = 0; i < THREAD_COUNT; i++) {
+            new Thread(new Runnable() {
 
-            Thread.sleep(2000);
-            assert true;
+                Connection conn = null;
+                Statement stmt = null;
 
-        } catch (SQLException e) {
-            e.printStackTrace();
-            assert false;
+                @Override
+                public void run() {
+                    try {
+                        long startTime = System.currentTimeMillis();
+                        conn = DriverManager.getConnection(DB_URL, prop);
+                        stmt = conn.createStatement();
+                        ResultSet resultSet = stmt.executeQuery("select count(*) from " + TABLE_NAME);
 
-        } catch (InterruptedException e){
-            e.printStackTrace();
-            assert false;
+                        int count = 0;
+                        while (resultSet.next()) {
+                            System.out.println(" Record " + resultSet.getString(1));
+                            count = 1;
+                            break;
+                        }
+
+                        assert (count > 0);
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        assert false;
+                    } finally {
+                        try {
+                            conn.close();
+                        } catch (SQLException e) {
+
+                        }
+                    }
+                }
+
+            }).start();
         }
     }
 
-    private void runMultipleConnectionTest(Properties prop){
-       for(int i=0; i<9;  i++){
-          new Thread(new Runnable() {
+    @After
+    public void cleanup() {
 
-              Connection conn = null;
-              Statement stmt = null;
-
-              @Override
-              public void run() {
-                  try {
-                      long startTime = System.currentTimeMillis();
-                      conn = DriverManager.getConnection("jdbc:snappydata://localhost:24302/", prop );
-                      stmt = conn.createStatement();
-                      ResultSet resultSet = stmt.executeQuery("select count(*) from AIRLINE");
-
-                      while (resultSet.next()) {
-                         // System.out.println(" Thread  "+resultSet.getString(1) + " " /*+ resultSet.getString(2)*/);
-                          resultSet.getString(1);
-                      }
-
-                  }catch (Exception e){
-                      e.printStackTrace();
-                  }finally{
-                      try {
-                          conn.close();
-                      } catch (SQLException e) {
-
-                      }
-                  }
-              }
-
-          }).start();
-       }
-    }
-
-
-    @Test
-    public void maxWaitTimeTest() {
-
-        long startTime = System.currentTimeMillis();
         Connection conn = null;
         Statement stmt = null;
         try {
-            Properties properties = new Properties();
-            properties.setProperty("url", "jdbc:snappydata://localhost:24302/");
-            properties.setProperty("driverClassName", "io.snappydata.jdbc.ClientDriver");
-            properties.setProperty("use-pool", "true");
-            properties.setProperty("maxTotal", "7");
-            properties.setProperty("maxIdle", "10");
-            properties.setProperty("maxWaitMillis","5");
-            properties.setProperty("username", "APP");
-            properties.setProperty("password", "APP");
-            properties.setProperty("removeAbandoned","true");
-            properties.setProperty("removeAbandonedTimeout","300");
-            conn = DriverManager.getConnection("jdbc:snappydata://localhost:24302/", properties);
+            Class.forName(JDBC_DRIVER);
+            conn = DriverManager.getConnection(DB_URL, USER, PASSWORD);
             stmt = conn.createStatement();
-            ResultSet resultSet = stmt.executeQuery("select count(*) from AIRLINE");
+            String sql = "DROP TABLE TEST";
 
-            while(resultSet.next()){
-                //System.out.println(resultSet.getString(1) +  " " +resultSet.getString(2));
-                resultSet.getString(1);
-            }
-
-
-            Thread.sleep(2000);
-
-            runMultipleConnectionTest(properties);
-
-            Thread.sleep(2000);
-            assert true;
-
-        } catch (SQLException e) {
+        } catch (SQLException se) {
+            se.printStackTrace();
+        } catch (Exception e) {
             e.printStackTrace();
-            assert false;
-
-        } catch (InterruptedException e){
-            e.printStackTrace();
-            assert false;
         } finally {
             try {
-                conn.close();
-            } catch (SQLException e) {
-                assert false;
+                if (stmt != null)
+                    stmt.close();
+            } catch (SQLException se) {
+            }
+
+            try {
+                if (conn != null)
+                    conn.close();
+            } catch (SQLException se) {
+                se.printStackTrace();
             }
         }
     }
-
-
 }
