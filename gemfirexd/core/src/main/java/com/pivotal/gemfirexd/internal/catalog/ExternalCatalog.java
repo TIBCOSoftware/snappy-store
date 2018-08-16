@@ -66,12 +66,13 @@ public interface ExternalCatalog {
   HashMap<String, List<String>> getAllStoreTablesInCatalog(boolean skipLocks);
 
   /**
-   *  Removes a table from the external catalog
+   * Removes a table from the external catalog
    */
   boolean removeTable(String schema, String table, boolean skipLocks);
 
   /**
    * Returns the schema in which this catalog is created
+   *
    * @return
    */
   public String catalogSchemaName();
@@ -82,6 +83,11 @@ public interface ExternalCatalog {
    * Get the metadata for all external hive tables (including all their columns).
    */
   public List<ExternalTableMetaData> getHiveTables(boolean skipLocks);
+
+  /**
+   * Get the details of all the policies created.
+   */
+  public List<PolicyTableData> getPolicies(boolean skipLocks);
 
   /**
    * Returns the meta data of the Hive Table

@@ -60,13 +60,7 @@ import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.CallbackProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.GfxdSystemProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.WanProcedures;
-import com.pivotal.gemfirexd.internal.engine.diag.DiagProcedures;
-import com.pivotal.gemfirexd.internal.engine.diag.DiskStoreIDs;
-import com.pivotal.gemfirexd.internal.engine.diag.HdfsProcedures;
-import com.pivotal.gemfirexd.internal.engine.diag.HiveTablesVTI;
-import com.pivotal.gemfirexd.internal.engine.diag.JSONProcedures;
-import com.pivotal.gemfirexd.internal.engine.diag.SnappyTableStatsVTI;
-import com.pivotal.gemfirexd.internal.engine.diag.SortedCSVProcedures;
+import com.pivotal.gemfirexd.internal.engine.diag.*;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.GfxdShutdownAllRequest;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
@@ -2185,7 +2179,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
       { HIVETABLES_TABLENAME, HiveTablesVTI.class.getName() },
       { DISKSTOREIDS_TABLENAME, DiskStoreIDs.class.getName() },
       { SNAPPY_TABLE_STATS, SnappyTableStatsVTI.class.getName() },
-      { SYSPOLICIES_TABLENAME, SnappyTableStatsVTI.class.getName() },
+      { SYSPOLICIES_TABLENAME, SysPoliciesVTI.class.getName() },
   };
 
   private final HashMap<String, TableDescriptor> diagVTIMap =

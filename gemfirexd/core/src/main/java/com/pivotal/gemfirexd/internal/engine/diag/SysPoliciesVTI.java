@@ -39,8 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A virtual table that shows the hive tables and their columns
- * in a de-normalized form.
+ * A virtual table that shows the policy details
  */
 public class SysPoliciesVTI extends GfxdVTITemplate
     implements GfxdVTITemplateNoAllNodesRoute {
@@ -65,7 +64,7 @@ public class SysPoliciesVTI extends GfxdVTITemplate
       if (
           (hiveCatalog = Misc.getMemStore().getExternalCatalog()) != null) {
         try {
-          this.policyDatas = null;//hiveCatalog.getHiveTables(true).iterator();
+          this.policyDatas = hiveCatalog.getPolicies(true).iterator();
         } catch (Exception e) {
           // log and move on
           logger.warn("ERROR in retrieving Policies : " + e.toString());
@@ -74,7 +73,7 @@ public class SysPoliciesVTI extends GfxdVTITemplate
       } else {
         this.policyDatas = Collections.emptyIterator();
       }
-      //this.currentTableColumns = Collections.emptyListIterator();
+      this.currentTableColumns = Collections.emptyListIterator();
     }
     while (true) {
       if (this.currentTableColumns.hasNext()) {
@@ -106,7 +105,7 @@ public class SysPoliciesVTI extends GfxdVTITemplate
       case 5: // Apply To
         return this.currentPolicyMeta.policyApplyTo;
       case 6: // filter
-           return this.currentPolicyMeta.filter;
+        return this.currentPolicyMeta.filter;
       case 7: //owner
         return this.currentPolicyMeta.owner;
       default:
