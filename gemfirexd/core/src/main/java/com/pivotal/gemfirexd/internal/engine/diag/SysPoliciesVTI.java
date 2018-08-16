@@ -61,7 +61,7 @@ public class SysPoliciesVTI extends GfxdVTITemplate
   public boolean next() {
     if (this.policyDatas == null) {
       final ExternalCatalog hiveCatalog;
-      if (
+      if (!Boolean.TRUE.equals(HiveTablesVTI.SKIP_HIVE_TABLE_CALLS.get()) &&
           (hiveCatalog = Misc.getMemStore().getExternalCatalog()) != null) {
         try {
           this.policyDatas = hiveCatalog.getPolicies(true).iterator();
@@ -147,7 +147,6 @@ public class SysPoliciesVTI extends GfxdVTITemplate
           Types.VARCHAR, false, Limits.DB2_VARCHAR_MAXWIDTH),
       EmbedResultSetMetaData.getResultColumnDescriptor(OWNER,
           Types.VARCHAR, true, 512),
-
   };
 
   private static final ResultSetMetaData metadata = new EmbedResultSetMetaData(
