@@ -11,17 +11,16 @@ public class JDBCConnectionPoolTest {
 
 
     private final String JDBC_DRIVER = "io.snappydata.jdbc.ClientDriver";
-    private final String DB_URL = "jdbc:snappydata://localhost:1527/";
+    private final String DB_URL = "jdbc:snappydata://localhost:24302/";
     private final String TABLE_NAME = "TEST";
 
     //  Database credentials
-    private final String USER = "APP";
-    private final String PASSWORD = "APP";
+    private final String USER = "pradeep";
+    private final String PASSWORD = "root";
 
     private final int THREAD_COUNT = 30;
 
     private final int POOL_SIZE = 20;
-
 
 
     @Before
@@ -88,7 +87,7 @@ public class JDBCConnectionPoolTest {
             Properties properties = new Properties();
             properties.setProperty("url", DB_URL);
             properties.setProperty("driverClassName", JDBC_DRIVER);
-            properties.setProperty("username", USER);
+            properties.setProperty("user", USER);
             properties.setProperty("password", PASSWORD);
             properties.setProperty("use-pool", "false");
 
@@ -116,10 +115,11 @@ public class JDBCConnectionPoolTest {
         properties.setProperty("maxTotal", String.valueOf(POOL_SIZE));
         properties.setProperty("maxIdle", "8");
         properties.setProperty("maxWaitMillis", "10000");
-        properties.setProperty("username", "APP");
-        properties.setProperty("password", "APP");
+        properties.setProperty("user", USER);
+        properties.setProperty("password", PASSWORD);
         properties.setProperty("removeAbandoned", "true");
         properties.setProperty("removeAbandonedTimeout", "300");
+
 
         runMultipleConnectionTest(properties);
 

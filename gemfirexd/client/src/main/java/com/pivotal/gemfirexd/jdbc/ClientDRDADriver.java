@@ -145,7 +145,6 @@ public class ClientDRDADriver implements java.sql.Driver {
                 if (creatingPool) {
                     return getConnection(url, properties);
                 } else {
-                    properties.setProperty("url", url); // setting URL to properties, even if not passed with prop
                     pool = TomcatConnectionPool.getInstance(properties);
                     Connection conn = pool.getConnection();
                     properties.remove("creatingPool");
@@ -208,7 +207,7 @@ public class ClientDRDADriver implements java.sql.Driver {
             java.util.Properties augmentedProperties = tokenizeURLProperties(url, properties);
 // GemStone changes BEGIN
             // GemFireXD has no DB or DB properties in the name
-            /* (original code)
+            /* link
             database = appendDatabaseAttributes(database,augmentedProperties);
             */
             ClientExceptionUtil.init();

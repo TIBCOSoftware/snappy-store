@@ -35,11 +35,6 @@
 
 package io.snappydata.jdbc;
 
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.client.am.Utils;
 import com.pivotal.gemfirexd.internal.shared.common.error.ClientExceptionUtil;
@@ -47,6 +42,11 @@ import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.jdbc.ClientDRDADriver;
 import io.snappydata.thrift.internal.ClientConfiguration;
 import io.snappydata.thrift.internal.ClientConnection;
+
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Client driver encapsulating both Thrift and DRDA protocols as per protocol
