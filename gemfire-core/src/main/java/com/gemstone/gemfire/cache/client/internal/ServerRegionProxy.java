@@ -29,6 +29,7 @@ import com.gemstone.gemfire.cache.InterestResultPolicy;
 import com.gemstone.gemfire.cache.Operation;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.Region.Entry;
+import com.gemstone.gemfire.cache.client.PoolFactory;
 import com.gemstone.gemfire.cache.client.PoolManager;
 import com.gemstone.gemfire.cache.client.internal.ContainsKeyOp.MODE;
 import com.gemstone.gemfire.cache.execute.Function;
@@ -37,15 +38,7 @@ import com.gemstone.gemfire.cache.util.BridgeClient;
 import com.gemstone.gemfire.cache.util.BridgeLoader;
 import com.gemstone.gemfire.cache.util.BridgeWriter;
 import com.gemstone.gemfire.distributed.internal.ServerLocation;
-import com.gemstone.gemfire.internal.cache.AbstractRegion;
-import com.gemstone.gemfire.internal.cache.BridgeObserver;
-import com.gemstone.gemfire.internal.cache.BridgeObserverHolder;
-import com.gemstone.gemfire.internal.cache.EntryEventImpl;
-import com.gemstone.gemfire.internal.cache.EventID;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.TXId;
-import com.gemstone.gemfire.internal.cache.TXManagerImpl;
-import com.gemstone.gemfire.internal.cache.TXRemoteCommitMessage;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.execute.ServerRegionFunctionExecutor;
 import com.gemstone.gemfire.internal.cache.tier.InterestType;
 import com.gemstone.gemfire.internal.cache.tier.sockets.VersionedObjectList;
@@ -721,6 +714,9 @@ public class ServerRegionProxy extends ServerProxy implements ServerRegionDataAc
     //      Byte.valueOf(hasResult));
 
     int retryAttempts = pool.getRetryAttempts();
+    if (retryAttempts == -1 && GemFireCacheImpl.getExisting().isSnappyConnectorCache()) {
+      retryAttempts = PoolFactory.DEFAULT_RETRY_ATTEMPTS_GFE_8_2;
+    }
 
     if (this.pool.getPRSingleHopEnabled()) {
       ClientMetadataService cms = region.getCache()
@@ -772,7 +768,9 @@ public class ServerRegionProxy extends ServerProxy implements ServerRegionDataAc
     //      Boolean.valueOf(isHA), Boolean.valueOf(optimizeForWrite));
     
     int retryAttempts = pool.getRetryAttempts();
-
+    if (retryAttempts == -1 && GemFireCacheImpl.getExisting().isSnappyConnectorCache()) {
+      retryAttempts = PoolFactory.DEFAULT_RETRY_ATTEMPTS_GFE_8_2;
+    }
     if (this.pool.getPRSingleHopEnabled()) {
       ClientMetadataService cms = this.region.getCache()
       .getClientMetadataService();

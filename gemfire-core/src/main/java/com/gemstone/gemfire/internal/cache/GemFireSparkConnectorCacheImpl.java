@@ -78,6 +78,11 @@ public class GemFireSparkConnectorCacheImpl extends GemFireCacheImpl {
     }
   }
 
+  @Override
+  public boolean isSnappyConnectorCache() {
+    return true;
+  }
+
   public static GemFireCacheImpl create(Map<String, String> gfeGridMappings,
       Map<String, String> gfeGridPoolProps,
       DistributedSystem system, CacheConfig cacheConfig) {

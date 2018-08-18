@@ -1282,6 +1282,10 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     return this.defaultPool;
   }
 
+  public boolean isSnappyConnectorCache() {
+    return false;
+  }
+
   private void setDefaultPool(Pool v) {
     this.defaultPool = v;
   }

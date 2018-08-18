@@ -30,6 +30,7 @@ import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.statistics.VMStats;
 import com.gemstone.gemfire.management.internal.ManagementConstants;
 import com.gemstone.gemfire.management.internal.beans.stats.StatsKey;
+import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.GfxdFunctionMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.MemberExecutorMessage;
@@ -43,8 +44,6 @@ import org.apache.log4j.FileAppender;
 import org.apache.log4j.Logger;
 
 public class MemberStatisticsMessage extends MemberExecutorMessage {
-
-  private static final long MBFactor = 1024 * 1024;
 
   private GemFireCacheImpl gemFireCache;
 
@@ -170,7 +169,7 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
       Collection<DiskStoreImpl> diskStores = this.gemFireCache.listDiskStores();
       long totalDiskSpace = 0;
       for (DiskStoreImpl dsi : diskStores) {
-        if (dsi.getName().equals(GemFireCacheImpl.getDefaultDiskStoreName())) {
+        if (dsi.getName().equals(GfxdConstants.GFXD_DEFAULT_DISKSTORE_NAME)) {
           this.diskStoreUUID = dsi.getDiskStoreUUID();
           this.diskStoreName = dsi.getName();
         }

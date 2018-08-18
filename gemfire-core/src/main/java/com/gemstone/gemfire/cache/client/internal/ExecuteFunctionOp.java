@@ -17,6 +17,7 @@
 package com.gemstone.gemfire.cache.client.internal;
 
 import com.gemstone.gemfire.InternalGemFireError;
+import com.gemstone.gemfire.cache.client.PoolFactory;
 import com.gemstone.gemfire.cache.client.ServerConnectivityException;
 import com.gemstone.gemfire.cache.client.ServerOperationException;
 import com.gemstone.gemfire.cache.execute.Function;
@@ -25,6 +26,8 @@ import com.gemstone.gemfire.cache.execute.ResultCollector;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.cache.PoolFactoryImpl;
 import com.gemstone.gemfire.internal.cache.execute.AbstractExecution;
 import com.gemstone.gemfire.internal.cache.execute.FunctionStats;
 import com.gemstone.gemfire.internal.cache.execute.InternalFunctionException;
@@ -94,8 +97,12 @@ public class ExecuteFunctionOp {
       int retryAttempts = 0;
       boolean reexecute = false;
       int maxRetryAttempts = 0;
-      if(function.isHA())
+      if(function.isHA()) {
         maxRetryAttempts = pool.getRetryAttempts();
+        if (GemFireCacheImpl.getExisting().isSnappyConnectorCache() && maxRetryAttempts < 0) {
+          maxRetryAttempts = PoolFactory.DEFAULT_RETRY_ATTEMPTS_GFE_8_2;
+        }
+      }
       
       do {
         try {
@@ -131,24 +138,30 @@ public class ExecuteFunctionOp {
           reexecute = true;
           rc.clearResults();
         } catch (ServerConnectivityException se) {
-          retryAttempts++;
+          boolean isConnectorBucketMovedException = GemFireCacheImpl.getExisting().
+              isGFEConnectorBucketMovedException(se);
+          if (isConnectorBucketMovedException) {
+            reexecute = true;
+            rc.clearResults();
+          } else {
+            retryAttempts++;
+            if (logger.fineEnabled()) {
+              logger
+                  .fine("ExecuteFunctionOp#execute : Received ServerConnectivityException. The exception is "
+                      + se
+                      + " The retryattempt is : "
+                      + retryAttempts
+                      + " maxRetryAttempts  " + maxRetryAttempts);
+            }
+            if (se instanceof ServerOperationException) {
+              throw se;
+            }
+            if ((retryAttempts > maxRetryAttempts && maxRetryAttempts != -1))
+              throw se;
 
-          if (logger.fineEnabled()) {
-            logger
-                .fine("ExecuteFunctionOp#execute : Received ServerConnectivityException. The exception is "
-                    + se
-                    + " The retryattempt is : "
-                    + retryAttempts
-                    + " maxRetryAttempts  " + maxRetryAttempts);
+            reexecuteForServ = true;
+            rc.clearResults();
           }
-          if (se instanceof ServerOperationException) {
-            throw se;
-          }
-          if ((retryAttempts > maxRetryAttempts && maxRetryAttempts != -1))
-            throw se;
-
-          reexecuteForServ = true;
-          rc.clearResults();
         }
       } while (reexecuteForServ);
 
@@ -185,8 +198,11 @@ public class ExecuteFunctionOp {
       int retryAttempts = 0;
       boolean reexecute = false;
       int maxRetryAttempts = 0;
-      if(isHA){
+      if(isHA) {
         maxRetryAttempts = pool.getRetryAttempts();
+        if (GemFireCacheImpl.getExisting().isSnappyConnectorCache() && maxRetryAttempts < 0) {
+          maxRetryAttempts = PoolFactory.DEFAULT_RETRY_ATTEMPTS_GFE_8_2;
+        }
       }
       
       do {
@@ -216,24 +232,30 @@ public class ExecuteFunctionOp {
           reexecute = true;
           rc.clearResults();
         } catch (ServerConnectivityException se) {
-          retryAttempts++;
+          boolean isConnectorBucketMovedException = GemFireCacheImpl.getExisting().
+              isGFEConnectorBucketMovedException(se);
+          if (isConnectorBucketMovedException) {
+            reexecute = true;
+            rc.clearResults();
+          } else {
+            retryAttempts++;
+            if (logger.fineEnabled()) {
+              logger
+                  .fine("ExecuteFunctionOp#execute : Received ServerConnectivityException. The exception is "
+                      + se
+                      + " The retryattempt is : "
+                      + retryAttempts
+                      + " maxRetryAttempts  " + maxRetryAttempts);
+            }
+            if (se instanceof ServerOperationException) {
+              throw se;
+            }
+            if ((retryAttempts > maxRetryAttempts && maxRetryAttempts != -1))
+              throw se;
 
-          if (logger.fineEnabled()) {
-            logger
-                .fine("ExecuteFunctionOp#execute : Received ServerConnectivityException. The exception is "
-                    + se
-                    + " The retryattempt is : "
-                    + retryAttempts
-                    + " maxRetryAttempts  " + maxRetryAttempts);
+            reexecuteForServ = true;
+            rc.clearResults();
           }
-          if (se instanceof ServerOperationException) {
-            throw se;
-          }
-          if ((retryAttempts > maxRetryAttempts && maxRetryAttempts != -1))
-            throw se;
-
-          reexecuteForServ = true;
-          rc.clearResults();
         }
       } while (reexecuteForServ);
 
@@ -273,20 +295,27 @@ public class ExecuteFunctionOp {
         resultCollector.clearResults();
       }
       catch (ServerConnectivityException se) {
-        if (logger.fineEnabled()) {
-          logger
-              .fine("ExecuteFunctionOp#reexecute : Received ServerConnectivity Exception.");
-        }
-        
-        if(se instanceof ServerOperationException){
-          throw se;
-        }
-        retryAttempts++;
-        if (retryAttempts > maxRetryAttempts && maxRetryAttempts != -2) 
-          throw se;
+        boolean isConnectorBucketMovedException = GemFireCacheImpl.getExisting().
+            isGFEConnectorBucketMovedException(se);
+        if (isConnectorBucketMovedException) {
+          reexecute = true;
+          resultCollector.clearResults();
+        } else {
+          if (logger.fineEnabled()) {
+            logger
+                .fine("ExecuteFunctionOp#reexecute : Received ServerConnectivity Exception.");
+          }
 
-        reexecute = true;
-        resultCollector.clearResults();
+          if (se instanceof ServerOperationException) {
+            throw se;
+          }
+          retryAttempts++;
+          if (retryAttempts > maxRetryAttempts && maxRetryAttempts != -2)
+            throw se;
+
+          reexecute = true;
+          resultCollector.clearResults();
+        }
       }
     } while (reexecute);
   }
@@ -322,20 +351,27 @@ public class ExecuteFunctionOp {
         resultCollector.clearResults();
       }
       catch (ServerConnectivityException se) {
-        if (logger.fineEnabled()) {
-          logger
-              .fine("ExecuteFunctionOp#reexecute : Received ServerConnectivity Exception.");
-        }
-        
-        if(se instanceof ServerOperationException){
-          throw se;
-        }
-        retryAttempts++;
-        if (retryAttempts > maxRetryAttempts && maxRetryAttempts != -2) 
-          throw se;
+        boolean isConnectorBucketMovedException = GemFireCacheImpl.getExisting().
+            isGFEConnectorBucketMovedException(se);
+        if (isConnectorBucketMovedException) {
+          reexecute = true;
+          resultCollector.clearResults();
+        } else {
+          if (logger.fineEnabled()) {
+            logger
+                .fine("ExecuteFunctionOp#reexecute : Received ServerConnectivity Exception.");
+          }
 
-        reexecute = true;
-        resultCollector.clearResults();
+          if (se instanceof ServerOperationException) {
+            throw se;
+          }
+          retryAttempts++;
+          if (retryAttempts > maxRetryAttempts && maxRetryAttempts != -2)
+            throw se;
+
+          reexecute = true;
+          resultCollector.clearResults();
+        }
       }
     } while (reexecute);
   }

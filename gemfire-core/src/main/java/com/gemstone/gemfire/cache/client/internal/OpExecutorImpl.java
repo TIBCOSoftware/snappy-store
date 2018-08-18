@@ -811,6 +811,7 @@ public class OpExecutorImpl implements ExecutablePool {
       } else {
         title = e.toString();
         forceThrow = true;
+        invalidateServer = false;
       }
     }
     if (title != null) {
@@ -959,9 +960,12 @@ public class OpExecutorImpl implements ExecutablePool {
 
     } catch (ServerConnectivityException sce) {
       Throwable cause = sce.getCause();
-      if (cause instanceof AuthenticationRequiredException
+
+      // if it is GFEConnector case, assume that for the first time failure the cause is auth attribute
+      // failure & rexecute
+      if ((cause instanceof AuthenticationRequiredException
           && "User authorization attributes not found.".equals(cause
-              .getMessage())) {
+              .getMessage())) || GemFireCacheImpl.getExisting().isSnappyConnectorCache()) {
 
         PoolImpl pool = (PoolImpl)PoolManagerImpl.getPMI().find(
             this.endpointManager.getPoolName());
