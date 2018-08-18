@@ -135,4 +135,10 @@ public interface StoreCallbacks {
    * Get the class loader of the lead
    */
   URLClassLoader getLeadClassLoader();
+
+  /**
+   * Clear SnappySession cache
+   * @param onlyQueryPlanCache
+   */
+  void clearSessionCache(boolean onlyQueryPlanCache);
 }
