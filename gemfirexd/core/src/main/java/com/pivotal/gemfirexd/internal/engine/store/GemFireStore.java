@@ -3069,4 +3069,11 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
   public Region<String, String> getGlobalCmdRgn() {
     return this.snappyGlobalCmdRgn;
   }
+
+  private boolean restrictTableCreation = Boolean.getBoolean(
+      "snappydata.RESTRICT_TABLE_CREATION");
+
+  public boolean tableCreationAllowed() {
+    return !this.restrictTableCreation;
+  }
 }

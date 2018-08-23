@@ -1940,6 +1940,19 @@ public final class FabricDatabase implements ModuleControl,
     return lctx;
   }
 
+  private static String getSchemaOwner(String in_defaultSchema) {
+    String o = in_defaultSchema;
+    GemFireStore ms = Misc.getMemStore();
+    if (ms != null) {
+      boolean isSnappyStoreWithSecurityEnabled = ms.isSnappyStore() && Misc.isSecurityEnabled();
+      if (isSnappyStoreWithSecurityEnabled && !ms.tableCreationAllowed()) {
+        Map<Object, Object> bp = ms.getBootProperties();
+        o = (String) bp.get(SystemProperties.SNAPPY_PREFIX
+            + com.pivotal.gemfirexd.Attribute.USERNAME_ATTR);
+      }
+    }
+    return o;
+  }
   /**
    * Setup the default schema for the given "defaultSchema" creating it if necessary.
    */
@@ -1951,7 +1964,8 @@ public final class FabricDatabase implements ModuleControl,
       defaultSchema = dd.getSchemaDescriptor(in_defaultSchema, tc, false);
     }
     if (defaultSchema == null) {
-      defaultSchema = new SchemaDescriptor(dd, in_defaultSchema, in_defaultSchema, dd
+      String schemaOwner = getSchemaOwner(in_defaultSchema);
+      defaultSchema = new SchemaDescriptor(dd, in_defaultSchema, schemaOwner, dd
           .getUUIDFactory().createUUID(), false);
       try {
         dd.addDescriptor(defaultSchema, null,
