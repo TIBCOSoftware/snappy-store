@@ -49,6 +49,8 @@ public class JoinTest extends SQLTest {
 	}
 	
   public static void HydraTask_queryOnJoinOp() {
+     if(joinTest==null)
+        joinTest = new JoinTest();
     joinTest.queryOnJoinOp();
   }
 
