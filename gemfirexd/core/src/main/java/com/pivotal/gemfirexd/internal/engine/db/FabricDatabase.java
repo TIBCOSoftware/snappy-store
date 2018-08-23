@@ -53,6 +53,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.LogWriter;
@@ -1943,16 +1944,16 @@ public final class FabricDatabase implements ModuleControl,
   private static String getSchemaOwner(String in_defaultSchema) {
     String o = in_defaultSchema;
     GemFireStore ms = Misc.getMemStore();
+    Map<Object, Object> bp1 = ms.getBootProperties();
     if (ms != null) {
       boolean isSnappyStoreWithSecurityEnabled = ms.isSnappyStore() && Misc.isSecurityEnabled();
       if (isSnappyStoreWithSecurityEnabled && !ms.tableCreationAllowed()) {
-        Map<Object, Object> bp = ms.getBootProperties();
-        o = (String) bp.get(SystemProperties.SNAPPY_PREFIX
-            + com.pivotal.gemfirexd.Attribute.USERNAME_ATTR);
+        o = ms.getDatabase().getDataDictionary().getAuthorizationDatabaseOwner();
       }
     }
     return o;
   }
+
   /**
    * Setup the default schema for the given "defaultSchema" creating it if necessary.
    */

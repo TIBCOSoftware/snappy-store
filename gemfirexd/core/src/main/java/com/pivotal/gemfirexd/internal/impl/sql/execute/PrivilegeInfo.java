@@ -82,19 +82,24 @@ public abstract class PrivilegeInfo
 	 *
 	 * @exception StandardException if user does not own the object
 	 */
-	protected void checkOwnership( String user,
+	public static void checkOwnership( String user,
 								   TupleDescriptor objectDescriptor,
 								   SchemaDescriptor sd,
 								   DataDictionary dd)
 		throws StandardException
 	{
 		if (!user.equals(sd.getAuthorizationId()) &&
-				!user.equals(dd.getAuthorizationDatabaseOwner()))
+				!user.equals(dd.getAuthorizationDatabaseOwner())) {
+				  if (objectDescriptor == sd) {
+				    throw StandardException.newException(SQLState.AUTH_NO_ACCESS_NOT_OWNER,
+				      user, sd.getSchemaName());
+		  		}
 			throw StandardException.newException(SQLState.AUTH_NOT_OWNER,
 									  user,
 									  objectDescriptor.getDescriptorType(),
 									  sd.getSchemaName(),
 									  objectDescriptor.getDescriptorName());
+		}
 	}
 	
 	/**
