@@ -47,6 +47,7 @@ public class SQLBridgeDiskTest extends SQLBridgeTest{
 	}
 	
 	public static void HydraTask_doDMLOp() {
+           if (sbdt == null) sbdt = new SQLBridgeDiskTest();
 		sbdt.doDiscDMLOp();
 	}
 	

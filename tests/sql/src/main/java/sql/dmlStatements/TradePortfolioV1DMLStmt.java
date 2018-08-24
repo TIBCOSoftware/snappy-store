@@ -304,7 +304,11 @@ public class TradePortfolioV1DMLStmt extends TradePortfolioDMLStmt {
       int qty, BigDecimal sub, Blob data, int tid, boolean isPut) throws SQLException {
     String blob = null;
     if (data != null) {
-      if (data.length() == 0) blob = "empty data";
+      if (data.length() == 0) {
+        blob = "empty data";
+        if (SQLPrms.isSnappyMode())
+          data = new SerialBlob(blob.getBytes());
+      }
       else if (useMD5Checksum) blob = ResultSetHelper.convertByteArrayToChecksum(data.getBytes(1, 
           (int)data.length()), data.length());
       else blob = ResultSetHelper.convertByteArrayToString(data.getBytes(1, 
@@ -518,6 +522,10 @@ public class TradePortfolioV1DMLStmt extends TradePortfolioDMLStmt {
       break; 
     case 5:
       // "update trade.portfoliov1 set data=? where cid = ? and sid = ?  and tid= ?",
+      if(SQLPrms.isSnappyMode() && data!=null && data.length()==0) {
+        String blob = "empty";
+        data = new SerialBlob(blob.getBytes());
+      }
       Log.getLogWriter().info("updating portfoliov1 table with data = " + 
          (data !=null? (data.length() > 0 ? ResultSetHelper.convertByteArrayToChecksum(data.getBytes(1, (int)data.length()), data.length()) : "empty") : "null")
           +  " for cid: " + cid  + " sid: " + newSid +
@@ -532,6 +540,10 @@ public class TradePortfolioV1DMLStmt extends TradePortfolioDMLStmt {
       
     case 6:
       // "update trade.portfoliov1 set data=?  where cid = ? and sid = ? and tid= ? and data is not null and length(data) > 100 " ,
+      if(SQLPrms.isSnappyMode() && data!=null && data.length()==0) {
+        String blob = "empty";
+        data = new SerialBlob(blob.getBytes());
+      }
       Log.getLogWriter().info("updating portfoliov1 table with data = " + 
           (data !=null? (data.length() > 0 ? ResultSetHelper.convertByteArrayToChecksum(data.getBytes(1, (int)data.length()), data.length()) : "empty") : "null") + 
           " for cid: " + cid  + " sid: " + newSid +
@@ -588,6 +600,10 @@ public class TradePortfolioV1DMLStmt extends TradePortfolioDMLStmt {
       break;
     case 13:
       //"update trade.portfoliov1 set data=? where cid = ? and sid < ? ",
+      if(SQLPrms.isSnappyMode() && data!=null && data.length()==0) {
+        String blob = "empty";
+        data = new SerialBlob(blob.getBytes());
+      }
       Log.getLogWriter().info("updating portfoliov1 table with data = " + 
           (data !=null? (data.length() > 0 ? ResultSetHelper.convertByteArrayToChecksum(data.getBytes(1, (int)data.length()), data.length()) : "empty") : "null")
           +  " for cid: " + cid  + " sid: " + newSid);
@@ -600,6 +616,10 @@ public class TradePortfolioV1DMLStmt extends TradePortfolioDMLStmt {
       
     case 14:
       // "update trade.portfoliov1 set data=?  where cid < ? and sid = ? and data is not null and length(data) > 100 " ,
+      if(SQLPrms.isSnappyMode() && data!=null && data.length()==0) {
+        String blob = "empty";
+        data = new SerialBlob(blob.getBytes());
+      }
       Log.getLogWriter().info("updating portfoliov1 table with data = " + 
           (data !=null? (data.length() > 0 ? ResultSetHelper.convertByteArrayToChecksum(data.getBytes(1, (int)data.length()), data.length()) : "empty") : "null") + 
           " for cid: " + cid  + " sid: " + newSid +

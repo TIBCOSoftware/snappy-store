@@ -2300,6 +2300,7 @@ public class SQLTest {
     if(SQLPrms.isSnappyMode()) {
       try {
         conn = getSnappyConnection();
+        //conn.createStatement().execute("set snappydata.sql.planCachingAll=false");
         return conn;
       } catch (SQLException se) {
         throw new TestException("Got exception while getting snappy data connection.", se);
@@ -3563,7 +3564,7 @@ public class SQLTest {
         verifyResultSets(dConn,gConn,schema,table,select);
       }
     } else{
-      if (verifyUsingOrderBy && !select.contains("select count")) {
+      if (verifyUsingOrderBy && !select.contains("select CAST(count")) {
         select += getOrderByClause(gConn, schema, table);    
       }
       

@@ -337,6 +337,7 @@ public class SQLBridgeTest extends SQLTest {
   
   //perform dml statement
   public static void HydraTask_doDMLOp() {
+   if(sqlbtest == null) sqlbtest = new SQLBridgeTest();
     sqlbtest.doDMLOp();
   }
   
