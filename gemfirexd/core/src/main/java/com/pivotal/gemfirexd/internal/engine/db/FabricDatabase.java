@@ -53,7 +53,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.BiConsumer;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.LogWriter;
@@ -1947,15 +1946,14 @@ public final class FabricDatabase implements ModuleControl,
   }
 
   private static String getSchemaOwner(String in_defaultSchema) {
-    String o = in_defaultSchema;
-    GemFireStore ms = Misc.getMemStore();
+    String owner = in_defaultSchema;
+    GemFireStore ms = Misc.getMemStoreBootingNoThrow();
     if (ms != null) {
-      boolean isSnappyStoreWithSecurityEnabled = ms.isSnappyStore() && Misc.isSecurityEnabled();
-      if (isSnappyStoreWithSecurityEnabled && !ms.tableCreationAllowed()) {
-        o = ms.getDatabase().getDataDictionary().getAuthorizationDatabaseOwner();
+      if (ms.isSnappyStore() && !ms.tableCreationAllowed() && Misc.isSecurityEnabled()) {
+        owner = ms.getDatabase().getDataDictionary().getAuthorizationDatabaseOwner();
       }
     }
-    return o;
+    return owner;
   }
 
   /**
