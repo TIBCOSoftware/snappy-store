@@ -1944,7 +1944,6 @@ public final class FabricDatabase implements ModuleControl,
   private static String getSchemaOwner(String in_defaultSchema) {
     String o = in_defaultSchema;
     GemFireStore ms = Misc.getMemStore();
-    Map<Object, Object> bp1 = ms.getBootProperties();
     if (ms != null) {
       boolean isSnappyStoreWithSecurityEnabled = ms.isSnappyStore() && Misc.isSecurityEnabled();
       if (isSnappyStoreWithSecurityEnabled && !ms.tableCreationAllowed()) {
