@@ -715,8 +715,8 @@ implements CredentialInitializer
 	private String getSearchAuthPwd() throws Exception {
 		String entrypedPwd = getEncrypted(this.searchAuthPW);
 		if (entrypedPwd != null) {
-       return decryptPassword(auth_ldap_search_pw_attr,
-					 entrypedPwd, null, -1);
+			return decryptPassword(auth_ldap_search_pw_attr,
+					entrypedPwd, null, -1);
 		}
 		return this.searchAuthPW;
 	}

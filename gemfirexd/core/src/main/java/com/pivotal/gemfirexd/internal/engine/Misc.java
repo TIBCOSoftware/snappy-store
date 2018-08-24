@@ -768,9 +768,9 @@ public abstract class Misc {
             }
             return true;
           }
-        } catch (NamingException ne) {
+        } catch (Exception e) {
           throw StandardException.newException(
-              SQLState.AUTH_INVALID_LDAP_GROUP, ne, group);
+              SQLState.AUTH_INVALID_LDAP_GROUP, e, group);
         }
         if (GemFireXDUtils.TraceAuthentication) {
           SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_AUTHENTICATION,
