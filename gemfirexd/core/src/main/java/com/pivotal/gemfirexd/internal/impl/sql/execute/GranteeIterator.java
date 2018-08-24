@@ -117,7 +117,7 @@ public final class GranteeIterator implements Iterator<String> {
             }
             currentGroupIter = ldapAuth.getLDAPGroupMembers(currentLdapGroup)
                 .iterator();
-          } catch (javax.naming.NamingException ne) {
+          } catch (Exception ne) {
             throw StandardException.newException(
                 SQLState.AUTH_INVALID_LDAP_GROUP, ne, currentLdapGroup);
           }

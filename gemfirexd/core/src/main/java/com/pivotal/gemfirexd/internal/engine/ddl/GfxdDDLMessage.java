@@ -43,6 +43,7 @@ import com.pivotal.gemfirexd.internal.engine.GfxdDataSerializable;
 import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
+import com.pivotal.gemfirexd.internal.engine.db.FabricDatabase;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionWrapper;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
@@ -255,7 +256,8 @@ public final class GfxdDDLMessage extends GfxdMessage implements
     // skip DDL execution on locators/agents/admins (not for HiveMetaTable
     String schemaForTable = ddl.getSchemaForTableNoThrow();
     if (!GemFireXDUtils.getMyVMKind().isAccessorOrStore() &&
-        !(schemaForTable != null && Misc.isSnappyHiveMetaTable(schemaForTable))) {
+        !(!FabricDatabase.disallowMetastoreOnLocator &&
+                schemaForTable != null && Misc.isSnappyHiveMetaTable(schemaForTable))) {
       if (GemFireXDUtils.TraceDDLQueue) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLQUEUE, toString()
             + " Skipping execution of DDL on " + GemFireXDUtils.getMyVMKind()

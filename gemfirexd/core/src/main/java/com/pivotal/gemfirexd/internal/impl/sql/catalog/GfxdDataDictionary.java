@@ -1267,6 +1267,26 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
     }
 
     {
+      // out ResultSet ENCRYPT_PASSWORD()
+
+      // procedure argument names
+      String[] arg_names = { "USER_ID", "PASSWORD", "TRANSFORMATION", "KEYSIZE" };
+
+      // procedure argument types
+      TypeDescriptor[] arg_types = {
+          CATALOG_TYPE_SYSTEM_IDENTIFIER,
+          DataTypeDescriptor.getCatalogType(Types.VARCHAR,
+              Limits.DB2_VARCHAR_MAXWIDTH),
+          DataTypeDescriptor.getCatalogType(Types.VARCHAR,
+              Limits.DB2_VARCHAR_MAXWIDTH),
+          DataTypeDescriptor.getCatalogType(Types.INTEGER)};
+
+      super.createSystemProcedureOrFunction("ENCRYPT_PASSWORD", sysUUID, arg_names, arg_types,
+          0, 1, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines, tc,
+          GFXD_SYS_PROC_CLASSNAME, false);
+    }
+
+    {
       // CHECK_TABLE_EX
 
       // procedure argument names

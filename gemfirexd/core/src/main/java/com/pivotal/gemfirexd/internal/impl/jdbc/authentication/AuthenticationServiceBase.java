@@ -171,6 +171,7 @@ public abstract class AuthenticationServiceBase
 	public static final String ID_PATTERN_NEW_SCHEME_V3 = "v33b60";
 	public static final String ID_PATTERN_NEW_SCHEME_V2 = "v23b60";
 	public static final String ID_PATTERN_NEW_SCHEME_V1 = "3b60";
+	public static final String ID_PATTERN_LDAP_SCHEME_V1 = "v13b607k2j6";
 	/* (original code)
 	public static final String ID_PATTERN_NEW_SCHEME = "3b60";
 	*/
