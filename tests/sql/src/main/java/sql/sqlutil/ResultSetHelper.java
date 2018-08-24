@@ -700,8 +700,14 @@ public class ResultSetHelper {
         Log.getLogWriter().warning("possibly hit #43754, got the following data mismatch: " 
             + aStr.toString());
         return;
-      } else
+      } else {
+        if(SQLPrms.isSnappyMode() && !SQLPrms.failOnMismatch()) {
+          Log.getLogWriter().info("Got resultset mismatch, but continuing the test.");
+          SQLTest.dumpResults();
+          return;
+        }
         throw new TestException(aStr.toString());
+      }
       /*
       if (sme != null && sbme !=null)
       throw new TestException(aStr.toString() + TestHelper.getStackTrace(sme)

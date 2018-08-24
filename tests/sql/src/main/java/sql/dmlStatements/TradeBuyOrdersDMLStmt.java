@@ -92,7 +92,7 @@ public class TradeBuyOrdersDMLStmt extends AbstractDMLStmt {
     "select * from trade.buyorders",
     "select cid, bid, cid, sid from trade.buyorders where cid >?  and sid <? and qty >? and orderTime<?  ",
     "select sid, count(*) as COUNT from trade.buyorders  where status =? GROUP BY sid HAVING count(*) >=1",
-    "select cid, count(distinct sid) as DIST_SID from trade.buyorders  where status =? GROUP BY cid",
+    "select cid, CAST(count(distinct sid) as integer) as DIST_SID from trade.buyorders  where status =? GROUP BY cid",
     "select cid, cast (avg(qty*bid) as decimal (30, 20)) as amount from trade.buyorders  where status =? GROUP BY cid ORDER BY amount",
     "select cid, max(qty*bid) as largest_order from trade.buyorders  where status =? GROUP BY cid HAVING max(qty*bid) > 20000 ORDER BY largest_order, cid DESC ",
     "select b1.oid, b1.cid, b1.sid, b1.qty, b1.tid, b2.oid, b2.cid, b2.sid, b2.qty, b2.tid from trade.buyorders b1, trade.buyorders b2 " +
