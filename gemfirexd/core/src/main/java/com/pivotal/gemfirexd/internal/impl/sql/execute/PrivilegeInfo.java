@@ -94,10 +94,6 @@ public abstract class PrivilegeInfo
 		if (!user.equals(schemaOwner) &&
 				!user.equals(dd.getAuthorizationDatabaseOwner()) &&
 				!Misc.checkLDAPGroupOwnership(sd.getSchemaName(), schemaOwner, user)) {
-				  if (objectDescriptor == sd) {
-				    throw StandardException.newException(SQLState.AUTH_NO_ACCESS_NOT_OWNER,
-				      user, sd.getSchemaName());
-		  		}
 			throw StandardException.newException(SQLState.AUTH_NOT_OWNER,
 									  user,
 									  objectDescriptor.getDescriptorType(),
