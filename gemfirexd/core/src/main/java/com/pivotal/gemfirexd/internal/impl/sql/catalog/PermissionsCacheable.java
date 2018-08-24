@@ -103,8 +103,8 @@ class PermissionsCacheable implements Cacheable
 															"Y", "N", "N", "N", "N", "N",
 															"N");
 				else if (tablePermsKey.getGrantee().equals(sd.getAuthorizationId())
-					|| Misc.checkLDAPGroupOwnership(sd.getSchemaName(), sd.getAuthorizationId(),
-					tablePermsKey.getGrantee()))
+						|| Misc.checkLDAPGroupOwnership(sd.getSchemaName(), sd.getAuthorizationId(),
+						tablePermsKey.getGrantee()))
 					permissions = new TablePermsDescriptor( dd,
 															tablePermsKey.getGrantee(),
 															Authorizer.SYSTEM_AUTHORIZATION_ID,

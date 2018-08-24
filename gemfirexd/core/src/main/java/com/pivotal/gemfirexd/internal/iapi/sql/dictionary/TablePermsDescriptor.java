@@ -155,9 +155,9 @@ public class TablePermsDescriptor extends PermissionsDescriptor
 	public boolean checkOwner(String authorizationId) throws StandardException
 	{
 		SchemaDescriptor sd = getDataDictionary().getTableDescriptor(tableUUID).getSchemaDescriptor();
-		String authId = sd.getAuthorizationId();
-		if (authId.equals(authorizationId)
-			|| Misc.checkLDAPGroupOwnership(sd.getSchemaName(), authId, authorizationId))
+		String schemaOwner = sd.getAuthorizationId();
+		if (schemaOwner.equals(authorizationId)
+			|| Misc.checkLDAPGroupOwnership(sd.getSchemaName(), schemaOwner, authorizationId))
 			return true;
 		else
 			return false;

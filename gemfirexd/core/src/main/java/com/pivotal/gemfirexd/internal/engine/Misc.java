@@ -769,8 +769,8 @@ public abstract class Misc {
             return true;
           }
         } catch (NamingException ne) {
-          throw StandardException.newException("Could not expand LDAP group " + group
-              + " for schema " + schemaName, ne);
+          throw StandardException.newException(
+              SQLState.AUTH_INVALID_LDAP_GROUP, ne, group);
         }
         if (GemFireXDUtils.TraceAuthentication) {
           SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_AUTHENTICATION,

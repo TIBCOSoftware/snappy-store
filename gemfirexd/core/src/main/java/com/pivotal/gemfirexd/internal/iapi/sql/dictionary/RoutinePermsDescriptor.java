@@ -127,9 +127,9 @@ public class RoutinePermsDescriptor extends PermissionsDescriptor
 	{
 		UUID uuid = getDataDictionary().getAliasDescriptor(routineUUID).getSchemaUUID();
 		SchemaDescriptor sd = getDataDictionary().getSchemaDescriptor(uuid, null);
-		String authId = sd.getAuthorizationId();
-		if (authId.equals(authorizationId)
-			|| Misc.checkLDAPGroupOwnership(sd.getSchemaName(), authId, authorizationId))
+		String schemaOwner = sd.getAuthorizationId();
+		if (schemaOwner.equals(authorizationId)
+			|| Misc.checkLDAPGroupOwnership(sd.getSchemaName(), schemaOwner, authorizationId))
 			return true;
 		else
 			return false;

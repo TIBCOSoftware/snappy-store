@@ -78,7 +78,6 @@ public class StatementSchemaPermission extends StatementPermission
 				if (sd == null)
 					return;
 
-				// TODO create/drop  function, external table, view
 				String schemaAuthId = sd.getAuthorizationId();
 				if (Misc.checkLDAPGroupOwnership(schemaName, schemaAuthId, authid)) {
 					break;
