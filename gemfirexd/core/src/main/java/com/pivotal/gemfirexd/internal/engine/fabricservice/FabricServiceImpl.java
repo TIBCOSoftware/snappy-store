@@ -78,6 +78,7 @@ import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.impl.services.monitor.FileMonitor;
 import com.pivotal.gemfirexd.internal.shared.common.reference.MessageId;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
+import com.pivotal.gemfirexd.internal.shared.common.sanity.AssertFailure;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import io.snappydata.jdbc.AutoloadedDriver;
 import io.snappydata.thrift.ServerType;
@@ -444,6 +445,15 @@ public abstract class FabricServiceImpl implements FabricService {
       else {
         logger.warn("exception while shutting down " + ex);
         exception = ex;
+      }
+    } catch (AssertFailure ae) {
+      // ignore security failure in shutdown
+      if (!ae.getMessage().contains("There is no valid authentication service")) {
+        logger.warn("exception while shutting down " + ae);
+      }
+      GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+      if (cache != null && !cache.isClosed()) {
+        cache.close();
       }
     }
 

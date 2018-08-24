@@ -25,6 +25,7 @@ package com.pivotal.gemfirexd.internal.iapi.sql.dictionary;
 import com.pivotal.gemfirexd.internal.catalog.Dependable;
 import com.pivotal.gemfirexd.internal.catalog.DependableFinder;
 import com.pivotal.gemfirexd.internal.catalog.UUID;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableBitSet;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
@@ -126,8 +127,10 @@ public class ColPermsDescriptor extends PermissionsDescriptor
 	 */
 	public boolean checkOwner(String authorizationId) throws StandardException
 	{
-		TableDescriptor td = getDataDictionary().getTableDescriptor(tableUUID);
-		if (td.getSchemaDescriptor().getAuthorizationId().equals(authorizationId))
+		SchemaDescriptor sd = getDataDictionary().getTableDescriptor(tableUUID).getSchemaDescriptor();
+		String schemaOwner = sd.getAuthorizationId();
+		if (schemaOwner.equals(authorizationId)
+			|| Misc.checkLDAPGroupOwnership(sd.getSchemaName(), schemaOwner, authorizationId))
 			return true;
 		else
 			return false;

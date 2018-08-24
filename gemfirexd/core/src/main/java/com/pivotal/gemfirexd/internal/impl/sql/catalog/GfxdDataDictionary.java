@@ -60,13 +60,7 @@ import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.CallbackProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.GfxdSystemProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.WanProcedures;
-import com.pivotal.gemfirexd.internal.engine.diag.DiagProcedures;
-import com.pivotal.gemfirexd.internal.engine.diag.DiskStoreIDs;
-import com.pivotal.gemfirexd.internal.engine.diag.HdfsProcedures;
-import com.pivotal.gemfirexd.internal.engine.diag.HiveTablesVTI;
-import com.pivotal.gemfirexd.internal.engine.diag.JSONProcedures;
-import com.pivotal.gemfirexd.internal.engine.diag.SnappyTableStatsVTI;
-import com.pivotal.gemfirexd.internal.engine.diag.SortedCSVProcedures;
+import com.pivotal.gemfirexd.internal.engine.diag.*;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.GfxdShutdownAllRequest;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
@@ -1267,6 +1261,26 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
     }
 
     {
+      // out ResultSet ENCRYPT_PASSWORD()
+
+      // procedure argument names
+      String[] arg_names = { "USER_ID", "PASSWORD", "TRANSFORMATION", "KEYSIZE" };
+
+      // procedure argument types
+      TypeDescriptor[] arg_types = {
+          CATALOG_TYPE_SYSTEM_IDENTIFIER,
+          DataTypeDescriptor.getCatalogType(Types.VARCHAR,
+              Limits.DB2_VARCHAR_MAXWIDTH),
+          DataTypeDescriptor.getCatalogType(Types.VARCHAR,
+              Limits.DB2_VARCHAR_MAXWIDTH),
+          DataTypeDescriptor.getCatalogType(Types.INTEGER)};
+
+      super.createSystemProcedureOrFunction("ENCRYPT_PASSWORD", sysUUID, arg_names, arg_types,
+          0, 1, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines, tc,
+          GFXD_SYS_PROC_CLASSNAME, false);
+    }
+
+    {
       // CHECK_TABLE_EX
 
       // procedure argument names
@@ -2185,7 +2199,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
       { HIVETABLES_TABLENAME, HiveTablesVTI.class.getName() },
       { DISKSTOREIDS_TABLENAME, DiskStoreIDs.class.getName() },
       { SNAPPY_TABLE_STATS, SnappyTableStatsVTI.class.getName() },
-      { SYSPOLICIES_TABLENAME, SnappyTableStatsVTI.class.getName() },
+      { SYSPOLICIES_TABLENAME, SysPoliciesVTI.class.getName() },
   };
 
   private final HashMap<String, TableDescriptor> diagVTIMap =

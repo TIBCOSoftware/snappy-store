@@ -28,6 +28,7 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.Condition;
+import javax.naming.NamingException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -69,6 +70,8 @@ import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.DebuggerSupport;
 import com.pivotal.gemfirexd.Attribute;
+import com.pivotal.gemfirexd.Constants;
+import com.pivotal.gemfirexd.auth.callback.UserAuthenticator;
 import com.pivotal.gemfirexd.internal.engine.distributed.FunctionExecutionException;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -85,6 +88,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecutionContext;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.AuthenticationServiceBase;
+import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.LDAPAuthenticationSchemeImpl;
 import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.NoneAuthenticationServiceImpl;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.PlanUtils;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
@@ -743,6 +747,39 @@ public abstract class Misc {
     AuthenticationServiceBase authService = AuthenticationServiceBase.getPeerAuthenticationService();
     return authService != null && !(authService instanceof NoneAuthenticationServiceImpl) &&
         checkAuthProvider(getMemStore().getBootProperties());
+  }
+
+  /**
+   * Check if ldapGroupName is indeed name of a LDAP group. Expand that group and check if user
+   * belongs to that group.
+   */
+  public static boolean checkLDAPGroupOwnership(String schemaName, String ldapGroupName, String user)
+      throws StandardException {
+    if (ldapGroupName.startsWith(Constants.LDAP_GROUP_PREFIX)) {
+      UserAuthenticator auth = ((AuthenticationServiceBase)Misc.getMemStoreBooting()
+          .getDatabase().getAuthenticationService()).getAuthenticationScheme();
+      if (auth instanceof LDAPAuthenticationSchemeImpl) {
+        String group = ldapGroupName.substring(Constants.LDAP_GROUP_PREFIX.length());
+        try {
+          if (((LDAPAuthenticationSchemeImpl)auth).getLDAPGroupMembers(group).contains(user)) {
+            if (GemFireXDUtils.TraceAuthentication) {
+              SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_AUTHENTICATION,
+                  "Found user " + user + " in LDAP group " + group + " for schema " + schemaName);
+            }
+            return true;
+          }
+        } catch (Exception e) {
+          throw StandardException.newException(
+              SQLState.AUTH_INVALID_LDAP_GROUP, e, group);
+        }
+        if (GemFireXDUtils.TraceAuthentication) {
+          SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_AUTHENTICATION,
+              "Could not find user " + user + " in LDAP group " + group + " for schema "
+                  + schemaName);
+        }
+      }
+    }
+    return false;
   }
 
   /* Returns true if LDAP Security is Enabled */

@@ -25,6 +25,7 @@ package com.pivotal.gemfirexd.internal.iapi.sql.dictionary;
 import com.pivotal.gemfirexd.internal.catalog.Dependable;
 import com.pivotal.gemfirexd.internal.catalog.DependableFinder;
 import com.pivotal.gemfirexd.internal.catalog.UUID;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
 import com.pivotal.gemfirexd.internal.impl.sql.catalog.DDdependableFinder;
@@ -124,8 +125,11 @@ public class RoutinePermsDescriptor extends PermissionsDescriptor
 	 */
 	public boolean checkOwner(String authorizationId) throws StandardException
 	{
-		UUID sd = getDataDictionary().getAliasDescriptor(routineUUID).getSchemaUUID();
-		if (getDataDictionary().getSchemaDescriptor(sd, null).getAuthorizationId().equals(authorizationId))
+		UUID uuid = getDataDictionary().getAliasDescriptor(routineUUID).getSchemaUUID();
+		SchemaDescriptor sd = getDataDictionary().getSchemaDescriptor(uuid, null);
+		String schemaOwner = sd.getAuthorizationId();
+		if (schemaOwner.equals(authorizationId)
+			|| Misc.checkLDAPGroupOwnership(sd.getSchemaName(), schemaOwner, authorizationId))
 			return true;
 		else
 			return false;

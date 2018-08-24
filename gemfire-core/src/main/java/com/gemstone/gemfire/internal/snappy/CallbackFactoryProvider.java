@@ -17,7 +17,6 @@
 
 package com.gemstone.gemfire.internal.snappy;
 
-import java.net.URI;
 import java.net.URLClassLoader;
 import java.sql.SQLException;
 import java.util.Collections;
@@ -191,6 +190,13 @@ public abstract class CallbackFactoryProvider {
 
     @Override
     public URLClassLoader getLeadClassLoader() { return null; }
+
+    @Override
+    public void clearSessionCache(boolean onlyQueryPlanCache) {}
+
+    @Override
+    public void refreshPolicies(String ldapGroup) {
+    }
   };
 
   public static void setStoreCallbacks(StoreCallbacks cb) {
