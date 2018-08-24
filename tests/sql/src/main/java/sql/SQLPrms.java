@@ -233,6 +233,12 @@ public class SQLPrms extends BasePrms{
     return TestConfig.tab().booleanAt(SQLPrms.snappyMode, false);
   }
 
+  public static Long failOnMismatch;
+
+  public static boolean failOnMismatch() {
+    return TestConfig.tab().booleanAt(SQLPrms.failOnMismatch, true);
+  }
+
   public static String[] getSnappyDDLExtension(String[] tables){
     Vector snappyExtn = TestConfig.tab().vecAt(SQLPrms.snappyDDLExtension, new HydraVector());
     if (snappyExtn.size() == 0)
