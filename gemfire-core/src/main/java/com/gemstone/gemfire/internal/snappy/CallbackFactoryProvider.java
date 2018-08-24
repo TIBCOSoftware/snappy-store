@@ -193,6 +193,10 @@ public abstract class CallbackFactoryProvider {
 
     @Override
     public void clearSessionCache(boolean onlyQueryPlanCache) {}
+
+    @Override
+    public void refreshPolicies(String ldapGroup) {
+    }
   };
 
   public static void setStoreCallbacks(StoreCallbacks cb) {

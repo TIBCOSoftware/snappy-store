@@ -141,4 +141,10 @@ public interface StoreCallbacks {
    * @param onlyQueryPlanCache
    */
   void clearSessionCache(boolean onlyQueryPlanCache);
+
+  /**
+   * drop and recreate those policies who are affected by this ldap group
+   * @param ldapGroup
+   */
+  void refreshPolicies(String ldapGroup);
 }

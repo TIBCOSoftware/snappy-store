@@ -33,7 +33,6 @@ import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.DistributionStats;
 import com.gemstone.gemfire.distributed.internal.ReplyException;
-import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.GFToSlf4jBridge;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.NanoTimer;
@@ -1782,6 +1781,7 @@ public final class GfxdSystemProcedureMessage extends
           GfxdDistributionAdvisor.GfxdProfile profile = GemFireXDUtils.getGfxdProfile(Misc.getMyId());
           if (profile != null && profile.hasSparkURL()) {
             CallbackFactoryProvider.getStoreCallbacks().clearSessionCache(true);
+            CallbackFactoryProvider.getStoreCallbacks().refreshPolicies(ldapGroup);
           }
           if (disableLogging) {
             tc.disableLogging();
