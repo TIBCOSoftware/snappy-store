@@ -21,6 +21,7 @@
 
 package com.pivotal.gemfirexd.internal.iapi.sql.dictionary;
 
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
@@ -77,7 +78,13 @@ public class StatementSchemaPermission extends StatementPermission
 				if (sd == null)
 					return;
 
-				if (!authid.equals(sd.getAuthorizationId()))
+				// TODO create/drop  function, external table, view
+				String schemaAuthId = sd.getAuthorizationId();
+				if (Misc.checkLDAPGroupOwnership(schemaName, schemaAuthId, authid)) {
+					break;
+				}
+
+				if (!authid.equals(schemaAuthId))
 					throw StandardException.newException(
 						SQLState.AUTH_NO_ACCESS_NOT_OWNER, authid, schemaName);
 				break;

@@ -42,6 +42,7 @@ package com.pivotal.gemfirexd.internal.impl.sql.execute;
 
 
 import com.pivotal.gemfirexd.internal.catalog.UUID;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
@@ -88,7 +89,9 @@ public abstract class PrivilegeInfo
 								   DataDictionary dd)
 		throws StandardException
 	{
-		if (!user.equals(sd.getAuthorizationId()) &&
+		String authId = sd.getAuthorizationId();
+		if (!user.equals(authId) &&
+		    !Misc.checkLDAPGroupOwnership(sd.getSchemaName(), authId, user) &&
 				!user.equals(dd.getAuthorizationDatabaseOwner()))
 			throw StandardException.newException(SQLState.AUTH_NOT_OWNER,
 									  user,

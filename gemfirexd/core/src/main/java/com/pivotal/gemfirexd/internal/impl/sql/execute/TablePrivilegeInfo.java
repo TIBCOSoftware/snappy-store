@@ -194,8 +194,10 @@ public class TablePrivilegeInfo extends PrivilegeInfo
 			    		AliasDescriptor a = (AliasDescriptor)p;
 						s = dd.getSchemaDescriptor( a.getSchemaUUID(), tc);
 			    	}
-								
-					if (s != null && !user.equals(s.getAuthorizationId()) ) 
+
+					String authId = s.getAuthorizationId();
+					if (s != null && !user.equals(authId)
+						&& !Misc.checkLDAPGroupOwnership(s.getSchemaName(), authId, user))
 					{
 						throw StandardException.newException(
 				    			   SQLState.AUTH_NO_OBJECT_PERMISSION,

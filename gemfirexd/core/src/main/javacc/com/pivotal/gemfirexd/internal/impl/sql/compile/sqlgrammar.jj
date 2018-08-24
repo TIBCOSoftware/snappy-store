@@ -11440,6 +11440,7 @@ schemaDefinition() throws StandardException :
 		new ServerGroupsTableAttribute();
 // GemStone changes END
 	String	authName = null;
+	String	groupName = null;
 }
 {
 	/*
@@ -11448,17 +11449,21 @@ schemaDefinition() throws StandardException :
 	** specifications for schema, or schema bodies.
 	*/
 	<SCHEMA>
-	(	schemaName = identifier(Limits.MAX_IDENTIFIER_LENGTH, true)  [ <AUTHORIZATION> authName = identifier(Limits.MAX_IDENTIFIER_LENGTH, true) ]
+	( schemaName = identifier(Limits.MAX_IDENTIFIER_LENGTH, true)  [ <AUTHORIZATION> [ <LDAPGROUP> <COLON> groupName = identifier(Limits.MAX_IDENTIFIER_LENGTH, true)
+			| authName = identifier(Limits.MAX_IDENTIFIER_LENGTH, true) ] ]
 // GemStone changes BEGIN
 			[ <_DEFAULT> serverGroupDefinition(defaultServerGroups) ]
 // GemStone change END
 		{
-			if (authName != null)
+			if (authName != null || groupName != null)
 				checkVersion( DataDictionary.DD_VERSION_DERBY_10_2, "AUTHORIZATION");
 
 			if (schemaName.startsWith("SYS"))
 				throw StandardException.newException(SQLState.INVALID_SCHEMA_SYS, schemaName);
  
+			if (groupName != null)
+				authName = Constants.LDAP_GROUP_PREFIX + groupName;
+
 			return (StatementNode) nodeFactory.getNode(
 					C_NodeTypes.CREATE_SCHEMA_NODE,
 					schemaName,
