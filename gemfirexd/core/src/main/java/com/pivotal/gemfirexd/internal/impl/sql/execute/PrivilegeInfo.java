@@ -80,10 +80,10 @@ public abstract class PrivilegeInfo
 	 * @param objectDescriptor		object being checked against
 	 * @param sd					SchemaDescriptor
 	 * @param dd					DataDictionary
-	 *
+	 * @return schema owner
 	 * @exception StandardException if user does not own the object
 	 */
-	public static void checkOwnership( String user,
+	public static String checkOwnership( String user,
 								   TupleDescriptor objectDescriptor,
 								   SchemaDescriptor sd,
 								   DataDictionary dd)
@@ -104,6 +104,7 @@ public abstract class PrivilegeInfo
 									  sd.getSchemaName(),
 									  objectDescriptor.getDescriptorName());
 		}
+		return schemaOwner;
 	}
 
 	/**
