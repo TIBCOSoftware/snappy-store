@@ -240,7 +240,7 @@ public abstract class Util  {
 	}
 
 
-	static SQLException generateCsSQLException(
+	public static SQLException generateCsSQLException(
                     String error, Object arg1, Throwable t) {
 		return newEmbedSQLException(error,
 			new Object[] {arg1},

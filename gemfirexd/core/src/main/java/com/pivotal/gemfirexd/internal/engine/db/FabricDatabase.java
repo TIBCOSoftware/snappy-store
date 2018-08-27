@@ -1127,7 +1127,7 @@ public final class FabricDatabase implements ModuleControl,
             String schemaForTable = conflatable.getSchemaForTableNoThrow();
             if (this.memStore.restrictedDDLStmtQueue() &&
                 !(!disallowMetastoreOnLocator &&
-                        schemaForTable != null && Misc.isSnappyHiveMetaTable(schemaForTable))) {
+                    schemaForTable != null && Misc.isSnappyHiveMetaTable(schemaForTable))) {
               continue;
             }
             // check for any merged DDLs

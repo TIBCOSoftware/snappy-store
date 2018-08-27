@@ -1819,7 +1819,7 @@ public final class GemFireXDUtils {
     // this is generated the first time a JVM forms a distributed system
     final String algo;
     if (transformation == null) {
-      transformation = algo = GfxdConstants.PASSWORD_PRIVATE_KEY_ALGO_DEFAULT;
+      algo = GfxdConstants.PASSWORD_PRIVATE_KEY_ALGO_DEFAULT;
     }
     else {
       algo = getPrivateKeyAlgorithm(transformation);
