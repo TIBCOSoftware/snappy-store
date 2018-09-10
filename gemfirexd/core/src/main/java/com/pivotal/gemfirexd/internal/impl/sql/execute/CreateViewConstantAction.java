@@ -181,13 +181,13 @@ class CreateViewConstantAction extends DDLConstantAction
 		SchemaDescriptor sd = getSchemaDescriptorForCreate(dd, activation, schemaName);
 
 		/* Create a new table descriptor.
-		 * (Pass in row locking, even though meaningless for views.)
+		 * (Pass in row locking & Row level security enabled flag, even though meaningless for views.)
 		 */
 		DataDescriptorGenerator ddg = dd.getDataDescriptorGenerator();
 		td = ddg.newTableDescriptor(tableName,
 									sd,
 									tableType,
-									TableDescriptor.ROW_LOCK_GRANULARITY);
+									TableDescriptor.ROW_LOCK_GRANULARITY, TableDescriptor.DEFAULT_ROW_LEVEL_SECURITY_ENABLED);
 
 		dd.addDescriptor(td, sd, DataDictionary.SYSTABLES_CATALOG_NUM, false, tc);
 		toid = td.getUUID();

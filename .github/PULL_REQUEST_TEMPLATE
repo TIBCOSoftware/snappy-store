@@ -6,6 +6,8 @@
 
 (Fill in the details about how this patch was tested)
 
+## Is precheckin with -Pstore clean?
+
 ## ReleaseNotes changes
 
 (Does this change require an entry in ReleaseNotes? If yes, has it been added to it?)

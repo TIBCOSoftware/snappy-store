@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import com.gemstone.gemfire.internal.cache.ExternalTableMetaData;
+import com.gemstone.gemfire.internal.cache.PolicyTableData;
 
 /**
  * Need to keep GemXD independent of any snappy/spark/hive related
@@ -65,12 +66,13 @@ public interface ExternalCatalog {
   HashMap<String, List<String>> getAllStoreTablesInCatalog(boolean skipLocks);
 
   /**
-   *  Removes a table from the external catalog
+   * Removes a table from the external catalog
    */
   boolean removeTable(String schema, String table, boolean skipLocks);
 
   /**
    * Returns the schema in which this catalog is created
+   *
    * @return
    */
   public String catalogSchemaName();
@@ -81,6 +83,11 @@ public interface ExternalCatalog {
    * Get the metadata for all external hive tables (including all their columns).
    */
   public List<ExternalTableMetaData> getHiveTables(boolean skipLocks);
+
+  /**
+   * Get the details of all the policies created.
+   */
+  public List<PolicyTableData> getPolicies(boolean skipLocks);
 
   /**
    * Returns the meta data of the Hive Table

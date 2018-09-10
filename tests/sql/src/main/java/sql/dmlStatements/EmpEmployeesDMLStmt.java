@@ -35,6 +35,7 @@ import javax.sql.rowset.serial.SerialBlob;
 
 import sql.SQLBB;
 import sql.SQLHelper;
+import sql.SQLPrms;
 import sql.sqlutil.ResultSetHelper;
 import util.TestException;
 import util.TestHelper;
@@ -324,8 +325,11 @@ public class EmpEmployeesDMLStmt extends AbstractDMLStmt {
       int tid, boolean isPut) throws SQLException {  
     String blob = null;
     if (picture != null) {
-      if (picture.length() == 0) blob = "empty picture";
-      else blob = ResultSetHelper.convertByteArrayToString(picture.getBytes(1, 
+      if (picture.length() == 0) {
+        blob = "empty picture";
+        if(SQLPrms.isSnappyMode())
+          picture = new SerialBlob(blob.getBytes());
+      } else blob = ResultSetHelper.convertByteArrayToString(picture.getBytes(1, 
           (int)picture.length()));
     }
     

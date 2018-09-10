@@ -44,6 +44,7 @@ package com.pivotal.gemfirexd.internal.impl.sql.catalog;
 
 
 
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.services.cache.CacheManager;
 import com.pivotal.gemfirexd.internal.iapi.services.cache.Cacheable;
@@ -101,7 +102,9 @@ class PermissionsCacheable implements Cacheable
 															tablePermsKey.getTableUUID(),
 															"Y", "N", "N", "N", "N", "N",
 															"N");
-				else if( tablePermsKey.getGrantee().equals( sd.getAuthorizationId()))
+				else if (tablePermsKey.getGrantee().equals(sd.getAuthorizationId())
+						|| Misc.checkLDAPGroupOwnership(sd.getSchemaName(), sd.getAuthorizationId(),
+						tablePermsKey.getGrantee()))
 					permissions = new TablePermsDescriptor( dd,
 															tablePermsKey.getGrantee(),
 															Authorizer.SYSTEM_AUTHORIZATION_ID,
@@ -148,7 +151,9 @@ class PermissionsCacheable implements Cacheable
                                                                   (String) null,
 																  routinePermsKey.getRoutineUUID(),
 																  true);
-					else if( routinePermsKey.getGrantee().equals( sd.getAuthorizationId()))
+					else if (routinePermsKey.getGrantee().equals(sd.getAuthorizationId())
+						|| Misc.checkLDAPGroupOwnership(sd.getSchemaName(), sd.getAuthorizationId(),
+						routinePermsKey.getGrantee()))
 						permissions = new RoutinePermsDescriptor( dd,
 																  routinePermsKey.getGrantee(),
 																  Authorizer.SYSTEM_AUTHORIZATION_ID,

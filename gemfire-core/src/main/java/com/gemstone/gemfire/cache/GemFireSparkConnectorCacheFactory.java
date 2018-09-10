@@ -14,7 +14,7 @@ import com.gemstone.gemfire.internal.cache.GemFireSparkConnectorCacheImpl;
 public class GemFireSparkConnectorCacheFactory extends CacheFactory {
   private final Map<String, String> gfeGridMappings;
   private final Map<String, String> gfeGridPoolProps;
-  private static final String initHelperClass =
+  public static final String initHelperClass =
           "io.snappydata.spark.gemfire.connector.dsinit.internal.DistributedSystemInitializerHelper";
 
   private static final String disconnectListenerClass =

@@ -132,6 +132,7 @@ public class TableDescriptor extends TupleDescriptor
 	public static final char	ROW_LOCK_GRANULARITY = 'R';
 	public static final char	TABLE_LOCK_GRANULARITY = 'T';
 	public static final char	DEFAULT_LOCK_GRANULARITY = ROW_LOCK_GRANULARITY;
+	public static final boolean  DEFAULT_ROW_LEVEL_SECURITY_ENABLED = false;
 
 	/**
 	*/
@@ -151,6 +152,7 @@ public class TableDescriptor extends TupleDescriptor
 	private	GenericDescriptorList	triggerDescriptorList;
 	ViewDescriptor					viewDescriptor;
 	FormatableBitSet							referencedColumnMap;
+	private boolean rowLevelSecurityEnabled;
 
 	/** A list of statistics pertaining to this table-- 
 	 */
@@ -177,7 +179,7 @@ public class TableDescriptor extends TupleDescriptor
 		boolean				onRollbackDeleteRows
     )
 	{
-		this(dataDictionary, tableName, schema, tableType, '\0');
+		this(dataDictionary, tableName, schema, tableType, '\0', false);
 
 		this.onCommitDeleteRows = onCommitDeleteRows;
 		this.onRollbackDeleteRows = onRollbackDeleteRows;
@@ -192,6 +194,7 @@ public class TableDescriptor extends TupleDescriptor
 	 * @param tableType	An integer identifier for the type of the table
 	 *			(base table, view, etc.)
 	 * @param lockGranularity	The lock granularity.
+	 * @param rlsEnabled	Row Level Security Enabled.
 	 */
 
 	public TableDescriptor
@@ -200,7 +203,8 @@ public class TableDescriptor extends TupleDescriptor
 		String				tableName,
 		SchemaDescriptor	schema,
 		int					tableType,
-		char				lockGranularity
+		char				lockGranularity,
+		boolean     rlsEnabled
     )
 	{
 		super( dataDictionary );
@@ -209,6 +213,7 @@ public class TableDescriptor extends TupleDescriptor
 		this.tableName = tableName;
 		this.tableType = tableType;
 		this.lockGranularity = lockGranularity;
+		this.rowLevelSecurityEnabled = rlsEnabled;
 
 		this.conglomerateDescriptorList = new ConglomerateDescriptorList();
 		this.columnDescriptorList = new ColumnDescriptorList();
@@ -435,6 +440,26 @@ public class TableDescriptor extends TupleDescriptor
 	public void	setLockGranularity(char lockGranularity)
 	{
 		this.lockGranularity = lockGranularity;
+	}
+
+	/**
+	 * Sets the row level security flag for the table to the specified value.
+	 *
+	 * @param rowLevelSecurityEnabled	The new rowLevelSecurity flag.
+	 */
+	public void	setRowLevelSecurityEnabledFlag(boolean rowLevelSecurityEnabled)
+	{
+		this.rowLevelSecurityEnabled = rowLevelSecurityEnabled;
+	}
+
+	/**
+	 * Get Row Level Security enabled flag
+	 *
+	 * @return  boolean
+	 */
+	public boolean	getRowLevelSecurityEnabledFlag()
+	{
+		return this.rowLevelSecurityEnabled;
 	}
 
 	/**

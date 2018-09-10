@@ -17,6 +17,7 @@
 
 package com.pivotal.gemfirexd.internal.engine.diag;
 
+import java.sql.Clob;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -32,8 +33,11 @@ import com.pivotal.gemfirexd.internal.engine.GfxdVTITemplateNoAllNodesRoute;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultColumnDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.types.HarmonySerialClob;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSetMetaData;
+import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.shared.common.reference.Limits;
+import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -138,9 +142,27 @@ public class HiveTablesVTI extends GfxdVTITemplate
         return this.currentTableColumn.maxWidth;
       case 14: // NULLABLE
         return this.currentTableColumn.nullable;
+      case 15: // VIEWTEXT
+        // only show for ordinal 0 and avoid repetition
+        if (this.currentTableColumns.nextIndex() == 1) {
+          return this.currentTableMeta.viewText;
+        } else return null;
       default:
         throw new GemFireXDRuntimeException("unexpected column=" +
             columnNumber + " for HiveTablesVTI");
+    }
+  }
+
+  @Override
+  public Clob getClob(int columnNumber) throws SQLException {
+    switch (columnNumber) {
+      case 15: // VIEWTEXT
+        String viewText = getString(columnNumber);
+        return viewText != null ? new HarmonySerialClob(viewText) : null;
+
+      default:
+        throw Util.generateCsSQLException(SQLState.LANG_VTI_BLOB_CLOB_UNSUPPORTED,
+            "HIVETABLES", columnNumber);
     }
   }
 
@@ -176,6 +198,8 @@ public class HiveTablesVTI extends GfxdVTITemplate
 
   private static final String NULLABLE = "NULLABLE";
 
+  private static final String VIEWTEXT = "VIEWTEXT";
+
   private static final ResultColumnDescriptor[] columnInfo = {
       EmbedResultSetMetaData.getResultColumnDescriptor(SCHEMA,
           Types.VARCHAR, false, 128),
@@ -205,6 +229,8 @@ public class HiveTablesVTI extends GfxdVTITemplate
           Types.INTEGER, false),
       EmbedResultSetMetaData.getResultColumnDescriptor(NULLABLE,
           Types.BOOLEAN, false),
+      EmbedResultSetMetaData.getResultColumnDescriptor(VIEWTEXT,
+          Types.CLOB, true),
   };
 
   private static final ResultSetMetaData metadata = new EmbedResultSetMetaData(

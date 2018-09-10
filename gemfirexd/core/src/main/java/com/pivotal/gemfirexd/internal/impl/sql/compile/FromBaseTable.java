@@ -107,6 +107,7 @@ import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.iapi.util.JBitSet;
 import com.pivotal.gemfirexd.internal.iapi.util.ReuseFactory;
 import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
+import com.pivotal.gemfirexd.internal.impl.sql.GenericStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.ActivationClassBuilder;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.ExpressionClassBuilder;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.OrListNode.ElementSpecification;
@@ -3202,6 +3203,10 @@ implements Cloneable
 		}
 		else
 		{
+			if ( ((GenericStatement)compilerContext.getParentPS().getStatement()).getRouteQuery() &&
+					tableDescriptor.getRowLevelSecurityEnabledFlag()) {
+				throw StandardException.newException(SQLState.ROW_LEVEL_SECURITY_ENABLED);
+			}
 			/* This represents a table - query is dependent on the TableDescriptor */
 			compilerContext.createDependency(tableDescriptor);
 

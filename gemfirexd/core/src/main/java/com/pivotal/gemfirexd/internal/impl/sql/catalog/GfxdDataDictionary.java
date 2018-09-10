@@ -60,13 +60,7 @@ import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.CallbackProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.GfxdSystemProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.WanProcedures;
-import com.pivotal.gemfirexd.internal.engine.diag.DiagProcedures;
-import com.pivotal.gemfirexd.internal.engine.diag.DiskStoreIDs;
-import com.pivotal.gemfirexd.internal.engine.diag.HdfsProcedures;
-import com.pivotal.gemfirexd.internal.engine.diag.HiveTablesVTI;
-import com.pivotal.gemfirexd.internal.engine.diag.JSONProcedures;
-import com.pivotal.gemfirexd.internal.engine.diag.SnappyTableStatsVTI;
-import com.pivotal.gemfirexd.internal.engine.diag.SortedCSVProcedures;
+import com.pivotal.gemfirexd.internal.engine.diag.*;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.GfxdShutdownAllRequest;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
@@ -89,9 +83,13 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ConstantAction;
+import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecIndexRow;
+import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
 import com.pivotal.gemfirexd.internal.iapi.store.access.ConglomerateController;
 import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.types.SQLVarchar;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.CreateAsyncEventListenerNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.CreateGatewayReceiverNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.CreateGatewaySenderNode;
@@ -840,7 +838,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
       this.diagVTINames.put(tableName, className);
       final TableDescriptor td = new TableDescriptor(this, tableName,
           sysSchema, TableDescriptor.VTI_TYPE,
-          TableDescriptor.DEFAULT_LOCK_GRANULARITY);
+          TableDescriptor.DEFAULT_LOCK_GRANULARITY, TableDescriptor.DEFAULT_ROW_LEVEL_SECURITY_ENABLED);
       td.setUUID(getUUIDFactory().createUUID());
       long conglomId = Misc.getMemStore().getNextConglomId();
       ConglomerateDescriptor cd = getDataDescriptorGenerator()
@@ -1258,6 +1256,26 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
     {
       // out ResultSet SHOW_USERS()
       super.createSystemProcedureOrFunction("SHOW_USERS", sysUUID, null, null,
+          0, 1, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines, tc,
+          GFXD_SYS_PROC_CLASSNAME, false);
+    }
+
+    {
+      // out ResultSet ENCRYPT_PASSWORD()
+
+      // procedure argument names
+      String[] arg_names = { "USER_ID", "PASSWORD", "TRANSFORMATION", "KEYSIZE" };
+
+      // procedure argument types
+      TypeDescriptor[] arg_types = {
+          CATALOG_TYPE_SYSTEM_IDENTIFIER,
+          DataTypeDescriptor.getCatalogType(Types.VARCHAR,
+              Limits.DB2_VARCHAR_MAXWIDTH),
+          DataTypeDescriptor.getCatalogType(Types.VARCHAR,
+              Limits.DB2_VARCHAR_MAXWIDTH),
+          DataTypeDescriptor.getCatalogType(Types.INTEGER)};
+
+      super.createSystemProcedureOrFunction("ENCRYPT_PASSWORD", sysUUID, arg_names, arg_types,
           0, 1, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines, tc,
           GFXD_SYS_PROC_CLASSNAME, false);
     }
@@ -2000,8 +2018,16 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
     }
 
     {
+
+      // procedure argument names
+      String[] argNames = new String[] { "REMOVE_INCONSISTENT_ENTRIES", "REMOVE_TABLES_WITH_DATA" };
+      // procedure argument types
+      TypeDescriptor[] argTypes = new TypeDescriptor[] {
+          DataTypeDescriptor.getCatalogType(Types.BOOLEAN),
+          DataTypeDescriptor.getCatalogType(Types.BOOLEAN) };
+
       super.createSystemProcedureOrFunction("REPAIR_CATALOG", sysUUID,
-          null, null, 0, 0, RoutineAliasInfo.READS_SQL_DATA,
+          argNames, argTypes, 0, 0, RoutineAliasInfo.READS_SQL_DATA,
           null, newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, true);
     }
 
@@ -2145,6 +2171,8 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
 
   public static final String HIVETABLES_TABLENAME = "HIVETABLES";
 
+  public static final String SYSPOLICIES_TABLENAME = "SYSPOLICIES";
+
   public static final String DISKSTOREIDS_TABLENAME = "DISKSTOREIDS";
 
   public static final String SNAPPY_TABLE_STATS = "TABLESTATS";
@@ -2171,6 +2199,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
       { HIVETABLES_TABLENAME, HiveTablesVTI.class.getName() },
       { DISKSTOREIDS_TABLENAME, DiskStoreIDs.class.getName() },
       { SNAPPY_TABLE_STATS, SnappyTableStatsVTI.class.getName() },
+      { SYSPOLICIES_TABLENAME, SysPoliciesVTI.class.getName() },
   };
 
   private final HashMap<String, TableDescriptor> diagVTIMap =

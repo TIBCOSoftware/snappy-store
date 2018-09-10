@@ -90,6 +90,7 @@ import com.pivotal.gemfirexd.internal.iapi.db.PropertyInfo;
 import com.pivotal.gemfirexd.internal.iapi.error.PublicAPI;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.jdbc.AuthenticationService;
+import com.pivotal.gemfirexd.internal.iapi.reference.Limits;
 import com.pivotal.gemfirexd.internal.iapi.reference.Property;
 import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableBitSet;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
@@ -626,6 +627,72 @@ public class GfxdSystemProcedures extends SystemProcedures {
       EmbedResultSetMetaData.getResultColumnDescriptor("TYPE", Types.VARCHAR,
           false, 8)
   };
+
+
+  /**
+   * Encrypts a password and returns the encrypted text in result set
+   *
+   * @param userID userId whose password is to be encrypted
+   * @param password plain text password
+   * @param transformation algorithm to be used, default is AES, if null is passed for arg
+   * @param keySize encryption key size, default is 128 if a value <=0 is passed for this arg
+   * @param encryptedPwdRs
+   * @throws SQLException
+   */
+  public static void ENCRYPT_PASSWORD(String userID, String password,
+      String transformation, int keySize, ResultSet[] encryptedPwdRs)
+      throws SQLException {
+
+    if (GemFireXDUtils.TraceAuthentication || GemFireXDUtils.TraceSysProcedures) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_AUTHENTICATION,
+          "executing SYS.ENCRYPT_PASSWORD(), " +
+              "userID=" + userID + ", transformation=" + transformation + ", keySize=" + keySize);
+    }
+
+    try {
+      String user = IdUtil.getDBUserId(userID, false);
+
+      String algo = transformation == null
+          ? GfxdConstants.PASSWORD_PRIVATE_KEY_ALGO_DEFAULT : GemFireXDUtils
+          .getPrivateKeyAlgorithm(transformation);
+      if (keySize <= 0) {
+        keySize = GfxdConstants.PASSWORD_PRIVATE_KEY_SIZE_DEFAULT;
+      }
+      GemFireXDUtils.initializePrivateKey(algo, keySize, null);
+
+      final String encryptedString = AuthenticationServiceBase.ID_PATTERN_LDAP_SCHEME_V1 +
+          GemFireXDUtils.encrypt(password, transformation,
+              GemFireXDUtils.getUserPasswordCipherKeyBytes(user,
+                  transformation, keySize));
+
+      final CustomRowsResultSet.FetchDVDRows fetchRows =
+          new CustomRowsResultSet.FetchDVDRows() {
+
+            boolean resultReturned = false;
+
+            @Override
+            public boolean getNext(DataValueDescriptor[] template)
+                throws SQLException, StandardException {
+              if (!resultReturned) {
+                template[0].setValue(userID + " = " + encryptedString);
+                resultReturned = true;
+                return true;
+              }
+              return false;
+            }
+
+          };
+      encryptedPwdRs[0] = new CustomRowsResultSet(fetchRows, encryptColumnInfo);
+    } catch (Throwable t) {
+      throw TransactionResourceImpl.wrapInSQLException(t);
+    }
+  }
+
+  private static final ResultColumnDescriptor[] encryptColumnInfo = {
+      EmbedResultSetMetaData.getResultColumnDescriptor("ENCRYPTED_PASSWORD", Types.VARCHAR,
+          false, Limits.DB2_VARCHAR_MAXWIDTH),
+  };
+
 
   /**
    * Set the percentage of heap at or above which the GFXD server instance is
@@ -2771,33 +2838,32 @@ public class GfxdSystemProcedures extends SystemProcedures {
   }
 
   /**
-   * Repair Snappy catalog (Hive MetaStore and data dictionary) by removing
-   * inconsistent entries in the catalog.
+   * This procedure checks whether catalog is consistent by comparing Hive meta store
+   * with Store data dictionary and optionally repairs the catalog (Hive MetaStore and
+   * data dictionary) by removing inconsistent entries in the catalog. By default this procedure
+   * will add warning messages in the log file for inconsistent entries and currently does not
+   * print anything on console
+   *
+   * @param removeInconsistentEntries if true remove inconsistent entries from catalog
+   * @param removeTablesWithData remove entries for tables even if those contain data (by default not removed)
    * @throws SQLException
    * @throws StandardException
    */
-  public static void REPAIR_CATALOG() throws SQLException, StandardException {
+  public static void REPAIR_CATALOG(Boolean removeInconsistentEntries, Boolean removeTablesWithData)
+      throws SQLException, StandardException {
     if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-          "in procedure REPAIR_CATALOG()");
+          "in procedure REPAIR_CATALOG() removeInconsistentEntries=" +
+              removeInconsistentEntries + " removeTablesWithData=" + removeTablesWithData);
     }
-    final boolean isLead = GemFireXDUtils.getGfxdAdvisor().getMyProfile().hasSparkURL();
-    final Object[] params = new Object[]{1}; //dummy (unused)
-    if (isLead || Misc.getDistributedSystem().isLoner()) {
-      // in case proc invoked on lead directly
-      runCatalogConsistencyChecks();
-    } else {
-      // publish a message if not lead
-      publishMessage(params, false,
-          GfxdSystemProcedureMessage.SysProcMethod.repairCatalog, false, false);
-    }
+    runCatalogConsistencyChecks(removeInconsistentEntries, removeTablesWithData);
   }
 
-  public static void runCatalogConsistencyChecks()
+  private static void runCatalogConsistencyChecks(boolean removeInconsistentEntries, boolean removeTablesWithData)
       throws SQLException, StandardException {
     EmbedConnection conn = GemFireXDUtils.createNewInternalConnection(false);
     try {
-      FabricDatabase.checkSnappyCatalogConsistency(conn);
+      FabricDatabase.checkSnappyCatalogConsistency(conn, removeInconsistentEntries, removeTablesWithData);
       CallbackFactoryProvider.getStoreCallbacks().registerRelationDestroyForHiveStore();
     } finally {
       conn.close();
@@ -2968,6 +3034,8 @@ public class GfxdSystemProcedures extends SystemProcedures {
     } catch (javax.naming.NamingException ne) {
       throw PublicAPI.wrapStandardException(StandardException
           .newException(SQLState.AUTH_INVALID_LDAP_GROUP, ne, ldapGroup));
+    } catch (Throwable t) {
+      throw TransactionResourceImpl.wrapInSQLException(t);
     }
 
     // lock the DataDictionary for writing

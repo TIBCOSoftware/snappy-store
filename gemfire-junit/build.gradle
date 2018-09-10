@@ -78,7 +78,7 @@ dependencies {
 
   // use dunit support from snappydata
   if (subprojectBase == ':') {
-    compile 'io.snappydata:dunit:1.0.3.5'
+    compile 'io.snappydata:dunit:${snappyDunitVersion}'
   } else {
     compile project(':dunit')
   }

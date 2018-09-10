@@ -270,9 +270,15 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
 
       final String protocol;
       // default route-query to true on client connections
-      if (Misc.getMemStoreBooting().isSnappyStore()) {
-        if (!props.containsKey(Attribute.ROUTE_QUERY)) {
+      GemFireStore memStore = Misc.getMemStoreBooting();
+      if (memStore.isSnappyStore()) {
+        String routeQuery = props.getProperty(Attribute.ROUTE_QUERY);
+        if (routeQuery == null || routeQuery.isEmpty()) {
           props.setProperty(Attribute.ROUTE_QUERY, "true");
+        } else if (!Boolean.parseBoolean(routeQuery) && memStore.isRLSEnabled()) {
+          throw Util.generateCsSQLException(SQLState.SECURITY_EXCEPTION_ENCOUNTERED,
+              null, new IllegalStateException("Row level security (" + Property.SNAPPY_ENABLE_RLS +
+                  ") does not allow smart connector mode or with route-query=false"));
         }
         protocol = Attribute.SNAPPY_PROTOCOL;
       } else {

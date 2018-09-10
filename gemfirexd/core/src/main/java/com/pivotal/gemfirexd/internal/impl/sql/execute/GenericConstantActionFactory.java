@@ -164,13 +164,14 @@ public class GenericConstantActionFactory
 		boolean                                         isSet,  
 		int							behavior,
 		boolean						sequential,
-		boolean                     truncateTable
+		boolean                     truncateTable,
+	  int rowLevelSecurityAction
     )
 	{
 		return new	AlterTableConstantAction( sd, tableName, tableId, tableConglomerateId, 
 											  tableType, columnInfo, constraintActions, 
 											  lockGranularity, compressTable,
-											  isSet,behavior, sequential, truncateTable);
+											  isSet,behavior, sequential, truncateTable, rowLevelSecurityAction);
 	}
 
 	/**

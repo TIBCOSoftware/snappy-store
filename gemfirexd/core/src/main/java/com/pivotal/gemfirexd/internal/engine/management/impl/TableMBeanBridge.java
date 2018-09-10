@@ -221,7 +221,8 @@ public class TableMBeanBridge implements Cleanable, Updatable<TableMBeanBridge> 
                 resultSet.getString(SYSTABLESRowFactory.SYSTABLES_ASYNCLISTENERS),
                 resultSet.getString(SYSTABLESRowFactory.SYSTABLES_GATEWAYENABLED),
                 resultSet.getString(SYSTABLESRowFactory.SYSTABLES_SENDERIDS),
-                resultSet.getString(SYSTABLESRowFactory.SYSTABLES_OFFHEAPENABLED)
+                resultSet.getString(SYSTABLESRowFactory.SYSTABLES_OFFHEAPENABLED),
+                resultSet.getString(SYSTABLESRowFactory.SYSTABLES_ROW_LEVEL_SECURITY_ENABLED)
                 );
           } else {
             this.tableMetadata.update(
@@ -244,7 +245,9 @@ public class TableMBeanBridge implements Cleanable, Updatable<TableMBeanBridge> 
                 resultSet.getString(SYSTABLESRowFactory.SYSTABLES_ASYNCLISTENERS),
                 resultSet.getString(SYSTABLESRowFactory.SYSTABLES_GATEWAYENABLED),
                 resultSet.getString(SYSTABLESRowFactory.SYSTABLES_SENDERIDS) ,
-                resultSet.getString(SYSTABLESRowFactory.SYSTABLES_OFFHEAPENABLED));
+                resultSet.getString(SYSTABLESRowFactory.SYSTABLES_OFFHEAPENABLED),
+                resultSet.getString(SYSTABLESRowFactory.SYSTABLES_ROW_LEVEL_SECURITY_ENABLED)
+                );
           }
         }
       } finally {

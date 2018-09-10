@@ -371,7 +371,7 @@ class CreateAliasConstantAction extends DDLConstantAction
 			TableDescriptor td;
 			DataDescriptorGenerator ddg = dd.getDataDescriptorGenerator();
 			td = ddg.newTableDescriptor(aliasName, sd, TableDescriptor.SYNONYM_TYPE,
-						TableDescriptor.DEFAULT_LOCK_GRANULARITY);
+						TableDescriptor.DEFAULT_LOCK_GRANULARITY, TableDescriptor.DEFAULT_ROW_LEVEL_SECURITY_ENABLED);
 			dd.addDescriptor(td, sd, DataDictionary.SYSTABLES_CATALOG_NUM, false, tc);
             break;
 		

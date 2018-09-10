@@ -697,7 +697,11 @@ public interface Property {
         public static final String SQLF_AUTH_PROVIDER = Attribute.SQLF_PREFIX
             + Attribute.AUTH_PROVIDER;
 
-  // GFXD HDFS PROPERTIES FOR EMBEDDED MODE - START 
+  String SNAPPY_ENABLE_RLS = "snappydata.enable-rls";
+
+  String SNAPPY_RESTRICT_TABLE_CREATE = "snappydata.RESTRICT_TABLE_CREATION";
+
+  // GFXD HDFS PROPERTIES FOR EMBEDDED MODE - START
         
   public static final String HADOOP_GFXD_LONER = 
       "hadoop.gemfirexd.loner.";

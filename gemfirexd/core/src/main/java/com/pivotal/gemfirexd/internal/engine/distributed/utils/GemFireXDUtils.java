@@ -1663,9 +1663,9 @@ public final class GemFireXDUtils {
     }
   }
 
-  private static final Pattern CREATE_USER_PATTERN = Pattern.compile(
-      "\\bCREATE_USER\\s*\\([^,]*,([^\\)]*)\\)", Pattern.CASE_INSENSITIVE
-          | Pattern.DOTALL);
+  private static final Pattern USER_PASSWORD_PATTERN = Pattern.compile(
+      "\\b(CREATE_USER\\s*\\([^,]*,([^\\)]*)\\)|ENCRYPT_PASSWORD\\s*\\([^,]*,([^,]*),.*\\))",
+      Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
   /**
    * Encrypt a given message for storage in file or memory.
@@ -1819,7 +1819,7 @@ public final class GemFireXDUtils {
     // this is generated the first time a JVM forms a distributed system
     final String algo;
     if (transformation == null) {
-      transformation = algo = GfxdConstants.PASSWORD_PRIVATE_KEY_ALGO_DEFAULT;
+      algo = GfxdConstants.PASSWORD_PRIVATE_KEY_ALGO_DEFAULT;
     }
     else {
       algo = getPrivateKeyAlgorithm(transformation);
@@ -1901,15 +1901,19 @@ public final class GemFireXDUtils {
    * the password will return null.
    */
   public static String maskCreateUserPasswordFromSQLString(String sql) {
-    Matcher m = CREATE_USER_PATTERN.matcher(sql);
+    Matcher m = USER_PASSWORD_PATTERN.matcher(sql);
     if (m.find()) {
       // check if password is the "?" token
-      String pwd = m.group(1);
+      int groupNo = 2;
+      String pwd = m.group(groupNo);
+      if (pwd == null || pwd.isEmpty()) {
+        pwd = m.group(++groupNo);
+      }
       if ("?".equals(pwd.trim())) {
         return null;
       }
       else {
-        return sql.substring(0, m.start(1)) + "'***'" + sql.substring(m.end(1));
+        return sql.substring(0, m.start(groupNo)) + "'***'" + sql.substring(m.end(groupNo));
       }
     }
     else {

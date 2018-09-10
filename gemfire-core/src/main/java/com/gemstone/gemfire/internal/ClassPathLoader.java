@@ -739,8 +739,38 @@ public final class ClassPathLoader {
       System.err.println(message);
     }
   }
+
+  public ClassLoader asClassLoader() {
+    return new ClassLoader() {
+      public Class<?> loadClass(String name) throws ClassNotFoundException {
+        return ClassPathLoader.this.forName(name);
+      }
+
+      protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+        return ClassPathLoader.this.forName(name);
+      }
+
+      public URL getResource(String name) {
+        return ClassPathLoader.this.getResource(name);
+      }
+
+      public Enumeration<URL> getResources(String name) throws IOException {
+        return ClassPathLoader.this.getResources(name);
+      }
+
+      public InputStream getResourceAsStream(String name) {
+        return ClassPathLoader.this.getResourceAsStream(name);
+      }
+    };
+  }
   
   public static ClassPathLoader getLatest() {
     return latest.get();
   }
+
+  public static final ClassLoader getLatestAsClassLoader() {
+    return ((ClassPathLoader)latest.get()).asClassLoader();
+  }
+
+
 }

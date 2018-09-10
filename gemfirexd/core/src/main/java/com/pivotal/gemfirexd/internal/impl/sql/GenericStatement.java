@@ -150,6 +150,12 @@ public class GenericStatement
         private static final Pattern INSERT_OR_PUT_INTO_TABLE_SELECT_PATTERN =
             Pattern.compile("^\\s*(INSERT|PUT)\\s+INTO\\s+(TABLE)?.*\\s+SELECT\\s+",
                 Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+	      private static final Pattern CREATE_OR_DROP_POLICY_PATTERN =
+			      Pattern.compile("^\\s*(CREATE|DROP)\\s+POLICY\\s+",
+					Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+	      private static final Pattern ALTER_TABLE_TOGGLE_ROW_LEVEL_SECURITY=
+						Pattern.compile("^\\s*ALTER\\s+TABLE?.*\\s+(ENABLE|DISABLE)\\s+",
+								Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
         private static final Pattern DML_TABLE_PATTERN =
             Pattern.compile("^\\s*(INSERT|UPDATE|DELETE|PUT)\\s+",
                 Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
@@ -599,8 +605,11 @@ public class GenericStatement
 					//Route all "insert/put into tab select .. " queries to spark
 
 					boolean isInsertOrPut;
+
 					if (routeQuery && prepareIsolationLevel == Connection.TRANSACTION_NONE && (
 						(isInsertOrPut = INSERT_OR_PUT_INTO_TABLE_SELECT_PATTERN.matcher(source).find()) ||
+						CREATE_OR_DROP_POLICY_PATTERN.matcher(source).find() ||
+						ALTER_TABLE_TOGGLE_ROW_LEVEL_SECURITY.matcher(source).find() ||
 						FUNCTION_DDL_PREFIX.matcher(source).find() ||
 						(ALTER_TABLE_COLUMN.matcher(source).find() &&
 						!ALTER_TABLE_CONSTRAINTS.matcher(source).find()))) {
@@ -700,7 +709,11 @@ public class GenericStatement
 						qt.bindStatement();
 					}
 					catch(StandardException | AssertFailure ex) {
-					  if (routeQuery && !NON_ROUTED_QUERY.matcher(source).find()) {
+				      boolean routeToSnappy = (ex instanceof StandardException && ((StandardException)ex).
+									getMessageId().equals(SQLState.ROW_LEVEL_SECURITY_ENABLED)) ||
+									(routeQuery && !NON_ROUTED_QUERY.matcher(source).find());
+
+					  if (routeToSnappy) {
 					    if (observer != null) {
 					      observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
 					    }
@@ -1593,7 +1606,7 @@ public class GenericStatement
           return  GemFireXDUtils.isSet(this.execFlags, QUERY_HDFS);
         }
 
-        protected boolean getRouteQuery() {
+        public boolean getRouteQuery() {
         	return  GemFireXDUtils.isSet(this.execFlags, ROUTE_QUERY);
         }
 

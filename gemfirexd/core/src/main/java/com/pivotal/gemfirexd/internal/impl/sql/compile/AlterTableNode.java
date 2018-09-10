@@ -60,6 +60,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ConstantAction;
 import com.pivotal.gemfirexd.internal.iapi.types.StringDataValue;
+import com.pivotal.gemfirexd.internal.impl.sql.execute.AlterTableConstantAction;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.ColumnInfo;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.ConstraintConstantAction;
 
@@ -92,6 +93,7 @@ public class AlterTableNode extends DDLStatementNode
 	protected	ColumnInfo[] 				colInfos = null;
 	protected	ConstraintConstantAction[]	conActions = null;
         private boolean isSet;
+  private int rowLevelSecurityAction = AlterTableConstantAction.ROW_LEVEL_SECURITY_UNCHANGED;
 
 
 	/**
@@ -150,7 +152,7 @@ public class AlterTableNode extends DDLStatementNode
 							Object changeType,
 							Object isSet,
 							Object behavior,
-							Object sequential )
+							Object sequential, Object rowLevelSecurity )
 		throws StandardException
 	{
 		initAndCheck(objectName);
@@ -162,6 +164,7 @@ public class AlterTableNode extends DDLStatementNode
 		this.behavior = bh[0];
 		boolean[]	seq = (boolean[]) sequential;
 		this.sequential = seq[0];
+		this.rowLevelSecurityAction = ((Integer)rowLevelSecurity).intValue();
 		// GemStone changes BEGIN
 		this.isSet = ((boolean[])isSet)[0];
 		// GemStone changes END
@@ -394,7 +397,7 @@ public class AlterTableNode extends DDLStatementNode
 											 isSet,
 											 behavior,
         								                 sequential,
- 										         truncateTable);
+ 										         truncateTable, this.rowLevelSecurityAction);
 	}
 
 	/**

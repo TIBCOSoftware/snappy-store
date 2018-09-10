@@ -73,7 +73,7 @@ public class TradeTxHistoryDMLStmt extends AbstractDMLStmt {
     "select * from trade.txhistory ",
     "select oid, cid, sid, type, tid from trade.txhistory where cid >? and sid <? and qty >? and orderTime<? ",
     "select sid, CAST(count(*) as integer) as numRows from trade.txhistory  where cid>? and sid<? GROUP BY sid HAVING count(*) >=1",
-    "select cid, count(sid) from trade.txhistory GROUP BY cid, type",  
+    "select cid, CAST(count(sid) as integer) as sidCount from trade.txhistory GROUP BY cid, type",  
     "select cid, sum(qty*price) as amount from trade.txhistory  where sid<? GROUP BY cid, type ORDER BY amount"
     };
   protected static String[] selectwoaggreate = {
@@ -86,8 +86,8 @@ public class TradeTxHistoryDMLStmt extends AbstractDMLStmt {
     //no uniqkey queries
     "select * from trade.txhistory ",
     "select oid, cid, sid, type, tid from trade.txhistory where cid >? and sid <? and qty >? and orderTime<? ",
-    "select sid, count(*) from trade.txhistory  where cid>? and sid<? GROUP BY sid HAVING count(*) >=1",  
-    "select cid, count(sid) from trade.txhistory GROUP BY cid, type",  
+    "select sid, CAST(count(*) as integer) as numRows from trade.txhistory  where cid>? and sid<? GROUP BY sid HAVING count(*) >=1",  
+    "select cid, CAST(count(sid) as integer) as sidCount from trade.txhistory GROUP BY cid, type",  
     "select cid, sum(qty*price) as amount from trade.txhistory  where sid<? GROUP BY cid, type ORDER BY amount"
   };
   protected static String[] delete = {

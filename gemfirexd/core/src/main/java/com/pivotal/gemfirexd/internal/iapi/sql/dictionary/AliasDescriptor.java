@@ -440,7 +440,8 @@ public final class AliasDescriptor
             // Drop the entry from SYSTABLES as well.
             DataDescriptorGenerator ddg = dd.getDataDescriptorGenerator();
             TableDescriptor td = ddg.newTableDescriptor(aliasName, sd,
-                    TableDescriptor.SYNONYM_TYPE, TableDescriptor.DEFAULT_LOCK_GRANULARITY);
+                    TableDescriptor.SYNONYM_TYPE,
+								TableDescriptor.DEFAULT_LOCK_GRANULARITY, TableDescriptor.DEFAULT_ROW_LEVEL_SECURITY_ENABLED);
             dd.dropTableDescriptor(td, sd, tc);
         }
         else

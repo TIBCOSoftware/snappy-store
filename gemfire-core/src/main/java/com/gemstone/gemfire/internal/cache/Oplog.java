@@ -5172,26 +5172,25 @@ public final class Oplog implements CompactableOplog {
       // TODO should we create an empty KRF anyway?
       return null;
     }
-    
-    KRFEntry[] sortedLiveEntries = new KRFEntry[tlc];
-    int idx = 0;
+
+    ArrayList<KRFEntry> sortedLiveEntries = new ArrayList<>(tlc);
     for (DiskRegionInfo dri : targetRegions) {
           // logger.info(LocalizedStrings.DEBUG, "DEBUG: dri=" + dri);
       if (dri.getDiskRegion() != null) {
-        idx = dri.addLiveEntriesToList(sortedLiveEntries, idx);
+        dri.addLiveEntriesToList(sortedLiveEntries);
             // logger.info(LocalizedStrings.DEBUG, "DEBUG: idx=" + idx);
       }
     }
     // idx is now the length of sortedLiveEntries
-    Arrays.sort(sortedLiveEntries, 0, idx, new Comparator<KRFEntry>() {
+    sortedLiveEntries.sort(new Comparator<KRFEntry>() {
       public int compare(KRFEntry o1, KRFEntry o2) {
         long val1 = o1.getOffsetInOplogForSorting();
         long val2 = o2.getOffsetInOplogForSorting();
         return Long.signum(val1 - val2);
       }
     });
-    
-    return Arrays.asList(sortedLiveEntries).subList(0, idx);
+
+    return sortedLiveEntries;
   }
 
   /**
@@ -8420,7 +8419,7 @@ public final class Oplog implements CompactableOplog {
      * of the next free slot.
      * 
      * @param liveEntries
-     *          the array to fill with the live entries
+     *          the list to fill with the live entries
      * @param idx
      *          the first free slot in liveEntries
      * @param drv
@@ -8428,19 +8427,17 @@ public final class Oplog implements CompactableOplog {
      * @param pendingKrfTags 
      * @return the next free slot in liveEntries
      */
-    public synchronized int addLiveEntriesToList(KRFEntry[] liveEntries,
-        int idx, DiskRegionView drv, Map<DiskEntry, VersionHolder> pendingKrfTags) {
+    public synchronized void addLiveEntriesToList(ArrayList<KRFEntry> liveEntries,
+        DiskRegionView drv, Map<DiskEntry, VersionHolder> pendingKrfTags) {
       DiskEntry de = getPrev();
       while (de != this) {
         VersionHolder tag = null;
         if(pendingKrfTags != null) {
           tag = pendingKrfTags.get(de);
         }
-        liveEntries[idx] = new KRFEntry(drv, de, tag);
-        idx++;
+        liveEntries.add(new KRFEntry(drv, de, tag));
         de = de.getPrev();
       }
-      return idx;
     }
     /* (non-Javadoc)
      * @see com.gemstone.gemfire.internal.cache.DiskEntry#getVersionStamp()
@@ -8772,7 +8769,7 @@ public final class Oplog implements CompactableOplog {
    */
   public interface DiskRegionInfo {
     public DiskRegionView getDiskRegion();
-    public int addLiveEntriesToList(KRFEntry[] liveEntries, int idx);
+    public void addLiveEntriesToList(ArrayList<KRFEntry> liveEntries);
     public void addLive(DiskEntry de);
     public void update(DiskEntry entry);
     public void replaceLive(DiskEntry old, DiskEntry de);
@@ -8869,9 +8866,8 @@ public final class Oplog implements CompactableOplog {
       return this.liveCount.getAndSet(0);
     }
 
-    public int addLiveEntriesToList(KRFEntry[] liveEntries, int idx) {
+    public void addLiveEntriesToList(ArrayList<KRFEntry> liveEntries) {
       // nothing needed since no linked list
-      return idx;
     }
 
     public void afterKrfCreated() {
@@ -8972,14 +8968,11 @@ public final class Oplog implements CompactableOplog {
       return result;
     }
 
-    public int addLiveEntriesToList(KRFEntry[] liveEntries, int idx) {
-      synchronized(liveEntries) {
-        int result = this.liveEntries.addLiveEntriesToList(liveEntries, idx,
+    public void addLiveEntriesToList(ArrayList<KRFEntry> liveEntries) {
+      this.liveEntries.addLiveEntriesToList(liveEntries,
             getDiskRegion(), pendingKrfTags);
-        return result;
-      }
     }
-    
+
     public void afterKrfCreated() {
       synchronized(liveEntries) {
         this.pendingKrfTags = null;

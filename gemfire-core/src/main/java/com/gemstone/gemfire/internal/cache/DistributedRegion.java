@@ -3793,7 +3793,7 @@ public class DistributedRegion extends LocalRegion implements
   }
 
   public static class DiskEntryPage extends DiskPosition {
-    protected RegionEntry entry;
+    protected final RegionEntry entry;
     protected final LocalRegion region;
     final int readerId;
 

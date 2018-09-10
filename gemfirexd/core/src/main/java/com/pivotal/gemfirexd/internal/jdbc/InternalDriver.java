@@ -357,7 +357,25 @@ public abstract class InternalDriver implements ModuleControl {
 			if (conn.isClosed()) {
 				return null;
 			}
-			
+
+			// set defaults for Spark/SnappyData properties on the session
+			if (Boolean.parseBoolean(finfo.getProperty(Attribute.ROUTE_QUERY))) {
+				java.sql.Statement stmt = null;
+				for (String p : finfo.stringPropertyNames()) {
+					if (p.startsWith("spark.") || p.startsWith("snappydata.")) {
+						String v = finfo.getProperty(p);
+						if (v != null) {
+							if (stmt == null) {
+								stmt = conn.createStatement();
+							}
+							stmt.executeUpdate("set " + p + " = " + v);
+						}
+					}
+				}
+				if (stmt != null) {
+					stmt.close();
+				}
+			}
 			{
                           if (isolationLevel == Connection.TRANSACTION_NONE) {
                             conn.setAutoCommit(false, false);

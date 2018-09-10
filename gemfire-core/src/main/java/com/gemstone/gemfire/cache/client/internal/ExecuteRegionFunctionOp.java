@@ -31,6 +31,8 @@ import com.gemstone.gemfire.cache.execute.FunctionException;
 import com.gemstone.gemfire.cache.execute.ResultCollector;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.cache.GemFireSparkConnectorCacheImpl;
 import com.gemstone.gemfire.internal.cache.execute.AbstractExecution;
 import com.gemstone.gemfire.internal.cache.execute.FunctionStats;
 import com.gemstone.gemfire.internal.cache.execute.InternalFunctionException;
@@ -109,22 +111,38 @@ public class ExecuteRegionFunctionOp {
         failedNodes.addAll(failedNodesIds);
       }
     }
-    catch (ServerConnectivityException se) {
-      retryAttempts++;
-      if (logger.fineEnabled()) {
-        logger
-            .fine("ExecuteRegionFunctionOp#execute : Recieved ServerConnectivityException. The exception is "
-                + se + " The retryattempt is : " + retryAttempts + " maxRetryAttempts  " + maxRetryAttempts );
-      }
-      if(se instanceof ServerOperationException){
-        throw se;
-      }
-      if ((retryAttempts > maxRetryAttempts && maxRetryAttempts !=-1) /*|| !function.isHA()*/)
-        throw se;
+    catch (Exception e) {
+      boolean isConnectorBucketMovedException = GemFireCacheImpl.getExisting().
+          isGFEConnectorBucketMovedException(e);
+      if (isConnectorBucketMovedException) {
+        Set<String> failedMembers = ((GemFireSparkConnectorCacheImpl)GemFireCacheImpl.getExisting()).
+            getFailedMember(e);
+        reexecute = true;
+        failedNodes.clear();
+        resultCollector.clearResults();
 
-      reexecuteForServ = true;
-      resultCollector.clearResults();
-      failedNodes.clear();
+        failedNodes.addAll(failedMembers);
+
+      } else if (e instanceof ServerConnectivityException) {
+        ServerConnectivityException se = (ServerConnectivityException)e;
+        retryAttempts++;
+        if (logger.fineEnabled()) {
+          logger
+              .fine("ExecuteRegionFunctionOp#execute : Recieved ServerConnectivityException. The exception is "
+                  + se + " The retryattempt is : " + retryAttempts + " maxRetryAttempts  " + maxRetryAttempts);
+        }
+        if (se instanceof ServerOperationException) {
+          throw se;
+        }
+        if ((retryAttempts > maxRetryAttempts && maxRetryAttempts != -1) /*|| !function.isHA()*/)
+          throw se;
+
+        reexecuteForServ = true;
+        resultCollector.clearResults();
+        failedNodes.clear();
+      } else {
+        throw e;
+      }
     }
     }
     while(reexecuteForServ);
@@ -180,22 +198,38 @@ public class ExecuteRegionFunctionOp {
         failedNodes.addAll(failedNodesIds);
       }
     }
-    catch (ServerConnectivityException se) {
-      if (logger.fineEnabled()) {
-        logger
-            .fine("ExecuteRegionFunctionOp#execute : Recieved ServerConnectivityException. The exception is "
-                + se + " The retryattempt is : " + retryAttempts + " maxRetryAttempts  " + maxRetryAttempts );
-      }
-      if(se instanceof ServerOperationException){
-        throw se;
-      }
-      retryAttempts++;
-      if ((retryAttempts >  maxRetryAttempts && maxRetryAttempts != -1) /*|| !isHA*/)
-        throw se;
+    catch (Exception e) {
+      boolean isConnectorBucketMovedException = GemFireCacheImpl.getExisting().
+          isGFEConnectorBucketMovedException(e);
+      if (isConnectorBucketMovedException) {
+        reexecute = true;
+        resultCollector.clearResults();
+        Set<String> failedMembers = ((GemFireSparkConnectorCacheImpl)GemFireCacheImpl.getExisting()).
+            getFailedMember(e);
+        failedNodes.clear();
 
-      reexecute = true;
-      resultCollector.clearResults();
-      failedNodes.clear();
+        failedNodes.addAll(failedMembers);
+
+      } else if (e instanceof ServerConnectivityException) {
+        ServerConnectivityException se = (ServerConnectivityException)e;
+        if (logger.fineEnabled()) {
+          logger
+              .fine("ExecuteRegionFunctionOp#execute : Recieved ServerConnectivityException. The exception is "
+                  + se + " The retryattempt is : " + retryAttempts + " maxRetryAttempts  " + maxRetryAttempts);
+        }
+        if (se instanceof ServerOperationException) {
+          throw se;
+        }
+        retryAttempts++;
+        if ((retryAttempts > maxRetryAttempts && maxRetryAttempts != -1) /*|| !isHA*/)
+          throw se;
+
+        reexecute = true;
+        resultCollector.clearResults();
+        failedNodes.clear();
+      } else {
+        throw e;
+      }
     }
   }
   while(reexecuteForServ);
@@ -243,22 +277,38 @@ public class ExecuteRegionFunctionOp {
           failedNodes.addAll(failedNodesIds);
         }
       }
-      catch (ServerConnectivityException se) {
-        if (logger.fineEnabled()) {
-          logger
-              .fine("ExecuteRegionFunctionOp#reexecute : Received ServerConnectivity Exception.");
-        }
-        
-        if(se instanceof ServerOperationException){
-          throw se;
-        }
-        retryAttempts++;
-        if (retryAttempts > maxRetryAttempts && maxRetryAttempts != -2) 
-          throw se;
+      catch (Exception e) {
+        boolean isConnectorBucketMovedException = GemFireCacheImpl.getExisting().
+            isGFEConnectorBucketMovedException(e);
+        if (isConnectorBucketMovedException) {
+          reexecute = true;
+          resultCollector.clearResults();
+          Set<String> failedMembers = ((GemFireSparkConnectorCacheImpl)GemFireCacheImpl.getExisting()).
+              getFailedMember(e);
+          failedNodes.clear();
 
-        reexecute = true;
-        resultCollector.clearResults();
-        failedNodes.clear();
+          failedNodes.addAll(failedMembers);
+
+        } else  if (e instanceof ServerConnectivityException){
+          ServerConnectivityException se = (ServerConnectivityException)e;
+          if (logger.fineEnabled()) {
+            logger
+                .fine("ExecuteRegionFunctionOp#reexecute : Received ServerConnectivity Exception.");
+          }
+
+          if (se instanceof ServerOperationException) {
+            throw se;
+          }
+          retryAttempts++;
+          if (retryAttempts > maxRetryAttempts && maxRetryAttempts != -2)
+            throw se;
+
+          reexecute = true;
+          resultCollector.clearResults();
+          failedNodes.clear();
+        } else {
+          throw e;
+        }
       }
     } while (reexecute);
   }
@@ -298,22 +348,38 @@ public class ExecuteRegionFunctionOp {
           failedNodes.addAll(failedNodesIds);
         }
       }
-      catch (ServerConnectivityException se) {
-        if (logger.fineEnabled()) {
-          logger
-              .fine("ExecuteRegionFunctionOp#reexecute : Recieved ServerConnectivityException. The exception is "
-                  + se + " The retryattempt is : " + retryAttempts + " maxRetryAttempts " + maxRetryAttempts);
-        }
-        if(se instanceof ServerOperationException){
-          throw se;
-        }
-        retryAttempts++;
-        if (retryAttempts > maxRetryAttempts && maxRetryAttempts != -2) 
-          throw se;
+      catch (Exception e) {
+        boolean isConnectorBucketMovedException = GemFireCacheImpl.getExisting().
+            isGFEConnectorBucketMovedException(e);
+        if (isConnectorBucketMovedException) {
+          reexecute = true;
+          resultCollector.clearResults();
+          Set<String> failedMembers = ((GemFireSparkConnectorCacheImpl)GemFireCacheImpl.getExisting()).
+              getFailedMember(e);
+          failedNodes.clear();
 
-        reexecute = true;
-        resultCollector.clearResults();
-        failedNodes.clear();
+          failedNodes.addAll(failedMembers);
+
+        } else if (e instanceof  ServerConnectivityException){
+          ServerConnectivityException se = (ServerConnectivityException)e;
+          if (logger.fineEnabled()) {
+            logger
+                .fine("ExecuteRegionFunctionOp#reexecute : Recieved ServerConnectivityException. The exception is "
+                    + e + " The retryattempt is : " + retryAttempts + " maxRetryAttempts " + maxRetryAttempts);
+          }
+          if (se instanceof ServerOperationException) {
+            throw se;
+          }
+          retryAttempts++;
+          if (retryAttempts > maxRetryAttempts && maxRetryAttempts != -2)
+            throw se;
+
+          reexecute = true;
+          resultCollector.clearResults();
+          failedNodes.clear();
+        } else {
+          throw e;
+        }
       }
     } while (reexecute);
   }

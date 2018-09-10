@@ -108,6 +108,8 @@ public interface PoolFactory {
    * <p>Current value: <code>-1</code>.
    */
   public static final int DEFAULT_RETRY_ATTEMPTS = -1;
+
+  public static final int DEFAULT_RETRY_ATTEMPTS_GFE_8_2 = 6;
   
   /**
    * The default frequency, in milliseconds, to ping servers.

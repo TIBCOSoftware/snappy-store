@@ -135,4 +135,16 @@ public interface StoreCallbacks {
    * Get the class loader of the lead
    */
   URLClassLoader getLeadClassLoader();
+
+  /**
+   * Clear SnappySession cache
+   * @param onlyQueryPlanCache
+   */
+  void clearSessionCache(boolean onlyQueryPlanCache);
+
+  /**
+   * drop and recreate those policies who are affected by this ldap group
+   * @param ldapGroup
+   */
+  void refreshPolicies(String ldapGroup);
 }

@@ -23,6 +23,7 @@ import java.net.ConnectException;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.BufferUnderflowException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -52,6 +53,8 @@ import com.gemstone.gemfire.cache.execute.FunctionException;
 import com.gemstone.gemfire.cache.execute.FunctionInvocationTargetException;
 import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.cache.GemFireSparkConnectorCacheImpl;
 import com.gemstone.gemfire.internal.cache.PoolManagerImpl;
 import com.gemstone.gemfire.internal.cache.PutAllPartialResultException;
 import com.gemstone.gemfire.internal.cache.execute.InternalFunctionInvocationTargetException;
@@ -752,6 +755,10 @@ public class OpExecutorImpl implements ExecutablePool {
       //In this case, function will be re executed
       title = null;
       exToThrow = (InternalFunctionInvocationTargetException)e;
+    } else if (GemFireCacheImpl.getExisting().isGFEConnectorBucketMovedException(e)) {
+      //In this case, function will be re executed
+      title = null;
+      exToThrow = new ServerOperationException(e);
     }
     else if (e instanceof FunctionInvocationTargetException) {  
       //in this case function will not be re executed
@@ -804,6 +811,7 @@ public class OpExecutorImpl implements ExecutablePool {
       } else {
         title = e.toString();
         forceThrow = true;
+        invalidateServer = false;
       }
     }
     if (title != null) {
@@ -952,9 +960,12 @@ public class OpExecutorImpl implements ExecutablePool {
 
     } catch (ServerConnectivityException sce) {
       Throwable cause = sce.getCause();
-      if (cause instanceof AuthenticationRequiredException
+
+      // if it is GFEConnector case, assume that for the first time failure the cause is auth attribute
+      // failure & rexecute
+      if ((cause instanceof AuthenticationRequiredException
           && "User authorization attributes not found.".equals(cause
-              .getMessage())) {
+              .getMessage())) || GemFireCacheImpl.getExisting().isSnappyConnectorCache()) {
 
         PoolImpl pool = (PoolImpl)PoolManagerImpl.getPMI().find(
             this.endpointManager.getPoolName());

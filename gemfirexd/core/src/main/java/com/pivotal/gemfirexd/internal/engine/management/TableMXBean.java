@@ -172,23 +172,24 @@ public interface TableMXBean {
     String gatewayEnabled;
     String gatewaySenders;
     String offHeapEnabled;
+    String rowLevelSecurityEnabled;
 
     @ConstructorProperties(value = { "tableId", "tableName", "tableType",
         "schemaId", "tableSchemaname", "lockGranularity", "serverGroups",
         "dataPolicy", "partitionAttrs", "resolver", "expirationAttrs",
         "evictionAttrs", "diskAttrs", "loader", "writer", "listeners",
-        "asyncListeners", "gatewayEnabled", "gatewaySenders", "offHeapEnabled" })
+        "asyncListeners", "gatewayEnabled", "gatewaySenders", "offHeapEnabled","rowLevelSecurityEnabled" })
     public TableMetadata(String tableId, String tableName, String tableType,
         String schemaId, String tableSchemaname, String lockGranularity,
         String serverGroups, String dataPolicy, String partitionAttrs,
         String resolver, String expirationAttrs, String evictionAttrs,
         String diskAttrs, String loader, String writer, String listeners,
         String asyncListeners, String gatewayEnabled, String gatewaySenders,
-        String offHeapEnabled) {
+        String offHeapEnabled, String rowLevelSecurity) {
       update(tableId, tableName, tableType, schemaId, tableSchemaname,
           lockGranularity, serverGroups, dataPolicy, partitionAttrs, resolver,
           expirationAttrs, evictionAttrs, diskAttrs, loader, writer, listeners,
-          asyncListeners, gatewayEnabled, gatewaySenders, offHeapEnabled);
+          asyncListeners, gatewayEnabled, gatewaySenders, offHeapEnabled, rowLevelSecurityEnabled);
     }
 
     public void update(String tableId, String tableName, String tableType,
@@ -197,7 +198,7 @@ public interface TableMXBean {
         String resolver, String expirationAttrs, String evictionAttrs,
         String diskAttrs, String loader, String writer, String listeners,
         String asyncListeners, String gatewayEnabled, String gatewaySenders,
-        String offHeapEnabled) {
+        String offHeapEnabled, String rowLevelSecurityEnabled) {
       this.tableId = tableId;
       this.tableName = tableName;
       this.tableType = tableType;
@@ -218,6 +219,8 @@ public interface TableMXBean {
       this.gatewayEnabled = gatewayEnabled;
       this.gatewaySenders = gatewaySenders;
       this.offHeapEnabled = offHeapEnabled;
+      this.rowLevelSecurityEnabled = rowLevelSecurityEnabled;
+
     }
 
     /**
@@ -360,6 +363,13 @@ public interface TableMXBean {
       return this.offHeapEnabled;
     }
 
+    /**
+     * @return the rowLevelSecurityEnabled
+     */
+    public String getRowLevelSecurityEnabled() {
+      return this.rowLevelSecurityEnabled;
+    }
+
     /*
      * (non-Javadoc)
      * 
@@ -389,6 +399,7 @@ public interface TableMXBean {
       builder.append(", gatewayEnabled=").append(gatewayEnabled);
       builder.append(", gatewaySenders=").append(gatewaySenders);
       builder.append(", offHeapEnabled=").append(this.offHeapEnabled);
+      builder.append(", rowLevelSecurityEnabled=").append(this.rowLevelSecurityEnabled);
       builder.append("]");
       return builder.toString();
     }

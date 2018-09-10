@@ -1,15 +1,22 @@
 package com.gemstone.gemfire.internal.cache;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.StringTokenizer;
 
+import com.gemstone.gemfire.GemFireCacheException;
+import com.gemstone.gemfire.GemFireConfigException;
 import com.gemstone.gemfire.cache.AttributesFactory;
+import com.gemstone.gemfire.cache.CacheFactory;
 import com.gemstone.gemfire.cache.DataPolicy;
+import com.gemstone.gemfire.cache.GemFireSparkConnectorCacheFactory;
 import com.gemstone.gemfire.cache.client.ClientRegionShortcut;
 import com.gemstone.gemfire.cache.client.Pool;
 import com.gemstone.gemfire.cache.client.PoolFactory;
@@ -51,7 +58,8 @@ public class GemFireSparkConnectorCacheImpl extends GemFireCacheImpl {
   private final Map<String, String> gfeGridMappings;
   private final Map<String, String> gfeGridPoolProps;
   private final String defaultGrid;
-
+  private final Method bucketMovedExceptionChecker;
+  private final Method failedMemberExtractor;
 
   public GemFireSparkConnectorCacheImpl(PoolFactory pf, Map<String, String> gfeGridMappings,
       Map<String, String> gfeGridPoolProps,
@@ -60,6 +68,19 @@ public class GemFireSparkConnectorCacheImpl extends GemFireCacheImpl {
     this.defaultGrid = gfeGridMappings.remove(gfeGridNamePrefix);
     this.gfeGridMappings = gfeGridMappings;
     this.gfeGridPoolProps = gfeGridPoolProps;
+    try {
+      Class connClass = Class.forName(GemFireSparkConnectorCacheFactory.initHelperClass);
+      bucketMovedExceptionChecker  = connClass.getMethod("isConnectorBucketMovedException",
+          Throwable.class);
+      failedMemberExtractor = connClass.getMethod("getFailedMember", Throwable.class);
+    } catch(Exception e) {
+      throw new GemFireConfigException("Problem creating GemFireCache", e);
+    }
+  }
+
+  @Override
+  public boolean isSnappyConnectorCache() {
+    return true;
   }
 
   public static GemFireCacheImpl create(Map<String, String> gfeGridMappings,
@@ -115,6 +136,25 @@ public class GemFireSparkConnectorCacheImpl extends GemFireCacheImpl {
       } else {
         gridDefaultPool.create("Default-Grid-Pool");
       }
+    }
+  }
+
+  @Override
+  public boolean isGFEConnectorBucketMovedException(Throwable th) {
+    try {
+      return ((Boolean)bucketMovedExceptionChecker.invoke(null, th)).booleanValue();
+    } catch (Exception e1) {
+      this.getLogger().warning("Exception in invoking method through reflection", e1);
+      return false;
+    }
+  }
+
+  public Set<String> getFailedMember(Throwable th) {
+    try {
+      return (Set<String>)this.failedMemberExtractor.invoke(null, th);
+    } catch (Exception e1) {
+      this.getLogger().warning("Exception in invoking method through reflection", e1);
+      return null;
     }
   }
 

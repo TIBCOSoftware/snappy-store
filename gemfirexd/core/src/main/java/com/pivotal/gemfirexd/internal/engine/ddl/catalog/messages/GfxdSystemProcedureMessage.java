@@ -41,6 +41,7 @@ import com.gemstone.gemfire.internal.cache.Conflatable;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
+import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.pivotal.gemfirexd.Constants;
 import com.pivotal.gemfirexd.internal.catalog.SystemProcedures;
@@ -54,6 +55,7 @@ import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLPreprocess;
 import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.CallbackProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.GfxdSystemProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.AbstractGfxdReplayableMessage;
+import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.sql.catalog.ExtraTableInfo;
 import com.pivotal.gemfirexd.internal.engine.stats.ConnectionStats;
@@ -1437,45 +1439,6 @@ public final class GfxdSystemProcedureMessage extends
       }
     },
 
-    repairCatalog {
-      @Override
-      boolean allowExecution(Object[] params) {
-        // allow execution only on lead node
-        final boolean isLead = GemFireXDUtils.getGfxdAdvisor().getMyProfile().hasSparkURL();
-        return isLead;
-      }
-
-      @Override
-      public void processMessage(Object[] params, DistributedMember sender) throws
-          StandardException {
-        Object repair = params[0];
-        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
-            "GfxdSystemProcedureMessage: invoking REPAIR_CATALOG() procedure");
-        try {
-          GfxdSystemProcedures.runCatalogConsistencyChecks();
-        } catch (SQLException sq) {
-          throw StandardException.unexpectedUserException(sq);
-        }
-      }
-
-      @Override
-      public Object[] readParams(DataInput in, short flags) throws IOException,
-          ClassNotFoundException {
-        return new Object[] { DataSerializer.readInteger(in) };
-      }
-
-      @Override
-      public void writeParams(Object[] params, DataOutput out)
-          throws IOException {
-        DataSerializer.writeInteger((Integer)params[0], out);
-      }
-
-      @Override
-      String getSQLStatement(Object[] params) throws StandardException {
-        return "CALL SYS.REPAIR_CATALOG()";
-      }
-    },
-    
     forceHDFSWriteonlyFileRollover {
 
       @Override
@@ -1814,6 +1777,12 @@ public final class GfxdSystemProcedureMessage extends
           // only this one if user has for multiple groups
         } finally {
           tc.commit();
+          // clear the plan cache on lead node
+          GfxdDistributionAdvisor.GfxdProfile profile = GemFireXDUtils.getGfxdProfile(Misc.getMyId());
+          if (profile != null && profile.hasSparkURL()) {
+            CallbackFactoryProvider.getStoreCallbacks().clearSessionCache(true);
+            CallbackFactoryProvider.getStoreCallbacks().refreshPolicies(ldapGroup);
+          }
           if (disableLogging) {
             tc.disableLogging();
           }

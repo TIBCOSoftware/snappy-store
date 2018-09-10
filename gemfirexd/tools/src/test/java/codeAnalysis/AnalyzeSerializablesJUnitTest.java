@@ -67,7 +67,7 @@ public class AnalyzeSerializablesJUnitTest extends TestCase {
     String gfxdjar = null;
     for (int i=0; i<entries.length; i++) {
       System.out.println("examining '" + entries[i] + "'");
-      if (entries[i].matches(".*snappydata-store-core-[0-9\\.]*(-(SNAPSHOT|BETA|rc))?[0-9\\.]*" +
+      if (entries[i].matches(".*snappydata-store-core-[0-9\\.]*(-(SNAPSHOT|BETA|RC))?[0-9\\.]*" +
           ".jar")) {
         gfxdjar = entries[i];
         break;

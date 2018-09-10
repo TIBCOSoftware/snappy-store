@@ -387,7 +387,8 @@ class CreateTableConstantAction extends DDLConstantAction
 
 		if ( tableType != TableDescriptor.GLOBAL_TEMPORARY_TABLE_TYPE )
 		{
-			td = ddg.newTableDescriptor(tableName, sd, tableType, lockGranularity);
+			td = ddg.newTableDescriptor(tableName, sd, tableType, lockGranularity,
+					TableDescriptor.DEFAULT_ROW_LEVEL_SECURITY_ENABLED);
 // GemStone changes BEGIN
 			// set the DistributionDescriptor before calling dd.addDescriptor()
 			td.setDistributionDescriptor(distributionDesc);

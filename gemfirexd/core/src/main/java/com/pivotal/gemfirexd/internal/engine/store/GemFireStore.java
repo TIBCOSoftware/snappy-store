@@ -2485,6 +2485,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     return getExternalCatalog(true);
   }
 
+  /** fullInit = true is to wait for any catalog inconsistencies to be cleared */
   public ExternalCatalog getExternalCatalog(boolean fullInit) {
     final ExternalCatalog externalCatalog;
     if ((externalCatalog = this.externalCatalog) != null &&
@@ -3066,5 +3067,24 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
 
   public Region<String, String> getGlobalCmdRgn() {
     return this.snappyGlobalCmdRgn;
+  }
+
+  private boolean restrictTableCreation = Boolean.getBoolean(
+      Property.SNAPPY_RESTRICT_TABLE_CREATE);
+
+  private boolean rlsEnabled = Boolean.getBoolean(
+      Property.SNAPPY_ENABLE_RLS);
+
+  // TODO: this internal property is only for some unit tests and should be removed
+  // by updating the tests to use LDAP server (see PolictyTestBase in SnappyData)
+  public static boolean ALLOW_RLS_WITHOUT_SECURITY = false;
+
+  public boolean tableCreationAllowed() {
+    return !this.restrictTableCreation;
+  }
+
+  /** returns true if row-level security is enabled on the system */
+  public boolean isRLSEnabled() {
+    return rlsEnabled;
   }
 }
