@@ -77,6 +77,11 @@ public class GfxdDistributionLocator extends GfxdServerLauncher {
     knownOptions.add(JMX_MANAGER_ARG);
   }
 
+  @Override
+  public boolean hostData() {
+    return false;
+  }
+
   /**
    * Prints usage information of this program.
    */

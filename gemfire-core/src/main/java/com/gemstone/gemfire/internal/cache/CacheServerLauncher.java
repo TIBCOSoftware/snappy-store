@@ -101,6 +101,10 @@ public class CacheServerLauncher extends LauncherBase {
     return this.workingDir.toPath().toAbsolutePath(); // see bug 32548
   }
 
+  public boolean hostData() {
+    return false;
+  }
+
   /**
    * Prints usage information about this program.
    */

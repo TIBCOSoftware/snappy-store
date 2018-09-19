@@ -55,6 +55,11 @@ public class GfxdAgentLauncher extends GfxdServerLauncher {
     super(baseName);
   }
 
+  @Override
+  public boolean hostData() {
+    return false;
+  }
+
   /**
    * Prints usage information of this program.
    */

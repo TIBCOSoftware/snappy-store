@@ -147,7 +147,9 @@ import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl.ChunkType
 import com.gemstone.gemfire.internal.shared.BufferAllocator;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.HeapBufferAllocator;
+import com.gemstone.gemfire.internal.shared.LauncherBase;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import io.snappydata.collection.OpenHashSet;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.Version;
@@ -1167,6 +1169,14 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       // set the buffer allocator for the cache (off-heap or heap)
       String memorySizeStr = getSystem().getConfig().getMemorySize();
       long memorySize = ClientSharedUtils.parseMemorySize(memorySizeStr, 0L, 0);
+      if (memorySize == 0 && (memorySizeStr == null || memorySizeStr.isEmpty())
+          && GemFireVersion.isEnterpriseEdition()) {
+        memorySize = getDefaultOffHeapSize();
+        if (memorySize > 0) {
+          getLogger().info("Using default off-heap size = " +
+              ((double)memorySize / LauncherBase.oneGB) + "GB");
+        }
+      }
       if (memorySize == 0) {
         // check in callbacks
         StoreCallbacks callbacks = CallbackFactoryProvider.getStoreCallbacks();
@@ -1186,6 +1196,16 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
         } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
             InvocationTargetException e) {
           throw new IllegalStateException("Could not configure managed buffer allocator.", e);
+        }
+        try {
+          // test availability of configured memory-size
+          getLogger().info("Configuring off-heap memory-size = " + memorySize);
+          long address = UnsafeHolder.getUnsafe().allocateMemory(memorySize);
+          UnsafeHolder.getUnsafe().freeMemory(address);
+          getLogger().info("Enabled memory-size = " + memorySize);
+        } catch (OutOfMemoryError oome) {
+          throw new IllegalStateException("Provided memory-size = " + memorySize +
+              " is too large: " + oome + ". Please configure a lower value.");
         }
       } else if (memorySize < 0) {
         throw new IllegalArgumentException("Invalid memory-size: " + memorySizeStr);
@@ -1235,6 +1255,28 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
         }
       }
     } // synchronized
+  }
+
+  private long getDefaultOffHeapSize() {
+    // only set when started via launcher
+    CacheServerLauncher launcher = CacheServerLauncher.getCurrentInstance();
+    // a negative value of numLeads indicates that one or more leads have
+    // been started with explicit heap-size/memory-size setting in which case
+    // auto-configuration of memory-size is disabled to keep things simpler
+    int numLeads = Integer.getInteger("snappydata.numLeadsOnNode", 1);
+    if (launcher != null && launcher.hostData() && numLeads >= 0) {
+      long ramSize = LauncherBase.getPhysicalRAMSize();
+      // use up-to 75% of total RAM for hosts having sufficiently large RAMs
+      if (ramSize > LauncherBase.LARGE_RAM_LIMIT) {
+        long usableSize = (ramSize - Runtime.getRuntime().maxMemory()) * 3 / 4;
+        // reserve space for any leads started on this node
+        long reserved = numLeads > 0 ? numLeads * 1048576L *
+            LauncherBase.getDefaultHeapSizeMB(ramSize, false) : 0L;
+        // round to nearest GB
+        return Math.max(((usableSize - reserved + (1L << 29L)) >>> 30L) << 30L, 0L);
+      }
+    }
+    return 0L;
   }
 
   final RawValueFactory getRawValueFactory() {

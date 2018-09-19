@@ -103,6 +103,7 @@ public class GfxdServerLauncher extends CacheServerLauncher {
           + ".PRINT_LAUNCH_COMMAND");
 
   protected Properties bootProps;
+  protected boolean hostData;
 
   private HashMap<String, String> deprecatedAttributes = new HashMap<String, String>(); 
 
@@ -143,6 +144,11 @@ public class GfxdServerLauncher extends CacheServerLauncher {
 	  deprecatedAttributes.put(MAX_HEAP, HEAP_SIZE);
   }
 
+  @Override
+  public boolean hostData() {
+    return this.hostData;
+  }
+
   /**
    * Prints usage information of this program.
    */
@@ -166,6 +172,8 @@ public class GfxdServerLauncher extends CacheServerLauncher {
   protected InternalDistributedSystem connect(Properties props,
       Map<String, Object> options) {
     props = processProperties(props, options, this.defaultLogFileName);
+    this.hostData = !"false".equalsIgnoreCase(
+        props.getProperty(com.pivotal.gemfirexd.Attribute.GFXD_HOST_DATA));
 
     try {
       startServerVM(props);
