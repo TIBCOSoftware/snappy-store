@@ -2904,7 +2904,7 @@ TOKEN [IGNORE_CASE] :
 |	<YEAR: "year">
 |	<JSON: "json">
 |	<CLOB_STRING: "string">
-| <USE: "use">
+|	<USE: "use">
 // GemStone changes END
 }
 
@@ -4003,7 +4003,7 @@ spsSetStatement() throws StandardException :
             statementNode = setMessageLocaleStatement() |
             statementNode = setRoleStatement()
         ) |
-  <USE> statementNode = setSchemaValues()
+	<USE> statementNode = setSchemaValues()
 	{
 		return statementNode;
 	}
@@ -18244,10 +18244,10 @@ nonReservedKeyword()  :
 	|   tok = <MAXWRITEONLYFILESIZE>
  	|   tok = <WRITEONLYFILEROLLOVERINTERVAL>
  	|	tok = <PUT>
- 	|   tok = <JSON>
- 	|   tok = <SPARKHASH>
- 	|   tok = <CLOB_STRING>
- 	|   tok = <USE>
+	|   tok = <JSON>
+	|   tok = <SPARKHASH>
+	|   tok = <CLOB_STRING>
+	|   tok = <USE>
 
 // GemStone changes END
 	)
