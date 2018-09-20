@@ -69,7 +69,6 @@ import com.pivotal.gemfirexd.internal.shared.common.reference.MessageId;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.internal.ClientConfiguration;
 
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -127,39 +126,18 @@ public class ClientDRDADriver implements java.sql.Driver {
 
     }
 
-    private TomcatConnectionPool pool = null;
 
+    /**
+     * {@inheritDoc}
+     */
+    /*public Connection connect(String url, Properties properties) throws SQLException {
+        return getConnection(url, properties);
+    }*/
 
     /**
      * {@inheritDoc}
      */
     public java.sql.Connection connect(String url,
-                                       java.util.Properties properties) throws java.sql.SQLException {
-
-        boolean isPool = Boolean.parseBoolean(properties.getProperty("use-pool"));
-        if (isPool) {
-            if (pool != null) {
-                return pool.getConnection();
-            } else {
-                boolean creatingPool = Boolean.parseBoolean(properties.getProperty("creatingPool"));
-                if (creatingPool) {
-                    return getConnection(url, properties);
-                } else {
-                    pool = TomcatConnectionPool.getInstance(properties);
-                    Connection conn = pool.getConnection();
-                    properties.remove("creatingPool");
-                    return conn;
-                }
-            }
-        } else {
-            return getConnection(url, properties);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public java.sql.Connection getConnection(String url,
                                              java.util.Properties properties) throws java.sql.SQLException {
         if (!acceptsURL(url)) {
             return null;
