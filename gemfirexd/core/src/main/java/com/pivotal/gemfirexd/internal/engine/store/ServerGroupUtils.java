@@ -21,14 +21,14 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.cache.execute.Function;
 import com.gemstone.gemfire.cache.execute.NoMemberFoundException;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.distributed.DistributedSystemDisconnectedException;
-import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.sql.catalog.DistributionDescriptor;
@@ -52,6 +52,8 @@ public final class ServerGroupUtils {
   private ServerGroupUtils() {
     // disallow construction
   }
+
+  public static final String LEADER_SERVERGROUP = "IMPLICIT_LEADER_SERVERGROUP";
 
   /**
    * Set whether this VM is a server or client and distribute to other VMs.
@@ -334,12 +336,12 @@ public final class ServerGroupUtils {
   }
 
   /**
-   * A member executor extension to {@link GetMembersFunctionExecutor} that
-   * checks for non-null member list in addition to using
+   * A member executor extension to {@link FunctionUtils.GetMembersFunctionExecutor}
+   * that checks for non-null member list in addition to using
    * {@link GetFunctionMembers} interface to obtain the set of members for
    * initial message and failover. The array of member IDs on which the
    * execution happened can also be obtained from
-   * {@link FunctionUtils.GfxdExecution#getExecutingMembers()}
+   * {@link FunctionUtils.GfxdExecution#getExecutionNodes()}
    *
    * @author swale
    */

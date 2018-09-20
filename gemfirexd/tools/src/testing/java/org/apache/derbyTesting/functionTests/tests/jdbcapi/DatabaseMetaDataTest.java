@@ -1226,7 +1226,7 @@ public class DatabaseMetaDataTest extends BaseJDBCTestCase {
         rs = getDMDTables(dmd, null, "SYS", "%", viewOnly);
         JDBC.assertEmpty(rs);
 
-        String[] allTables = {"SYNONYM","SYSTEM TABLE","ROW TABLE","VIEW","COLUMN TABLE","EXTERNAL TABLE"};
+        String[] allTables = {"SYNONYM","SYSTEM TABLE","ROW TABLE","VIEW","COLUMN TABLE","EXTERNAL TABLE","VIRTUAL TABLE"};
         rs = getDMDTables(dmd, null, null, null, allTables);
         checkTablesShape(rs);
         assertEquals("Different counts from getTables",
@@ -2033,7 +2033,7 @@ public class DatabaseMetaDataTest extends BaseJDBCTestCase {
 
         JDBC.assertFullResultSet(rs, new String[][]
           {
-            {"SYNONYM"},{"SYSTEM TABLE"},{"ROW TABLE"},{"VIEW"},{"COLUMN TABLE"},{"EXTERNAL TABLE"},
+            {"SYNONYM"},{"SYSTEM TABLE"},{"ROW TABLE"},{"VIEW"},{"COLUMN TABLE"},{"EXTERNAL TABLE"},{"VIRTUAL TABLE"},
           }, true);
         rs.close();
     }
@@ -4420,9 +4420,6 @@ public class DatabaseMetaDataTest extends BaseJDBCTestCase {
      * Test DatabaseMetaData.getProcedures and .getProcedureColumns,
      * Both for JDBC and ODBC.
      * Further testing of these methods is done in lang/LangProcedureTest
-     *
-     *
-     * @throws SQLexception
      */
     // Possible TODO:
     //   rewrite data portion of this test to compare results from

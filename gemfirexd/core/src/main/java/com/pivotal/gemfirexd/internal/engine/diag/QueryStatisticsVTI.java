@@ -71,7 +71,7 @@ public class QueryStatisticsVTI extends GfxdVTITemplate {
             null, GfxdConfigMessage.Operation.GET_QUERYSTATS, null, false);
          */
         final GfxdConfigMessage<TreeMap<String, HashMap<String, Object>>> msg =
-          new GfxdConfigMessage<TreeMap<String, HashMap<String, Object>>>(rc,
+            new GfxdConfigMessage<>(rc,
               Collections.singleton(myId), GfxdConfigMessage
                   .Operation.GET_QUERYSTATS, null, false);
         this.memberResults = msg.executeFunction().values().iterator();
@@ -90,16 +90,16 @@ public class QueryStatisticsVTI extends GfxdVTITemplate {
   }
 
   @Override
-  public boolean getBoolean(int columnNumber) {
+  public boolean getBoolean(int columnNumber) throws SQLException {
     ResultColumnDescriptor desc = columnInfo[columnNumber - 1];
     if (desc.getType().getJDBCTypeId() != Types.BOOLEAN) {
-      dataTypeConversion("boolean", desc);
+      throw dataTypeConversion("boolean", desc);
     }
     final String columnName = desc.getName();
     Object stats = this.currentStats.get(columnName);
     if (stats != null) {
       this.wasNull = false;
-      return ((Boolean)stats).booleanValue();
+      return (Boolean)stats;
     }
     else {
       throw new GemFireXDRuntimeException("unexpected columnName " + columnName
@@ -108,16 +108,16 @@ public class QueryStatisticsVTI extends GfxdVTITemplate {
   }
 
   @Override
-  public int getInt(int columnNumber) {
+  public int getInt(int columnNumber) throws SQLException {
     ResultColumnDescriptor desc = columnInfo[columnNumber - 1];
     if (desc.getType().getJDBCTypeId() != Types.INTEGER) {
-      dataTypeConversion("integer", desc);
+      throw dataTypeConversion("integer", desc);
     }
     final String columnName = desc.getName();
     Object stats = this.currentStats.get(columnName);
     if (stats != null) {
       this.wasNull = false;
-      return ((Integer)stats).intValue();
+      return (Integer)stats;
     }
     else {
       throw new GemFireXDRuntimeException("unexpected columnName " + columnName
@@ -126,16 +126,16 @@ public class QueryStatisticsVTI extends GfxdVTITemplate {
   }
 
   @Override
-  public long getLong(int columnNumber) {
+  public long getLong(int columnNumber) throws SQLException {
     ResultColumnDescriptor desc = columnInfo[columnNumber - 1];
     if (desc.getType().getJDBCTypeId() != Types.BIGINT) {
-      dataTypeConversion("long", desc);
+      throw dataTypeConversion("long", desc);
     }
     final String columnName = desc.getName();
     Object stats = this.currentStats.get(columnName);
     if (stats != null) {
       this.wasNull = false;
-      return ((Long)stats).longValue();
+      return (Long)stats;
     }
     else {
       throw new GemFireXDRuntimeException("unexpected columnName " + columnName
@@ -164,6 +164,7 @@ public class QueryStatisticsVTI extends GfxdVTITemplate {
 
   public static final String QUERYSTRING = "QUERY";
 
+  @SuppressWarnings("WeakerAccess")
   public static final String MEMBERID = "MEMBERID";
 
   public static final String PARAMSSIZE = "PARAMSSIZE";

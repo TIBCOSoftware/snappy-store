@@ -112,6 +112,7 @@ import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLMessage;
 import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLRegionQueue;
 import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.CallbackProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.resolver.GfxdPartitionResolver;
+import com.pivotal.gemfirexd.internal.engine.diag.DiskStoreIDs;
 import com.pivotal.gemfirexd.internal.engine.distributed.DistributedConnectionCloseExecutorFunction;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
@@ -1184,6 +1185,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       FunctionService.registerFunction(new GfxdCacheLoader.GetRowFunction());
       FunctionService.registerFunction(new QueryCancelFunction());
       FunctionService.registerFunction(new SnappyRegionStatsCollectorFunction());
+      FunctionService.registerFunction(new DiskStoreIDs.DiskStoreIDFunction());
 
       final ConnectionSignaller signaller = ConnectionSignaller.getInstance();
       if (logger.fineEnabled()) {
