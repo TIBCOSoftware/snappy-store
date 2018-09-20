@@ -486,6 +486,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   
   private final Object offHeapEvictorLock = new Object();
 
+  private final long memorySize;
   private final BufferAllocator bufferAllocator;
 
   private ResourceEventsListener listener;
@@ -858,7 +859,6 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     }
   }
 
-  private long memorySize;
   /**
    * disables automatic eviction configuration for HDFS regions
    */
@@ -1169,12 +1169,14 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       // set the buffer allocator for the cache (off-heap or heap)
       String memorySizeStr = getSystem().getConfig().getMemorySize();
       long memorySize = ClientSharedUtils.parseMemorySize(memorySizeStr, 0L, 0);
+      boolean usingDefaultMemorySize = false;
       if (memorySize == 0 && (memorySizeStr == null || memorySizeStr.isEmpty())
           && GemFireVersion.isEnterpriseEdition()) {
         memorySize = getDefaultOffHeapSize();
         if (memorySize > 0) {
           getLogger().info("Using default off-heap size = " +
               ((double)memorySize / LauncherBase.oneGB) + "GB");
+          usingDefaultMemorySize = true;
         }
       }
       if (memorySize == 0) {
@@ -1184,33 +1186,47 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
             callbacks.getStoragePoolSize(true);
       }
       if (memorySize > 0) {
-        this.memorySize = memorySize;
         if (!GemFireVersion.isEnterpriseEdition()) {
           throw new IllegalArgumentException("The off-heap column store (enabled by property " +
               "memory-size) is not supported in SnappyData OSS version.");
         }
+        BufferAllocator bufferAllocator;
         try {
           Class<?> clazz = Class.forName("com.gemstone.gemfire.internal.cache.store.ManagedDirectBufferAllocator");
           Method method = clazz.getDeclaredMethod("instance");
-          this.bufferAllocator = (DirectBufferAllocator)method.invoke(null);
-        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
-            InvocationTargetException e) {
-          throw new IllegalStateException("Could not configure managed buffer allocator.", e);
-        }
-        try {
+          bufferAllocator = (DirectBufferAllocator)method.invoke(null);
           // test availability of configured memory-size
           getLogger().info("Configuring off-heap memory-size = " + memorySize);
           long address = UnsafeHolder.getUnsafe().allocateMemory(memorySize);
           UnsafeHolder.getUnsafe().freeMemory(address);
           getLogger().info("Enabled memory-size = " + memorySize);
+        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
+            InvocationTargetException e) {
+          if (usingDefaultMemorySize) {
+            memorySize = 0;
+            bufferAllocator = HeapBufferAllocator.instance();
+          } else {
+            throw new IllegalStateException("Could not configure managed buffer allocator.", e);
+          }
         } catch (OutOfMemoryError oome) {
-          throw new IllegalStateException("Provided memory-size = " + memorySize +
-              " is too large: " + oome + ". Please configure a lower value.");
+          if (usingDefaultMemorySize) {
+            memorySize = 0;
+            bufferAllocator = HeapBufferAllocator.instance();
+            // log a warning
+            getLogger().warning("DISABLED off-heap because default memory-size = " +
+                memorySize + " cannot be allocated: " + oome);
+          } else {
+            throw new IllegalStateException("Provided memory-size = " + memorySize +
+                " is too large: " + oome + ". Please configure a lower value.");
+          }
         }
+        this.memorySize = memorySize;
+        this.bufferAllocator = bufferAllocator;
       } else if (memorySize < 0) {
         throw new IllegalArgumentException("Invalid memory-size: " + memorySizeStr);
       } else {
         // the allocation sizes will be initialized from the heap size
+        this.memorySize = 0;
         this.bufferAllocator = HeapBufferAllocator.instance();
       }
 
