@@ -55,7 +55,6 @@ import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gnu.trove.THashMap;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.stats.ConnectionStats;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.db.Database;
@@ -361,6 +360,11 @@ public abstract class InternalDriver implements ModuleControl {
 			// set defaults for Spark/SnappyData properties on the session
 			if (Boolean.parseBoolean(finfo.getProperty(Attribute.ROUTE_QUERY))) {
 				java.sql.Statement stmt = null;
+				String defaultSchema = finfo.getProperty("use:database");
+				if (defaultSchema != null) {
+					stmt = conn.createStatement();
+					stmt.executeUpdate("set schema \"" + defaultSchema + '"');
+				}
 				for (String p : finfo.stringPropertyNames()) {
 					if (p.startsWith("spark.") || p.startsWith("snappydata.")) {
 						String v = finfo.getProperty(p);
