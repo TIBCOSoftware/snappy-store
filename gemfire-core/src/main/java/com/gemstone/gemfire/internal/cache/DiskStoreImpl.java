@@ -4198,6 +4198,10 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     if (r != null) {
       System.out.print(r);
     }
+    String cbinfo = getDiskInitFile().getColumnBufferInfo();
+    if (cbinfo != null) {
+      System.out.print(cbinfo);
+    }
   }
 
   private int liveEntryCount;
