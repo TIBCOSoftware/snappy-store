@@ -53,7 +53,6 @@ import java.util.regex.Pattern;
 /**
  * Client Driver with the capability to maintain connection
  * pool inside it and return connections from the pool.
- *
  */
 public class ClientPoolDriver extends ClientDriver {
 
@@ -63,8 +62,8 @@ public class ClientPoolDriver extends ClientDriver {
     private final static Pattern URL_PATTERN = Pattern.compile(URL_PREFIX_REGEX +
             SUBPROTOCOL + URL_SUFFIX_REGEX, Pattern.CASE_INSENSITIVE);
 
-    private static Map<Properties,TomcatConnectionPool> poolMap =
-            new ConcurrentHashMap<Properties,TomcatConnectionPool>();
+    private static Map<Properties, TomcatConnectionPool> poolMap =
+            new ConcurrentHashMap<Properties, TomcatConnectionPool>();
 
     public final static String POOL_INITIALIZATION = "init-pool";
 
@@ -127,55 +126,48 @@ public class ClientPoolDriver extends ClientDriver {
     public Connection connect(String url, Properties properties) throws SQLException {
 
         if (!acceptsURL(url)) {
-           return null;
+            return null;
         }
 
         properties = (properties == null) ? getPoolProperties(url) : properties;
         properties.setProperty(TomcatConnectionPool.POOL_URL, url);
         properties.setProperty(TomcatConnectionPool.POOL_DRIVER_NAME, ClientPoolDriver.class.getName());
+
+        boolean creatingPool = Boolean.parseBoolean(properties.getProperty(POOL_INITIALIZATION));
+        if (creatingPool) {
+            return super.connect(url, properties);
+        }
+
         TomcatConnectionPool p = poolMap.get(properties);
         if (p != null) {
             return p.getConnection();
         } else {
-            // Check whether this connection is being created for the initialization of
-            // the pool itself. If yes, don't look for the pool again in the map
-            boolean creatingPool = Boolean.parseBoolean(properties.getProperty(POOL_INITIALIZATION));
-            if (creatingPool) {
-                return super.connect(url, properties);
-            } else {
-                TomcatConnectionPool pool = poolMap.get(properties);
-                if (pool == null) {
-                    synchronized (ClientPoolDriver.class) {
-                        pool = poolMap.get(properties);
-                        if (pool == null) {
-                            pool = new TomcatConnectionPool(properties);
-                            poolMap.put(properties, pool);
-                            Connection conn = pool.getConnection();
-                        }
+            TomcatConnectionPool pool = poolMap.get(properties);
+            if (pool == null) {
+                synchronized (ClientPoolDriver.class) {
+                    pool = poolMap.get(properties);
+                    if (pool == null) {
+                        pool = new TomcatConnectionPool(properties);
+                        poolMap.put(properties, pool);
                     }
                 }
-                Connection conn = pool.getConnection();
-                properties.remove(POOL_INITIALIZATION);
-                return conn;
             }
+            Connection conn = pool.getConnection();
+            return conn;
         }
     }
 
-    private Properties getPoolProperties(String url){
+    private Properties getPoolProperties(String url) {
         Properties properties = new Properties();
         properties.setProperty(TomcatConnectionPool.POOL_DRIVER_NAME, ClientPoolDriver.class.getName());
         properties.setProperty(TomcatConnectionPool.POOL_URL, url);
-        properties.setProperty(TomcatConnectionPool.POOL_INIT_SIZE,"10");
-        properties.setProperty(TomcatConnectionPool.POOL_MAX_ACTIVE,"10");
-        properties.setProperty(TomcatConnectionPool.POOL_MAX_IDLE,"5");
-        properties.setProperty(TomcatConnectionPool.POOL_MAX_WAIT_MILLIS,"10000");
-        properties.setProperty(TomcatConnectionPool.POOL_REMOVE_ABANDONED,"true");
+        properties.setProperty(TomcatConnectionPool.POOL_INIT_SIZE, "10");
+        properties.setProperty(TomcatConnectionPool.POOL_MAX_ACTIVE, "10");
+        properties.setProperty(TomcatConnectionPool.POOL_MAX_IDLE, "5");
+        properties.setProperty(TomcatConnectionPool.POOL_MAX_WAIT_MILLIS, "10000");
+        properties.setProperty(TomcatConnectionPool.POOL_REMOVE_ABANDONED, "true");
         properties.setProperty(TomcatConnectionPool.POOL_REMOVE_ABANDONED_TIMEOUT, "300");
         return properties;
-    }
-
-    public static int getNumberOfPool(){
-        return poolMap.size();
     }
 
 }

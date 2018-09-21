@@ -75,13 +75,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ClientDRDADriver implements java.sql.Driver {
-
     private transient int traceFileSuffixIndex_ = 0;
 
     // support for older jdbc:sqlfire:// URL scheme has now been dropped
-    public static String SNAPPY_PROTOCOL = "jdbc:snappydata:";
-    public static String GEMXD_PROTOCOL = "jdbc:gemfirexd:";
-    public static String DRDA_CONNECTION_PROTOCOL = "DRDA_CONNECTION_PROTOCOL";
+    public static String SNAPPY_PROTOCOL =  "jdbc:snappydata:";
+    public static String GEMXD_PROTOCOL =  "jdbc:gemfirexd:";
+    public static String  DRDA_CONNECTION_PROTOCOL = "DRDA_CONNECTION_PROTOCOL";
 
     protected final static String URL_PREFIX_REGEX = "(" + SNAPPY_PROTOCOL +
             "|" + GEMXD_PROTOCOL + ")";
@@ -105,7 +104,6 @@ public class ClientDRDADriver implements java.sql.Driver {
         try {
             registeredDriver__ = new ClientDRDADriver();
             java.sql.DriverManager.registerDriver(registeredDriver__);
-
         } catch (java.sql.SQLException e) {
             // A null log writer is passed, because jdbc 1 sql exceptions are
             // automatically traced
@@ -123,22 +121,13 @@ public class ClientDRDADriver implements java.sql.Driver {
     }
 
     public ClientDRDADriver() {
-
     }
-
-
-    /**
-     * {@inheritDoc}
-     */
-    /*public Connection connect(String url, Properties properties) throws SQLException {
-        return getConnection(url, properties);
-    }*/
 
     /**
      * {@inheritDoc}
      */
     public java.sql.Connection connect(String url,
-                                             java.util.Properties properties) throws java.sql.SQLException {
+                                       java.util.Properties properties) throws java.sql.SQLException {
         if (!acceptsURL(url)) {
             return null;
         }
@@ -185,7 +174,7 @@ public class ClientDRDADriver implements java.sql.Driver {
             java.util.Properties augmentedProperties = tokenizeURLProperties(url, properties);
 // GemStone changes BEGIN
             // GemFireXD has no DB or DB properties in the name
-            /* link
+            /* (original code)
             database = appendDatabaseAttributes(database,augmentedProperties);
             */
             ClientExceptionUtil.init();
@@ -210,8 +199,6 @@ public class ClientDRDADriver implements java.sql.Driver {
                 if (protocol.equalsIgnoreCase(GEMXD_PROTOCOL)) {
                     augmentedProperties.put(Attribute.ROUTE_QUERY, "false");
                 }
-
-                //return TomcatConnectionPool.getInstance(properties).getConnection();
                 return createThriftConnection(server, port[0], augmentedProperties);
             }
 // GemStone changes END
@@ -238,7 +225,7 @@ public class ClientDRDADriver implements java.sql.Driver {
                             "_driver",
                             traceFileSuffixIndex_++);
 
-            conn = (com.pivotal.gemfirexd.internal.client.net.NetConnection) getFactory().
+            conn = (com.pivotal.gemfirexd.internal.client.net.NetConnection)getFactory().
                     newNetConnection(
                             dncLogWriter,
                             java.sql.DriverManager.getLoginTimeout(),
@@ -247,11 +234,11 @@ public class ClientDRDADriver implements java.sql.Driver {
                             database,
                             augmentedProperties);
 
-        } catch (SqlException se) {
+        } catch(SqlException se) {
             throw se.getSQLException(null /* GemStoneAddition */);
         }
 
-        if (conn.isConnectionNull())
+        if(conn.isConnectionNull())
             return null;
 
         return conn;
@@ -317,9 +304,9 @@ public class ClientDRDADriver implements java.sql.Driver {
          */
         boolean isUserNameAttribute = false;
         String userName = properties.getProperty(Attribute.USERNAME_ATTR);
-        if (userName == null) {
+        if( userName == null) {
             userName = properties.getProperty(Attribute.USERNAME_ALT_ATTR);
-            if (userName != null) {
+            if(userName != null) {
                 isUserNameAttribute = true;
             }
         }
@@ -516,19 +503,19 @@ public class ClientDRDADriver implements java.sql.Driver {
     */
 
     /**
-     * This method returns an Implementation
-     * of ClientJDBCObjectFactory depending on
-     * VM under use
-     * Currently it returns either
-     * ClientJDBCObjectFactoryImpl
-     * (or)
-     * ClientJDBCObjectFactoryImpl40
+     *This method returns an Implementation
+     *of ClientJDBCObjectFactory depending on
+     *VM under use
+     *Currently it returns either
+     *ClientJDBCObjectFactoryImpl
+     *(or)
+     *ClientJDBCObjectFactoryImpl40
      */
 
     public static ClientJDBCObjectFactory getFactory() {
-        if (factoryObject != null)
+        if(factoryObject!=null)
             return factoryObject;
-        if (ClientConfiguration.supportsJDBC40()) {
+        if(ClientConfiguration.supportsJDBC40()) {
             factoryObject = createJDBC40FactoryImpl();
         } else {
             factoryObject = createDefaultFactoryImpl();
@@ -537,14 +524,14 @@ public class ClientDRDADriver implements java.sql.Driver {
     }
 
     /**
-     * Returns an instance of the ClientJDBCObjectFactoryImpl class
+     *Returns an instance of the ClientJDBCObjectFactoryImpl class
      */
     private static ClientJDBCObjectFactory createDefaultFactoryImpl() {
 // GemStone changes BEGIN
         final String factoryName =
                 "com.pivotal.gemfirexd.internal.client.net.ClientJDBCObjectFactoryImpl";
         try {
-            return (ClientJDBCObjectFactory) Class.forName(factoryName)
+            return (ClientJDBCObjectFactory)Class.forName(factoryName)
                     .newInstance();
         } catch (Exception e) {
             final Error err = new NoClassDefFoundError("unable to load JDBC "
@@ -559,15 +546,15 @@ public class ClientDRDADriver implements java.sql.Driver {
     }
 
     /**
-     * Returns an instance of the ClientJDBCObjectFactoryImpl40 class
-     * If a ClassNotFoundException occurs then it returns an
-     * instance of ClientJDBCObjectFactoryImpl
-     * <p>
-     * If a future version of JDBC comes then
-     * a similar method would be added say createJDBCXXFactoryImpl
-     * in which if  the class is not found then it would
-     * return the lower version thus having a sort of cascading effect
-     * until it gets a valid instance
+     *Returns an instance of the ClientJDBCObjectFactoryImpl40 class
+     *If a ClassNotFoundException occurs then it returns an
+     *instance of ClientJDBCObjectFactoryImpl
+     *
+     *If a future version of JDBC comes then
+     *a similar method would be added say createJDBCXXFactoryImpl
+     *in which if  the class is not found then it would
+     *return the lower version thus having a sort of cascading effect
+     *until it gets a valid instance
      */
 
     private static ClientJDBCObjectFactory createJDBC40FactoryImpl() {
@@ -594,7 +581,8 @@ public class ClientDRDADriver implements java.sql.Driver {
         String serverGroup = m.group(3);
         if (serverGroup != null && serverGroup.length() > 0) {
             return SharedUtils.getHostPort(serverGroup, port);
-        } else {
+        }
+        else {
             return SharedUtils.getHostPort(m.group(4), port);
         }
     }
@@ -604,7 +592,8 @@ public class ClientDRDADriver implements java.sql.Driver {
         String propsGroup = m.group(8);
         if (propsGroup != null && propsGroup.length() > 0) {
             return ClientDataSource.tokenizeAttributes(propsGroup, properties);
-        } else {
+        }
+        else {
             return properties;
         }
     }
@@ -614,7 +603,7 @@ public class ClientDRDADriver implements java.sql.Driver {
     }
 
     protected Matcher matchProtocol(String url) {
-        return DRDA_PROTOCOL_PATTERN.matcher(url);
+        return  DRDA_PROTOCOL_PATTERN.matcher(url);
     }
 
     protected java.sql.Connection createThriftConnection(String server, int port,
