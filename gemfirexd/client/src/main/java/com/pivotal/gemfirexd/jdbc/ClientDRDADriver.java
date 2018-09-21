@@ -58,11 +58,6 @@
 
 package com.pivotal.gemfirexd.jdbc;
 
-import java.sql.SQLException;
-import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.client.am.ClientJDBCObjectFactory;
 import com.pivotal.gemfirexd.internal.client.am.SqlException;
@@ -74,6 +69,11 @@ import com.pivotal.gemfirexd.internal.shared.common.reference.MessageId;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import io.snappydata.thrift.internal.ClientConfiguration;
 
+import java.sql.SQLException;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class ClientDRDADriver implements java.sql.Driver {
     private transient int traceFileSuffixIndex_ = 0;
 
@@ -82,16 +82,16 @@ public class ClientDRDADriver implements java.sql.Driver {
     public static String GEMXD_PROTOCOL =  "jdbc:gemfirexd:";
     public static String  DRDA_CONNECTION_PROTOCOL = "DRDA_CONNECTION_PROTOCOL";
 
-  protected final static String URL_PREFIX_REGEX = "(" + SNAPPY_PROTOCOL +
-      "|" + GEMXD_PROTOCOL + ")";
+    protected final static String URL_PREFIX_REGEX = "(" + SNAPPY_PROTOCOL +
+            "|" + GEMXD_PROTOCOL + ")";
     protected final static String URL_SUFFIX_REGEX =
-        "//(([^:]+:[0-9]+)|([^\\[]+\\[[0-9]+\\]))(/(gemfirexd;|snappydata;)?;?(.*)?)?";
+            "//(([^:]+:[0-9]+)|([^\\[]+\\[[0-9]+\\]))(/(gemfirexd;|snappydata;)?;?(.*)?)?";
 
     private final static String DRDA_SUBPROTOCOL = "drda:";
     private final static Pattern DRDA_PROTOCOL_PATTERN = Pattern.compile(
-        URL_PREFIX_REGEX + DRDA_SUBPROTOCOL + "//.*", Pattern.CASE_INSENSITIVE);
+            URL_PREFIX_REGEX + DRDA_SUBPROTOCOL + "//.*", Pattern.CASE_INSENSITIVE);
     private final static Pattern DRDA_URL_PATTERN = Pattern.compile(URL_PREFIX_REGEX
-        + DRDA_SUBPROTOCOL + URL_SUFFIX_REGEX, Pattern.CASE_INSENSITIVE);
+            + DRDA_SUBPROTOCOL + URL_SUFFIX_REGEX, Pattern.CASE_INSENSITIVE);
 
     private static ClientJDBCObjectFactory factoryObject = null;
 
@@ -101,23 +101,23 @@ public class ClientDRDADriver implements java.sql.Driver {
     static protected ClientDRDADriver registeredDriver__ = null;
 
     static {
-      try {
-        registeredDriver__ = new ClientDRDADriver();
-        java.sql.DriverManager.registerDriver(registeredDriver__);
-      } catch (java.sql.SQLException e) {
-        // A null log writer is passed, because jdbc 1 sql exceptions are
-        // automatically traced
-        exceptionsOnLoadDriver__ = ClientExceptionUtil.newSQLException(
-            SQLState.JDBC_DRIVER_REGISTER, e);
-      }
-      // This may possibly hit the race-condition bug of java 1.1.
-      // The Configuration static clause should execute before the following line
-      // does.
-      if (ClientConfiguration.exceptionsOnLoadResources != null) {
-        exceptionsOnLoadDriver__ = Utils.accumulateSQLException(
-            ClientConfiguration.exceptionsOnLoadResources,
-            exceptionsOnLoadDriver__);
-      }
+        try {
+            registeredDriver__ = new ClientDRDADriver();
+            java.sql.DriverManager.registerDriver(registeredDriver__);
+        } catch (java.sql.SQLException e) {
+            // A null log writer is passed, because jdbc 1 sql exceptions are
+            // automatically traced
+            exceptionsOnLoadDriver__ = ClientExceptionUtil.newSQLException(
+                    SQLState.JDBC_DRIVER_REGISTER, e);
+        }
+        // This may possibly hit the race-condition bug of java 1.1.
+        // The Configuration static clause should execute before the following line
+        // does.
+        if (ClientConfiguration.exceptionsOnLoadResources != null) {
+            exceptionsOnLoadDriver__ = Utils.accumulateSQLException(
+                    ClientConfiguration.exceptionsOnLoadResources,
+                    exceptionsOnLoadDriver__);
+        }
     }
 
     public ClientDRDADriver() {
@@ -129,10 +129,10 @@ public class ClientDRDADriver implements java.sql.Driver {
     public java.sql.Connection connect(String url,
                                        java.util.Properties properties) throws java.sql.SQLException {
         if (!acceptsURL(url)) {
-          return null;
+            return null;
         }
         com.pivotal.gemfirexd.internal.client.net.NetConnection conn;
-        try {    
+        try {
             if (exceptionsOnLoadDriver__ != null) {
                 throw exceptionsOnLoadDriver__;
             }
@@ -157,7 +157,7 @@ public class ClientDRDADriver implements java.sql.Driver {
                     slashOrNull = urlTokenizer.nextToken(":/");
                 } catch (java.util.NoSuchElementException e) {
                     // A null log writer is passed, because jdbc 1 sqlexceptions are automatically traced
-                    throw new SqlException(null, 
+                    throw new SqlException(null,
                         new ClientMessageId(SQLState.MALFORMED_URL),
                         url, e);
                 }
@@ -180,8 +180,8 @@ public class ClientDRDADriver implements java.sql.Driver {
             ClientExceptionUtil.init();
             Matcher m = matchURL(url);
             if (!m.matches()) {
-              throw ClientExceptionUtil.newSQLException(
-                  SQLState.MALFORMED_URL, null, url);
+                throw ClientExceptionUtil.newSQLException(
+                        SQLState.MALFORMED_URL, null, url);
             }
             final boolean thriftProtocol = useThriftProtocol(m);
             int[] port = new int[1];
@@ -190,16 +190,16 @@ public class ClientDRDADriver implements java.sql.Driver {
             // if any, in the URL, so just pass empty database name
             String database = "";
             java.util.Properties augmentedProperties = getURLProperties(m,
-                properties);
+                    properties);
             augmentedProperties.put(DRDA_CONNECTION_PROTOCOL, m.group(1));
 
             if (thriftProtocol) {
-              // disable query routing for gemfirexd URL
-              String protocol = m.group(1);
-              if (protocol.equalsIgnoreCase(GEMXD_PROTOCOL)) {
-                augmentedProperties.put(Attribute.ROUTE_QUERY, "false");
-              }
-              return createThriftConnection(server, port[0], augmentedProperties);
+                // disable query routing for gemfirexd URL
+                String protocol = m.group(1);
+                if (protocol.equalsIgnoreCase(GEMXD_PROTOCOL)) {
+                    augmentedProperties.put(Attribute.ROUTE_QUERY, "false");
+                }
+                return createThriftConnection(server, port[0], augmentedProperties);
             }
 // GemStone changes END
 
@@ -209,7 +209,7 @@ public class ClientDRDADriver implements java.sql.Driver {
             } catch (java.lang.NumberFormatException e) {
                 // A null log writer is passed, because jdbc 1 sqlexceptions are automatically traced
                 throw ClientExceptionUtil.newSQLException(
-                    SQLState.LOGLEVEL_FORMAT_INVALID, e, e.getMessage());
+                        SQLState.LOGLEVEL_FORMAT_INVALID, e, e.getMessage());
             }
 
             // Jdbc 1 connections will write driver trace info on a
@@ -227,37 +227,37 @@ public class ClientDRDADriver implements java.sql.Driver {
 
             conn = (com.pivotal.gemfirexd.internal.client.net.NetConnection)getFactory().
                     newNetConnection(
-                    dncLogWriter,
-                    java.sql.DriverManager.getLoginTimeout(),
-                    server,
-                    port[0],
-                    database,
-                    augmentedProperties);
+                            dncLogWriter,
+                            java.sql.DriverManager.getLoginTimeout(),
+                            server,
+                            port[0],
+                            database,
+                            augmentedProperties);
 
         } catch(SqlException se) {
             throw se.getSQLException(null /* GemStoneAddition */);
         }
-        
+
         if(conn.isConnectionNull())
             return null;
-        
+
         return conn;
     }
 
     /*
     /**
-     * Append attributes to the database name except for user/password 
-     * which are sent as part of the protocol, and SSL which is used 
+     * Append attributes to the database name except for user/password
+     * which are sent as part of the protocol, and SSL which is used
      * locally in the client.
      * Other attributes will  be sent to the server with the database name
      * Assumes augmentedProperties is not null
-     * 
+     *
 	 * @param database - Short database name
 	 * @param augmentedProperties - Set of properties to append as attributes
-	 * @return databaseName + attributes (e.g. mydb;create=true) 
+	 * @return databaseName + attributes (e.g. mydb;create=true)
 	 *
 	private String appendDatabaseAttributes(String database, Properties augmentedProperties) {
-	
+
 		StringBuilder longDatabase = new StringBuilder(database);
 		for (Enumeration keys = augmentedProperties.propertyNames();
 			 keys.hasMoreElements() ;)
@@ -280,7 +280,7 @@ public class ClientDRDADriver implements java.sql.Driver {
      * {@inheritDoc}
      */
     public boolean acceptsURL(String url) throws java.sql.SQLException {
-      return (url != null && matchProtocol(url).matches());
+        return (url != null && matchProtocol(url).matches());
     }
 
     /**
@@ -305,27 +305,27 @@ public class ClientDRDADriver implements java.sql.Driver {
         boolean isUserNameAttribute = false;
         String userName = properties.getProperty(Attribute.USERNAME_ATTR);
         if( userName == null) {
-          userName = properties.getProperty(Attribute.USERNAME_ALT_ATTR);
-          if(userName != null) {
-            isUserNameAttribute = true;
-          }
+            userName = properties.getProperty(Attribute.USERNAME_ALT_ATTR);
+            if(userName != null) {
+                isUserNameAttribute = true;
+            }
         }
-        
+
         driverPropertyInfo[0] = new java.sql.DriverPropertyInfo(
-            isUserNameAttribute ? Attribute.USERNAME_ALT_ATTR
-                : Attribute.USERNAME_ATTR, userName);
+                isUserNameAttribute ? Attribute.USERNAME_ALT_ATTR
+                        : Attribute.USERNAME_ATTR, userName);
         // GemStone changes END
-        
+
         driverPropertyInfo[1] =
                 new java.sql.DriverPropertyInfo(Attribute.PASSWORD_ATTR,
                         properties.getProperty(Attribute.PASSWORD_ATTR));
 
         driverPropertyInfo[0].description =
-            SqlException.getMessageUtil().getTextMessage(
-                MessageId.CONN_USERNAME_DESCRIPTION);
+                SqlException.getMessageUtil().getTextMessage(
+                        MessageId.CONN_USERNAME_DESCRIPTION);
         driverPropertyInfo[1].description =
-            SqlException.getMessageUtil().getTextMessage(
-                MessageId.CONN_PASSWORD_DESCRIPTION);
+                SqlException.getMessageUtil().getTextMessage(
+                        MessageId.CONN_PASSWORD_DESCRIPTION);
 
         driverPropertyInfo[0].required = true;
         driverPropertyInfo[1].required = false; // depending on the security mechanism
@@ -413,13 +413,13 @@ public class ClientDRDADriver implements java.sql.Driver {
             if (!urlTokenizer.nextToken("/").equals("/"))
             // A null log writer is passed, because jdbc 1 sqlexceptions are automatically traced
             {
-                throw new SqlException(null, 
+                throw new SqlException(null,
                     new ClientMessageId(SQLState.MALFORMED_URL), url);
             }
             return urlTokenizer.nextToken("/:[");
         } catch (java.util.NoSuchElementException e) {
             // A null log writer is passed, because jdbc 1 sqlexceptions are automatically traced
-                throw new SqlException(null, 
+                throw new SqlException(null,
                     new ClientMessageId(SQLState.MALFORMED_URL), url);
         }
     }
@@ -439,7 +439,7 @@ public class ClientDRDADriver implements java.sql.Driver {
                 /* if (!urlTokenizer.nextToken("/").equals("/")) { *
 // GemStone changes END
                     // A null log writer is passed, because jdbc 1 sqlexceptions are automatically traced
-                    throw new SqlException(null, 
+                    throw new SqlException(null,
                         new ClientMessageId(SQLState.MALFORMED_URL), url);
                 }
                 return Integer.parseInt(port);
@@ -447,12 +447,12 @@ public class ClientDRDADriver implements java.sql.Driver {
                 return 0;
             } else {
                 // A null log writer is passed, because jdbc 1 sqlexceptions are automatically traced
-                throw new SqlException(null, 
+                throw new SqlException(null,
                     new ClientMessageId(SQLState.MALFORMED_URL), url);
             }
         } catch (java.util.NoSuchElementException e) {
             // A null log writer is passed, because jdbc 1 sqlexceptions are automatically traced
-            throw new SqlException(null, 
+            throw new SqlException(null,
                 new ClientMessageId(SQLState.MALFORMED_URL), url, e);
         }
     }
@@ -481,7 +481,7 @@ public class ClientDRDADriver implements java.sql.Driver {
             return databaseName;
         } catch (java.util.NoSuchElementException e) {
             // A null log writer is passed, because jdbc 1 sqlexceptions are automatically traced
-            throw new SqlException(null, 
+            throw new SqlException(null,
                 new ClientMessageId(SQLState.MALFORMED_URL), url, e);
         }
         *
@@ -511,7 +511,7 @@ public class ClientDRDADriver implements java.sql.Driver {
      *(or)
      *ClientJDBCObjectFactoryImpl40
      */
-    
+
     public static ClientJDBCObjectFactory getFactory() {
         if(factoryObject!=null)
             return factoryObject;
@@ -522,29 +522,29 @@ public class ClientDRDADriver implements java.sql.Driver {
         }
         return factoryObject;
     }
-    
+
     /**
      *Returns an instance of the ClientJDBCObjectFactoryImpl class
      */
     private static ClientJDBCObjectFactory createDefaultFactoryImpl() {
 // GemStone changes BEGIN
-      final String factoryName =
-        "com.pivotal.gemfirexd.internal.client.net.ClientJDBCObjectFactoryImpl";
-      try {
-        return (ClientJDBCObjectFactory)Class.forName(factoryName)
-            .newInstance();
-      } catch (Exception e) {
-        final Error err = new NoClassDefFoundError("unable to load JDBC "
-            + "connection factory (ClientJDBCObjectFactoryImpl)");
-        err.initCause(e);
-        throw err;
-      }
+        final String factoryName =
+                "com.pivotal.gemfirexd.internal.client.net.ClientJDBCObjectFactoryImpl";
+        try {
+            return (ClientJDBCObjectFactory)Class.forName(factoryName)
+                    .newInstance();
+        } catch (Exception e) {
+            final Error err = new NoClassDefFoundError("unable to load JDBC "
+                    + "connection factory (ClientJDBCObjectFactoryImpl)");
+            err.initCause(e);
+            throw err;
+        }
         /* (original code)
         return  new ClientJDBCObjectFactoryImpl();
         */
 // GemStone changes END
     }
-    
+
     /**
      *Returns an instance of the ClientJDBCObjectFactoryImpl40 class
      *If a ClassNotFoundException occurs then it returns an
@@ -556,13 +556,13 @@ public class ClientDRDADriver implements java.sql.Driver {
      *return the lower version thus having a sort of cascading effect
      *until it gets a valid instance
      */
-    
+
     private static ClientJDBCObjectFactory createJDBC40FactoryImpl() {
         final String factoryName =
                 "com.pivotal.gemfirexd.internal.client.net.ClientJDBCObjectFactoryImpl40";
         try {
             return (ClientJDBCObjectFactory)
-            Class.forName(factoryName).newInstance();
+                    Class.forName(factoryName).newInstance();
         } catch (ClassNotFoundException cnfe) {
             return createDefaultFactoryImpl();
         } catch (InstantiationException ie) {
@@ -574,47 +574,47 @@ public class ClientDRDADriver implements java.sql.Driver {
 // GemStone changes BEGIN
 
     protected boolean useThriftProtocol(Matcher m) {
-      return false;
+        return false;
     }
 
     protected String getServer(Matcher m, int[] port) {
-      String serverGroup = m.group(3);
-      if (serverGroup != null && serverGroup.length() > 0) {
-        return SharedUtils.getHostPort(serverGroup, port);
-      }
-      else {
-        return SharedUtils.getHostPort(m.group(4), port);
-      }
+        String serverGroup = m.group(3);
+        if (serverGroup != null && serverGroup.length() > 0) {
+            return SharedUtils.getHostPort(serverGroup, port);
+        }
+        else {
+            return SharedUtils.getHostPort(m.group(4), port);
+        }
     }
 
     protected java.util.Properties getURLProperties(Matcher m,
-        java.util.Properties properties) throws SqlException {
-      String propsGroup = m.group(8);
-      if (propsGroup != null && propsGroup.length() > 0) {
-        return ClientDataSource.tokenizeAttributes(propsGroup, properties);
-      }
-      else {
-        return properties;
-      }
+                                                    java.util.Properties properties) throws SqlException {
+        String propsGroup = m.group(8);
+        if (propsGroup != null && propsGroup.length() > 0) {
+            return ClientDataSource.tokenizeAttributes(propsGroup, properties);
+        }
+        else {
+            return properties;
+        }
     }
 
     protected Matcher matchURL(String url) {
-      return DRDA_URL_PATTERN.matcher(url);
+        return DRDA_URL_PATTERN.matcher(url);
     }
 
     protected Matcher matchProtocol(String url) {
-     return  DRDA_PROTOCOL_PATTERN.matcher(url);
+        return  DRDA_PROTOCOL_PATTERN.matcher(url);
     }
 
     protected java.sql.Connection createThriftConnection(String server, int port,
-        java.util.Properties props) throws SQLException {
-      throw new AssertionError(
-          "ClientDRDADriver.createThriftConnection not expected to be invoked");
+                                                         java.util.Properties props) throws SQLException {
+        throw new AssertionError(
+                "ClientDRDADriver.createThriftConnection not expected to be invoked");
     }
 
     // JDBC 4.1 methods since jdk 1.7
     public Logger getParentLogger() {
-      throw new AssertionError("should be overridden in JDBC 4.1");
+        throw new AssertionError("should be overridden in JDBC 4.1");
     }
 // GemStone changes END
 }

@@ -22,8 +22,9 @@ plugins {
 dependencies {
   compile "org.apache.thrift:libthrift:${thriftVersion}"
   compile "net.java.dev.jna:jna:${jnaVersion}"
-
   compile project(subprojectBase + 'snappydata-store-shared')
+  compile 'org.apache.tomcat:tomcat-jdbc:8.5.23'
+  compile group: 'org.apache.tomcat', name: 'tomcat-juli', version: '8.5.23'
 }
 
 task generatePropertiesFiles(dependsOn: 'processResources') {
@@ -63,7 +64,7 @@ jar {
   baseName = 'snappydata-store-client'
   manifest {
     attributes = getManifest('gemfirexdclient', '*',
-        'io.snappydata.jdbc', [])
+       'io.snappydata.jdbc', [])
   }
 
   doFirst {

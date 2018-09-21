@@ -35,11 +35,6 @@
 
 package io.snappydata.jdbc;
 
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.client.am.Utils;
 import com.pivotal.gemfirexd.internal.shared.common.error.ClientExceptionUtil;
@@ -47,6 +42,11 @@ import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.jdbc.ClientDRDADriver;
 import io.snappydata.thrift.internal.ClientConfiguration;
 import io.snappydata.thrift.internal.ClientConnection;
+
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Client driver encapsulating both Thrift and DRDA protocols as per protocol
@@ -57,9 +57,9 @@ public class ClientDriver extends ClientDRDADriver {
 
   private final static String SUBPROTOCOL = "(drda:|thrift:)?";
   private final static Pattern PROTOCOL_PATTERN = Pattern.compile(URL_PREFIX_REGEX +
-      SUBPROTOCOL + "//.*", Pattern.CASE_INSENSITIVE);
+          SUBPROTOCOL + "//.*", Pattern.CASE_INSENSITIVE);
   private final static Pattern URL_PATTERN = Pattern.compile(URL_PREFIX_REGEX +
-      SUBPROTOCOL + URL_SUFFIX_REGEX, Pattern.CASE_INSENSITIVE);
+          SUBPROTOCOL + URL_SUFFIX_REGEX, Pattern.CASE_INSENSITIVE);
 
   static {
     try {
@@ -73,15 +73,15 @@ public class ClientDriver extends ClientDRDADriver {
       // A null log writer is passed, because jdbc 1 sql exceptions are
       // automatically traced
       exceptionsOnLoadDriver__ = ClientExceptionUtil.newSQLException(
-          SQLState.JDBC_DRIVER_REGISTER, e);
+              SQLState.JDBC_DRIVER_REGISTER, e);
     }
     // This may possibly hit the race-condition bug of java 1.1.
     // The Configuration static clause should execute before the following line
     // does.
     if (ClientConfiguration.exceptionsOnLoadResources != null) {
       exceptionsOnLoadDriver__ = Utils.accumulateSQLException(
-          ClientConfiguration.exceptionsOnLoadResources,
-          exceptionsOnLoadDriver__);
+              ClientConfiguration.exceptionsOnLoadResources,
+              exceptionsOnLoadDriver__);
     }
   }
 
@@ -100,9 +100,9 @@ public class ClientDriver extends ClientDRDADriver {
     // for default value else use the protocol string (jdbc:snappydata://
     //   defaults to thrift while jdbc:gemfirexd:// defaults to old DRDA)
     return drdaGroup == null || drdaGroup.length() == 0
-        ? ClientSharedUtils.isUsingThrift(
-        protocol.equalsIgnoreCase(SNAPPY_PROTOCOL))
-        : "thrift:".equalsIgnoreCase(drdaGroup);
+            ? ClientSharedUtils.isUsingThrift(
+            protocol.equalsIgnoreCase(SNAPPY_PROTOCOL))
+            : "thrift:".equalsIgnoreCase(drdaGroup);
   }
 
   @Override
@@ -117,8 +117,8 @@ public class ClientDriver extends ClientDRDADriver {
 
   @Override
   protected java.sql.Connection createThriftConnection(String server, int port,
-      java.util.Properties props) throws SQLException {
+                                                       java.util.Properties props) throws SQLException {
     return ClientConnection.create(server, port, props,
-        DriverManager.getLogWriter());
+            DriverManager.getLogWriter());
   }
 }
