@@ -1,1 +1,2 @@
 io.snappydata.jdbc.ClientDriver
+io.snappydata.jdbc.ClientPoolDriver
