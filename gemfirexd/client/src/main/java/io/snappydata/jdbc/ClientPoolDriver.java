@@ -65,8 +65,6 @@ public class ClientPoolDriver extends ClientDriver {
     private static Map<Properties, TomcatConnectionPool> poolMap =
             new ConcurrentHashMap<Properties, TomcatConnectionPool>();
 
-    public final static String POOL_INITIALIZATION = "init-pool";
-
     static {
         try {
             final ClientDRDADriver driver = registeredDriver__;
@@ -126,49 +124,28 @@ public class ClientPoolDriver extends ClientDriver {
     public Connection connect(String url, Properties properties) throws SQLException {
 
         if (!acceptsURL(url)) {
-            System.out.println("Returning null connection From ClientPoolDriver ");
             return null;
         }
 
-        properties = (properties == null) ? getPoolProperties(url) : properties;
-        properties.setProperty(TomcatConnectionPool.POOL_URL, url);
-        properties.setProperty(TomcatConnectionPool.POOL_DRIVER_NAME, ClientPoolDriver.class.getName());
-
-        boolean creatingPool = Boolean.parseBoolean(properties.getProperty(POOL_INITIALIZATION));
-        if (creatingPool) {
-            return super.connect(url, properties);
-        }
+        properties = (properties == null) ? new Properties() : properties;
+        String clientDriverURL = url.replace("pool:", "");
+        properties.setProperty(TomcatConnectionPool.PoolProps.URL.key, clientDriverURL);
+        properties.setProperty(TomcatConnectionPool.PoolProps.DRIVER_NAME.key, ClientDriver.class.getName());
 
         TomcatConnectionPool p = poolMap.get(properties);
         if (p != null) {
             return p.getConnection();
         } else {
-            TomcatConnectionPool pool = poolMap.get(properties);
-            if (pool == null) {
-                synchronized (ClientPoolDriver.class) {
-                    pool = poolMap.get(properties);
-                    if (pool == null) {
-                        pool = new TomcatConnectionPool(properties);
-                        poolMap.put(properties, pool);
-                    }
+            TomcatConnectionPool pool;
+            synchronized (ClientPoolDriver.class) {
+                pool = poolMap.get(properties);
+                if (pool == null) {
+                    pool = new TomcatConnectionPool(properties);
+                    poolMap.put(properties, pool);
                 }
             }
             Connection conn = pool.getConnection();
             return conn;
         }
     }
-
-    private Properties getPoolProperties(String url) {
-        Properties properties = new Properties();
-        properties.setProperty(TomcatConnectionPool.POOL_DRIVER_NAME, ClientPoolDriver.class.getName());
-        properties.setProperty(TomcatConnectionPool.POOL_URL, url);
-        properties.setProperty(TomcatConnectionPool.POOL_INIT_SIZE, "10");
-        properties.setProperty(TomcatConnectionPool.POOL_MAX_ACTIVE, "10");
-        properties.setProperty(TomcatConnectionPool.POOL_MAX_IDLE, "5");
-        properties.setProperty(TomcatConnectionPool.POOL_MAX_WAIT_MILLIS, "10000");
-        properties.setProperty(TomcatConnectionPool.POOL_REMOVE_ABANDONED, "true");
-        properties.setProperty(TomcatConnectionPool.POOL_REMOVE_ABANDONED_TIMEOUT, "300");
-        return properties;
-    }
-
 }
