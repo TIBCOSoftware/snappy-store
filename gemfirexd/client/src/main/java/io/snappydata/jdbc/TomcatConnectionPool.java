@@ -39,7 +39,7 @@ class TomcatConnectionPool {
 
     static enum PoolProps {
 
-        DRIVER_NAME("pool-driverClassName", ""), // Compulsory field user must provide
+        DRIVER_NAME("pool-driverClassName", ClientDriver.class.getName()),
         URL("pool-url", ""), // Compulsory field user must provide
         USER("pool-user", "APP"),
         PASSWORD("pool-password", "APP"),
@@ -47,7 +47,7 @@ class TomcatConnectionPool {
         MAX_ACTIVE("pool-maxActive", "100"),
         MIN_IDLE("pool-minIdle", "10"),  // Default value is derived from initialSize:10
         MAX_IDLE("pool-maxIdle", "100"),  // Default value is maxActive:100
-        MAX_WAIT_MILLIS("pool-maxWaitMillis", "30000"),
+        MAX_WAIT("pool-maxWait", "30000"),
         REMOVE_ABANDONED("pool-removeAbandoned", "false"),
         REMOVE_ABANDONED_TIMEOUT("pool-removeAbandonedTimeout", "60"),
         TIME_BETWEEN_EVICTION_RUNS_MILLIS("pool-timeBetweenEvictionRunsMillis", "60000"),
@@ -78,13 +78,7 @@ class TomcatConnectionPool {
      * @throws SQLException
      */
     public Connection getConnection() throws SQLException {
-        Connection conn = null;
-        try {
-            conn = datasource.getConnection();
-        } catch (Exception e) {
-            System.out.println("Exception while creating connection connection pool");
-        }
-        return conn;
+        return datasource.getConnection();
     }
 
     /**
@@ -149,8 +143,8 @@ class TomcatConnectionPool {
         String minIdle = prop.getProperty(PoolProps.MIN_IDLE.key, PoolProps.MIN_IDLE.defValue);
         poolProperties.setMaxIdle(Integer.parseInt(minIdle));
 
-        String waitTime = prop.getProperty(PoolProps.MAX_WAIT_MILLIS.key,
-                PoolProps.MAX_WAIT_MILLIS.defValue);
+        String waitTime = prop.getProperty(PoolProps.MAX_WAIT.key,
+                PoolProps.MAX_WAIT.defValue);
         poolProperties.setMaxWait(Integer.parseInt(waitTime));
 
         String removeAbandoned = prop.getProperty(PoolProps.REMOVE_ABANDONED.key,
