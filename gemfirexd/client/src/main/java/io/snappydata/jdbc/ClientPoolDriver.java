@@ -128,7 +128,7 @@ public class ClientPoolDriver extends ClientDriver {
         }
 
         properties = (properties == null) ? new Properties() : properties;
-        String clientDriverURL = url.replace("pool:", "");
+        String clientDriverURL = url.toLowerCase().replace("pool:", "");
         properties.setProperty(TomcatConnectionPool.PoolProps.URL.key, clientDriverURL);
         properties.setProperty(TomcatConnectionPool.PoolProps.DRIVER_NAME.key, ClientDriver.class.getName());
 
