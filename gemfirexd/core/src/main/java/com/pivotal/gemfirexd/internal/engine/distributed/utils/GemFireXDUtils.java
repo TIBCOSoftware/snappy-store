@@ -906,11 +906,10 @@ public final class GemFireXDUtils {
       boolean remoteConnection) throws StandardException {
     try {
       final Properties props = new Properties();
-      props.putAll(AuthenticationServiceBase.getPeerAuthenticationService()
-          .getBootCredentials());
-      boolean isSnappy = Misc.getMemStore().isSnappyStore();
-      String protocol = isSnappy ? Attribute.SNAPPY_PROTOCOL : Attribute.PROTOCOL;
-      final EmbedConnection conn = (EmbedConnection)InternalDriver
+      GemFireStore memStore = Misc.getMemStoreBooting();
+      props.putAll(memStore.getDatabase().getAuthenticationService().getBootCredentials());
+      String protocol = memStore.isSnappyStore() ? Attribute.SNAPPY_PROTOCOL : Attribute.PROTOCOL;
+      final EmbedConnection conn = InternalDriver
           .activeDriver().connect(protocol, props,
               EmbedConnection.CHILD_NOT_CACHEABLE,
               EmbedConnection.CHILD_NOT_CACHEABLE, remoteConnection, Connection.TRANSACTION_NONE);

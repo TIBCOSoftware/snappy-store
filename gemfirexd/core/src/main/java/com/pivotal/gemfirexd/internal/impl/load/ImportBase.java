@@ -41,11 +41,13 @@
 package com.pivotal.gemfirexd.internal.impl.load;
 
 import java.io.File;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.PreparedStatement;
-import java.sql.Connection;
-import java.util.*;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.Properties;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -55,11 +57,12 @@ import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.TransactionFlag;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentTLongObjectHashMap;
+import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.callbacks.ImportErrorLogger;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdLockSet;
@@ -73,9 +76,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.util.IdUtil;
 import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
 // GemStone changes BEGIN
-import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
-import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.AuthenticationServiceBase;
 import com.pivotal.gemfirexd.internal.impl.load.MTImport.QueueData;
 import com.pivotal.gemfirexd.internal.jdbc.InternalDriver;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
@@ -250,7 +251,7 @@ public class ImportBase extends ImportAbstract{
 	 *                         appended.(0 - append , > 0 Replace the data)
      * @param lobsInExtFile true, if the lobs data is stored in an external file,
      *                      and the reference is stored in the main import file.
- 	 * @exception SQL Exception on errors
+	 * @exception SQLException on errors
 	 */
 	public static void importData(Connection connection, String schemaName,
                                   String tableName, String insertColumnList, 
@@ -372,6 +373,7 @@ public class ImportBase extends ImportAbstract{
       else {
         final AtomicReference<Throwable> err = new AtomicReference<Throwable>();
         final int isolation = connection.getTransactionIsolation();
+        final GemFireStore memStore = Misc.getMemStoreBooting();
         final long[] queueId = new long[] { MTImport.QUEUE_INVALID_ID };
         ImportBase importer = null;
         final int lccFlags;
@@ -415,12 +417,13 @@ public class ImportBase extends ImportAbstract{
           }
         };
         try {
+          final Properties props = new Properties();
+          props.putAll(memStore.getDatabase().getAuthenticationService()
+              .getBootCredentials());
           // create the connections for threads to use
           for (numConns = 0; numConns < numThreads; numConns++) {
             EmbedConnection conn = (EmbedConnection)InternalDriver
-                .activeDriver().connect(Attribute.PROTOCOL,
-                    AuthenticationServiceBase.getPeerAuthenticationService()
-                        .getBootCredentials());
+                .activeDriver().connect(Attribute.PROTOCOL, props);
             // set the isolation level on the connection the same
             // as parent connection
             if (isolation != conn.getTransactionIsolation()) {
@@ -487,8 +490,8 @@ public class ImportBase extends ImportAbstract{
             // last row in batch is null to indicate actual length
             char[][] batch = new char[bufSize + 1][];
             char[] line;
-            final GfxdHeapThresholdListener thresholdListener = Misc
-                .getMemStore().thresholdListener();
+            final GfxdHeapThresholdListener thresholdListener =
+                memStore.thresholdListener();
             int bufIndex = 0;
             int batchSize = 0;
             int startLineNumber = 0;

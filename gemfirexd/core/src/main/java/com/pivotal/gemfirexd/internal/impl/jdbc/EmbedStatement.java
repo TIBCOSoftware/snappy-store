@@ -2064,6 +2064,10 @@ public class EmbedStatement extends ConnectionChild
           connForRemote = false;
           tran = null;
         }
+        if (act != null) {
+          // wait for stats sampler initialization
+          Misc.waitForSamplerInitialization();
+        }
         // set autocommit to true temporarily for DDLs in the nested transaction
         if (act != null && act instanceof DDLConstantAction) {
           if (!connForRemote) {

@@ -56,11 +56,7 @@ import com.gemstone.gemfire.security.Authenticator;
 // GemStone changes END
 
 
-
-
-
-
-
+import com.gemstone.gemfire.security.GemFireSecurityException;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.Constants;
 import com.pivotal.gemfirexd.auth.callback.CredentialInitializer;
@@ -263,12 +259,27 @@ public abstract class AuthenticationServiceBase
                           properties.put(DistributionConfig.GEMFIRE_PREFIX
                               + DistributionConfig.SECURITY_PEER_AUTHENTICATOR_NAME, thisClass
                               + factoryMethodForGFEAuth);
-                    
+
                           //convert 'gemfirexd.security.*' props to GFE's format gemfire.security-*
                           Properties transformed = SecurityUtils.transformGFXDToGemFireProperties(properties);
                           properties.putAll(transformed);
                           isShuttingDown = false;
                         }
+
+                        // cache the boot time credentials here
+                        try {
+                          Properties credentials = getCredentials(properties,
+                              GemFireStore.getMyId(), isPeerAuthenticationService);
+                          bootCredentials.putAll(credentials);
+
+                          if (GemFireXDUtils.TraceAuthentication) {
+                            SanityManager.DEBUG_PRINT(AuthenticationTrace,
+                                "AuthenticationServiceBase: storing boot credentials of size "
+                                    + bootCredentials.size());
+                          }
+                        } catch (GemFireSecurityException ignored) {
+                        }
+
                         this.bootProperties = properties;
                         // GemStone changes END
 	 }
@@ -888,7 +899,7 @@ public abstract class AuthenticationServiceBase
     public static void setPeerAuthenticationService(AuthenticationServiceBase service) {
       peerAuthenticationService = service;
     }
-    
+
     public static void setIsShuttingDown(boolean isClosing) {
         if (peerAuthenticationService != null) {
           if (SanityManager.DEBUG) {
@@ -1079,22 +1090,9 @@ public abstract class AuthenticationServiceBase
       GemFireXDUtils.dumpProperties(credentials,
           "authentication credentials",
           AuthenticationTrace, GemFireXDUtils.TraceAuthentication, null);
-  
-      // catch the boot time credentials here.
-      if (bootCredentials.isEmpty()) {
-        
-        bootCredentials.putAll(credentials);
-
-        if (GemFireXDUtils.TraceAuthentication) {
-          SanityManager.DEBUG_PRINT(AuthenticationTrace,
-              "AuthenticationServiceBase: storing boot credentials of size "
-                  + bootCredentials.size());
-        }
-      }
-  
       return credentials;
     }
-  
+
     /**
      * {@link AuthInitialize#init(LogWriter, LogWriter)}
      */
