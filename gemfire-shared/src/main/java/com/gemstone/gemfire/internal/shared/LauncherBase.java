@@ -159,10 +159,10 @@ public abstract class LauncherBase {
 
     InetAddress host = null;
     try {
-      host = ClientSharedUtils.getLocalHost();
+      host = InetAddress.getLocalHost();
     } catch (Exception ex) {
       try {
-        host = InetAddress.getLocalHost();
+        host = ClientSharedUtils.getLocalHost();
       } catch (Exception ignored) {
       }
     }

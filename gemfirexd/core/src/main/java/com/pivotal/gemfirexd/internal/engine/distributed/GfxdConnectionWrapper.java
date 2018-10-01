@@ -55,7 +55,6 @@ import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSet;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedStatement;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
-import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.AuthenticationServiceBase;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.ResultSetStatisticsVisitor;
 import com.pivotal.gemfirexd.internal.jdbc.InternalDriver;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
@@ -172,12 +171,10 @@ public final class GfxdConnectionWrapper {
     // try to reboot the JVM failing later with arbitrary errors (#47367)
     Misc.getGemFireCache().getCancelCriterion().checkCancelInProgress(null);
     final Properties props = new Properties(prop);
-    props.putAll(AuthenticationServiceBase.getPeerAuthenticationService()
-        .getBootCredentials());
-    GemFireStore store = Misc.getMemStoreBootingNoThrow();
-    boolean isStoreSnappy = store != null ? store.isSnappyStore() : false;
-    String protocol = !isStoreSnappy ? Attribute.PROTOCOL : Attribute.SNAPPY_PROTOCOL;
-    final EmbedConnection conn = (EmbedConnection)InternalDriver.activeDriver()
+    GemFireStore store = Misc.getMemStoreBooting();
+    props.putAll(store.getDatabase().getAuthenticationService().getBootCredentials());
+    String protocol = store.isSnappyStore() ? Attribute.SNAPPY_PROTOCOL : Attribute.PROTOCOL;
+    final EmbedConnection conn = InternalDriver.activeDriver()
         .connect(protocol, props,
             EmbedConnection.CHILD_NOT_CACHEABLE, this.incomingConnId, true, Connection.TRANSACTION_NONE);
     conn.setInternalConnection();

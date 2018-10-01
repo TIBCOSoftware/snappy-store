@@ -360,8 +360,6 @@ public final class DirectChannel {
         ((tssFlags & ConnectionTable.IS_READER_TSS_MASK) != 0);
 
     msg.setProcessorType(isReaderThread);
-    //Connections we actually sent messages to.
-    final List totalSentCons = new ArrayList(destinations.length);
     boolean interrupted = false;
 
     long ackTimeout = 0;
@@ -403,11 +401,12 @@ public final class DirectChannel {
     final boolean orderedMsg = msg.orderedDelivery(threadOwnsResources)
         || ((tssFlags & ConnectionTable.SHOULD_DOMINO_TSS_MASK) != 0);
 
-    ArrayList<Connection> allCons = null;
+    // Connections obtained to send the message
+    final ArrayList<Connection> allCons = new ArrayList<>(destinations.length);
     final boolean useNIOStream = getConduit().useNIOStream();
-    try {
     do {
-      interrupted = interrupted || Thread.interrupted();
+    try {
+      interrupted = Thread.interrupted() || interrupted;
       /**
        * Exceptions that happened during one attempt to send
        */
@@ -421,11 +420,11 @@ public final class DirectChannel {
         retry = true;
       }
       final ArrayList<Connection> cons = new ArrayList<>(destinations.length);
-      ConnectExceptions ce = getConnections(mgr, msg, destinations, orderedMsg,
+      ConnectExceptions ce;
+      try {
+        ce = getConnections(mgr, msg, destinations, orderedMsg,
             retry, ackTimeout, ackSDTimeout, threadOwnsResources, cons);
-      if (allCons == null) {
-        allCons = cons;
-      } else {
+      } finally {
         allCons.addAll(cons);
       }
       if (directReply && msg.getProcessorId() > 0) { // no longer a direct-reply message?
@@ -504,9 +503,7 @@ public final class DirectChannel {
           }
           ce = ms.getConnectExceptions();
           sentCons = ms.getSentConnections();
-
-          totalSentCons.addAll(sentCons);
-        } 
+        }
         catch (NotSerializableException e) {
           throw e;
         } 
@@ -565,22 +562,17 @@ public final class DirectChannel {
       if (retryInfo != null) {
         this.conduit.getCancelCriterion().checkCancelInProgress(null);
       }
-    } while (retryInfo != null);
-    }
-    finally {
+    } finally {
+      for (Connection con : allCons) {
+        con.setInUse(false, 0, 0, 0, null);
+        this.conduit.releasePooledConnection(con);
+      }
+      allCons.clear();
       if (interrupted) {
         Thread.currentThread().interrupt();
       }
-      for (Iterator it=totalSentCons.iterator(); it.hasNext();) {
-        Connection con = (Connection)it.next();
-        con.setInUse(false, 0, 0, 0, null);
-      }
-      if (useNIOStream && allCons != null) {
-        for (Connection con : allCons) {
-          this.conduit.releasePooledConnection(con);
-        }
-      }
     }
+    } while (retryInfo != null);
     if (failedCe != null) {
       throw failedCe;
     }

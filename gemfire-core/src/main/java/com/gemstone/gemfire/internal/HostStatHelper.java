@@ -260,7 +260,7 @@ public class HostStatHelper {
     String hostname = "unknownHostName";
     try {
       InetAddress addr = SocketCreator.getLocalHost();
-      hostname = addr.getCanonicalHostName();
+      hostname = addr.toString();
     } catch (UnknownHostException uhe) {
     }
     return hostname;
