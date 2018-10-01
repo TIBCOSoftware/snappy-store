@@ -171,10 +171,11 @@ public abstract class Misc {
   }
 
   public static void waitForSamplerInitialization() {
-    final GemFireStatSampler sampler = getDistributedSystem().getStatSampler();
+    InternalDistributedSystem system = getDistributedSystem();
+    final GemFireStatSampler sampler = system.getStatSampler();
     if (sampler != null) {
       try {
-        sampler.waitForInitialization();
+        sampler.waitForInitialization(system.getConfig().getAckWaitThreshold() * 1000L);
       } catch (InterruptedException ie) {
         checkIfCacheClosing(ie);
         Thread.currentThread().interrupt();

@@ -525,10 +525,10 @@ public abstract class FabricServiceImpl implements FabricService {
       SanityManager.THROWASSERT("boot indicator cannot be user supplied.");
     }
 
-    GemFireStore memStore = Misc.getMemStoreBooting();
-    AuthenticationService authService = memStore.getDatabase()
-        .getAuthenticationService();
-    if (authService == null) {
+    GemFireStore memStore = Misc.getMemStoreBootingNoThrow();
+    AuthenticationService authService;
+    if (memStore == null || (authService = memStore.getDatabase()
+        .getAuthenticationService()) != null) {
       return;
     }
     // doing authentication before n/w server shutdown.
