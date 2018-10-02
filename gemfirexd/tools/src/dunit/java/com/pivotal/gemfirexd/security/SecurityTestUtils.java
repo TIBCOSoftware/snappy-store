@@ -548,29 +548,24 @@ public class SecurityTestUtils extends DistributedSQLTestBase {
   public static void clearAuthenticationSetUp(final Properties sysprop,
       final AuthenticationSchemes scheme) {
 
-    invokeInEveryVM(new SerializableRunnable("clearAuthenticationSetup") {
+    SerializableRunnable clearSetup = new SerializableRunnable("clearAuthenticationSetup") {
       @Override
       public void run() {
         scheme.clear();
-
         TestUtil.bootUserName = null;
         for (Enumeration<?> e = sysprop.propertyNames(); e.hasMoreElements();) {
           String k = (String)e.nextElement();
           getGlobalLogger().info("clearing " + k);
           System.clearProperty(k);
         }
+        // explicitly clear auth providers
+        System.clearProperty(Attribute.AUTH_PROVIDER);
+        System.clearProperty(Attribute.SERVER_AUTH_PROVIDER);
         getGlobalLogger().info("System user definition cleared on VM.... ");
       }
-    });
-
-    TestUtil.bootUserName = null;
-    for (Enumeration<?> e = sysprop.propertyNames(); e.hasMoreElements();) {
-      String k = (String)e.nextElement();
-      getGlobalLogger().info("clearing " + k);
-      System.clearProperty(k);
-    }
-
-    scheme.clear();
+    };
+    invokeInEveryVM(clearSetup);
+    clearSetup.run();
     getGlobalLogger().info("System user definition cleared on local VM ");
   }
   
