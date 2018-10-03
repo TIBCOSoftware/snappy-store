@@ -330,7 +330,7 @@ public class ShutdownAllRequest extends AdminRequest {
     @Override
     public void process(DistributionMessage msg) {
       LogWriterI18n log = InternalDistributedSystem.getLoggerI18n();
-      if (log.fineEnabled()) {
+      if (log != null && log.fineEnabled()) {
         log.fine("shutdownAll reply processor is processing " + msg);
       }
       if(msg instanceof ShutdownAllResponse) {

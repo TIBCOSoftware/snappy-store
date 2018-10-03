@@ -2175,12 +2175,14 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         }
       }
     }
-    InternalDistributedSystem sys = InternalDistributedSystem
-        .getAnyInstance(); // getConnectedInstance();
-    if (sys != null && sys.isConnected()) {
-      sys.getLogWriter()
-          .info("Disconnecting GemFire distributed system.");
-      sys.disconnect();
+    if (cache == null || !cache.forcedDisconnect()) {
+      InternalDistributedSystem sys = InternalDistributedSystem
+          .getAnyInstance(); // getConnectedInstance();
+      if (sys != null && sys.isConnected()) {
+        sys.getLogWriter()
+            .info("Disconnecting GemFire distributed system.");
+        sys.disconnect();
+      }
     }
 
     } catch (Exception e) {
