@@ -19,7 +19,6 @@ package com.pivotal.gemfirexd.internal.engine.sql.execute;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Vector;
 
@@ -337,7 +336,7 @@ public class SnappyActivation extends BaseActivation {
     try {
       msg.executeFunction(enableStreaming, false, rs, true);
     } catch (RuntimeException | SQLException ex) {
-      Exception e = LeadNodeExecutorMsg.handleLeadNodeException(ex);
+      Exception e = LeadNodeExecutorMsg.handleLeadNodeException(ex, sql);
       throw Misc.processFunctionException(
           "SnappyActivation::executeOnLeadNode", e, null, null);
     }
@@ -357,7 +356,7 @@ public class SnappyActivation extends BaseActivation {
     try {
       msg.executeFunction(false, false, rs, true);
     } catch (RuntimeException | SQLException ex) {
-      Exception e = LeadNodeExecutorMsg.handleLeadNodeException(ex);
+      Exception e = LeadNodeExecutorMsg.handleLeadNodeException(ex, sql);
       throw Misc.processFunctionException(
           "SnappyActivation::prepareOnLeadNode", e, null, null);
     }

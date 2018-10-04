@@ -36,7 +36,6 @@ import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.shared.Version;
-import com.pivotal.gemfirexd.FabricServiceManager;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.DVDIOUtil;
@@ -251,12 +250,14 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
     }
   }
 
-  public static Exception handleLeadNodeException(Exception e) {
+  public static Exception handleLeadNodeException(Exception e, String sql) {
+    final Exception cause;
     if (e instanceof RuntimeException) {
-      return handleLeadNodeRuntimeException((RuntimeException)e);
+      cause = handleLeadNodeRuntimeException((RuntimeException)e);
     } else {
-      return e;
+      cause = e;
     }
+    return GemFireXDRuntimeException.newRuntimeException("Failure for " + sql, cause);
   }
 
   public static RuntimeException handleLeadNodeRuntimeException(
