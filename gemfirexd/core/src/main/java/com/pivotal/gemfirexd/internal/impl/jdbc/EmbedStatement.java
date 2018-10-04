@@ -2064,6 +2064,10 @@ public class EmbedStatement extends ConnectionChild
           connForRemote = false;
           tran = null;
         }
+        if (act != null) {
+          // wait for stats sampler initialization
+          Misc.waitForSamplerInitialization();
+        }
         // set autocommit to true temporarily for DDLs in the nested transaction
         if (act != null && act instanceof DDLConstantAction) {
           if (!connForRemote) {
@@ -2413,8 +2417,8 @@ public class EmbedStatement extends ConnectionChild
                   processor = GfxdDDLMessage.getReplyProcessor(sys, memberThatPersistOnHDFS,
                       true);
                   SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLREPLAY,
-                      "EmbedStatement: Sending DDL statement " + this.SQLText
-                          + '[' + ddlId.longValue() + "] to other VMs in the "
+                      "EmbedStatement: Sending DDL statement " + ddl
+                          + " [" + ddlId + "] to other VMs in the "
                           + "distributed system for execution: " + selectedmember + ". This VM " +
                           		"is responsible for persisting the statement on HDFS. ");
                   GfxdDDLMessage.send(sys, processor, memberThatPersistOnHDFS, ddl,
@@ -2436,8 +2440,8 @@ public class EmbedStatement extends ConnectionChild
                 processor = GfxdDDLMessage.getReplyProcessor(sys, otherMembers,
                     true);
                 SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLREPLAY,
-                    "EmbedStatement: Sending DDL statement " + this.SQLText
-                        + '[' + ddlId.longValue() + "] to other VMs in the "
+                    "EmbedStatement: Sending DDL statement " + ddl
+                        + " [" + ddlId + "] to other VMs in the "
                         + "distributed system for execution: " + otherMembers);
                 GfxdDDLMessage.send(sys, processor, otherMembers, ddl,
                     localConn.getConnectionID(), ddlId.longValue(), this.lcc);

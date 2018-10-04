@@ -88,6 +88,18 @@ public class AUTH extends Protocol {
   /** current view ID, guarded by viewLock */
   private ViewId vid;
 
+  public static String getAuthInit() {
+    return System
+        .getProperty("gemfire.sys." // DistributionConfigImpl.SECURITY_SYSTEM_PREFIX
+            + "security-peer-auth-init"); // DistributionConfig.SECURITY_PEER_AUTH_INIT_NAME);
+  }
+
+  public static String getAuthenticator() {
+    return System
+        .getProperty("gemfire.sys." // DistributionConfigImpl.SECURITY_SYSTEM_PREFIX
+            + "security-peer-authenticator"); //DistributionConfig.SECURITY_PEER_AUTHENTICATOR_NAME);
+  }
+
   /**
    * Checks the auth header. When the header authenticated successfully, it just
    * passes up the join request and pbcast.GMS will accept the join and sends
@@ -100,9 +112,7 @@ public class AUTH extends Protocol {
   @Override
   public void up(Event evt) {
 
-    String authenticator = System
-        .getProperty("gemfire.sys." // DistributionConfigImpl.SECURITY_SYSTEM_PREFIX
-            +  "security-peer-authenticator"); //DistributionConfig.SECURITY_PEER_AUTHENTICATOR_NAME);
+    String authenticator = getAuthenticator();
     boolean isSecure = (authenticator != null && authenticator.length() != 0);
     if (isSecure) {
       String failMsg = null;
@@ -195,9 +205,7 @@ public class AUTH extends Protocol {
   @Override
   public void down(Event evt) {
 
-    String authInit = System
-        .getProperty("gemfire.sys." // DistributionConfigImpl.SECURITY_SYSTEM_PREFIX
-            +  "security-peer-auth-init"); // DistributionConfig.SECURITY_PEER_AUTH_INIT_NAME);
+    String authInit = getAuthInit();
     boolean isSecure = (authInit != null && authInit.length() != 0);
     if (isSecure) {
       int hdrType = getHeaderType(evt);

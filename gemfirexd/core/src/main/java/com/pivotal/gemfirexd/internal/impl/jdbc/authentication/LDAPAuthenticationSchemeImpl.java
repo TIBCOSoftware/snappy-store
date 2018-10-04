@@ -434,17 +434,19 @@ implements CredentialInitializer
 		//
 		String searchFilterProp =
 					authenticationService.getProperty(Property.AUTH_LDAP_SEARCH_FILTER);
-		
-		if (searchFilterProp == (String) null)
+
+		String defaultLeftSearchFilter = "(&(|(objectclass=user)(objectclass=person)" +
+				"(objectclass=inetOrgPerson)(objectclass=organizationalPerson))(uid=";
+		if (searchFilterProp == null)
 		{
 			// use our default search filter
-			this.leftSearchFilter = "(&(objectClass=inetOrgPerson)(uid=";
+			this.leftSearchFilter = defaultLeftSearchFilter;
 			this.rightSearchFilter = "))";
 
 		} else if (StringUtil.SQLEqualsIgnoreCase(searchFilterProp,Constants.LDAP_LOCAL_USER_DN)) {
 
 			// use local user DN in gemfirexd.user.<uid>
-			this.leftSearchFilter = "(&(objectClass=inetOrgPerson)(uid=";
+			this.leftSearchFilter = defaultLeftSearchFilter;
 			this.rightSearchFilter = "))";
 			this.useUserPropertyAsDN = true;
 
@@ -880,7 +882,7 @@ implements CredentialInitializer
           // are allowed in the LDAP server, or authenticated if we were
           // told/configured to.
           Properties env = null;
-          if (this.searchAuthDN != (String)null) {
+          if (this.searchAuthDN != null) {
             env = (Properties)initDirContextEnv.clone();
             env.put(Context.SECURITY_PRINCIPAL, this.searchAuthDN);
             env.put(Context.SECURITY_CREDENTIALS, getSearchAuthPwd());

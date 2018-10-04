@@ -53,6 +53,7 @@ import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
+import com.gemstone.gemfire.internal.GemFireStatSampler;
 import com.gemstone.gemfire.internal.InsufficientDiskSpaceException;
 import com.gemstone.gemfire.internal.LocalLogWriter;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
@@ -79,6 +80,7 @@ import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.error.DerbySQLException;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
+import com.pivotal.gemfirexd.internal.iapi.jdbc.AuthenticationService;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.context.ContextService;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
@@ -88,7 +90,6 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.AuthenticationServiceBase;
 import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.LDAPAuthenticationSchemeImpl;
-import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.NoneAuthenticationServiceImpl;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.PlanUtils;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.tools.planexporter.CreateXML;
@@ -167,6 +168,19 @@ public abstract class Misc {
   
   public final static GemFireStore getMemStoreBootingNoThrow() {
     return GemFireStore.getBootingInstance();
+  }
+
+  public static void waitForSamplerInitialization() {
+    InternalDistributedSystem system = getDistributedSystem();
+    final GemFireStatSampler sampler = system.getStatSampler();
+    if (sampler != null) {
+      try {
+        sampler.waitForInitialization(system.getConfig().getAckWaitThreshold() * 1000L);
+      } catch (InterruptedException ie) {
+        checkIfCacheClosing(ie);
+        Thread.currentThread().interrupt();
+      }
+    }
   }
 
   /**
@@ -742,10 +756,25 @@ public abstract class Misc {
     }
   }
 
+  /**
+   * Returns true if security is enabled for SnappyData.
+   * Only LDAP scheme is supported currently.
+   */
   public static boolean isSecurityEnabled() {
-    AuthenticationServiceBase authService = AuthenticationServiceBase.getPeerAuthenticationService();
-    return authService != null && !(authService instanceof NoneAuthenticationServiceImpl) &&
-        checkAuthProvider(getMemStore().getBootProperties());
+    AuthenticationService authService = Misc.getMemStoreBooting()
+        .getDatabase().getAuthenticationService();
+    if (authService != null) {
+      UserAuthenticator auth = ((AuthenticationServiceBase)authService)
+          .getAuthenticationScheme();
+      return auth instanceof LDAPAuthenticationSchemeImpl;
+    }
+    return false;
+  }
+
+  /* Returns true if LDAP Security is Enabled */
+  public static boolean checkLDAPAuthProvider(Map<Object, Object> map) {
+    return Constants.AUTHENTICATION_PROVIDER_LDAP.equalsIgnoreCase(
+        String.valueOf(map.get(Attribute.AUTH_PROVIDER)));
   }
 
   /**
@@ -779,12 +808,6 @@ public abstract class Misc {
       }
     }
     return false;
-  }
-
-  /* Returns true if LDAP Security is Enabled */
-  public static boolean checkAuthProvider(Map map) {
-    return "LDAP".equalsIgnoreCase(map.getOrDefault(Attribute.AUTH_PROVIDER, "").toString()) ||
-        "LDAP".equalsIgnoreCase(map.getOrDefault(Attribute.SERVER_AUTH_PROVIDER, "").toString());
   }
 
   // added by jing for processing the exception

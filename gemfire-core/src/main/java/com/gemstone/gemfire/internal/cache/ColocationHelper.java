@@ -42,6 +42,7 @@ import com.gemstone.gemfire.internal.cache.execute.InternalRegionFunctionContext
 import com.gemstone.gemfire.internal.cache.partitioned.PRLocallyDestroyedException;
 import com.gemstone.gemfire.internal.cache.persistence.PRPersistentConfig;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import io.snappydata.collection.OpenHashSet;
 
 /**
  * An utility class to retrieve colocated regions in a colocation hierarchy in
@@ -168,7 +169,7 @@ public class ColocationHelper {
    * be in the advisor.
    */
   public static boolean checkMembersColocation(PartitionedRegion partitionedRegion, InternalDistributedMember member) {
-    List<PartitionRegionConfig> colocatedRegions = new ArrayList<PartitionRegionConfig>();
+    OpenHashSet<PartitionRegionConfig> colocatedRegions = new OpenHashSet<>();
     List<PartitionRegionConfig> tempcolocatedRegions = new ArrayList<PartitionRegionConfig>();
     Region prRoot = PartitionedRegionHelper.getPRRoot(partitionedRegion
         .getCache());
@@ -201,8 +202,9 @@ public class ColocationHelper {
               tempToBeColocatedWith.getFullPath())
               || ("/" + prConf.getColocatedWith())
               .equals(tempToBeColocatedWith.getFullPath())) {
-            colocatedRegions.add(prConf);
-            tempcolocatedRegions.add(prConf);
+            if (colocatedRegions.add(prConf)) {
+              tempcolocatedRegions.add(prConf);
+            }
           }
         }
       }

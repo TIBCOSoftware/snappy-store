@@ -195,7 +195,7 @@ public class SecurityUtils {
         }
         else {
           String val = inProperties.getProperty(key);
-          outProperties.put(key, val);
+          if (val != null) outProperties.put(key, val);
         }
       }
 

@@ -135,7 +135,7 @@ public class LdapTestServer {
     bootProps.setProperty("gemfirexd.auth-ldap-server",
         "ldap://localhost:" + serverPort);
     bootProps.setProperty("security-log-level", "finest");
-    bootProps.setProperty("gemfirexd.debug.true",
+    bootProps.setProperty("Dgemfirexd.debug.true",
         "TraceAuthentication,TraceFabricServiceBoot");
     bootProps.setProperty("user", "gemfire10");
     bootProps.setProperty("password", "gemfire10");

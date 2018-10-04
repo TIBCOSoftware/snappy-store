@@ -267,7 +267,7 @@ public class SecurityTestUtils extends DistributedSQLTestBase {
 
         try {
           setLdapServerBootProperties(LdapTestServer.getInstance(), -1, -1,
-              sysUser, props);
+              sysUser, props, PartitionedRegion.rand.nextBoolean());
         } catch (Exception e) {
           fail("failed to get LDAP server instance", e);
         }
@@ -1254,6 +1254,13 @@ public class SecurityTestUtils extends DistributedSQLTestBase {
   public static Properties startLdapServerAndGetBootProperties(
       int locatorPort, int mcastPort, String sysUser,
       String ldifFilePath) throws Exception {
+    return startLdapServerAndGetBootProperties(locatorPort, mcastPort,
+        sysUser, null, false);
+  }
+
+  public static Properties startLdapServerAndGetBootProperties(
+      int locatorPort, int mcastPort, String sysUser,
+      String ldifFilePath, boolean disableServerAuth) throws Exception {
     final LdapTestServer server;
     if (ldifFilePath != null) {
       server = LdapTestServer.getInstance(ldifFilePath);
@@ -1266,12 +1273,13 @@ public class SecurityTestUtils extends DistributedSQLTestBase {
     }
     Properties bootProps = new Properties();
     setLdapServerBootProperties(server, locatorPort, mcastPort,
-        sysUser, bootProps);
+        sysUser, bootProps, disableServerAuth);
     return bootProps;
   }
 
   public static void setLdapServerBootProperties(LdapTestServer server,
-      int locatorPort, int mcastPort, String sysUser, Properties bootProps) {
+      int locatorPort, int mcastPort, String sysUser, Properties bootProps,
+      boolean disableServerAuth) {
     int serverPort = server.getServerPort();
     if (locatorPort > 0) {
       bootProps.setProperty(DistributionConfig.LOCATORS_NAME,
@@ -1287,6 +1295,9 @@ public class SecurityTestUtils extends DistributedSQLTestBase {
             + GfxdConstants.TRACE_FABRIC_SERVICE_BOOT);
     bootProps.setProperty(Attribute.AUTH_PROVIDER,
         com.pivotal.gemfirexd.Constants.AUTHENTICATION_PROVIDER_LDAP);
+    if (disableServerAuth) {
+      bootProps.setProperty(Attribute.SERVER_AUTH_PROVIDER, "NONE");
+    }
     bootProps.setProperty(
         com.pivotal.gemfirexd.Property.AUTH_LDAP_SEARCH_BASE,
         "ou=ldapTesting,dc=pune,dc=gemstone,dc=com");

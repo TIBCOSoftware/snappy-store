@@ -33,6 +33,7 @@ import java.util.logging.Level;
 import javax.management.ObjectName;
 
 import com.gemstone.gemfire.LogWriter;
+import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
@@ -227,7 +228,7 @@ public class InternalManagementService {
 //        logInfo("ABHISHEK: STATEMENT__CANCEL");
         break;
       case GfxdResourceEvent.EMBEDCONNECTION__INIT:
-        handleEmbedConnectionInit((EmbedConnection) eventData);
+        handleEmbedConnectionInit((EmbedConnection) eventData, true);
 //        logInfo("ABHISHEK: EMBEDCONNECTION__INIT");
         break;
       default:
@@ -509,7 +510,30 @@ public class InternalManagementService {
     logFine("Unregistered following MBeans for \""+fullTableName+"\": " + unregisteredMBeanByPattern, null);
   }
 
-  private void handleEmbedConnectionInit(EmbedConnection connection) {
+  private void handleEmbedConnectionInit(final EmbedConnection connection, boolean checkStore) {
+    final InternalDistributedSystem system = Misc.getDistributedSystem();
+    GemFireStore store = GemFireStore.getBootingInstance();
+    if (checkStore && !system.isLoner() && (store == null || !store.initialDDLReplayDone())) {
+      // need to create connection wrapper which will need another embedded connection
+      // that can fail since this is boot process itself, so register it in another thread
+      system.getDistributionManager().getWaitingThreadPool().execute(() -> {
+        long current = System.currentTimeMillis();
+        long end = current + system.getConfig().getAckWaitThreshold() * 1000L;
+        while (GemFireStore.getBootingInstance() == null && end > current) {
+          try {
+            Thread.sleep(100L);
+            current = System.currentTimeMillis();
+            Misc.checkIfCacheClosing(null);
+          } catch (InterruptedException ie) {
+            Misc.checkIfCacheClosing(ie);
+          }
+        }
+        long timeout = Math.max(end - current, 1000L);
+        GemFireXDUtils.waitForNodeInitialization(timeout, true, false);
+        // try to proceed in any case even if node has not initialized yet
+        handleEmbedConnectionInit(connection, false);
+      });
+    }
     GfxdConnectionHolder holder = GfxdConnectionHolder.getHolder();
     GfxdConnectionWrapper connectionWrapper = null;
     try {

@@ -174,9 +174,9 @@ public final class FabricDatabase implements ModuleControl,
   private volatile boolean active;
 
   /** DOCUMENT ME! */
-  private AuthenticationService authenticationService;
+  private AuthenticationServiceBase authenticationService;
 
-  private AuthenticationService peerAuthenticationService;
+  private AuthenticationServiceBase peerAuthenticationService;
 
   /** The {@link GemFireStore} of booted database. */
   protected GemFireStore memStore;
@@ -2018,7 +2018,7 @@ public final class FabricDatabase implements ModuleControl,
     new DatabaseContextImpl(cm, this);
   }
 
-  public final AuthenticationService getAuthenticationService() {
+  public final AuthenticationServiceBase getAuthenticationService() {
 
     // Expected to find one - Sanity check being done at
     // DB boot-up.
@@ -2034,17 +2034,7 @@ public final class FabricDatabase implements ModuleControl,
     return this.authenticationService;
   }
 
-  /**
-   * @throws com.gemstone.gemfire.cache.CacheClosedException if store is null
-   * @return
-   */
-  public static AuthenticationServiceBase getAuthenticationServiceBase() {
-    return (AuthenticationServiceBase)Monitor.findServiceModule(
-        Misc.getMemStoreBooting().getDatabase(), AuthenticationService.MODULE,
-        GfxdConstants.AUTHENTICATION_SERVICE);
-  }
-
-  public final AuthenticationService getPeerAuthenticationService() {
+  public final AuthenticationServiceBase getPeerAuthenticationService() {
 
     // Expected to find one - Sanity check being done at
     // DB boot-up.
@@ -2502,18 +2492,16 @@ public final class FabricDatabase implements ModuleControl,
    *
    * @throws  StandardException  DOCUMENT ME!
    */
-  protected AuthenticationService bootAuthenticationService(boolean create,
-                                                            Properties props)
+  protected AuthenticationServiceBase bootAuthenticationService(boolean create,
+                                                                Properties props)
   throws StandardException {
 
-    peerAuthenticationService = (AuthenticationService)Monitor.bootServiceModule(create, this, AuthenticationService.MODULE,
+    peerAuthenticationService = (AuthenticationServiceBase)Monitor.bootServiceModule(create, this, AuthenticationService.MODULE,
         GfxdConstants.PEER_AUTHENTICATION_SERVICE, props);
 
-    assert peerAuthenticationService instanceof AuthenticationServiceBase;
+    AuthenticationServiceBase.setPeerAuthenticationService(peerAuthenticationService);
 
-    AuthenticationServiceBase.setPeerAuthenticationService((AuthenticationServiceBase)peerAuthenticationService);
-
-    return (AuthenticationService)Monitor.bootServiceModule(create, this,
+    return (AuthenticationServiceBase)Monitor.bootServiceModule(create, this,
         AuthenticationService.MODULE, GfxdConstants.AUTHENTICATION_SERVICE, props);
   }
 

@@ -146,7 +146,10 @@ public class StatementExecutorMessage<T> extends RegionExecutorMessage<T> {
       long timeOutMillis, boolean abortOnLowMemory) {
     super(collector, region, routingObjects, getCurrentTXState(lcc),
         getTimeStatsSettings(lcc), abortOnLowMemory);
-    if (source != null && !Property.DEFAULT_USER_NAME.equals(defaultSchema)) {
+    // skip setting defaultSchema when it is for APP system user
+    if (source != null && !(Property.DEFAULT_USER_NAME.equals(defaultSchema) &&
+        Property.DEFAULT_USER_NAME.equals(lcc.getDataDictionary()
+            .getAuthorizationDatabaseOwner()))) {
       this.defaultSchema = defaultSchema;
       this.queryFlags = GemFireXDUtils.set(this.queryFlags, HASAUTHID);
     }

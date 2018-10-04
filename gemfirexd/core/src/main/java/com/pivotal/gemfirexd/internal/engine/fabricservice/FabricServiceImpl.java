@@ -525,18 +525,17 @@ public abstract class FabricServiceImpl implements FabricService {
       SanityManager.THROWASSERT("boot indicator cannot be user supplied.");
     }
 
-    AuthenticationService authService = (AuthenticationService)Monitor
-        .findServiceModule(Misc.getMemStore().getDatabase(),
-            AuthenticationService.MODULE,
-            GfxdConstants.PEER_AUTHENTICATION_SERVICE);
-
-    if (authService == null) {
+    GemFireStore memStore = Misc.getMemStoreBootingNoThrow();
+    AuthenticationService authService;
+    if (memStore == null || (authService = memStore.getDatabase()
+        .getAuthenticationService()) != null) {
       return;
     }
     // doing authentication before n/w server shutdown.
     // taken from InternalDriver#connect...
     String failure;
-    if ((failure = authService.authenticate(null, shutdownCredentials)) != null) {
+    if ((failure = authService.authenticate(memStore.getDatabaseName(),
+        shutdownCredentials)) != null) {
       throw Util.generateCsSQLException(SQLState.NET_CONNECT_AUTH_FAILED,
           MessageService.getTextMessage(MessageId.AUTH_INVALID, failure));
     }
