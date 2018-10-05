@@ -539,9 +539,13 @@ public class SystemAdmin {
     return ds;
   }
 
+  protected long defaultShutdownAllWait() {
+    return 0;
+  }
+
   public void shutDownAll(String cmd, List<String> cmdLine) {
     try {
-      long timeout = 0;
+      long timeout = defaultShutdownAllWait();
       if (cmdLine.size() > 0) {
         // GemFireXD uses '-' args as DS properties
         String cmdArg;
