@@ -212,6 +212,10 @@ public final class GfxdLockSet implements CompatibilitySpace {
   public static int initConstants(GemFireStore store) {
     MAX_LOCKWAIT_VAL = getInteger(store, GfxdConstants.MAX_LOCKWAIT,
         GfxdConstants.MAX_LOCKWAIT_DEFAULT);
+    if (MAX_LOCKWAIT_VAL != GfxdConstants.MAX_LOCKWAIT_DEFAULT) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_LOCK,
+          "GfxdLockSet: setting maximum lock wait to " + MAX_LOCKWAIT_VAL + "ms");
+    }
     MAX_VM_LOCKWAIT_VAL = MAX_LOCKWAIT_VAL / MAX_VM_LOCKWAIT_RETRIES;
     MAX_WRITE_WAIT_RETRY = MAX_LOCKWAIT_VAL / MAX_WRITE_WAIT_RETRIES;
     return MAX_VM_LOCKWAIT_VAL;

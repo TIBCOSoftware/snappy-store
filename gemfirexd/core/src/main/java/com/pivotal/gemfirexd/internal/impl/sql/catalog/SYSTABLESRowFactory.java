@@ -511,7 +511,7 @@ public static final int		SYSTABLES_COLUMN_COUNT = 21;
 // GemStone changes BEGIN
             SystemColumnImpl.getIdentifierColumn("TABLESCHEMANAME", false),
             SystemColumnImpl.getIndicatorColumn("LOCKGRANULARITY"),
-            SystemColumnImpl.getColumn("SERVERGROUPS", Types.VARCHAR, false),
+            SystemColumnImpl.getColumn("SERVERGROUPS", Types.LONGVARCHAR, false),
             SystemColumnImpl.getColumn("DATAPOLICY", Types.VARCHAR, false, 24),
             SystemColumnImpl.getColumn("PARTITIONATTRS", Types.LONGVARCHAR, true),
             SystemColumnImpl.getColumn("RESOLVER", Types.LONGVARCHAR, true),
@@ -522,9 +522,9 @@ public static final int		SYSTABLES_COLUMN_COUNT = 21;
             SystemColumnImpl.getIdentifierColumn("LOADER", true),
             SystemColumnImpl.getIdentifierColumn("WRITER", true),
             SystemColumnImpl.getColumn("LISTENERS", Types.LONGVARCHAR, true),
-            SystemColumnImpl.getColumn("ASYNCLISTENERS", Types.VARCHAR, true, 256),
+            SystemColumnImpl.getColumn("ASYNCLISTENERS", Types.LONGVARCHAR, true),
             SystemColumnImpl.getColumn("GATEWAYENABLED", Types.BOOLEAN, false),
-            SystemColumnImpl.getColumn("GATEWAYSENDERS", Types.VARCHAR, true, 256),
+            SystemColumnImpl.getColumn("GATEWAYSENDERS", Types.LONGVARCHAR, true),
             SystemColumnImpl.getColumn("OFFHEAPENABLED", Types.BOOLEAN, false),
 						SystemColumnImpl.getColumn("ROWLEVELSECURITYENABLED", Types.BOOLEAN, false)
             

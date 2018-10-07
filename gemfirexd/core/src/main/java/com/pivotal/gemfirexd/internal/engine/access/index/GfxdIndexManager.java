@@ -2958,11 +2958,10 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
 
   public final boolean lockForGII(boolean forWrite,
       final TransactionController tc) throws TimeoutException {
-    // for bucket recovery etc. keep a large lock timeout
-    long timeout = GfxdLockSet.MAX_LOCKWAIT_VAL;
-    if (timeout < GfxdConstants.MAX_LOCKWAIT_DEFAULT) {
-      timeout = GfxdConstants.MAX_LOCKWAIT_DEFAULT;
-    }
+    // for bucket recovery etc. keep a large lock timeout subject to a max
+    long timeout = GfxdLockSet.MAX_LOCKWAIT_VAL <= 0
+        ? Integer.MAX_VALUE : GfxdLockSet.MAX_LOCKWAIT_VAL;
+    timeout = Math.min(GfxdConstants.MAX_LOCKWAIT_DEFAULT, timeout) << 1L;
     final GfxdLocalLockService lockService = Misc.getMemStoreBooting()
         .getDDLLockService().getLocalLockService();
     final boolean success;
