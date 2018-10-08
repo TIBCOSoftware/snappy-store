@@ -102,7 +102,8 @@ public final class GfxdDDLFinishMessage extends GfxdMessage {
       actionStart = " rollback";
       actionEnd = " rolled back";
     }
-    if (GemFireXDUtils.TraceDDLReplay) {
+    if (GemFireXDUtils.TraceDDLReplay ||
+        !Misc.isSnappyHiveMetaTable(ddlStatement.getCurrentSchema())) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLREPLAY, toString()
           + " Received" + actionStart);
     }
@@ -130,7 +131,8 @@ public final class GfxdDDLFinishMessage extends GfxdMessage {
     final GfxdDDLMessage ddlMsg;
     if ((ddlMsg = GfxdDDLMessage.removePendingDDLMessage(this.id)) == null
         || ddlMsg.args.getUniqueConnId() == EmbedConnection.UNINITIALIZED) {
-      if (GemFireXDUtils.TraceDDLQueue) {
+      if (GemFireXDUtils.TraceDDLReplay || GemFireXDUtils.TraceDDLQueue ||
+          !Misc.isSnappyHiveMetaTable(ddlStatement.getCurrentSchema())) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLQUEUE, toString()
             + " Returning after local put since GfxdDDLMessage "
             + "was not executed on this node");
@@ -142,8 +144,8 @@ public final class GfxdDDLFinishMessage extends GfxdMessage {
     final boolean[] markUnused = new boolean[] { false };
     try {
       wrapper = getExistingWrapper(this.connId);
-      doCommitOrRollback(wrapper, this.doCommit, dm, this.id, this.toString()
-          + " Successfully" + actionEnd, markUnused);
+      doCommitOrRollback(wrapper, this.doCommit, dm, this.id, this.connId,
+          this.toString() + " Successfully" + actionEnd, markUnused);
     } catch (SQLException ex) {
       final String matchStr = SQLState.SHUTDOWN_DATABASE.substring(0,
           SQLState.SHUTDOWN_DATABASE.indexOf('.'));
@@ -217,7 +219,7 @@ public final class GfxdDDLFinishMessage extends GfxdMessage {
   }
 
   static void doCommitOrRollback(final GfxdConnectionWrapper wrapper,
-      final boolean doCommit, final DM dm, final long ddlId,
+      final boolean doCommit, final DM dm, final long ddlId, long connId,
       final String logString, boolean[] markUnused) throws SQLException {
     if (wrapper != null) {
       final EmbedConnection conn = wrapper.getConnectionForSynchronization();
@@ -250,6 +252,10 @@ public final class GfxdDDLFinishMessage extends GfxdMessage {
           markUnused[0] = wrapper.convertToSoftReference(syncVersion);
         }
       }
+    } else {
+      SanityManager.DEBUG_PRINT("warning:" + GfxdConstants.TRACE_DDLREPLAY,
+          "NULL wrapper for connId=" + connId + " ddlId=" + ddlId +
+              ". Skipping DDL finish having commit=" + doCommit);
     }
   }
 

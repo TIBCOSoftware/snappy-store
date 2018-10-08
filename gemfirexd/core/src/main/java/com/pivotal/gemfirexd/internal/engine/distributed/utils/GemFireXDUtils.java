@@ -904,15 +904,20 @@ public final class GemFireXDUtils {
 
   public static EmbedConnection createNewInternalConnection(
       boolean remoteConnection) throws StandardException {
+    return createNewInternalConnection(remoteConnection,
+        EmbedConnection.CHILD_NOT_CACHEABLE);
+  }
+
+  public static EmbedConnection createNewInternalConnection(
+      boolean remoteConnection, long connId) throws StandardException {
     try {
       final Properties props = new Properties();
       GemFireStore memStore = Misc.getMemStoreBooting();
       props.putAll(memStore.getDatabase().getAuthenticationService().getBootCredentials());
       String protocol = memStore.isSnappyStore() ? Attribute.SNAPPY_PROTOCOL : Attribute.PROTOCOL;
       final EmbedConnection conn = InternalDriver
-          .activeDriver().connect(protocol, props,
-              EmbedConnection.CHILD_NOT_CACHEABLE,
-              EmbedConnection.CHILD_NOT_CACHEABLE, remoteConnection, Connection.TRANSACTION_NONE);
+          .activeDriver().connect(protocol, props, connId, connId,
+              remoteConnection, Connection.TRANSACTION_NONE);
       if (conn != null) {
         conn.setInternalConnection();
         ConnectionStats stats = InternalDriver.activeDriver()

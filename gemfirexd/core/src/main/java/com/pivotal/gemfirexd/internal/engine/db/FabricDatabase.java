@@ -604,7 +604,7 @@ public final class FabricDatabase implements ModuleControl,
               try {
                 GemFireXDUtils.waitForNodeInitialization();
                 embedConnection = GemFireXDUtils.createNewInternalConnection(
-                    false);
+                    false, EmbedConnection.UNINITIALIZED);
                 checkSnappyCatalogConsistency(embedConnection, true, false);
                 // publish the column table stats at this point because that
                 // requires the hive metastore
