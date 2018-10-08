@@ -357,14 +357,14 @@ public abstract class InternalDriver implements ModuleControl {
 				return null;
 			}
 
+			// support for "use:database" property to set default schema
+			String defaultSchema = finfo.getProperty("use:database");
+			if (defaultSchema != null) {
+				finfo.setProperty(Attribute.DEFAULT_SCHEMA, defaultSchema);
+			}
 			// set defaults for Spark/SnappyData properties on the session
 			if (Boolean.parseBoolean(finfo.getProperty(Attribute.ROUTE_QUERY))) {
 				java.sql.Statement stmt = null;
-				String defaultSchema = finfo.getProperty("use:database");
-				if (defaultSchema != null) {
-					stmt = conn.createStatement();
-					stmt.executeUpdate("set schema \"" + defaultSchema + '"');
-				}
 				for (String p : finfo.stringPropertyNames()) {
 					if (p.startsWith("spark.") || p.startsWith("snappydata.")) {
 						String v = finfo.getProperty(p);
