@@ -152,10 +152,10 @@ public final class GfxdDDLFinishMessage extends GfxdMessage {
       if (ex.getSQLState().indexOf(matchStr) != -1) {
         return;
       }
-      // Log a warning log in case of an SQLException
+      // Log an error in case of an SQLException
       final LogWriter logger = dm.getLoggerI18n().convertToLogWriter();
-      if (logger.warningEnabled()) {
-        logger.warning(this.toString() + " SQL exception in" + actionStart, ex);
+      if (logger.errorEnabled()) {
+        logger.error(this.toString() + " SQL exception in" + actionStart, ex);
       }
       // create a StandardException out of an SQLException so that it can be
       // handled properly on the query node
@@ -209,10 +209,10 @@ public final class GfxdDDLFinishMessage extends GfxdMessage {
       // ignore exceptions at this point but still check for VM going down
       final GemFireCacheImpl cache = Misc.getGemFireCache();
       cache.getCancelCriterion().checkCancelInProgress(t);
-      // log exception as warning
+      // log exception as error
       final LogWriter logger = cache.getLogger();
-      if (logger.warningEnabled()) {
-        logger.warning(logStr
+      if (logger.errorEnabled()) {
+        logger.error(logStr
             + " unexpected exception in local put on DDL region for " + ddl, t);
       }
     }
@@ -253,7 +253,7 @@ public final class GfxdDDLFinishMessage extends GfxdMessage {
         }
       }
     } else {
-      SanityManager.DEBUG_PRINT("warning:" + GfxdConstants.TRACE_DDLREPLAY,
+      SanityManager.DEBUG_PRINT("error:" + GfxdConstants.TRACE_DDLREPLAY,
           "NULL wrapper for connId=" + connId + " ddlId=" + ddlId +
               ". Skipping DDL finish having commit=" + doCommit);
     }
