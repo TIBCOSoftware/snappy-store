@@ -65,7 +65,7 @@ class TomcatConnectionPool {
     JDBC_INTERCEPTOR("pool.jdbcInterceptor", "org.apache.tomcat.jdbc.pool.interceptor.ConnectionState;" +
         "org.apache.tomcat.jdbc.pool.interceptor.StatementFinalizer"),
     // Default transaction values which will be resetted, when connection returned to the pool.
-    DEFAULT_AUTO_COMMIT("pool.defaultAutoCommit","true"),
+    DEFAULT_AUTO_COMMIT("pool.defaultAutoCommit","false"),
     DEFAULT_READ_ONLY("pool.defaultReadOnly", "false"),
     DEFAULT_TRANSACTION_ISOLATION("pool.defaultTransactionIsolation",
         String.valueOf(Connection.TRANSACTION_NONE));
