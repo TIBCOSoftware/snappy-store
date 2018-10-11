@@ -67,7 +67,6 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.StatementStats;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.ValueNode;
-import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -675,8 +674,6 @@ public interface CompilerContext extends Context
         /**
          * An alias to the statement string is set when provided via query hint
          * <strong>statementAlias</strong>.
-         * 
-         * @param value
          */
         void setStatementAlias(String alias);
         
@@ -734,7 +731,7 @@ public interface CompilerContext extends Context
         /**
          * Sets whether Char constant is eligible for VARCHAR conversion.
          * 
-         * @param true to turn it on otherwise false.  
+         * @param flag true to turn it on otherwise false.
          */
         public void setConvertCharConstToVarchar(boolean flag);
 

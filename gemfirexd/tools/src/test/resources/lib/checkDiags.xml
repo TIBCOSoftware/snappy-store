@@ -25,7 +25,7 @@
 	-->
 	<resultSet id="loner_member">
 		<row>
-			<field name="KIND">datastore(loner)</field>
+			<field name="KIND">loner</field>
 			<field name="HOSTDATA">true</field>
 			<field name="ISELDER">true</field>
 			<field name="SERVERGROUPS"></field>
@@ -54,7 +54,7 @@
 	-->
 	<resultSet id="loner_sgs">
 		<row>
-			<field name="KIND">datastore(loner)</field>
+			<field name="KIND">loner</field>
 			<field name="HOSTDATA">true</field>
 			<field name="ROLES">role1,role2</field>
 			<field name="SERVERGROUPS">SG1,SG2,SG3</field>

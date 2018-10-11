@@ -1863,16 +1863,16 @@ public abstract class FabricServiceImpl implements FabricService {
       Class.forName(driver).newInstance();
     } catch (ClassNotFoundException cnfe) {
       cnfe.printStackTrace();
-      SanityManager.DEBUG_PRINT("warning", "Unable to load the JDBC driver "
+      SanityManager.DEBUG_PRINT("warning:BOOT", "Unable to load the JDBC driver "
           + driver + ":" + cnfe.getMessage());
     } catch (InstantiationException ie) {
       ie.printStackTrace();
-      SanityManager.DEBUG_PRINT("warning",
+      SanityManager.DEBUG_PRINT("warning:BOOT",
           "Unable to instantiate the JDBC driver " + driver + ":"
               + ie.getMessage());
     } catch (IllegalAccessException iae) {
       iae.printStackTrace();
-      SanityManager.DEBUG_PRINT("warning",
+      SanityManager.DEBUG_PRINT("warning:BOOT",
           "Not allowed to access the JDBC driver " + driver + ":"
               + iae.getMessage());
     }

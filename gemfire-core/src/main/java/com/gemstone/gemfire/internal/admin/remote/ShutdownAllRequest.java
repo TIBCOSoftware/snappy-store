@@ -120,7 +120,8 @@ public class ShutdownAllRequest extends AdminRequest {
         AdminResponse response;
         try {
           setSender(myId);
-          response = createResponse(dism);
+          // self-shutdown will happen at the end
+          response = createResponse(dism, false);
         } catch (Exception ex) {
           if (dm.getLoggerI18n().fineEnabled()) {
             dm.getLoggerI18n().fine("caught exception while processing shutdownAll locally", ex);
@@ -236,7 +237,12 @@ public class ShutdownAllRequest extends AdminRequest {
 
   @Override
   protected AdminResponse createResponse(DistributionManager dm) {
-    boolean isToShutdown = hasCache();
+    return createResponse(dm, true);
+  }
+
+  private AdminResponse createResponse(DistributionManager dm,
+      boolean shutdownNow) {
+    boolean isToShutdown = hasCache() && shutdownNow;
     boolean isSuccess = false;
     if (isToShutdown) {
       try {
@@ -330,7 +336,7 @@ public class ShutdownAllRequest extends AdminRequest {
     @Override
     public void process(DistributionMessage msg) {
       LogWriterI18n log = InternalDistributedSystem.getLoggerI18n();
-      if (log.fineEnabled()) {
+      if (log != null && log.fineEnabled()) {
         log.fine("shutdownAll reply processor is processing " + msg);
       }
       if(msg instanceof ShutdownAllResponse) {

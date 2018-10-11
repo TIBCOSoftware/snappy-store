@@ -386,6 +386,11 @@ public class GfxdSystemAdmin extends SystemAdmin {
     }
   }
 
+  @Override
+  protected long defaultShutdownAllWait() {
+    return Long.getLong("gemfirexd.shutdown-all-wait", 300000);
+  }
+
   /*
    * (sjigyasu)
    * Notes on shutdown:

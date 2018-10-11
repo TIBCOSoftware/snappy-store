@@ -28,6 +28,8 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ForkJoinPool;
 import java.util.logging.Level;
 
 import javax.management.ObjectName;
@@ -513,10 +515,14 @@ public class InternalManagementService {
   private void handleEmbedConnectionInit(final EmbedConnection connection, boolean checkStore) {
     final InternalDistributedSystem system = Misc.getDistributedSystem();
     GemFireStore store = GemFireStore.getBootingInstance();
-    if (checkStore && !system.isLoner() && (store == null || !store.initialDDLReplayDone())) {
+    if (checkStore && (store == null || !store.initialDDLReplayDone())) {
       // need to create connection wrapper which will need another embedded connection
       // that can fail since this is boot process itself, so register it in another thread
-      system.getDistributionManager().getWaitingThreadPool().execute(() -> {
+      ExecutorService executor = system.isLoner()
+          // for loner, the DistributionManager pools are all synchronous in same thread
+          ? ForkJoinPool.commonPool()
+          : system.getDistributionManager().getWaitingThreadPool();
+      executor.execute(() -> {
         long current = System.currentTimeMillis();
         long end = current + system.getConfig().getAckWaitThreshold() * 1000L;
         while (GemFireStore.getBootingInstance() == null && end > current) {
@@ -533,6 +539,7 @@ public class InternalManagementService {
         // try to proceed in any case even if node has not initialized yet
         handleEmbedConnectionInit(connection, false);
       });
+      return;
     }
     GfxdConnectionHolder holder = GfxdConnectionHolder.getHolder();
     GfxdConnectionWrapper connectionWrapper = null;

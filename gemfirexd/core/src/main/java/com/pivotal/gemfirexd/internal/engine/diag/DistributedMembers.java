@@ -41,6 +41,7 @@ import com.pivotal.gemfirexd.internal.engine.distributed.message.GfxdConfigMessa
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.UpdatableResultSet;
+import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore.VMKind;
 import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
@@ -48,6 +49,7 @@ import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultColumnDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ColumnDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ColumnDescriptorList;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
@@ -71,7 +73,7 @@ import com.pivotal.gemfirexd.internal.vti.VTIEnvironment;
  * properties.
  * <p>
  * This virtual table can be invoked by calling it directly:
- * 
+ *
  * <PRE>
  * select * from SYS.MEMBERS
  * </PRE>
@@ -80,7 +82,7 @@ import com.pivotal.gemfirexd.internal.vti.VTIEnvironment;
  * Statement/PreparedStatement e.g. using "createStatement(
  * {@link ResultSet#TYPE_FORWARD_ONLY}, {@link ResultSet#CONCUR_UPDATABLE})" to
  * query and update rows on the fly. An explicit update DML does not work yet.
- * 
+ *
  * @author swale
  */
 public final class DistributedMembers extends UpdateVTITemplate {
@@ -131,12 +133,14 @@ public final class DistributedMembers extends UpdateVTITemplate {
           allMembers.add(myId);
         }
         */
-        final Set<InternalDistributedMember> allMembers =
-          new HashSet<InternalDistributedMember>();
+        final HashSet<InternalDistributedMember> allMembers = new HashSet<>();
+        final LanguageConnectionContext lcc;
         if (this.activation != null
-            && this.activation.getFunctionContext() != null
+            && (lcc = this.activation.getLanguageConnectionContext()) != null
+            && (lcc.isSnappyInternalConnection()
+            || (this.activation.getFunctionContext() != null
             && ((InternalResultSender)this.activation.getFunctionContext()
-                .getResultSender()).isLocallyExecuted()) {
+            .getResultSender()).isLocallyExecuted()))) {
           final Set<InternalDistributedMember> allDMs = this.dm
               .getDistributionManagerIdsIncludingAdmin();
           final Set<InternalDistributedMember> nonAdminDMs = this.dm
@@ -169,10 +173,10 @@ public final class DistributedMembers extends UpdateVTITemplate {
   }
 
   @Override
-  public boolean getBoolean(int columnNumber) {
+  public boolean getBoolean(int columnNumber) throws SQLException {
     ResultColumnDescriptor desc = columnInfo[columnNumber - 1];
     if (desc.getType().getJDBCTypeId() != Types.BOOLEAN) {
-      dataTypeConversion("boolean", desc);
+      throw dataTypeConversion("boolean", desc);
     }
     this.wasNull = false;
     final String columnName = desc.getName();
@@ -193,10 +197,10 @@ public final class DistributedMembers extends UpdateVTITemplate {
   }
 
   @Override
-  public int getInt(int columnNumber) {
+  public int getInt(int columnNumber) throws SQLException {
     ResultColumnDescriptor desc = columnInfo[columnNumber - 1];
     if (desc.getType().getJDBCTypeId() != Types.INTEGER) {
-      dataTypeConversion("integer", desc);
+      throw dataTypeConversion("integer", desc);
     }
     this.wasNull = false;
     final String columnName = desc.getName();
@@ -218,28 +222,40 @@ public final class DistributedMembers extends UpdateVTITemplate {
       res = this.currentMember.getId();
     }
     else if (VMKIND.equals(columnName)) {
-      final VMKind vmKind = GemFireXDUtils.getVMKind(this.currentMember);
+      final GfxdDistributionAdvisor.GfxdProfile profile =
+          GemFireXDUtils.getGfxdProfile(this.currentMember);
+      final VMKind vmKind;
       final StringBuilder sb = new StringBuilder();
-      if (vmKind != null) {
-        sb.append(vmKind.toString()).append('(');
+      if (profile != null && (vmKind = profile.getVMKind()) != null) {
+        // check for SnappyData lead including for primary
+        SortedSet<String> groups;
+        if (vmKind.isAccessor() && (groups = profile.getServerGroups()) != null
+            && groups.contains(ServerGroupUtils.LEADER_SERVERGROUP)) {
+          if (profile.hasSparkURL()) sb.append("primary lead");
+          else sb.append("lead");
+        } else {
+          sb.append(vmKind.toString());
+        }
       }
       switch (this.currentMember.getVmKind()) {
         case DistributionManager.NORMAL_DM_TYPE:
         case DistributionManager.LOCATOR_DM_TYPE:
-          sb.append("normal");
+          // don't append kind for SnappyData since that will always be "normal"
+          GemFireStore store = Misc.getMemStoreBootingNoThrow();
+          if (store == null || !store.isSnappyStore()) {
+            sb.append("(normal)");
+          }
           break;
         case DistributionManager.ADMIN_ONLY_DM_TYPE:
-          sb.append("admin");
+          sb.append("(admin)");
           break;
         case DistributionManager.LONER_DM_TYPE:
+          sb.setLength(0);
           sb.append("loner");
           break;
         default:
-          sb.append("unknown[" + currentMember.getVmKind() + ']');
+          sb.append("(unknown[").append(currentMember.getVmKind()).append("])");
           break;
-      }
-      if (vmKind != null) {
-        sb.append(')');
       }
       res = sb.toString();
     }
@@ -255,14 +271,14 @@ public final class DistributedMembers extends UpdateVTITemplate {
     else if (HOSTDATA.equals(columnName)) {
       final VMKind vmKind = GemFireXDUtils.getVMKind(this.currentMember);
       if (vmKind != null) {
-        res = Boolean.valueOf(vmKind == VMKind.DATASTORE);
+        res = vmKind == VMKind.DATASTORE;
       }
       else {
         res = null;
       }
     }
     else if (ISELDER.equals(columnName)) {
-      res = Boolean.valueOf(this.currentMember.equals(this.dm.getElderId()));
+      res = this.currentMember.equals(this.dm.getElderId());
     }
     else if (IPADDRESS.equals(columnName)) {
       res = this.currentMember.getIpAddress().toString();
@@ -271,13 +287,13 @@ public final class DistributedMembers extends UpdateVTITemplate {
       res = this.currentMember.getHost();
     }
     else if (PID.equals(columnName)) {
-      res = Integer.valueOf(this.currentMember.getProcessId());
+      res = this.currentMember.getProcessId();
     }
     else if (PORT.equals(columnName)) {
-      res = Integer.valueOf(this.currentMember.getPort());
+      res = this.currentMember.getPort();
     }
     else if (ROLES.equals(columnName)) {
-      final SortedSet<Role> sortedRoles = new TreeSet<Role>(
+      final SortedSet<Role> sortedRoles = new TreeSet<>(
           this.currentMember.getRoles());
       res = SharedUtils.toCSV(sortedRoles);
     }
@@ -306,9 +322,21 @@ public final class DistributedMembers extends UpdateVTITemplate {
      res = GemFireXDUtils.getManagerInfo(this.currentMember);
     }
     else if (SERVERGROUPS.equals(columnName)) {
-      final SortedSet<String> groups = ServerGroupUtils
+      SortedSet<String> groups = ServerGroupUtils
           .getServerGroups(this.currentMember);
-      res = SharedUtils.toCSV(groups);
+      if (groups != null && groups.contains(ServerGroupUtils.LEADER_SERVERGROUP)) {
+        if (groups.size() == 1) {
+          groups = null;
+        } else {
+          groups = new TreeSet<>(groups);
+          groups.remove(ServerGroupUtils.LEADER_SERVERGROUP);
+        }
+      }
+      if (groups == null || groups.isEmpty()) {
+        res = "";
+      } else {
+        res = SharedUtils.toCSV(groups);
+      }
     }
     else if (SYSTEMPROPS.equals(columnName)) {
       final Properties[] memberRes = getMemberPropsMap()
@@ -316,9 +344,9 @@ public final class DistributedMembers extends UpdateVTITemplate {
       if (memberRes != null) {
         StringPrintWriter pw = new StringPrintWriter();
         pw.println();
-        res = GemFireXDUtils.dumpProperties(
+        res = String.valueOf(GemFireXDUtils.dumpProperties(
             memberRes[GfxdConfigMessage.SYSPROPS_INDEX], "System Properties",
-            "", true, pw).toString();
+            "", true, pw));
       }
       else {
         res = NOT_AVAIL_TOKEN;
@@ -330,9 +358,9 @@ public final class DistributedMembers extends UpdateVTITemplate {
       if (memberRes != null) {
         StringPrintWriter pw = new StringPrintWriter();
         pw.println();
-        res = GemFireXDUtils.dumpProperties(
+        res = String.valueOf(GemFireXDUtils.dumpProperties(
             memberRes[GfxdConfigMessage.GFEPROPS_INDEX], "GemFire Properties",
-            "", true, pw).toString();
+            "", true, pw));
       }
       else {
         res = NOT_AVAIL_TOKEN;
@@ -344,9 +372,9 @@ public final class DistributedMembers extends UpdateVTITemplate {
       if (memberRes != null) {
         StringPrintWriter pw = new StringPrintWriter();
         pw.println();
-        res = GemFireXDUtils.dumpProperties(
+        res = String.valueOf(GemFireXDUtils.dumpProperties(
             memberRes[GfxdConfigMessage.GFXDPROPS_INDEX], "GemFireXD Properties",
-            "", true, pw).toString();
+            "", true, pw));
       }
       else {
         res = "NOT GEMFIREXD";
@@ -387,9 +415,8 @@ public final class DistributedMembers extends UpdateVTITemplate {
     final BaseActivation activation = (BaseActivation)this.activation;
     boolean[] updatedColumns = activation.getUpdatedColumns();
     int[] projectMapping = activation.getProjectMapping();
-    ArrayList<Integer> updatedColumnIndex = new ArrayList<Integer>();
-    ArrayList<DataValueDescriptor> updatedDVDs =
-      new ArrayList<DataValueDescriptor>();
+    ArrayList<Integer> updatedColumnIndex = new ArrayList<>();
+    ArrayList<DataValueDescriptor> updatedDVDs = new ArrayList<>();
     for (int colIndex = 0; colIndex < updatedColumns.length; colIndex++) {
       if (updatedColumns[colIndex]) {
         if (projectMapping != null) {
@@ -453,9 +480,9 @@ public final class DistributedMembers extends UpdateVTITemplate {
         final Object newVal = (newDVD.isNull() ? null : newDVD.getObject());
         final GfxdListResultCollector collector = new GfxdListResultCollector();
         final GfxdConfigMessage<Object> msg =
-          new GfxdConfigMessage<Object>(collector,
-              Collections.<DistributedMember> singleton(this.currentMember),
-              op, newVal, false);
+            new GfxdConfigMessage<>(collector,
+                Collections.singleton(this.currentMember),
+                op, newVal, false);
         // wait for update to complete though nothing to be done of the result
         msg.executeFunction();
       } catch (Throwable t) {
@@ -508,7 +535,7 @@ public final class DistributedMembers extends UpdateVTITemplate {
     if (this.memberPropsMap == null) {
       try {
         final MemberSingleResultCollector<Properties[]> collector =
-          new MemberSingleResultCollector<Properties[]>();
+            new MemberSingleResultCollector<>();
         final DistributedMember myId = this.dm.getDistributionManagerId();
         /* [sb] restricting to self for fixing #43219
          final GfxdConfigMessage<TreeMap<DistributedMember, TreeMap<?, ?>[]>> msg
@@ -516,8 +543,8 @@ public final class DistributedMembers extends UpdateVTITemplate {
               collector, null, GfxdConfigMessage.Operation.GET_ALLPROPS,
               null, true); 
          */
-        final GfxdConfigMessage<TreeMap<DistributedMember, Properties[]>> msg =
-          new GfxdConfigMessage<TreeMap<DistributedMember, Properties[]>>(
+        final GfxdConfigMessage<TreeMap<DistributedMember, Properties[]>>
+            msg = new GfxdConfigMessage<>(
             collector, Collections.singleton(myId),
             GfxdConfigMessage.Operation.GET_ALLPROPS, null, true);
         this.memberPropsMap = msg.executeFunction();
@@ -568,11 +595,11 @@ public final class DistributedMembers extends UpdateVTITemplate {
 
   private static final ResultColumnDescriptor[] columnInfo = {
       EmbedResultSetMetaData.getResultColumnDescriptor(MEMBERID, Types.VARCHAR,
-          false, 128),
+          false, 256),
       EmbedResultSetMetaData.getResultColumnDescriptor(VMKIND, Types.VARCHAR,
           false, 24),
       EmbedResultSetMetaData.getResultColumnDescriptor(STATUS, Types.VARCHAR,
-          false, 24),
+          false, 12),
       new GenericColumnDescriptor(HOSTDATA,
           SchemaDescriptor.STD_SYSTEM_SCHEMA_NAME,
           GfxdDataDictionary.DIAG_MEMBERS_TABLENAME, -1,
@@ -583,13 +610,13 @@ public final class DistributedMembers extends UpdateVTITemplate {
       EmbedResultSetMetaData.getResultColumnDescriptor(IPADDRESS,
           Types.VARCHAR, true, 64),
       EmbedResultSetMetaData.getResultColumnDescriptor(HOST, Types.VARCHAR,
-          true, 128),
+          false, 256),
       EmbedResultSetMetaData.getResultColumnDescriptor(PID, Types.INTEGER,
           false),
       EmbedResultSetMetaData.getResultColumnDescriptor(PORT, Types.INTEGER,
           false),
       EmbedResultSetMetaData.getResultColumnDescriptor(ROLES, Types.VARCHAR,
-          false, 128),
+          false, 256),
       EmbedResultSetMetaData.getResultColumnDescriptor(NETSERVERS,
           Types.VARCHAR, false, TypeId.VARCHAR_MAXWIDTH),
       EmbedResultSetMetaData.getResultColumnDescriptor(THRIFTSERVERS,
@@ -603,14 +630,14 @@ public final class DistributedMembers extends UpdateVTITemplate {
               TypeId.VARCHAR_MAXWIDTH), true, false),
 
       EmbedResultSetMetaData.getResultColumnDescriptor(MANAGERINFO,
-          Types.VARCHAR, false, 128),
+          Types.VARCHAR, false, 256),
 
       EmbedResultSetMetaData.getResultColumnDescriptor(SYSTEMPROPS, Types.CLOB,
           false),
       EmbedResultSetMetaData.getResultColumnDescriptor(GFEPROPS, Types.CLOB,
           false),
       EmbedResultSetMetaData.getResultColumnDescriptor(GFXDPROPS, Types.CLOB,
-          false), };  
+          false), };
 
   private static final ResultSetMetaData metadata = new EmbedResultSetMetaData(
       columnInfo);
