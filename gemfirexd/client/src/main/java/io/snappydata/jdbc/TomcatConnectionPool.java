@@ -57,7 +57,7 @@ class TomcatConnectionPool {
     REMOVE_ABANDONED("pool.removeAbandoned", "true"),
     REMOVE_ABANDONED_TIMEOUT("pool.removeAbandonedTimeout", "60"),
     TIME_BETWEEN_EVICTION_RUNS_MILLIS("pool.timeBetweenEvictionRunsMillis", "30000"),
-    MIN_EVICTABLE_IDLE_TIME_MILLIS("pool.minEvictableIdleTimeMillis", "30000"),
+    MIN_EVICTABLE_IDLE_TIME_MILLIS("pool.minEvictableIdleTimeMillis", "60000"),
     TEST_ON_BORROW("pool.testOnBorrow", "true"),
     TEST_ON_RETURN("pool.testOnReturn", "true"),
     VALIDATION_INTERVAL("pool.validationInterval", "10000"),
