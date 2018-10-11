@@ -32,36 +32,43 @@ import org.apache.tomcat.jdbc.pool.DataSource;
 import org.apache.tomcat.jdbc.pool.PoolProperties;
 
 /**
- * A Connection Pool class internally uses the tomcat connection pooling
- * library.
+ * A class holds map of connection pools. Each pool is represented accessed
+ * via unique key which is the connection Properties object.
+ *
+ * Also, class support the jdbcInterceptor which resets the autocommit, readOnly
+ * and isolation level value to default whenever a connection  borrowed from the pool.
  */
 class TomcatConnectionPool {
 
-  private static DataSource datasource;
-
-  private static final ConcurrentMap<Properties, TomcatConnectionPool> poolMap =
-      new ConcurrentHashMap<Properties, TomcatConnectionPool>();
-
-  private static String defaultSize = String.valueOf(
-      Math.max(256, Runtime.getRuntime().availableProcessors() * 8));
+  private static final Integer MAX_POOL_SIZE = Math.max(256,
+      Runtime.getRuntime().availableProcessors() * 8);
 
   static enum PoolProps {
 
     DRIVER_NAME("pool.driverClassName", ClientDriver.class.getName()),
-    URL("pool.url", ""), // Compulsory field user must provide
+    URL("pool.url", null), // Compulsory field user must provide
     USER("pool.user", "APP"),
     PASSWORD("pool.password", "APP"),
-    INIT_SIZE("pool.initialSize", defaultSize),
-    MAX_ACTIVE("pool.maxActive", defaultSize),
-    MIN_IDLE("pool.minIdle", defaultSize),
-    MAX_IDLE("pool.maxIdle", defaultSize),
-    MAX_WAIT("pool.maxWait", "30000"),
-    REMOVE_ABANDONED("pool.removeAbandoned", "false"),
+    INIT_SIZE("pool.initialSize", "10"),
+    MAX_ACTIVE("pool.maxActive", MAX_POOL_SIZE.toString()),
+    MAX_IDLE("pool.maxIdle", MAX_POOL_SIZE.toString()),
+    MIN_IDLE("pool.minIdle", "10"),
+    MAX_WAIT("pool.maxWait", "30"),
+    REMOVE_ABANDONED("pool.removeAbandoned", "true"),
     REMOVE_ABANDONED_TIMEOUT("pool.removeAbandonedTimeout", "60"),
-    TIME_BETWEEN_EVICTION_RUNS_MILLIS("pool.timeBetweenEvictionRunsMillis", "60000"),
-    MIN_EVICTABLE_IDLE_TIME_MILLIS("pool.minEvictableIdleTimeMillis", "60000"),
+    TIME_BETWEEN_EVICTION_RUNS_MILLIS("pool.timeBetweenEvictionRunsMillis", "30000"),
+    MIN_EVICTABLE_IDLE_TIME_MILLIS("pool.minEvictableIdleTimeMillis", "30000"),
     TEST_ON_BORROW("pool.testOnBorrow", "true"),
-    VALIDATION_INTERVAL("pool.validationInterval", "10000");
+    TEST_ON_RETURN("pool.testOnReturn", "true"),
+    VALIDATION_INTERVAL("pool.validationInterval", "10000"),
+
+    JDBC_INTERCEPTOR("pool.jdbcInterceptor", "org.apache.tomcat.jdbc.pool.interceptor.ConnectionState;" +
+        "org.apache.tomcat.jdbc.pool.interceptor.StatementFinalizer"),
+    // Default transaction values which will be resetted, when connection returned to the pool.
+    DEFAULT_AUTO_COMMIT("pool.defaultAutoCommit","true"),
+    DEFAULT_READ_ONLY("pool.defaultReadOnly", "false"),
+    DEFAULT_TRANSACTION_ISOLATION("pool.defaultTransactionIsolation",
+        String.valueOf(Connection.TRANSACTION_NONE));
 
     final String key;
     final String defValue;
@@ -80,6 +87,11 @@ class TomcatConnectionPool {
       return keys;
     }
   }
+
+  private DataSource datasource;
+
+  private static final ConcurrentMap<Properties, TomcatConnectionPool> poolMap =
+      new ConcurrentHashMap<Properties, TomcatConnectionPool>();
 
   /**
    * Initialize the Data Source with the Connection pool and returns the connection
@@ -106,7 +118,7 @@ class TomcatConnectionPool {
 
     List<String> listPoolPropKeys = PoolProps.getKeys();
 
-    PoolProperties poolProperties = setPoolProperties(prop);
+    PoolProperties poolProperties = getPoolProperties(prop);
 
     // Filtering out the pool properties and creating string of
     // connection properties to pass on.
@@ -114,8 +126,8 @@ class TomcatConnectionPool {
     String connectionProperties = keys.stream().filter(x -> listPoolPropKeys.contains(x))
         .map(i -> i.toString() + "=" + prop.getProperty(i.toString()))
         .collect(Collectors.joining(";"));
-
     poolProperties.setConnectionProperties(connectionProperties);
+
     datasource = new DataSource();
     datasource.setPoolProperties(poolProperties);
   }
@@ -129,7 +141,7 @@ class TomcatConnectionPool {
    *
    * @return
    */
-  private PoolProperties setPoolProperties(Properties prop) {
+  private PoolProperties getPoolProperties(Properties prop) {
 
     PoolProperties poolProperties = new PoolProperties();
     String url = prop.getProperty(PoolProps.URL.key);
@@ -192,10 +204,40 @@ class TomcatConnectionPool {
             PoolProps.TEST_ON_BORROW.defValue);
     poolProperties.setTestOnBorrow(Boolean.parseBoolean(testOnBorrow));
 
+    String testOnReturn =
+        prop.getProperty(PoolProps.TEST_ON_RETURN.key,
+            PoolProps.TEST_ON_RETURN.defValue);
+    poolProperties.setTestOnBorrow(Boolean.parseBoolean(testOnReturn));
+
     String validationInterval =
         prop.getProperty(PoolProps.VALIDATION_INTERVAL.key,
             PoolProps.VALIDATION_INTERVAL.defValue);
     poolProperties.setValidationInterval(Long.parseLong(validationInterval));
+
+    // DEFAULT TRANSACTION PROPERTIES - START
+    boolean defaultAutoCommit = Boolean.valueOf(
+        prop.getProperty(PoolProps.DEFAULT_AUTO_COMMIT.key,
+            PoolProps.DEFAULT_AUTO_COMMIT.defValue));
+    poolProperties.setDefaultAutoCommit(defaultAutoCommit);
+
+    boolean defaultReadOnly = Boolean.valueOf(
+        prop.getProperty(PoolProps.DEFAULT_READ_ONLY.key,
+            PoolProps.DEFAULT_READ_ONLY.defValue));
+    poolProperties.setDefaultReadOnly(defaultReadOnly);
+
+    Integer defaultTransactionIsolation = Integer.valueOf(
+        prop.getProperty(PoolProps.DEFAULT_TRANSACTION_ISOLATION.key,
+            PoolProps.DEFAULT_TRANSACTION_ISOLATION.defValue));
+    poolProperties.setDefaultTransactionIsolation(defaultTransactionIsolation);
+    // DEFAULT TRANSACTION PROPERTIES - START
+
+    // the connection is reset to the desired state each time its borrowed from the pool.
+    // In this case above three, 1. autoCommit, 2. readOnly & 3. transactionIsolation level
+    // is resetted with the default value.
+    String jdbcInterceptor =
+        prop.getProperty(PoolProps.JDBC_INTERCEPTOR.key,
+            PoolProps.JDBC_INTERCEPTOR.defValue);
+    poolProperties.setJdbcInterceptors(jdbcInterceptor);
 
     return poolProperties;
   }
