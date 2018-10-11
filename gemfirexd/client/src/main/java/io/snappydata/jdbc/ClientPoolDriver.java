@@ -100,6 +100,8 @@ public class ClientPoolDriver implements Driver {
         clientDriverURL);
     properties.setProperty(TomcatConnectionPool.PoolProps.DRIVER_NAME.key,
         ClientDriver.class.getName());
+
+    //Read connection from the pool and return. 
     return TomcatConnectionPool.getConnection(properties);
   }
 
