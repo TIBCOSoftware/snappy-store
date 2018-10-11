@@ -2348,13 +2348,13 @@ throws SQLException
 }
 {
 	<DESCRIBE>
-	( ( i=identifier() <PERIOD> i2=identifier() )
+	( ( i=identifier() <PERIOD> ( i2=identifier() | s=<MEMBERS> ) )
 	| i2=identifier()
 	| s=<STRING>
 	)
 	{
 		if(s!=null) {
-			i2 = stringValue(s.image);
+			i2 = i == null ? stringValue(s.image) : s.image.toUpperCase(Locale.ENGLISH);
 
 			if (i2.length() == 0)
 				throw ijException.noSuchTable("(missing)");
@@ -2491,7 +2491,7 @@ throws SQLException
 		if(t!=null) {
 // GemStone changes: Addition of "COLUMN TABLE", "EXTERNAL TABLE" etc below
 		    types = new String[] { "ROW TABLE", "SYSTEM TABLE", "COLUMN TABLE",
-		        "EXTERNAL TABLE", "STREAM TABLE", "SAMPLE TABLE", "TOPK TABLE" };
+		        "EXTERNAL TABLE", "STREAM TABLE", "SAMPLE TABLE", "TOPK TABLE", "VIRTUAL TABLE" };
 		}
 		else if(v!=null)
 			types = new String[] { "VIEW" };

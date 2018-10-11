@@ -11449,6 +11449,9 @@ schemaDefinition() throws StandardException :
 	** specifications for schema, or schema bodies.
 	*/
 	<SCHEMA>
+	{
+		getCompilerContext().setForcedDDLrouting(true);
+	}
 	( schemaName = identifier(Limits.MAX_IDENTIFIER_LENGTH, true)  [ <AUTHORIZATION> [ <LDAPGROUP> <COLON> groupName = identifier(Limits.MAX_IDENTIFIER_LENGTH, true)
 			| authName = identifier(Limits.MAX_IDENTIFIER_LENGTH, true) ] ]
 // GemStone changes BEGIN
@@ -16296,8 +16299,13 @@ dropSchemaStatement() throws StandardException :
         // GemStone changes END
 }
 {
-  	// GemStone changes BEGIN
-  	<SCHEMA >
+	// GemStone changes BEGIN
+	<SCHEMA>
+	{
+		CompilerContext cc = getCompilerContext();
+		cc.markAsDDLForSnappyUse(true);
+		cc.setForcedDDLrouting(true);
+	}
   	[<IF> <EXISTS>  	{
   	  onlyIfExists = Boolean.TRUE;  	}]
   	schemaName = identifier(Limits.MAX_IDENTIFIER_LENGTH, true) <RESTRICT>

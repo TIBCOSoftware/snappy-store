@@ -265,7 +265,7 @@ public interface GfxdConstants {
   final String DDL_LOCK_SERVICE = "gfxd-ddl-lock-service";
 
   /** Default value of {@link #MAX_LOCKWAIT}. */
-  final int MAX_LOCKWAIT_DEFAULT = 300000;
+  int MAX_LOCKWAIT_DEFAULT = 180000;
 
   /**
    * An int representing max wait time for distributed lock in milliseconds.

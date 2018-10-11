@@ -598,8 +598,8 @@ public class GfxdDiagsTest extends JdbcTestBase {
         .getProperties().get("mcast-port");
     final String fmt = isServer ? "datastore(%s)" : "accessor(%s)";
     if (mcastPort == null || "0".equals(mcastPort)) {
-      assertEquals(String.format(fmt, "loner"), rs.getString("KIND"));
-      assertEquals(String.format(fmt, "loner"), rs.getObject("KIND"));
+      assertEquals("loner", rs.getString("KIND"));
+      assertEquals("loner", rs.getObject("KIND"));
     }
     else {
       assertEquals(String.format(fmt, "normal"), rs.getString("KIND"));

@@ -40,19 +40,11 @@
 
 package com.pivotal.gemfirexd.internal.impl.sql.catalog;
 
+import java.sql.Types;
 
-
-
-
-
-
-
-// GemStone changes BEGIN
-import com.pivotal.gemfirexd.internal.catalog.TypeDescriptor;
 import com.pivotal.gemfirexd.internal.catalog.UUID;
 import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
-import com.pivotal.gemfirexd.internal.iapi.services.monitor.Monitor;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.services.uuid.UUIDFactory;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.CatalogRowFactory;
@@ -61,16 +53,13 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SystemColumn;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TupleDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecIndexRow;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecutionFactory;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueFactory;
-import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.iapi.types.SQLChar;
 import com.pivotal.gemfirexd.internal.iapi.types.SQLVarchar;
-import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 
 /**
@@ -270,7 +259,7 @@ public class SYSSCHEMASRowFactory extends CatalogRowFactory
                 SystemColumnImpl.getIdentifierColumn("SCHEMANAME", false),
                 SystemColumnImpl.getIdentifierColumn("AUTHORIZATIONID", false),
 // GemStone changes BEGIN
-                SystemColumnImpl.getIdentifierColumn("DEFAULTSERVERGROUPS", false),
+                SystemColumnImpl.getColumn("DEFAULTSERVERGROUPS", Types.VARCHAR, false),
 // GemStone changes END
             };
 	}

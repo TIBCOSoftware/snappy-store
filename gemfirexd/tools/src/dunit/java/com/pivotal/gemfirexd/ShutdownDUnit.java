@@ -53,10 +53,10 @@ public class ShutdownDUnit extends DistributedSQLTestBase{
     return true;
   }
 
-  public static Boolean isFabricServiceRunning() throws Exception{
+  public static Boolean isFabricServiceRunning() throws Exception {
     FabricService service = FabricServiceManager.currentFabricServiceInstance();
     // Return
-    return service == null ? false : service.status().equals(FabricService.State.RUNNING);
+    return service != null && service.status().equals(FabricService.State.RUNNING);
   }
 
   public void testBug45163() throws Exception{
@@ -70,8 +70,8 @@ public class ShutdownDUnit extends DistributedSQLTestBase{
 
     new GfxdSystemAdmin().shutDownAll(
         "shut-down-all",
-        Arrays.asList(new String[] { "-locators=" + getLocatorString(),
-            "-log-level=fine" }));
+        Arrays.asList("-locators=" + getLocatorString(),
+            "-log-level=fine"));
 
     waitForCriterion(new WaitCriterion() {
       @Override

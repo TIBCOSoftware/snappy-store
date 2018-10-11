@@ -65,6 +65,7 @@ import com.gemstone.gemfire.internal.cache.PutAllPartialResultException;
 import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.execute.BucketMovedException;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
@@ -1244,15 +1245,7 @@ public abstract class Misc {
   }
 
   public static boolean parseBoolean(String s) {
-    if (s != null) {
-      if (s.length() == 1) {
-        return Integer.parseInt(s) != 0;
-      } else {
-        return Boolean.parseBoolean(s);
-      }
-    } else {
-      return false;
-    }
+    return ClientSharedUtils.parseBoolean(s);
   }
 
   public static TreeSet<Map.Entry<Integer, Long>> sortByValue(

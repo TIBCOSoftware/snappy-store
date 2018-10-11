@@ -62,6 +62,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.pivotal.gemfirexd.internal.engine.diag.SysVTIs;
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdLockSet;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.Limits;
@@ -72,7 +73,6 @@ import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SPSDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.GenericConstantActionFactory;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.GenericExecutionFactory;
 
@@ -1795,12 +1795,13 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 		final int numberOfTableTypesInDerby = 4;
 		*/
 		final int numberOfTableTypesInDerby = 10;
+		boolean hasVTI = false;
 		//GemStone changes END
 
 		if (types == null)  {// null means all types 
 			types = new String[] {"ROW TABLE","VIEW","SYNONYM","SYSTEM TABLE"
 			/* GemStone changes BEGIN */, "COLUMN TABLE",
-			"EXTERNAL TABLE", "STREAM TABLE", "SAMPLE TABLE", "TOPK TABLE"
+			"EXTERNAL TABLE", "STREAM TABLE", "SAMPLE TABLE", "TOPK TABLE", "VIRTUAL TABLE",
 			/* GemStone changes END */};
 		}
 		String[] typeParams = new String[numberOfTableTypesInDerby];
@@ -1831,6 +1832,8 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 			    typeParams[7] = "SAMPLE";
 			else if ("TOPK TABLE".equals(types[i]) || "TOPK_TABLE".equals(types[i]))
 			    typeParams[8] = "TOPK";
+			else if ("VIRTUAL TABLE".equals(types[i]) || "VIRTUAL_TABLE".equals(types[i]))
+			    hasVTI = true;
 			//GemStone changes END
 			// If user puts in other types we simply ignore.
 			}
@@ -1846,6 +1849,16 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 		// add schema/table again for hive tables
 		s.setString(numberOfTableTypesInDerby + 4, swapNull(schemaPattern));
 		s.setString(numberOfTableTypesInDerby + 5, swapNull(tableNamePattern));
+		// add parameters for VTI tables
+		if (hasVTI) {
+			s.setString(numberOfTableTypesInDerby + 6, "VIRTUAL TABLE");
+			s.setString(numberOfTableTypesInDerby + 7, SysVTIs.LOCAL_VTI);
+		} else {
+			s.setNull(numberOfTableTypesInDerby + 6, Types.CHAR);
+			s.setNull(numberOfTableTypesInDerby + 7, Types.CHAR);
+		}
+		s.setString(numberOfTableTypesInDerby + 8, swapNull(schemaPattern));
+		s.setString(numberOfTableTypesInDerby + 9, swapNull(tableNamePattern));
 		return s.executeQuery();
 	}
 
@@ -2018,16 +2031,20 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 		s.setString(2, swapNull(schemaPattern));
                 s.setString(3, swapNull(tableNamePattern));
                 s.setString(4, swapNull(columnNamePattern));
-		//GemStone changes BEGIN
-		//for #51194, using sysaliases
-                s.setString(5, swapNull(catalog));
-                s.setString(6, swapNull(schemaPattern));
-                s.setString(7, swapNull(tableNamePattern));
-                s.setString(8, swapNull(columnNamePattern));
-                // for hive external tables
-                s.setString(9, swapNull(schemaPattern));
-                s.setString(10, swapNull(tableNamePattern));
-                s.setString(11, swapNull(columnNamePattern));
+		// GemStone changes BEGIN
+		// for #51194, using sysaliases
+		s.setString(5, swapNull(catalog));
+		s.setString(6, swapNull(schemaPattern));
+		s.setString(7, swapNull(tableNamePattern));
+		s.setString(8, swapNull(columnNamePattern));
+		// for hive external tables
+		s.setString(9, swapNull(schemaPattern));
+		s.setString(10, swapNull(tableNamePattern));
+		s.setString(11, swapNull(columnNamePattern));
+		// for VTIs
+		s.setString(12, swapNull(schemaPattern));
+		s.setString(13, swapNull(tableNamePattern));
+		s.setString(14, swapNull(columnNamePattern));
 		// GemStone changes END
 		return s.executeQuery();
 	}
@@ -2118,6 +2135,8 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 		s.setString(3, swapNull(tableNamePattern));
 		s.setString(4, swapNull(schemaPattern));
 		s.setString(5, swapNull(tableNamePattern));
+		s.setString(6, swapNull(schemaPattern));
+		s.setString(7, swapNull(tableNamePattern));
 		return s.executeQuery();
 	}
 

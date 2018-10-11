@@ -2397,11 +2397,11 @@ public class EmbedStatement extends ConnectionChild
                     "EmbedStatement: Implicit schema creation of "
                         + schemaDDL.getRegionToConflate() + " being enqueued");
               }
-              if (GemFireXDUtils.getMyVMKind().isAccessor() && ddl != null && 
+              if (GemFireXDUtils.getMyVMKind().isAccessor() && ddl != null &&
                   ddl.isHDFSPersistent()) {
                 Set<DistributedMember> dataStores = GfxdMessage.getDataStores();
                 DistributedMember selectedmember = null;
-                while (dataStores.size() > 0){
+                while (dataStores.size() > 0) {
                   for (DistributedMember member : dataStores) {
                     if (!Misc.getGemFireCache().isUnInitializedMember((InternalDistributedMember)member)){
                       selectedmember = member;
@@ -2423,7 +2423,7 @@ public class EmbedStatement extends ConnectionChild
                           		"is responsible for persisting the statement on HDFS. ");
                   GfxdDDLMessage.send(sys, processor, memberThatPersistOnHDFS, ddl,
                       localConn.getConnectionID(), ddlId.longValue(), this.lcc, true);
-                  if (processor != null && processor.hasGrantedMembers()){
+                  if (processor != null && processor.hasGrantedMembers()) {
                     hdfsPersistenceSuccess = true;
                     otherMembers.remove(selectedmember);
                     break;
@@ -2476,8 +2476,6 @@ public class EmbedStatement extends ConnectionChild
           }
           stmtSuccess = true;
         } catch (Throwable t) {
-          
-        
           // log the base exception and throw it back
           if (GemFireXDUtils.TraceFunctionException) {
             SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_FUNCTION_EX,
@@ -2519,7 +2517,7 @@ public class EmbedStatement extends ConnectionChild
             // the DDL needs to go into the DDL region in any case
             //Set<DistributedMember> members = processor.getGrantedMembers();
             if (distribute) {
-              if (memberThatPersistOnHDFS != null && !hdfsPersistenceSuccess){
+              if (memberThatPersistOnHDFS != null && !hdfsPersistenceSuccess) {
                 SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLREPLAY,
                     "EmbedStatement: Sending GfxdDDLFinishMessage for " + this.SQLText
                         + '[' + ddlId.longValue() + "] to VM in the "
