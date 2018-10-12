@@ -433,8 +433,8 @@ public class PersistentOplogSet implements OplogSet {
     }
 
     public void findInconsistencies() {
-      StringBuffer sb = new StringBuffer();
-      StringBuffer columnbufferSb = new StringBuffer();
+      StringBuilder sb = new StringBuilder();
+      StringBuilder columnbufferSb = new StringBuilder();
       sb.append("\n");
       sb.append("--- Child buckets with no parent buckets in this data store ---\n");
       sb.append("\n");
@@ -452,7 +452,7 @@ public class PersistentOplogSet implements OplogSet {
     }
 
     private void findInconsistencyInternal(Map<String, List<VdrBucketId>> oneSet,
-      final StringBuffer sb, final StringBuffer columnBufferSb) {
+      final StringBuilder sb, final StringBuilder columnBufferSb) {
       List<VdrBucketId> smallest = null;
       String rootRegion = null;
       boolean allSizesEqual = true;
@@ -471,9 +471,7 @@ public class PersistentOplogSet implements OplogSet {
           if (colocatedwith == null || colocatedwith.length() == 0) {
             numbuckets_of_root = currlist.size();
             rootPR = prn;
-            currlist.forEach(x -> {
-              bucketIdsOfRoot.add(x.bucketId);
-            });
+            currlist.forEach(x -> bucketIdsOfRoot.add(x.bucketId));
             break;
           }
           else {
@@ -518,9 +516,11 @@ public class PersistentOplogSet implements OplogSet {
       }
 
       if (badBucketsColumnBuffer.size() > 0) {
-        columnBufferSb.append("\nColumn buffer buckets needs to be manually verified.\n");
-        columnBufferSb.append("\nThese have their colocated row buffer buckets in SNAPPY-INTERNAL-DELTA disk store\n");
-        columnBufferSb.append("Please check that disk store for corresponding row buffer buckets\n\n");
+        columnBufferSb.append("\nColumn buffer buckets need to be manually verified.\n");
+        columnBufferSb.append("\nThese have their colocated row buffer buckets in " +
+            "SNAPPY-INTERNAL-DELTA disk store\n");
+        columnBufferSb.append("Please check that disk store for corresponding row " +
+            "buffer buckets\n\n");
         // @TODO Have a utility method to derive corresponding row buffer bucket name
         // and ask the user to check whether that exists in the SNAPPY INTERNAL DELTA disk store
         badBucketsColumnBuffer.forEach(x -> columnBufferSb.append(x.vdr.getName() + "\n"));
@@ -550,7 +550,7 @@ public class PersistentOplogSet implements OplogSet {
         Map.Entry<Long, DiskRecoveryStore> e = itr.next();
         // Print these irrespective of the sizes of the recovery map because
         // a colocated bucket can be created but may be empty. So if just bucket
-        // existence needs to be checked this list will help. For coulmn tables
+        // existence needs to be checked this list will help. For column tables
         // in snappydata it can be quite frequent that row buffer is empty but
         // column table has some data.
         System.out.println(e.getValue());
