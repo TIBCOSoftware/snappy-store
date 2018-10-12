@@ -22,11 +22,8 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.ListIterator;
 
-import com.gemstone.gemfire.internal.cache.ExternalTableMetaData;
 import com.gemstone.gemfire.internal.cache.PolicyTableData;
-import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.pivotal.gemfirexd.internal.catalog.ExternalCatalog;
 import com.pivotal.gemfirexd.internal.engine.GfxdVTITemplate;
 import com.pivotal.gemfirexd.internal.engine.GfxdVTITemplateNoAllNodesRoute;
@@ -44,13 +41,10 @@ import org.slf4j.LoggerFactory;
 public class SysPoliciesVTI extends GfxdVTITemplate
     implements GfxdVTITemplateNoAllNodesRoute {
 
-
   private final Logger logger = LoggerFactory.getLogger(getClass().getName());
 
   private Iterator<PolicyTableData> policyDatas;
   private PolicyTableData currentPolicyMeta;
-  private ListIterator<ExternalTableMetaData.Column> currentTableColumns;
-  private ExternalTableMetaData.Column currentTableColumn;
 
   @Override
   public ResultSetMetaData getMetaData() throws SQLException {
@@ -73,21 +67,13 @@ public class SysPoliciesVTI extends GfxdVTITemplate
       } else {
         this.policyDatas = Collections.emptyIterator();
       }
-      this.currentTableColumns = Collections.emptyListIterator();
     }
-    while (true) {
-      if (this.currentTableColumns.hasNext()) {
-        this.currentTableColumn = this.currentTableColumns.next();
-        this.wasNull = false;
-        return true;
-      } else if (this.policyDatas.hasNext()) {
-        this.currentPolicyMeta = this.policyDatas.next();
-        this.currentTableColumns = this.currentPolicyMeta.columns.listIterator();
-      } else {
-        this.currentPolicyMeta = null;
-        this.currentTableColumn = null;
-        return false;
-      }
+    if (this.policyDatas.hasNext()) {
+      this.currentPolicyMeta = this.policyDatas.next();
+      return true;
+    } else {
+      this.currentPolicyMeta = null;
+      return false;
     }
   }
 
@@ -119,23 +105,17 @@ public class SysPoliciesVTI extends GfxdVTITemplate
    */
 
   private static final String POLICYNAME = "NAME";
-
-  private static final String TABLE_SCHEMA_NAME = "TABLESCHEMANAME";
+  private static final String SCHEMANAME = "SCHEMANAME";
   private static final String TABLE = "TABLENAME";
-
   private static final String FOR = "POLICYFOR";
-
   private static final String APPLYTO = "APPLYTO";
-
   private static final String FILTER = "FILTER";
-
   private static final String OWNER = "OWNER";
-
 
   private static final ResultColumnDescriptor[] columnInfo = {
       EmbedResultSetMetaData.getResultColumnDescriptor(POLICYNAME,
           Types.VARCHAR, false, 128),
-      EmbedResultSetMetaData.getResultColumnDescriptor(TABLE_SCHEMA_NAME,
+      EmbedResultSetMetaData.getResultColumnDescriptor(SCHEMANAME,
           Types.VARCHAR, false, 128),
       EmbedResultSetMetaData.getResultColumnDescriptor(TABLE,
           Types.VARCHAR, false, 512),

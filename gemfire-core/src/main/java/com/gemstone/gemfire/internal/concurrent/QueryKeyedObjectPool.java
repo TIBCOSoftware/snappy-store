@@ -22,9 +22,9 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.function.Predicate;
 
 import com.gemstone.gemfire.CancelCriterion;
-import com.gemstone.gnu.trove.TObjectProcedure;
 import org.apache.commons.pool2.KeyedPooledObjectFactory;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
@@ -39,6 +39,7 @@ import org.apache.commons.pool2.impl.GenericObjectPool;
  *
  * @param <K> The type of keys maintained by this pool.
  * @param <T> Type of element pooled in this pool.
+ *
  * @see GenericObjectPool
  * @see GenericKeyedObjectPool
  */
@@ -88,6 +89,7 @@ public final class QueryKeyedObjectPool<K, T>
    *                        reflected in the pool.
    * @param cancelCriterion to check for cancellation of borrowObject
    */
+  @SuppressWarnings("WeakerAccess")
   public QueryKeyedObjectPool(KeyedPooledObjectFactory<K, T> factory,
       GenericKeyedObjectPoolConfig config, CancelCriterion cancelCriterion) {
     super(factory, config);
@@ -176,14 +178,16 @@ public final class QueryKeyedObjectPool<K, T>
    * Apply the given function on each object for a key both idle (waiting
    * to be borrowed) and active (currently borrowed).
    */
-  public void foreachObject(K key, TObjectProcedure proc) {
+  public void foreachObject(K key, Predicate<T> predicate) {
     Lock readLock = globalKeyLock.readLock();
     readLock.lock();
     try {
       Object queue = subPoolMap.get(key);
       if (queue != null) {
         for (Object p : getAllObjectsFromDeque(queue).values()) {
-          if (!proc.execute(((PooledObject<?>)p).getObject())) {
+          @SuppressWarnings("unchecked")
+          final PooledObject<T> pooledObject = (PooledObject<T>)p;
+          if (!predicate.test(pooledObject.getObject())) {
             break;
           }
         }

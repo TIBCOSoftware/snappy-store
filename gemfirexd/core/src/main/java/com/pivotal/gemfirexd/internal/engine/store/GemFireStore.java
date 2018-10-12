@@ -112,6 +112,7 @@ import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLMessage;
 import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLRegionQueue;
 import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.CallbackProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.resolver.GfxdPartitionResolver;
+import com.pivotal.gemfirexd.internal.engine.diag.DiskStoreIDs;
 import com.pivotal.gemfirexd.internal.engine.distributed.DistributedConnectionCloseExecutorFunction;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
@@ -1184,6 +1185,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       FunctionService.registerFunction(new GfxdCacheLoader.GetRowFunction());
       FunctionService.registerFunction(new QueryCancelFunction());
       FunctionService.registerFunction(new SnappyRegionStatsCollectorFunction());
+      FunctionService.registerFunction(new DiskStoreIDs.DiskStoreIDFunction());
 
       final ConnectionSignaller signaller = ConnectionSignaller.getInstance();
       if (logger.fineEnabled()) {
@@ -2154,14 +2156,6 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         else {
           if (!cache.forcedDisconnect()) {
             cache.close();
-            InternalDistributedSystem sys = InternalDistributedSystem
-                .getAnyInstance();
-                //getConnectedInstance();
-            if (sys != null) {
-              sys.getLogWriter()
-                  .info("Disconnecting GemFire distributed system.");
-              sys.disconnect();
-            }
           }
         }
       }
@@ -2179,6 +2173,15 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         else {
           cache.close();
         }
+      }
+    }
+    if (cache == null || !cache.forcedDisconnect()) {
+      InternalDistributedSystem sys = InternalDistributedSystem
+          .getAnyInstance(); // getConnectedInstance();
+      if (sys != null && sys.isConnected()) {
+        sys.getLogWriter()
+            .info("Disconnecting GemFire distributed system.");
+        sys.disconnect();
       }
     }
 

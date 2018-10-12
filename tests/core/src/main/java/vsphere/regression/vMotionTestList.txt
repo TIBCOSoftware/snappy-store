@@ -5,7 +5,7 @@ vsphere/regression/admin.bt
 vsphere/regression/asyncMsg.bt
 vsphere/regression/capCon.bt
 vsphere/regression/connPool.bt
-vsphere/regression/concCQ.bt                                (Run BatteryTest with -Dbt.masterHeapMB=512 to support larger Blackboards)
+vsphere/regression/concCQ.bt                                (Run BatteryTest with -Dbt.masterHeapMB=1024 to support larger Blackboards)
 vsphere/regression/diskRecovery.bt
 vsphere/regression/dlock.bt
 vsphere/regression/durableClients.bt

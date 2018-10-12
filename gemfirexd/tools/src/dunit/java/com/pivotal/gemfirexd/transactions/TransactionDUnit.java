@@ -54,6 +54,7 @@ import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionWrapper;
+import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
@@ -79,6 +80,8 @@ public class TransactionDUnit extends DistributedSQLTestBase {
 
   protected final static String DISKSTORE = "TestPersistenceDiskStore";
 
+  protected static String currentUserName;
+
   public TransactionDUnit(String name) {
     super(name);
   }
@@ -99,6 +102,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     startVMs(1, 3);
     getLogWriter().info(getClass() + ".beforeClass: started 1+3 VMs: " +
         clientVMs + " ; " + serverVMs);
+    currentUserName = GemFireXDUtils.getRandomString(true);
   }
 
   @Override
@@ -113,7 +117,7 @@ public class TransactionDUnit extends DistributedSQLTestBase {
     }
     resetObservers();
     invokeInEveryVM(TransactionDUnit.class, "resetObservers");
-    String userName = TestUtil.currentUserName;
+    String userName = currentUserName;
     setupConnection(userName);
     invokeInEveryVM(TransactionDUnit.class, "setupConnection",
         new Object[]{userName});

@@ -906,7 +906,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
       final ResultSet rs = stmt
           .executeQuery("select KIND, LOCATOR, NETSERVERS from SYS.MEMBERS");
       assertTrue("expected one row in meta-data query", rs.next());
-      assertEquals("datastore(loner)", rs.getString(1));
+      assertEquals("loner", rs.getString(1));
       if (!rs.getString(2).equals(
           localHost.getHostAddress() + '[' + port2 + ']')) {
         assertEquals(getFullHost(localHost) + '[' + port2 + ']',

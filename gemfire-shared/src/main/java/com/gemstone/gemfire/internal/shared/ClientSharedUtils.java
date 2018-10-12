@@ -345,6 +345,18 @@ public abstract class ClientSharedUtils {
     }
   }
 
+  public static boolean parseBoolean(String s) {
+    if (s != null) {
+      if (s.length() == 1) {
+        return Integer.parseInt(s) != 0;
+      } else {
+        return Boolean.parseBoolean(s);
+      }
+    } else {
+      return false;
+    }
+  }
+
   public static String newWrappedString(final char[] chars, final int offset,
       final int size) {
     if (size >= 0) {
@@ -716,7 +728,7 @@ public abstract class ClientSharedUtils {
               if (ex instanceof UnsupportedOperationException) {
                 if (!socketKeepAliveIdleWarningLogged) {
                   socketKeepAliveIdleWarningLogged = true;
-                  // KEEPIDLE is the minumum required for this, so
+                  // KEEPIDLE is the minimum required for this, so
                   // log as a warning
                   doLogWarning = 1;
                 }
@@ -734,6 +746,10 @@ public abstract class ClientSharedUtils {
               } else {
                 doLogWarning = 2;
               }
+              // skip logging for default setting
+              if (keepInterval == SystemProperties.DEFAULT_KEEPALIVE_INTVL) {
+                doLogWarning = 0;
+              }
               break;
             case OPT_KEEPCNT:
               if (ex instanceof UnsupportedOperationException) {
@@ -744,6 +760,10 @@ public abstract class ClientSharedUtils {
                 }
               } else {
                 doLogWarning = 2;
+              }
+              // skip logging for default setting
+              if (keepCount == SystemProperties.DEFAULT_KEEPALIVE_CNT) {
+                doLogWarning = 0;
               }
               break;
           }

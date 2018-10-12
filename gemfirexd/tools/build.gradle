@@ -115,7 +115,7 @@ task deleteGenerated(type: Delete) {
 clean.dependsOn deleteGenerated
 
 sourceSets.main.java.srcDirs = [ 'src/main/java', javaccOut, 'src/ddlutils/java' ]
-sourceSets.test.java.srcDirs = [ 'src/test/java', 'src/testing/java', 'src/dunit/java', 'src/demo/java' ]
+sourceSets.test.java.srcDirs = [ 'src/test/java', 'src/dunit/java', 'src/demo/java' ]
 
 task generatePropertiesFiles(dependsOn: 'processResources') {
   def infoDir = file("${buildDir}/resources/main/com/pivotal/gemfirexd/internal/info")

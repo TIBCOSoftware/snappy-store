@@ -35,10 +35,12 @@
 
 package com.pivotal.gemfirexd.internal.impl.sql.catalog;
 
+import java.sql.ResultSetMetaData;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Properties;
 
 import com.gemstone.gemfire.cache.TimeoutException;
@@ -83,13 +85,9 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ConstantAction;
-import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecIndexRow;
-import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
 import com.pivotal.gemfirexd.internal.iapi.store.access.ConglomerateController;
 import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLVarchar;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.CreateAsyncEventListenerNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.CreateGatewayReceiverNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.CreateGatewaySenderNode;
@@ -98,6 +96,7 @@ import com.pivotal.gemfirexd.internal.impl.sql.compile.DropDiskStoreNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.DropGatewayReceiverNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.DropGatewaySenderNode;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.DDLConstantAction;
+import com.pivotal.gemfirexd.internal.vti.VTITemplate;
 
 /**
  * This class implements the {@link DataDictionary} interface extending
@@ -120,8 +119,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
    * since it contains the AliasDescriptor which in turn will have the handle to
    * current DataDictionary object etc.
    */
-  private final HashMap<String, SYSFUNEntry> sysFunMap =
-      new HashMap<String, GfxdDataDictionary.SYSFUNEntry>();
+  private final HashMap<String, SYSFUNEntry> sysFunMap = new HashMap<>();
 
   /**
    * Represents an entry in the {@link GfxdDataDictionary#sysFunMap} containing
@@ -848,17 +846,18 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
 
       // set the column descriptors to allow for updates
       try {
-        Object obj = Class.forName(className).newInstance();
+        VTITemplate obj = (VTITemplate)Class.forName(className).newInstance();
         if (obj instanceof UpdateVTITemplate) {
           ((UpdateVTITemplate)obj).setColumnDescriptorList(td);
         }
         td.setRouteQueryToAllNodes(
             !(obj instanceof GfxdVTITemplateNoAllNodesRoute));
+        this.diagVTIMap.put(tableName,
+            new GemFireXDUtils.Pair<>(td, obj.getMetaData()));
       } catch (Exception ex) {
         throw StandardException.newException(SQLState.LANG_TABLE_NOT_FOUND, ex,
             td.getQualifiedName());
       }
-      this.diagVTIMap.put(tableName, td);
     }
   }
 
@@ -2177,6 +2176,8 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
 
   public static final String SNAPPY_TABLE_STATS = "TABLESTATS";
 
+  public static final String SYSVTIS_TABLENAME = "VTIS";
+
   private static final String[][] VTI_TABLE_CLASSES = {
       { DIAG_MEMBERS_TABLENAME,
           "com.pivotal.gemfirexd.internal.engine.diag.DistributedMembers" },
@@ -2200,10 +2201,11 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
       { DISKSTOREIDS_TABLENAME, DiskStoreIDs.class.getName() },
       { SNAPPY_TABLE_STATS, SnappyTableStatsVTI.class.getName() },
       { SYSPOLICIES_TABLENAME, SysPoliciesVTI.class.getName() },
+      { SYSVTIS_TABLENAME, SysVTIs.class.getName() },
   };
 
-  private final HashMap<String, TableDescriptor> diagVTIMap =
-    new HashMap<String, TableDescriptor>();
+  private final HashMap<String, GemFireXDUtils.Pair<TableDescriptor,
+      ResultSetMetaData>> diagVTIMap = new HashMap<>();
 
   private final HashMap<String, String> diagVTINames =
     new HashMap<String, String>();
@@ -2276,12 +2278,17 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
     final SchemaDescriptor sd = (schema != null ? schema
         : getSystemSchemaDescriptor());
     if (SchemaDescriptor.STD_SYSTEM_SCHEMA_NAME.equals(sd.getSchemaName())) {
-      TableDescriptor td = this.diagVTIMap.get(tableName);
-      if (td != null) {
-        return td;
+      GemFireXDUtils.Pair<TableDescriptor, ResultSetMetaData> desc =
+          this.diagVTIMap.get(tableName);
+      if (desc != null) {
+        return desc.getKey();
       }
     }
     return super.getTableDescriptor(tableName, schema, tc);
+  }
+
+  public List<GemFireXDUtils.Pair<TableDescriptor, ResultSetMetaData>> getRegisteredVTIs() {
+    return new ArrayList<>(this.diagVTIMap.values());
   }
 
   /**

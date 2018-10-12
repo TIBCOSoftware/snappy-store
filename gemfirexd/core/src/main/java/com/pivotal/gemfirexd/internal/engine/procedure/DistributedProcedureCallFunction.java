@@ -52,7 +52,6 @@ import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionWrapper;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.procedure.cohort.ProcedureSender;
 import com.pivotal.gemfirexd.internal.iapi.reference.JDBC30Translation;
-import com.pivotal.gemfirexd.internal.iapi.reference.Property;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
 import com.pivotal.gemfirexd.internal.iapi.types.DataType;
@@ -365,9 +364,7 @@ public class DistributedProcedureCallFunction implements Function, Declarable {
       this.sqlText = sqlText;
       this.whereClause = whereClause;
       this.tableName = tableName;
-      if (!Property.DEFAULT_USER_NAME.equals(defaultSchema)) {
-        this.defaultSchema = defaultSchema;
-      }
+      this.defaultSchema = defaultSchema;
       // pre-initialize any fields into final shape else things may go awry due
       // to concurrent serialization and local execution (which happens in a
       // separate function execution thread) -- see #46480

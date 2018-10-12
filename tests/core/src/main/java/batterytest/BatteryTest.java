@@ -375,7 +375,7 @@ public class BatteryTest {
       return false;
     }
     String resultDir = System.getProperty( "resultDir", System.getProperty( "user.dir" ) );
-    int masterHeapMB = Integer.getInteger( "masterHeapMB", 256 ).intValue();
+    int masterHeapMB = Integer.getInteger( "masterHeapMB", 512).intValue();
     int numTimesToRun = Integer.getInteger( "numTimesToRun", new Integer(1) ).intValue();
     String logLevel = System.getProperty( "logLevel", "info" );
     boolean provideRegressionSummary = Boolean.valueOf(System.getProperty("provideRegressionSummary", "true")).booleanValue();
