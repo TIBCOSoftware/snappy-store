@@ -52,7 +52,7 @@ class TomcatConnectionPool {
     INIT_SIZE("pool.initialSize", "10"),
     MAX_ACTIVE("pool.maxActive", MAX_POOL_SIZE.toString()),
     MAX_IDLE("pool.maxIdle", MAX_POOL_SIZE.toString()),
-    MIN_IDLE("pool.minIdle", "10"),
+    MIN_IDLE("pool.minIdle", "1"),
     MAX_WAIT("pool.maxWait", "30"),
     REMOVE_ABANDONED("pool.removeAbandoned", "true"),
     REMOVE_ABANDONED_TIMEOUT("pool.removeAbandonedTimeout", "60"),
