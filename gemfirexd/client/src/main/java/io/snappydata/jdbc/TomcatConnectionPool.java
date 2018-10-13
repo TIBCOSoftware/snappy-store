@@ -123,7 +123,7 @@ class TomcatConnectionPool {
     // Filtering out the pool properties and creating string of
     // connection properties to pass on.
     Set<String> keys = prop.stringPropertyNames();
-    String connectionProperties = keys.stream().filter(x -> listPoolPropKeys.contains(x))
+    String connectionProperties = keys.stream().filter(x -> !listPoolPropKeys.contains(x))
         .map(i -> i.toString() + "=" + prop.getProperty(i.toString()))
         .collect(Collectors.joining(";"));
     poolProperties.setConnectionProperties(connectionProperties);

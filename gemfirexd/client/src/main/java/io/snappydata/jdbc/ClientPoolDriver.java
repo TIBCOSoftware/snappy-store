@@ -28,12 +28,10 @@ import java.util.Properties;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
-import com.pivotal.gemfirexd.Attribute;
-import com.pivotal.gemfirexd.internal.client.am.SqlException;
 import com.pivotal.gemfirexd.internal.client.am.Utils;
 import com.pivotal.gemfirexd.internal.shared.common.error.ClientExceptionUtil;
-import com.pivotal.gemfirexd.internal.shared.common.reference.MessageId;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
+import com.pivotal.gemfirexd.jdbc.ClientDRDADriver;
 import io.snappydata.thrift.internal.ClientConfiguration;
 
 /**
@@ -50,8 +48,10 @@ public class ClientPoolDriver implements Driver {
   protected final static String URL_SUFFIX_REGEX =
       "//(([^:]+:[0-9]+)|([^\\[]+\\[[0-9]+\\]))(/(snappydata;)?;?(.*)?)?";
 
-  private final static Pattern PROTOCOL_PATTERN = Pattern.compile(URL_PREFIX_REGEX +
-      SUBPROTOCOL + "//.*", Pattern.CASE_INSENSITIVE);
+  /*private final static Pattern PROTOCOL_PATTERN = Pattern.compile(URL_PREFIX_REGEX +
+      SUBPROTOCOL + "//.*", Pattern.CASE_INSENSITIVE);*/
+  private final static Pattern PROTOCOL_PATTERN = Pattern.compile(URL_PREFIX_REGEX + SUBPROTOCOL,
+      Pattern.CASE_INSENSITIVE);
 
   private final static Pattern URL_PATTERN = Pattern.compile(URL_PREFIX_REGEX +
       SUBPROTOCOL + URL_SUFFIX_REGEX, Pattern.CASE_INSENSITIVE);
@@ -94,8 +94,7 @@ public class ClientPoolDriver implements Driver {
     }
 
     properties = (properties == null) ? new Properties() : properties;
-    String clientDriverURL = url.replaceFirst(PROTOCOL_PATTERN.matcher(url)
-        .replaceFirst(SUBPROTOCOL), "");
+    String clientDriverURL = PROTOCOL_PATTERN.matcher(url).replaceFirst(SNAPPY_PROTOCOL);
     properties.setProperty(TomcatConnectionPool.PoolProps.URL.key,
         clientDriverURL);
     properties.setProperty(TomcatConnectionPool.PoolProps.DRIVER_NAME.key,
@@ -128,42 +127,6 @@ public class ClientPoolDriver implements Driver {
   @Override
   public DriverPropertyInfo[] getPropertyInfo(String url, Properties properties)
       throws SQLException {
-
-    java.sql.DriverPropertyInfo driverPropertyInfo[] = new java.sql.DriverPropertyInfo[2];
-
-    // If there are no properties set already,
-    // then create a dummy properties just to make the calls go thru.
-    if (properties == null) {
-      properties = new java.util.Properties();
-    }
-
-    boolean isUserNameAttribute = false;
-    String userName = properties.getProperty(Attribute.USERNAME_ATTR);
-    if (userName == null) {
-      userName = properties.getProperty(Attribute.USERNAME_ALT_ATTR);
-      if (userName != null) {
-        isUserNameAttribute = true;
-      }
-    }
-
-    driverPropertyInfo[0] = new java.sql.DriverPropertyInfo(
-        isUserNameAttribute ? Attribute.USERNAME_ALT_ATTR
-            : Attribute.USERNAME_ATTR, userName);
-
-    driverPropertyInfo[1] =
-        new java.sql.DriverPropertyInfo(Attribute.PASSWORD_ATTR,
-            properties.getProperty(Attribute.PASSWORD_ATTR));
-
-    driverPropertyInfo[0].description =
-        SqlException.getMessageUtil().getTextMessage(
-            MessageId.CONN_USERNAME_DESCRIPTION);
-    driverPropertyInfo[1].description =
-        SqlException.getMessageUtil().getTextMessage(
-            MessageId.CONN_PASSWORD_DESCRIPTION);
-
-    driverPropertyInfo[0].required = true;
-    driverPropertyInfo[1].required = false; // depending on the security mechanism
-
-    return driverPropertyInfo;
+    return ClientDRDADriver.getPropertyInfoUtility(url,properties);
   }
 }
