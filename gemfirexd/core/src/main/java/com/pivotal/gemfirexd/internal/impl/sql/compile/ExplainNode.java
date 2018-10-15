@@ -87,7 +87,7 @@ public class ExplainNode extends DMLStatementNode {
 //          "MEMBER_ID", DataTypeDescriptor.getBuiltInDataTypeDescriptor(
 //              Types.VARCHAR, false, 128));
       columnInfo[0] = EmbedResultSetMetaData.getResultColumnDescriptor(
-          "MEMBER_PLAN", DataTypeDescriptor.getBuiltInDataTypeDescriptor(
+          "plan", DataTypeDescriptor.getBuiltInDataTypeDescriptor(
               Types.CLOB, false));
 
       metadata = new EmbedResultSetMetaData(columnInfo);
