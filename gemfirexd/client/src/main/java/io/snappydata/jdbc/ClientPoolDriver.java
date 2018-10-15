@@ -44,6 +44,9 @@ public class ClientPoolDriver implements Driver {
 
   private final static String SUBPROTOCOL = "(pool:){1}";
 
+  public static final ThreadLocal<Connection> CURRENT_CONNECTION =
+      new ThreadLocal<>();
+
   protected final static String URL_PREFIX_REGEX = "(" + SNAPPY_PROTOCOL + ")";
   protected final static String URL_SUFFIX_REGEX =
       "//(([^:]+:[0-9]+)|([^\\[]+\\[[0-9]+\\]))(/(snappydata;)?;?(.*)?)?";
@@ -99,9 +102,10 @@ public class ClientPoolDriver implements Driver {
         clientDriverURL);
     properties.setProperty(TomcatConnectionPool.PoolProps.DRIVER_NAME.key,
         ClientDriver.class.getName());
-
+    Connection connection = TomcatConnectionPool.getConnection(properties);
+    CURRENT_CONNECTION.set(connection);
     //Read connection from the pool and return. 
-    return TomcatConnectionPool.getConnection(properties);
+    return connection;
   }
 
   @Override
