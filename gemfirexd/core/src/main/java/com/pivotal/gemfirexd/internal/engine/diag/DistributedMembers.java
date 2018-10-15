@@ -250,7 +250,8 @@ public final class DistributedMembers extends UpdateVTITemplate {
           sb.append("(admin)");
           break;
         case DistributionManager.LONER_DM_TYPE:
-          sb.append("(loner)");
+          sb.setLength(0);
+          sb.append("loner");
           break;
         default:
           sb.append("(unknown[").append(currentMember.getVmKind()).append("])");
@@ -594,11 +595,11 @@ public final class DistributedMembers extends UpdateVTITemplate {
 
   private static final ResultColumnDescriptor[] columnInfo = {
       EmbedResultSetMetaData.getResultColumnDescriptor(MEMBERID, Types.VARCHAR,
-          false, 128),
+          false, 256),
       EmbedResultSetMetaData.getResultColumnDescriptor(VMKIND, Types.VARCHAR,
           false, 24),
       EmbedResultSetMetaData.getResultColumnDescriptor(STATUS, Types.VARCHAR,
-          false, 24),
+          false, 12),
       new GenericColumnDescriptor(HOSTDATA,
           SchemaDescriptor.STD_SYSTEM_SCHEMA_NAME,
           GfxdDataDictionary.DIAG_MEMBERS_TABLENAME, -1,
@@ -609,13 +610,13 @@ public final class DistributedMembers extends UpdateVTITemplate {
       EmbedResultSetMetaData.getResultColumnDescriptor(IPADDRESS,
           Types.VARCHAR, true, 64),
       EmbedResultSetMetaData.getResultColumnDescriptor(HOST, Types.VARCHAR,
-          true, 128),
+          false, 256),
       EmbedResultSetMetaData.getResultColumnDescriptor(PID, Types.INTEGER,
           false),
       EmbedResultSetMetaData.getResultColumnDescriptor(PORT, Types.INTEGER,
           false),
       EmbedResultSetMetaData.getResultColumnDescriptor(ROLES, Types.VARCHAR,
-          false, 128),
+          false, 256),
       EmbedResultSetMetaData.getResultColumnDescriptor(NETSERVERS,
           Types.VARCHAR, false, TypeId.VARCHAR_MAXWIDTH),
       EmbedResultSetMetaData.getResultColumnDescriptor(THRIFTSERVERS,
@@ -629,7 +630,7 @@ public final class DistributedMembers extends UpdateVTITemplate {
               TypeId.VARCHAR_MAXWIDTH), true, false),
 
       EmbedResultSetMetaData.getResultColumnDescriptor(MANAGERINFO,
-          Types.VARCHAR, false, 128),
+          Types.VARCHAR, false, 256),
 
       EmbedResultSetMetaData.getResultColumnDescriptor(SYSTEMPROPS, Types.CLOB,
           false),

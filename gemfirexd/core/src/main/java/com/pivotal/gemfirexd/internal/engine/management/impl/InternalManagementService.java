@@ -28,11 +28,14 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ForkJoinPool;
 import java.util.logging.Level;
 
 import javax.management.ObjectName;
 
 import com.gemstone.gemfire.LogWriter;
+import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
@@ -227,7 +230,7 @@ public class InternalManagementService {
 //        logInfo("ABHISHEK: STATEMENT__CANCEL");
         break;
       case GfxdResourceEvent.EMBEDCONNECTION__INIT:
-        handleEmbedConnectionInit((EmbedConnection) eventData);
+        handleEmbedConnectionInit((EmbedConnection) eventData, true);
 //        logInfo("ABHISHEK: EMBEDCONNECTION__INIT");
         break;
       default:
@@ -509,7 +512,35 @@ public class InternalManagementService {
     logFine("Unregistered following MBeans for \""+fullTableName+"\": " + unregisteredMBeanByPattern, null);
   }
 
-  private void handleEmbedConnectionInit(EmbedConnection connection) {
+  private void handleEmbedConnectionInit(final EmbedConnection connection, boolean checkStore) {
+    final InternalDistributedSystem system = Misc.getDistributedSystem();
+    GemFireStore store = GemFireStore.getBootingInstance();
+    if (checkStore && (store == null || !store.initialDDLReplayDone())) {
+      // need to create connection wrapper which will need another embedded connection
+      // that can fail since this is boot process itself, so register it in another thread
+      ExecutorService executor = system.isLoner()
+          // for loner, the DistributionManager pools are all synchronous in same thread
+          ? ForkJoinPool.commonPool()
+          : system.getDistributionManager().getWaitingThreadPool();
+      executor.execute(() -> {
+        long current = System.currentTimeMillis();
+        long end = current + system.getConfig().getAckWaitThreshold() * 1000L;
+        while (GemFireStore.getBootingInstance() == null && end > current) {
+          try {
+            Thread.sleep(100L);
+            current = System.currentTimeMillis();
+            Misc.checkIfCacheClosing(null);
+          } catch (InterruptedException ie) {
+            Misc.checkIfCacheClosing(ie);
+          }
+        }
+        long timeout = Math.max(end - current, 1000L);
+        GemFireXDUtils.waitForNodeInitialization(timeout, true, false);
+        // try to proceed in any case even if node has not initialized yet
+        handleEmbedConnectionInit(connection, false);
+      });
+      return;
+    }
     GfxdConnectionHolder holder = GfxdConnectionHolder.getHolder();
     GfxdConnectionWrapper connectionWrapper = null;
     try {

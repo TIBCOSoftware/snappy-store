@@ -345,6 +345,18 @@ public abstract class ClientSharedUtils {
     }
   }
 
+  public static boolean parseBoolean(String s) {
+    if (s != null) {
+      if (s.length() == 1) {
+        return Integer.parseInt(s) != 0;
+      } else {
+        return Boolean.parseBoolean(s);
+      }
+    } else {
+      return false;
+    }
+  }
+
   public static String newWrappedString(final char[] chars, final int offset,
       final int size) {
     if (size >= 0) {

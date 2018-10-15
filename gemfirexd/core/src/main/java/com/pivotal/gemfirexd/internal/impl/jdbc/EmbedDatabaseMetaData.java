@@ -73,7 +73,6 @@ import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SPSDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.GenericConstantActionFactory;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.GenericExecutionFactory;
 
@@ -1853,7 +1852,7 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 		// add parameters for VTI tables
 		if (hasVTI) {
 			s.setString(numberOfTableTypesInDerby + 6, "VIRTUAL TABLE");
-			s.setString(numberOfTableTypesInDerby + 7, SysVTIs.DISTRIBUTED_VTI);
+			s.setString(numberOfTableTypesInDerby + 7, SysVTIs.LOCAL_VTI);
 		} else {
 			s.setNull(numberOfTableTypesInDerby + 6, Types.CHAR);
 			s.setNull(numberOfTableTypesInDerby + 7, Types.CHAR);

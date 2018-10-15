@@ -1329,8 +1329,7 @@ public final class ConnectionTable  {
       HashMap result) {
 
     if (this.connectionPool != null) {
-      this.connectionPool.foreachObject(new ConnKey(member), c -> {
-        final Connection conn = (Connection)c;
+      this.connectionPool.foreachObject(new ConnKey(member), conn -> {
         if (!conn.isSharedResource() && conn.getOriginatedHere()
             && conn.getPreserveOrder()) {
           result.put(conn.getUniqueId(), conn.getMessagesSent());

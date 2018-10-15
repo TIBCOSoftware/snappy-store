@@ -1674,16 +1674,16 @@ public abstract class VTITemplate implements ResultSet {
     //checkIfClosed("isWrapperFor");
     return interfaces.isInstance(this);
   }
-  
+
   /**
    * Returns <code>this</code> if this class implements the interface
    *
    * @param  interfaces a Class defining an interface
    * @return an object that implements the interface
-   * @throws java.sql.SQLExption if no object if found that implements the 
+   * @throws java.sql.SQLException if no object if found that implements the
    * interface
    */
-  public <T> T unwrap(java.lang.Class<T> interfaces) 
+  public <T> T unwrap(java.lang.Class<T> interfaces)
   throws SQLException{
     //checkIfClosed("unwrap");
     //Derby does not implement non-standard methods on 

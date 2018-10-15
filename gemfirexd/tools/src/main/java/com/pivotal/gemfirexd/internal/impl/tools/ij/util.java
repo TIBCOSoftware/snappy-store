@@ -838,6 +838,9 @@ AppUI.out.println("SIZE="+l);
 // GemStone changes BEGIN
 		  { "jdbc:gemfirexd://", "com.pivotal.gemfirexd.jdbc.ClientDriver" },
 		  { "jdbc:gemfirexd:", "com.pivotal.gemfirexd.jdbc.EmbeddedDriver" },
+		  // Snappy Pool driver and the normal snappy driver has matching prefix
+		  // Do not alter the order here. That is keep pool always above normal driver
+		  { "jdbc:snappydata:pool://", "io.snappydata.jdbc.ClientPoolDriver" },
       { "jdbc:snappydata://", "io.snappydata.jdbc.ClientDriver" },
       { "jdbc:snappydata:", "io.snappydata.jdbc.EmbeddedDriver" }
 		  /* (original derby code)

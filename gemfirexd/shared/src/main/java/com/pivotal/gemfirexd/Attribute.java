@@ -44,6 +44,10 @@ public interface Attribute {
    * [SnappyData] The default SnappyData protocol for data store or peer client.
    */
   String SNAPPY_PROTOCOL = "jdbc:snappydata:";
+  /**
+   * [SnappyData] The default SnappyData protocol for data store or peer client.
+   */
+  String SNAPPY_POOL_PROTOCOL = "jdbc:snappydata:pool:";
 
   /**
    * The dummy name used for GemFireXD database.

@@ -37,7 +37,7 @@ import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSetMetaData;
 public class SysVTIs extends GfxdVTITemplate
     implements GfxdVTITemplateNoAllNodesRoute {
 
-  public static final String DISTRIBUTED_VTI = "DISTRIBUTED VTI";
+  public static final String LOCAL_VTI = "LOCAL VTI";
 
   private Iterator<GemFireXDUtils.Pair<TableDescriptor, ResultSetMetaData>> vtis;
   private GemFireXDUtils.Pair<TableDescriptor, ResultSetMetaData> currentVTI;
@@ -80,7 +80,7 @@ public class SysVTIs extends GfxdVTITemplate
         return this.currentVTI.getKey().getName();
       case 3: // TYPE
         return this.currentVTI.getKey().routeQueryToAllNodes()
-            ? DISTRIBUTED_VTI : "VIRTUAL TABLE";
+            ? LOCAL_VTI : "VIRTUAL TABLE";
       case 4: // COLUMN
         return this.currentVTI.getValue().getColumnName(this.currentVTIColumn);
       case 5: // TYPEID

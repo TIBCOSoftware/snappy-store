@@ -125,19 +125,17 @@ public final class ProcedureProxy implements
   */
   private static Pattern pattern = Pattern
       .compile("\\s*(?i)(table)\\s+(\\S+)(\\s+(?i)(where)\\s+(\\S+.*))?");
+
   /**
-   * @param activation  
-   * @param probeValues        //if the where clause contains a IN operator
-   * @param startKeyGetter       
+   * @param activation
+   * @param probeValues         if the where clause contains a IN operator
+   * @param startKeyGetter
    * @param startSearchOperator
    * @param stopKeyGetter
    * @param stopSearchOperator
-   * @param conglomId          //the base table id 
-   * @param all                //execute the procedure in all nodes
-   * @param serverGroups       //execute the procedure in a set of groups. 
-   * @param long globalIndexId  //the id of the global hash index. This happens while a 
-   *                             where clause contains  the global hash index columns but 
-   *                             does not have the partition columns. 
+   * @param tableIdIndex        the base table index in activation
+   * @param all                 execute the procedure in all nodes
+   * @param serverGroupIdx      execute the procedure in a set of groups.
    */
   public ProcedureProxy(Activation activation, int tableIdIndex, long indexId, int numColumns,
       GeneratedMethod startKeyGetter, int startSearchOperator,

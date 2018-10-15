@@ -774,7 +774,7 @@ public final class GemFireXDUtils {
    */
   public static long newUUIDForDD() throws IllegalStateException,
       StandardException {
-    return Misc.getMemStore().getDDLStmtQueue().newUUID();
+    return Misc.getMemStoreBooting().getDDLStmtQueue().newUUID();
   }
 
   public static InternalDistributedMember getDistributedMemberFromUUID(
@@ -904,16 +904,20 @@ public final class GemFireXDUtils {
 
   public static EmbedConnection createNewInternalConnection(
       boolean remoteConnection) throws StandardException {
+    return createNewInternalConnection(remoteConnection,
+        EmbedConnection.CHILD_NOT_CACHEABLE);
+  }
+
+  public static EmbedConnection createNewInternalConnection(
+      boolean remoteConnection, long connId) throws StandardException {
     try {
       final Properties props = new Properties();
-      props.putAll(AuthenticationServiceBase.getPeerAuthenticationService()
-          .getBootCredentials());
-      boolean isSnappy = Misc.getMemStore().isSnappyStore();
-      String protocol = isSnappy ? Attribute.SNAPPY_PROTOCOL : Attribute.PROTOCOL;
-      final EmbedConnection conn = (EmbedConnection)InternalDriver
-          .activeDriver().connect(protocol, props,
-              EmbedConnection.CHILD_NOT_CACHEABLE,
-              EmbedConnection.CHILD_NOT_CACHEABLE, remoteConnection, Connection.TRANSACTION_NONE);
+      GemFireStore memStore = Misc.getMemStoreBooting();
+      props.putAll(memStore.getDatabase().getAuthenticationService().getBootCredentials());
+      String protocol = memStore.isSnappyStore() ? Attribute.SNAPPY_PROTOCOL : Attribute.PROTOCOL;
+      final EmbedConnection conn = InternalDriver
+          .activeDriver().connect(protocol, props, connId, connId,
+              remoteConnection, Connection.TRANSACTION_NONE);
       if (conn != null) {
         conn.setInternalConnection();
         ConnectionStats stats = InternalDriver.activeDriver()
@@ -1265,7 +1269,7 @@ public final class GemFireXDUtils {
               forUpdate, localOnly, forUpdate);
         }
         else {
-          final GfxdLockService lockService = Misc.getMemStore()
+          final GfxdLockService lockService = Misc.getMemStoreBooting()
               .getDDLLockService();
           final Object lockOwner = lockService.newCurrentOwner();
           success = GfxdLockSet.lock(lockService, lockable, lockOwner,
@@ -1325,7 +1329,7 @@ public final class GemFireXDUtils {
         lockService = ((GemFireTransaction)tc).getLockSpace().getLockService();
       }
       else {
-        lockService = Misc.getMemStore().getDDLLockService();
+        lockService = Misc.getMemStoreBooting().getDDLLockService();
       }
       throw lockService.getLockTimeoutException(lockable != null ? lockable
           : lockObject, tc != null ? ((GemFireTransaction)tc).getLockSpace()
@@ -1354,7 +1358,7 @@ public final class GemFireXDUtils {
               forUpdate, localOnly);
         }
         else {
-          final GfxdLockService lockService = Misc.getMemStore()
+          final GfxdLockService lockService = Misc.getMemStoreBooting()
               .getDDLLockService();
           final Object lockOwner = lockService.newCurrentOwner();
           GfxdLockSet.unlock(lockService, lockable, lockOwner, forUpdate,
@@ -1667,6 +1671,11 @@ public final class GemFireXDUtils {
       "\\b(CREATE_USER\\s*\\([^,]*,([^\\)]*)\\)|ENCRYPT_PASSWORD\\s*\\([^,]*,([^,]*),.*\\))",
       Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
+  private static final String delimiters = ")\\]},;";
+  private static final Pattern GENERIC_PASSWORD_PATTERN = Pattern.compile(
+      "\\b(PASSWORD|PWD)\\w*[^" + delimiters + "]*(?=[" + delimiters + "])",
+      Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+
   /**
    * Encrypt a given message for storage in file or memory.
    * 
@@ -1919,6 +1928,14 @@ public final class GemFireXDUtils {
     else {
       return sql;
     }
+  }
+
+  /**
+   * Returns SQL string after masking any password provided in a SQL string.
+   * Currently "password=..." and "pwd=..." patterns are masked.
+   */
+  public static String maskGenericPasswordFromSQLString(String sql) {
+    return GENERIC_PASSWORD_PATTERN.matcher(sql).replaceAll("password ***");
   }
 
   public static void throwAssert(String msg) throws AssertFailure {
@@ -2905,8 +2922,8 @@ public final class GemFireXDUtils {
    * to complete.
    * 
    * @param timeout
-   *          the maximum timeout to wait for node initialization; a negative
-   *          value indicates infinite wait
+   *          the maximum timeout to wait for node initialization in milliseconds;
+   *          a negative value indicates infinite wait
    * @param waitForRegionInitializations
    *          also wait for region initializations to be complete (e.g. in case
    *          of persistent regions it can wait for other nodes to startup),
