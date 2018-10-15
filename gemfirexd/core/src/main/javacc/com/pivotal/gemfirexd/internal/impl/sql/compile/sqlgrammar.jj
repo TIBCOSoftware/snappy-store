@@ -4002,7 +4002,11 @@ spsSetStatement() throws StandardException :
 	        statementNode = setSchemaStatement() |
             statementNode = setMessageLocaleStatement() |
             statementNode = setRoleStatement()
-        ) |
+        )
+	{
+		return statementNode;
+	}
+|
 	<USE> statementNode = setSchemaValues()
 	{
 		return statementNode;
