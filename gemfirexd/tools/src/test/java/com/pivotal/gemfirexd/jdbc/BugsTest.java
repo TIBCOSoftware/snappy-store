@@ -38,10 +38,12 @@ import com.gemstone.gemfire.cache.util.CacheWriterAdapter;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.internal.AvailablePort;
 import com.gemstone.gemfire.internal.GemFireTerminateError;
+import com.gemstone.gemfire.internal.cache.AbstractRegionEntry;
 import com.gemstone.gemfire.internal.cache.LocalDataSet;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegionHelper;
+import com.gemstone.gemfire.internal.concurrent.ConcurrentSkipListMap;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gnu.trove.THashSet;
 import com.pivotal.gemfirexd.TestUtil;
@@ -64,6 +66,7 @@ import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.GemFireDistributedResultSet;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.GemFireSelectActivation;
+import com.pivotal.gemfirexd.internal.engine.store.CompactCompositeIndexKey;
 import com.pivotal.gemfirexd.internal.engine.store.CompactCompositeRegionKey;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.iapi.error.DerbySQLException;
@@ -72,6 +75,8 @@ import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.depend.DependencyManager;
 import com.pivotal.gemfirexd.internal.iapi.store.access.conglomerate.Conglomerate;
+import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.iapi.types.SQLInteger;
 import com.pivotal.gemfirexd.internal.iapi.types.UserType;
@@ -8941,5 +8946,42 @@ public class BugsTest extends JdbcTestBase {
         assertEquals(bucketId, PartitionedRegionHelper.getBucketId(bucketName));
       }
     }
+  }
+
+  public void testBugSNAP2627() throws Exception {
+    Connection conn = getConnection();
+    Statement st = conn.createStatement();
+
+
+    st.execute("create table t1 (col1 int primary key, col2 varchar(10), col3 varchar(10), "
+        + "constraint t1_uq unique (col2, col3)) replicate");
+    st.execute("insert into t1 values (202, 'a0', 'lse')");
+    LocalRegion rgn = (LocalRegion)Misc.getRegionForTable("APP.T1", true);
+    AbstractRegionEntry are = (AbstractRegionEntry)rgn.entries.regionEntries().iterator().next();
+    st.execute("delete from t1");
+    assertTrue(are.isDestroyedOrRemoved());
+    GfxdIndexManager im = (GfxdIndexManager)rgn.getIndexUpdater();
+    List<GemFireContainer> allIndexes = im.getAllIndexes();
+    GemFireContainer uniqueIndex = null;
+    for (GemFireContainer gfc : allIndexes) {
+      if (gfc.isUniqueIndex()) {
+        uniqueIndex = gfc;
+        break;
+      }
+    }
+    ConcurrentSkipListMap sm = uniqueIndex.getSkipListMap();
+    DataValueDescriptor[] row = new DataValueDescriptor[2];
+
+    row[0] = DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.VARCHAR).
+        getNull();
+    row[0].setValue("a0");
+    row[1] = DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.VARCHAR).
+        getNull();
+    row[1].setValue("lse");
+
+
+    CompactCompositeIndexKey ccik = new CompactCompositeIndexKey(row, uniqueIndex.getExtraIndexInfo());
+    sm.put(ccik, are);
+    st.execute("insert into t1 values (202, 'a0', 'lse')");
   }
 }
