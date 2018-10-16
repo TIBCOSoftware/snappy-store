@@ -20,12 +20,7 @@ package com.pivotal.gemfirexd.internal.engine.ddl.catalog;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.sql.Blob;
-import java.sql.Clob;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Types;
+import java.sql.*;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -49,6 +44,7 @@ import com.gemstone.gemfire.internal.NanoTimer;
 import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
 import com.gemstone.gemfire.internal.cache.persistence.query.CloseableIterator;
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.ColumnTableEntry;
 import com.gemstone.gnu.trove.THashSet;
@@ -1217,6 +1213,83 @@ public class GfxdSystemProcedures extends SystemProcedures {
   public static int GET_EXPLAIN_CONNECTION() throws SQLException,
       StandardException {
     return ConnectionUtil.getCurrentLCC().explainConnection() ? 1 : 0;
+  }
+
+
+  /**
+   * Drops and recreates indexes in SNAPPY_HIVE_METASTORE schema
+   * @throws SQLException
+   * @throws StandardException
+   */
+  public static void REPAIR_METASTORE_INDEXES() throws
+      SQLException, StandardException,
+      InterruptedException {
+    if (GemFireXDUtils.TraceSysProcedures) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+          "executing SYS.REPAIR_METASTORE_INDEXES(), " );
+    }
+    final GemFireStore memStore = Misc.getMemStore();
+    final GfxdDataDictionary dd = memStore.getDatabase().getDataDictionary();
+
+    if (dd == null) {
+      throw Util.generateCsSQLException(SQLState.SHUTDOWN_DATABASE,
+          Attribute.GFXD_DBNAME);
+    }
+
+    // take the write lock on DataDictionary
+    dd.lockForWriting(null, false);
+    EmbedConnection conn = null;
+    Statement stmt = null;
+    String dropIndexString = "DROP INDEX ";
+    try {
+      final GfxdDDLRegionQueue ddlQ = new GfxdDDLRegionQueue(memStore
+          .getDDLStmtQueue().getRegion());
+      ddlQ.initializeQueue(dd);
+
+      final List<GfxdDDLQueueEntry> allDDLs =
+          ddlQ.peekAndRemoveFromQueue(-1, -1);
+      final Iterator<GfxdDDLQueueEntry> ddlIter = ddlQ
+          .getPreprocessedDDLQueue(allDDLs, null, SystemProperties.SNAPPY_HIVE_METASTORE, null, false)
+          .iterator();
+
+      while (ddlIter.hasNext()) {
+        GfxdDDLQueueEntry entry = ddlIter.next();
+        final Object val = entry.getValue();
+        if (val instanceof DDLConflatable) {
+          final DDLConflatable ddl = (DDLConflatable)val;
+          if (ddl.isCreateIndex()) {
+            if (conn == null) {
+              conn = GemFireXDUtils.createNewInternalConnection(false);
+              // skipping locks here as we have taken DD lock already
+              conn.getLanguageConnection().setSkipLocks(true);
+              conn.getLanguageConnection().setQueryRoutingFlag(false);
+              stmt = conn.createStatement();
+              conn.setSchema(SystemProperties.SNAPPY_HIVE_METASTORE);
+            }
+            String objectName = ddl.getKeyToConflate();
+            if (objectName == null) {
+              objectName = ddl.getRegionToConflate();
+            }
+
+            String indexName = SystemProperties.SNAPPY_HIVE_METASTORE + "." + objectName;
+
+            SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+                "SYS.REPAIR_METASTORE_INDEXES() index to dropped is " + indexName);
+            SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+                "SYS.REPAIR_METASTORE_INDEXES() corresponding create " +
+                    "index statement is " + ddl.getValueToConflate());
+
+            stmt.execute(dropIndexString + indexName);
+            stmt.execute(ddl.getValueToConflate());
+          }
+        }
+      }
+    } finally {
+      if (stmt != null) stmt.close();
+      if (conn != null) conn.close();
+      dd.unlockAfterWriting(null, false);
+    }
+
   }
 
   /**

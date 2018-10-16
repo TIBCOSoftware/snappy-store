@@ -1499,6 +1499,13 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
     }
 
     {
+      // REPAIR_METASTORE_INDEXES
+      super.createSystemProcedureOrFunction("REPAIR_METASTORE_INDEXES", sysUUID, null,
+          null, 0, 0, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines,
+          tc, GFXD_SYS_PROC_CLASSNAME, true);
+    }
+
+    {
       // out ResultSet EXPORT_DDLS(Boolean exportAll)
       String[] argNames = new String[] { "EXPORT_ALL" };
       TypeDescriptor[] argTypes = new TypeDescriptor[] {
