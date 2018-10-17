@@ -16,7 +16,7 @@
  */
 
 dependencies {
-  compileOnly "net.java.dev.jna:jna:${jnaVersion}"
   compileOnly project(subprojectBase + 'gemfire-trove')
+  compile "net.java.dev.jna:jna:${jnaVersion}"
   compile "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 }

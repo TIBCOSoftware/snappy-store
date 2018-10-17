@@ -69,8 +69,7 @@ import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
  * ConcurrentSkipListMap data structure.
  * 
  * @see SortedMap2Index
- * @see SortedMap2IndexOperation
- * 
+ *
  * @author yjing
  * @author Rahul
  * @author swale
