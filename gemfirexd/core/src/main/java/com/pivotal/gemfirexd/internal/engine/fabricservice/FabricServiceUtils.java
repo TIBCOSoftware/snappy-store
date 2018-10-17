@@ -390,6 +390,7 @@ public final class FabricServiceUtils {
           && !propName.startsWith("spark.")
           && !propName.startsWith("jobserver.")
           && !propName.startsWith("zeppelin.")
+          && !propName.startsWith("hive.")
           && !propName.startsWith(GemFireSparkConnectorCacheImpl.connectorPrefix)
           && !GfxdConstants.validExtraGFXDProperties.contains(propName)
           && !"BootPassword".equalsIgnoreCase(propName)

@@ -978,7 +978,7 @@ public final class ClientConnection extends ReentrantLock implements Connection 
     try {
       checkClosedConnection();
       UpdateResult ur = this.clientService.executeUpdate(
-          Collections.singletonList("SET SCHEMA " + schema), null);
+          Collections.singletonList("SET SCHEMA \"" + schema + '"'), null);
       this.warnings = ur.warnings;
     } catch (SnappyException se) {
       throw informListeners(ThriftExceptionUtil.newSQLException(se));

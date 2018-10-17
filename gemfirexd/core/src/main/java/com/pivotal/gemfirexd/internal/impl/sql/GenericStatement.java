@@ -134,42 +134,40 @@ public class GenericStatement
         public final static short IS_CALLABLE_STATEMENT = 0x200;
         public final static short ROUTE_QUERY = 0x400;
 
-        public static final Pattern SKIP_CANCEL_STMTS = Pattern.compile(
-            "^\\s*\\{?\\s*(DROP|TRUNCATE)\\s+(TABLE|INDEX)\\s+",
+        private static final Pattern SKIP_CANCEL_STMTS = Pattern.compile(
+            "^\\s*\\{?\\s*(((DROP|TRUNCATE)\\s+(TABLE|INDEX))|(DELETE\\s+FROM))\\s+",
             Pattern.CASE_INSENSITIVE);
-	public static final Pattern DELETE_STMT = Pattern.compile(
-            "^\\s*\\{?\\s*DELETE\\s+FROM\\s+", Pattern.CASE_INSENSITIVE);
         private static final Pattern ignoreStmts = Pattern.compile(
             ("\\s.*(\"SYSSTAT\"|SYS.\")"), Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
         //private ProcedureProxy procProxy;
         private final GfxdHeapThresholdListener thresholdListener;
         private THashMap ncjMetaData = null;
-        private static final Pattern STREAMING_DDL_PREFIX =
-            Pattern.compile("^\\s*STREAMING\\s+",
+        private static final String MISC_DDL_PREFIX = "(STREAMING|DEPLOY|UNDEPLOY)";
+        private static final String TABLE_DML_SELECT_PATTERN =
+            "((((INSERT|PUT)\\s+INTO)|(DELETE\\s+FROM))\\s+(TABLE)?.*\\s+SELECT)";
+	      private static final String CREATE_OR_DROP_PATTERN = "(FUNCTION|POLICY)";
+	      private static final String ALTER_TABLE_PREFIX = "ALTER\\s+(TABLE)?\\s+.*\\s+";
+	      private static final String ALTER_TABLE_COMMANDS = "(ADD|DROP|ENABLE|DISABLE)";
+
+	      // final patterns combining the above patterns and also adding EXPLAIN
+	      private static final String ROUTED_QUERY_BASE_PATTERN =
+            MISC_DDL_PREFIX + '|' + TABLE_DML_SELECT_PATTERN +
+                "|((CREATE|DROP)\\s+" + CREATE_OR_DROP_PATTERN +
+                ")|(" + ALTER_TABLE_PREFIX + ALTER_TABLE_COMMANDS + ')';
+	      private static final String ROUTED_QUERY_PREFIX = "^\\s*(EXPLAIN\\s+)?";
+	      private static final Pattern ROUTED_QUERY_PATTERN =
+            Pattern.compile(ROUTED_QUERY_PREFIX + '(' + ROUTED_QUERY_BASE_PATTERN + ")\\s+",
                 Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-        private static final Pattern INSERT_OR_PUT_INTO_TABLE_SELECT_PATTERN =
-            Pattern.compile("^\\s*(INSERT|PUT)\\s+INTO\\s+(TABLE)?.*\\s+SELECT\\s+",
-                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-	      private static final Pattern CREATE_OR_DROP_POLICY_PATTERN =
-			      Pattern.compile("^\\s*(CREATE|DROP)\\s+POLICY\\s+",
-					Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-	      private static final Pattern ALTER_TABLE_TOGGLE_ROW_LEVEL_SECURITY=
-						Pattern.compile("^\\s*ALTER\\s+TABLE?.*\\s+(ENABLE|DISABLE)\\s+",
-								Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+
+	      // the pattern below is to be excluded from routing
+	      private static final Pattern ALTER_TABLE_CONSTRAINTS =
+            Pattern.compile(ROUTED_QUERY_PREFIX + ALTER_TABLE_PREFIX +
+                "(ADD|DROP)\\s+CONSTRAINT\\s+", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
         private static final Pattern DML_TABLE_PATTERN =
             Pattern.compile("^\\s*(INSERT|UPDATE|DELETE|PUT)\\s+",
                 Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
         private static final Pattern NON_ROUTED_QUERY =
-            Pattern.compile("^\\s*\\{?\\s*(CALL|EXECUTE)\\s+",
-                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-        private static final Pattern FUNCTION_DDL_PREFIX =
-            Pattern.compile("^\\s*(CREATE|DROP)\\s+FUNCTION\\s+",
-               Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-        private static final Pattern ALTER_TABLE_COLUMN =
-            Pattern.compile("^\\s*ALTER\\s+TABLE?.*\\s+(ADD|DROP)\\s+",
-                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-        private static final Pattern ALTER_TABLE_CONSTRAINTS =
-            Pattern.compile("^\\s*ALTER\\s+TABLE?.*\\s+ADD\\s+CONSTRAINT\\s+",
+            Pattern.compile(ROUTED_QUERY_PREFIX + "\\{?\\s*(CALL|EXECUTE)\\s+",
                 Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
 	      private static ExecutionEngineArbiter engineArbiter = new ExecutionEngineArbiter();
@@ -390,8 +388,9 @@ public class GenericStatement
     // don't cancel DROP/TRUNCATE TABLE/INDEX /DELETE statements
     // before querytree is available set the flag based on pattern matching
     // later when qt is available set it using nodetype
-    boolean checkCancellation = !(SKIP_CANCEL_STMTS
-        .matcher(statementText).find() || DELETE_STMT.matcher(statementText).find());
+    // also don't cancel meta-data queries (if OOME happens node will stop)
+    boolean checkCancellation = !(Misc.SNAPPY_HIVE_METASTORE.equals(
+        lcc.getCurrentSchemaName()) || SKIP_CANCEL_STMTS.matcher(statementText).find());
     try {
      outer: while(true) {
       ddMode = (dataDictionary != null ? dataDictionary.startReading(lcc) : 0);
@@ -604,36 +603,27 @@ public class GenericStatement
 				try {
 					//Route all "insert/put into tab select .. " queries to spark
 
-					boolean isInsertOrPut;
-
 					if (routeQuery && prepareIsolationLevel == Connection.TRANSACTION_NONE && (
-						(isInsertOrPut = INSERT_OR_PUT_INTO_TABLE_SELECT_PATTERN.matcher(source).find()) ||
-						CREATE_OR_DROP_POLICY_PATTERN.matcher(source).find() ||
-						ALTER_TABLE_TOGGLE_ROW_LEVEL_SECURITY.matcher(source).find() ||
-						FUNCTION_DDL_PREFIX.matcher(source).find() ||
-						(ALTER_TABLE_COLUMN.matcher(source).find() &&
-						!ALTER_TABLE_CONSTRAINTS.matcher(source).find()))) {
+						ROUTED_QUERY_PATTERN.matcher(source).find() &&
+						!ALTER_TABLE_CONSTRAINTS.matcher(source).find())) {
 							cc.markAsDDLForSnappyUse(true);
 							return getPreparedStatementForSnappy(false, statementContext, lcc,
-								cc.isMarkedAsDDLForSnappyUse(), checkCancellation, isInsertOrPut);
+								cc.isMarkedAsDDLForSnappyUse(), checkCancellation,
+								DML_TABLE_PATTERN.matcher(source).find());
 					}
 					qt = p.parseStatement(getQueryStringForParse(lcc), paramDefaults);
 				}
 				catch (StandardException | AssertFailure ex) {
           //wait till the query hint is examined before throwing exceptions or
-          if (routeQuery && !NON_ROUTED_QUERY.matcher(source).find()) {
-            if (STREAMING_DDL_PREFIX.matcher(source).find()) {
-              cc.markAsDDLForSnappyUse(true);
-            }
-            boolean isDDL = cc.isMarkedAsDDLForSnappyUse()
-              || source.toLowerCase().startsWith("deploy") || source.toLowerCase().startsWith("undeploy");
+          if (routeQuery && prepareIsolationLevel == Connection.TRANSACTION_NONE &&
+              !NON_ROUTED_QUERY.matcher(source).find()) {
             return getPreparedStatementForSnappy(false, statementContext, lcc,
-                isDDL, checkCancellation,
+                cc.isMarkedAsDDLForSnappyUse(), checkCancellation,
                 DML_TABLE_PATTERN.matcher(source).find());
           }
           throw ex;
 				}
-				checkCancellation = !shouldSkipMemoryChecks(qt);
+				checkCancellation = checkCancellation && !shouldSkipMemoryChecks(qt);
 				// DDL Route, even if no exception
 				if (routeQuery && cc.isForcedDDLrouting() && !NON_ROUTED_QUERY.matcher(source).find())
 				{
@@ -813,6 +803,15 @@ public class GenericStatement
 				              this.statementText, qt, lcc);
 				        }
 
+                                        if (routeQuery && qt instanceof ExplainNode &&
+                                            ((ExplainNode)qt).isRouted()) {
+                                          if (observer != null) {
+                                            observer.testExecutionEngineDecision(qinfo,
+                                                ExecutionEngine.SPARK, this.statementText);
+                                          }
+                                          return getPreparedStatementForSnappy(true,
+                                              statementContext, lcc, false, checkCancellation, false);
+                                        }
                                         if(this.createQueryInfo() && !forceSkipQueryInfoCreation) {
                                           final DataTypeDescriptor paramDTDS[] = qt.getParameterTypes();
                                           final QueryInfoContext qic = new QueryInfoContext(

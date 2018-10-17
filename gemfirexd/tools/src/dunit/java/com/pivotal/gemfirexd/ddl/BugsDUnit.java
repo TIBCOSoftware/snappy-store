@@ -72,7 +72,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.depend.DependencyManager;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedStatement;
 import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.AuthenticationServiceBase;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
-import com.pivotal.gemfirexd.jdbc.BugsTest;
+import com.pivotal.gemfirexd.jdbc.Bugs3Test;
 import com.pivotal.gemfirexd.tools.internal.JarTools;
 import com.pivotal.gemfirexd.tools.internal.MiscTools;
 import io.snappydata.test.dunit.RMIException;
@@ -3645,17 +3645,17 @@ public class BugsDUnit extends DistributedSQLTestBase {
     ResultSet rs = st.executeQuery("select symbol, exchange, companytype, uid,"
         + " uuid, companyname, companyinfo, note, histPrice, asset, logo, tid,"
         + " pvt from TRADE.COMPANIES where tid >= 105 and tid < 110");
-    BugsTest.checkLobs(rs, clobChars, blobBytes);
+    Bugs3Test.checkLobs(rs, clobChars, blobBytes);
 
     rs = st2.executeQuery("select symbol, exchange, companytype, uid,"
         + " uuid, companyname, companyinfo, note, histPrice, asset, logo, tid,"
         + " pvt from TRADE.COMPANIES where tid >= 105 and tid < 110");
-    BugsTest.checkLobs(rs, clobChars, blobBytes);
+    Bugs3Test.checkLobs(rs, clobChars, blobBytes);
 
     rs = st3.executeQuery("select symbol, exchange, companytype, uid,"
         + " uuid, companyname, companyinfo, note, histPrice, asset, logo, tid,"
         + " pvt from TRADE.COMPANIES where tid >= 105 and tid < 110");
-    BugsTest.checkLobs(rs, clobChars, blobBytes);
+    Bugs3Test.checkLobs(rs, clobChars, blobBytes);
   }
 
   public void testBug47943() throws Exception {

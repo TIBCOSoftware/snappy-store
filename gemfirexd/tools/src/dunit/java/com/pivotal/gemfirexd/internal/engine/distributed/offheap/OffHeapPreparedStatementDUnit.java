@@ -20,13 +20,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.Properties;
 
-import com.gemstone.gemfire.internal.AvailablePort;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.distributed.PreparedStatementDUnit;
-import com.pivotal.gemfirexd.internal.engine.distributed.metadata.SelectQueryInfo;
-import com.pivotal.gemfirexd.jdbc.BugsTest.DataGenerator;
+import com.pivotal.gemfirexd.jdbc.Bugs3Test.DataGenerator;
 
 public class OffHeapPreparedStatementDUnit extends PreparedStatementDUnit {
 
