@@ -99,7 +99,7 @@ public class ConcurrentMapOpsTest extends ConcurrentMapOpsHolder {
     this.isolationLevel = Connection.TRANSACTION_NONE;
     addExpectedException("Statistics sampler");
     runOpsWithCSLM(5000);
-    runOpsWithCSLM(60000);
+    runOpsWithCSLM(20000);
     removeExpectedException("Statistics sampler");
   }
 
@@ -108,7 +108,7 @@ public class ConcurrentMapOpsTest extends ConcurrentMapOpsHolder {
     setupConnection();
     addExpectedExceptions(new Object[] { "Statistics sampler", "X0Z02" });
     runOpsWithCSLM(5000);
-    runOpsWithCSLM(60000);
+    runOpsWithCSLM(20000);
     removeExpectedExceptions(new Object[] { "Statistics sampler", "X0Z02" });
   }
 
@@ -117,7 +117,7 @@ public class ConcurrentMapOpsTest extends ConcurrentMapOpsHolder {
     setupConnection();
     addExpectedExceptions(new Object[] { "Statistics sampler", "X0Z02" });
     runOpsWithCSLM(5000);
-    runOpsWithCSLM(60000);
+    runOpsWithCSLM(20000);
     removeExpectedExceptions(new Object[] { "Statistics sampler", "X0Z02" });
   }
 

@@ -55,7 +55,6 @@ package com.pivotal.gemfirexd.internal.impl.sql.execute;
  */
 
 // GemStone changes BEGIN
-import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.pivotal.gemfirexd.internal.catalog.UUID;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
@@ -80,7 +79,7 @@ public class CreateSchemaConstantAction extends DDLConstantAction
   /**
    * Set the default server group for this schema.
    * 
-   * @param defaultSG the default server groups attributes
+   * @param defSGs the default server groups attributes
    */
   public void setDefaultSG(ServerGroupsTableAttribute defSGs) {
     this.defaultSGs = defSGs;
@@ -127,7 +126,7 @@ class CreateSchemaConstantAction extends DDLConstantAction
 	{
 		// Do not put this under SanityManager.DEBUG - it is needed for
 		// error reporting.
-		return "CREATE SCHEMA " + schemaName;
+		return "CREATE SCHEMA \"" + schemaName + '"';
 	}
 
 	// INTERFACE METHODS

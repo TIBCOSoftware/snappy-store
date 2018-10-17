@@ -62,6 +62,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
+import com.pivotal.gemfirexd.jdbc.CreateTable2Test;
 import com.pivotal.gemfirexd.jdbc.CreateTableTest;
 import com.pivotal.gemfirexd.jdbc.GfxdCallbacksTest;
 import io.snappydata.test.dunit.AsyncInvocation;
@@ -2098,7 +2099,7 @@ public class CreateTableDUnit extends DistributedSQLTestBase {
 
     final int numRows = 2000;
     // insertion in this table should start with 8
-    CreateTableTest.runIdentityChecksForCustomersTable(conn, numRows,
+    CreateTable2Test.runIdentityChecksForCustomersTable(conn, numRows,
         new int[] { 2 }, new String[] { "CID" }, 1, 8, 2, this,true);
 
     // Now check for IDENTITY column with BIGINT size
@@ -2117,7 +2118,7 @@ public class CreateTableDUnit extends DistributedSQLTestBase {
     }
     assertNull(sw.getNextWarning());
 
-    CreateTableTest.runIdentityChecksForCustomersTable(conn, numRows,
+    CreateTable2Test.runIdentityChecksForCustomersTable(conn, numRows,
         new int[] { 2 }, new String[] { "CID" }, 1, 1, 2, this,true);
 
     stmt.execute("drop table trade.customers");
@@ -2152,7 +2153,7 @@ public class CreateTableDUnit extends DistributedSQLTestBase {
 
     final int numRows = 2000;
     // insertion in this table should start with 8
-    CreateTableTest.runIdentityChecksForCustomersTable(conn, numRows,
+    CreateTable2Test.runIdentityChecksForCustomersTable(conn, numRows,
         new int[] { 2 }, new String[] { "CID" }, 1, 8, 2, this,false);
 
     // Now check for IDENTITY column with BIGINT size
@@ -2167,7 +2168,7 @@ public class CreateTableDUnit extends DistributedSQLTestBase {
     sw = stmt.getWarnings();
     assertNull(sw);
 
-    CreateTableTest.runIdentityChecksForCustomersTable(conn, numRows,
+    CreateTable2Test.runIdentityChecksForCustomersTable(conn, numRows,
         new int[] { 2 }, new String[] { "CID" }, 1, 1, 2, this,false);
 
     stmt.execute("drop table trade.customers");

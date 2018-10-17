@@ -14,6 +14,24 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+/*
+ * Changes for SnappyData distributed computational and data platform.
+ *
+ * Portions Copyright (c) 2018 SnappyData, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
 package com.pivotal.gemfirexd.internal.impl.sql.compile;
 
 import java.sql.ResultSetMetaData;
@@ -22,6 +40,7 @@ import java.util.ArrayList;
 
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.QueryInfo;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.QueryInfoContext;
+import com.pivotal.gemfirexd.internal.engine.reflect.SnappyActivationClass;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.ClassName;
 import com.pivotal.gemfirexd.internal.iapi.services.classfile.VMOpcode;
@@ -30,6 +49,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.PreparedStatement;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultColumnDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultDescription;
 import com.pivotal.gemfirexd.internal.iapi.sql.compile.C_NodeTypes;
+import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecPreparedStatement;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSetMetaData;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.xplain.XPLAINUtil;
@@ -67,7 +87,7 @@ public class ExplainNode extends DMLStatementNode {
 //          "MEMBER_ID", DataTypeDescriptor.getBuiltInDataTypeDescriptor(
 //              Types.VARCHAR, false, 128));
       columnInfo[0] = EmbedResultSetMetaData.getResultColumnDescriptor(
-          "MEMBER_PLAN", DataTypeDescriptor.getBuiltInDataTypeDescriptor(
+          "plan", DataTypeDescriptor.getBuiltInDataTypeDescriptor(
               Types.CLOB, false));
 
       metadata = new EmbedResultSetMetaData(columnInfo);
@@ -108,12 +128,17 @@ public class ExplainNode extends DMLStatementNode {
         
         generateParameterValueSet = true;
       }
-      userQueryStatement = null;
+      // userQueryStatement = null;
     }
   }
 
   public void optimizeStatement() throws StandardException {
+  }
 
+  public boolean isRouted() throws StandardException {
+    return userQueryStatement instanceof ExecPreparedStatement &&
+        ((ExecPreparedStatement)userQueryStatement).getActivationClass()
+            instanceof SnappyActivationClass;
   }
 
   public QueryInfo computeQueryInfo(QueryInfoContext qic)
@@ -123,6 +148,8 @@ public class ExplainNode extends DMLStatementNode {
 
   protected void generate(ActivationClassBuilder acb, MethodBuilder mb)
       throws StandardException {
+
+    userQueryStatement = null;
 
     acb.pushGetResultSetFactoryExpression(mb);
 
