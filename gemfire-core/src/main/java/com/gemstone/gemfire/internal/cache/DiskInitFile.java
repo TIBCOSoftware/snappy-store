@@ -3053,6 +3053,7 @@ public class DiskInitFile implements DiskInitFileInterpreter {
   // This will be set only when DiskInitFile is
   // created during validation of disk store
   private transient String inconsistencyReport = null;
+  private transient String columnBufferInfo = null;
 
   public void setInconsistent(String ir) {
     this.inconsistencyReport = ir;
@@ -3060,5 +3061,13 @@ public class DiskInitFile implements DiskInitFileInterpreter {
 
   public String getInconsistencyReport() {
     return this.inconsistencyReport;
+  }
+
+  public void setColumnBufferInfo(String cbinfo) {
+    this.columnBufferInfo = cbinfo;
+  }
+
+  public String getColumnBufferInfo() {
+    return this.columnBufferInfo;
   }
 }

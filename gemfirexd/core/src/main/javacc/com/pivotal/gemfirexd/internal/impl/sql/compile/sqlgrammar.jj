@@ -2904,6 +2904,7 @@ TOKEN [IGNORE_CASE] :
 |	<YEAR: "year">
 |	<JSON: "json">
 |	<CLOB_STRING: "string">
+|	<USE: "use">
 // GemStone changes END
 }
 
@@ -4002,6 +4003,11 @@ spsSetStatement() throws StandardException :
             statementNode = setMessageLocaleStatement() |
             statementNode = setRoleStatement()
         )
+	{
+		return statementNode;
+	}
+|
+	<USE> statementNode = setSchemaValues()
 	{
 		return statementNode;
 	}
@@ -11449,10 +11455,8 @@ schemaDefinition() throws StandardException :
 	** specifications for schema, or schema bodies.
 	*/
 	<SCHEMA>
-	{
-		getCompilerContext().setForcedDDLrouting(true);
-	}
-	( schemaName = identifier(Limits.MAX_IDENTIFIER_LENGTH, true)  [ <AUTHORIZATION> [ <LDAPGROUP> <COLON> groupName = identifier(Limits.MAX_IDENTIFIER_LENGTH, true)
+	( schemaName = identifier(Limits.MAX_IDENTIFIER_LENGTH, true)
+	    [ <AUTHORIZATION> [ <LDAPGROUP> <COLON> groupName = identifier(Limits.MAX_IDENTIFIER_LENGTH, true)
 			| authName = identifier(Limits.MAX_IDENTIFIER_LENGTH, true) ] ]
 // GemStone changes BEGIN
 			[ <_DEFAULT> serverGroupDefinition(defaultServerGroups) ]
@@ -18249,9 +18253,10 @@ nonReservedKeyword()  :
 	|   tok = <MAXWRITEONLYFILESIZE>
  	|   tok = <WRITEONLYFILEROLLOVERINTERVAL>
  	|	tok = <PUT>
- 	|   tok = <JSON>
- 	|   tok = <SPARKHASH>
- 	|   tok = <CLOB_STRING>
+	|   tok = <JSON>
+	|   tok = <SPARKHASH>
+	|   tok = <CLOB_STRING>
+	|   tok = <USE>
 
 // GemStone changes END
 	)

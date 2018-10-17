@@ -19,123 +19,118 @@
 
 package io.snappydata.jdbc;
 
-import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import java.sql.Connection;
+import java.sql.Driver;
+import java.sql.DriverPropertyInfo;
+import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
+import java.util.Properties;
+import java.util.logging.Logger;
+import java.util.regex.Pattern;
+
 import com.pivotal.gemfirexd.internal.client.am.Utils;
 import com.pivotal.gemfirexd.internal.shared.common.error.ClientExceptionUtil;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.jdbc.ClientDRDADriver;
 import io.snappydata.thrift.internal.ClientConfiguration;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 /**
  * Client Driver with the capability to maintain connection
  * pool inside it and return connections from the pool.
  */
-public class ClientPoolDriver extends ClientDriver {
+public class ClientPoolDriver implements Driver {
 
-    private final static String SUBPROTOCOL = "(thrift:pool:|pool:)+";
-    private final static Pattern PROTOCOL_PATTERN = Pattern.compile(URL_PREFIX_REGEX +
-            SUBPROTOCOL + "//.*", Pattern.CASE_INSENSITIVE);
-    private final static Pattern URL_PATTERN = Pattern.compile(URL_PREFIX_REGEX +
-            SUBPROTOCOL + URL_SUFFIX_REGEX, Pattern.CASE_INSENSITIVE);
+  private static String SNAPPY_PROTOCOL = "jdbc:snappydata:";
 
-    public static final ThreadLocal<Connection> CURRENT_CONNECTION =
-        new ThreadLocal<>();
+  private final static String SUBPROTOCOL = "(pool:){1}";
 
-    private static Map<Properties, TomcatConnectionPool> poolMap =
-        new ConcurrentHashMap<>();
+  public static final ThreadLocal<Connection> CURRENT_CONNECTION =
+      new ThreadLocal<>();
 
-    static {
-        try {
-            final ClientDRDADriver driver = registeredDriver__;
-            registeredDriver__ = new ClientPoolDriver();
-            java.sql.DriverManager.registerDriver(registeredDriver__);
-            if (driver != null) {
-                java.sql.DriverManager.deregisterDriver(driver);
-            }
-        } catch (SQLException e) {
-            // A null log writer is passed, because jdbc 1 sql exceptions are
-            // automatically traced
-            exceptionsOnLoadDriver__ = ClientExceptionUtil.newSQLException(
-                    SQLState.JDBC_DRIVER_REGISTER, e);
-        }
-        // This may possibly hit the race-condition bug of java 1.1.
-        // The Configuration static clause should execute before the following line
-        // does.
-        if (ClientConfiguration.exceptionsOnLoadResources != null) {
-            exceptionsOnLoadDriver__ = Utils.accumulateSQLException(
-                    ClientConfiguration.exceptionsOnLoadResources,
-                    exceptionsOnLoadDriver__);
-        }
+  protected final static String URL_PREFIX_REGEX = "(" + SNAPPY_PROTOCOL + ")";
+  protected final static String URL_SUFFIX_REGEX =
+      "//(([^:]+:[0-9]+)|([^\\[]+\\[[0-9]+\\]))(/(snappydata;)?;?(.*)?)?";
+
+  /*private final static Pattern PROTOCOL_PATTERN = Pattern.compile(URL_PREFIX_REGEX +
+      SUBPROTOCOL + "//.*", Pattern.CASE_INSENSITIVE);*/
+  private final static Pattern PROTOCOL_PATTERN = Pattern.compile(URL_PREFIX_REGEX + SUBPROTOCOL,
+      Pattern.CASE_INSENSITIVE);
+
+  private final static Pattern URL_PATTERN = Pattern.compile(URL_PREFIX_REGEX +
+      SUBPROTOCOL + URL_SUFFIX_REGEX, Pattern.CASE_INSENSITIVE);
+
+  private static SQLException exceptionsOnLoadDriver__ = null;
+
+  static {
+    try {
+      ClientPoolDriver driver = new ClientPoolDriver();
+      java.sql.DriverManager.registerDriver(driver);
+
+    } catch (SQLException e) {
+      // A null log writer is passed, because jdbc 1 sql exceptions are
+      // automatically traced
+      exceptionsOnLoadDriver__ = ClientExceptionUtil.newSQLException(
+          SQLState.JDBC_DRIVER_REGISTER, e);
+    }
+    // This may possibly hit the race-condition bug of java 1.1.
+    // The Configuration static clause should execute before the following line
+    // does.
+    if (ClientConfiguration.exceptionsOnLoadResources != null) {
+      exceptionsOnLoadDriver__ = Utils.accumulateSQLException(
+          ClientConfiguration.exceptionsOnLoadResources,
+          exceptionsOnLoadDriver__);
+    }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  public boolean acceptsURL(String url) throws SQLException {
+    return (url != null && URL_PATTERN.matcher(url).matches());
+  }
+
+  @Override
+  public Connection connect(String url, Properties properties) throws SQLException {
+
+    if (!acceptsURL(url)) {
+      return null;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public boolean acceptsURL(String url) throws SQLException {
-        return (url != null && matchProtocol(url).matches());
-    }
+    properties = (properties == null) ? new Properties() : properties;
+    String clientDriverURL = PROTOCOL_PATTERN.matcher(url).replaceFirst(SNAPPY_PROTOCOL);
+    properties.setProperty(TomcatConnectionPool.PoolProps.URL.key,
+        clientDriverURL);
+    properties.setProperty(TomcatConnectionPool.PoolProps.DRIVER_NAME.key,
+        ClientDriver.class.getName());
+    Connection connection = TomcatConnectionPool.getConnection(properties);
+    CURRENT_CONNECTION.set(connection);
+    //Read connection from the pool and return. 
+    return connection;
+  }
 
-    @Override
-    protected boolean useThriftProtocol(Matcher m) {
-        String subProtocolGroup = m.group(2);
-        String protocol = m.group(1);
-        // if USE_THRIFT_AS_DEFAULT_PROP has been set explicitly then use that
-        // for default value else use the protocol string (jdbc:snappydata://
-        //   defaults to thrift while jdbc:gemfirexd:// defaults to old DRDA)
-        return subProtocolGroup == null || subProtocolGroup.length() == 0
-                ? ClientSharedUtils.isUsingThrift(
-                protocol.equalsIgnoreCase(SNAPPY_PROTOCOL))
-                : "thrift:pool:".equalsIgnoreCase(subProtocolGroup)
-                || "pool:".equalsIgnoreCase(subProtocolGroup);
-    }
+  @Override
+  public int getMajorVersion() {
+    return ClientConfiguration.getProductVersionHolder().getMajorVersion();
+  }
 
-    @Override
-    protected Matcher matchURL(String url) {
-        return URL_PATTERN.matcher(url);
-    }
+  @Override
+  public int getMinorVersion() {
+    return ClientConfiguration.getProductVersionHolder().getMinorVersion();
+  }
 
-    @Override
-    protected Matcher matchProtocol(String url) {
-        return PROTOCOL_PATTERN.matcher(url);
-    }
+  @Override
+  public boolean jdbcCompliant() {
+    return ClientConfiguration.jdbcCompliant;
+  }
 
-    @Override
-    public Connection connect(String url, Properties properties) throws SQLException {
+  @Override
+  public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+    throw new AssertionError("should be overridden in JDBC 4.1");
+  }
 
-        if (!acceptsURL(url)) {
-            return null;
-        }
-
-        properties = (properties == null) ? new Properties() : properties;
-        String clientDriverURL = url.toLowerCase().replace("pool:", "");
-        properties.setProperty(TomcatConnectionPool.PoolProps.URL.key, clientDriverURL);
-        properties.setProperty(TomcatConnectionPool.PoolProps.DRIVER_NAME.key, ClientDriver.class.getName());
-
-        TomcatConnectionPool p = poolMap.get(properties);
-        if (p != null) {
-            Connection conn = p.getConnection();
-            CURRENT_CONNECTION.set(conn);
-            return conn;
-        } else {
-            TomcatConnectionPool pool;
-            synchronized (ClientPoolDriver.class) {
-                pool = poolMap.get(properties);
-                if (pool == null) {
-                    pool = new TomcatConnectionPool(properties);
-                    poolMap.put(properties, pool);
-                }
-            }
-            Connection conn = pool.getConnection();
-            CURRENT_CONNECTION.set(conn);
-            return conn;
-        }
-    }
+  @Override
+  public DriverPropertyInfo[] getPropertyInfo(String url, Properties properties)
+      throws SQLException {
+    return ClientDRDADriver.getPropertyInfoUtility(url,properties);
+  }
 }

@@ -2409,7 +2409,7 @@ public class AlterTableTest extends JdbcTestBase {
 
     final int numRows = 2000;
     // insertion in this table should start with maxValue
-    CreateTableTest.runIdentityChecksForCustomersTable(conn, numRows,
+    CreateTable2Test.runIdentityChecksForCustomersTable(conn, numRows,
         new int[] { 2 }, new String[] { "CID" }, 1, -maxValue, 0, null,true);
 
     // Now check for the same with BIGINT size
@@ -2434,7 +2434,7 @@ public class AlterTableTest extends JdbcTestBase {
 
     assertNull(stmt.getWarnings());
 
-    CreateTableTest.runIdentityChecksForCustomersTable(conn, numRows,
+    CreateTable2Test.runIdentityChecksForCustomersTable(conn, numRows,
         new int[] { 2 }, new String[] { "CID" }, 1, -(maxValue * stepValue), 0,
         null,true);
 
