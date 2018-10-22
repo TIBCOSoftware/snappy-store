@@ -308,6 +308,10 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   public final boolean isRemovedPhase2() {
     return getValueAsToken() == Token.REMOVED_PHASE2;
   }
+
+  public final boolean isRemovedPhase1() {
+    return getValueAsToken() == Token.REMOVED_PHASE1;
+  }
   
   public boolean fillInValue(LocalRegion region,
                              @Retained(ABSTRACT_REGION_ENTRY_FILL_IN_VALUE) InitialImageOperation.Entry dst,
