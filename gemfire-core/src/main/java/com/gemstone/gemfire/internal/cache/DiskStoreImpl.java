@@ -64,7 +64,6 @@ import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.DiskAccessException;
 import com.gemstone.gemfire.cache.DiskStore;
 import com.gemstone.gemfire.cache.DiskStoreFactory;
-import com.gemstone.gemfire.cache.LowMemoryException;
 import com.gemstone.gemfire.cache.RegionDestroyedException;
 import com.gemstone.gemfire.cache.persistence.PersistentID;
 import com.gemstone.gemfire.cache.query.IndexMaintenanceException;
@@ -2214,13 +2213,8 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
       IndexRecoveryTask task = new IndexRecoveryTask(allOplogs, recreateIndexes);
       // other disk store threads wait for this task, so use a different
       // thread pool for execution if possible (not in loner VM)
-      ThreadPoolExecutor executor;
-      if (getCache().getDistributionManager().isLoner()) {
-        executor = getCache().getDiskDelayedWritePool();
-      } else {
-        executor = (ThreadPoolExecutor)getCache().getDistributionManager()
-            .getWaitingThreadPool();
-      }
+      ThreadPoolExecutor executor = getCache()
+          .getWaitingThreadPoolOrDiskWritePool();
       executeDiskStoreTask(task, executor, true);
     }
   }

@@ -19,7 +19,8 @@ package com.pivotal.gemfirexd.internal.engine.access.operations;
 
 import java.io.IOException;
 import java.util.concurrent.Callable;
-import java.util.concurrent.FutureTask;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import com.gemstone.gemfire.LogWriter;
@@ -319,10 +320,10 @@ public final class SortedMap2IndexInsertOperation extends MemIndexOperation {
 
             };
 
-            FutureTask<Boolean> outcome = new FutureTask<Boolean>(deadEntryRemover);
-            Thread cleaner = new Thread(outcome);
-            cleaner.start();
+            ThreadPoolExecutor executor = Misc.getGemFireCache()
+                .getWaitingThreadPoolOrDiskWritePool();
             try {
+              Future<Boolean> outcome = executor.submit(deadEntryRemover);
               if (outcome.get(2000, TimeUnit.MILLISECONDS)) {
                 // either the entry was token removed or token destroyed, try again
                 continue;
