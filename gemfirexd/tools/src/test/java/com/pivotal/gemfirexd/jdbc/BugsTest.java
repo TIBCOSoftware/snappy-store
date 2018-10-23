@@ -1724,6 +1724,7 @@ public class BugsTest extends JdbcTestBase {
             delete.setInt(1, i % numKeysToOperate);
             delete.executeUpdate();
           }
+          conn1.close();
         } catch (Exception sqle) {
           sqle.printStackTrace();
           fail("test failed due to exception = " + sqle);
@@ -1744,6 +1745,7 @@ public class BugsTest extends JdbcTestBase {
     for (Thread th : threads) {
       th.join();
     }
+    conn.close();
     assertFalse(anyFailure[0]);
   }
 }
