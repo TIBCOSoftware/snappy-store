@@ -32,6 +32,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.StringTokenizer;
+import java.util.concurrent.CyclicBarrier;
 
 import com.gemstone.gemfire.cache.persistence.PartitionOfflineException;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
@@ -1689,5 +1690,60 @@ public class BugsTest extends JdbcTestBase {
     CompactCompositeIndexKey ccik = new CompactCompositeIndexKey(row, uniqueIndex.getExtraIndexInfo());
     sm.put(ccik, are);
     st.execute("insert into t1 values (202, 'a0', 'lse')");
+  }
+
+  public void testBugSNAP2640ConcurrentCreateDelete() throws Exception {
+    final int numOps = 10000;
+    boolean[] anyFailure = new boolean[] { false };
+    final int numKeysToOperate = 10;
+    final int numThreads = 30;
+    final CyclicBarrier barrier = new CyclicBarrier(numThreads);
+    Connection conn = getConnection();
+    Statement st = conn.createStatement();
+    st.execute("create table t1 (col1 int, col2 int not null unique) replicate");
+    Runnable task = new Runnable() {
+      @Override
+      public void run() {
+        try {
+          Connection conn1 = getConnection();
+          PreparedStatement insert = conn1.prepareStatement("insert into t1 values(?,?)");
+          PreparedStatement delete = conn1.prepareStatement("delete from t1 where col1 = ?");
+          barrier.await();
+          for (int i = 0; i < numOps; ++i) {
+            try {
+              insert.setInt(1, i % numKeysToOperate);
+              insert.setInt(2, i % numKeysToOperate);
+              insert.executeUpdate();
+            } catch (SQLException sqle) {
+              if (sqle.toString().toLowerCase().indexOf("violation") != -1
+                  && sqle.toString().toLowerCase().indexOf("constraint") != -1) {
+                // ok
+              }
+            }
+
+            delete.setInt(1, i % numKeysToOperate);
+            delete.executeUpdate();
+          }
+        } catch (Exception sqle) {
+          sqle.printStackTrace();
+          fail("test failed due to exception = " + sqle);
+          anyFailure[0] = true;
+        }
+      }
+    };
+
+    Thread[] threads = new Thread[numThreads];
+    for (int i = 0; i < numThreads; ++i) {
+      threads[i] = new Thread(task);
+    }
+
+    for (Thread th : threads) {
+      th.start();
+    }
+
+    for (Thread th : threads) {
+      th.join();
+    }
+    assertFalse(anyFailure[0]);
   }
 }
