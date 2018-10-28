@@ -1071,7 +1071,7 @@ class ij {
 			try {
 				verifyTableExists(schema,table);
 			} catch (ijException ignored) {
-				// fallback to parser for statements like DESCRIBE EXTENDED
+				// fallback to full parser with routing for statements like DESCRIBE EXTENDED
 				throw new ParseException();
 			}
 
