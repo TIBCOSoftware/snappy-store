@@ -5628,18 +5628,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         if (senderIds != null) {
           senderIdsStr = SharedUtils.toCSV(senderIds);
         }
-
-        final DataValueDescriptor tType = dvds[SYSTABLESRowFactory.SYSTABLES_TABLETYPE - 1];
-        if (tType != null && "T".equalsIgnoreCase(tType.toString()) &&
-            !LocalRegion.isMetaTable(region.getFullPath())) {
-          ExternalCatalog ec = Misc.getMemStore().getExternalCatalog();
-          LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
-          if (ec != null && lcc != null && (lcc.isQueryRoutingFlagTrue() ||
-              lcc.isSnappyInternalConnection()) && Misc.initialDDLReplayDone()) {
-            if (ec.isColumnTable(schemaName, table.toString(), true)) {
-              dvds[SYSTABLESRowFactory.SYSTABLES_TABLETYPE - 1] = new SQLChar("C");
-            }
-          }
+        if (region instanceof PartitionedRegion &&
+            ((PartitionedRegion)region).needsBatching()) {
+          dvds[SYSTABLESRowFactory.SYSTABLES_TABLETYPE - 1] = new SQLChar("C");
         }
 
         dvds[SYSTABLESRowFactory.SYSTABLES_DATAPOLICY - 1] = new SQLVarchar(

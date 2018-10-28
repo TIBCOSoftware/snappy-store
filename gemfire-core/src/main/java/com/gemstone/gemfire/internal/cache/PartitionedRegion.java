@@ -2545,6 +2545,10 @@ public class PartitionedRegion extends LocalRegion implements
     }
   }
 
+  public void clearNeedsBatching() {
+    this.columnBatching = null;
+  }
+
   private void handleSendOrWaitException(Exception ex,
       DistributedPutAllOperation putallO, PutAllPartialResult partialKeys,
       PutAllPRMessage prMsg, TXStateProxy txProxy) {
@@ -5607,6 +5611,13 @@ public class PartitionedRegion extends LocalRegion implements
       o = prIdToPR.getRegion(Integer.valueOf(prid));
     }
     return (PartitionedRegion)o;
+  }
+
+  @SuppressWarnings("unchecked")
+  public static List<PartitionedRegion> getAllPartitionedRegions() {
+    synchronized (prIdToPR) {
+      return new ArrayList<PartitionedRegion>(prIdToPR.values());
+    }
   }
 
   /**
