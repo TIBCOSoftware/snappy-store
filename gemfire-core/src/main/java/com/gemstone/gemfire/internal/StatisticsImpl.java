@@ -379,7 +379,7 @@ public abstract class StatisticsImpl implements Statistics {
 
   @Override
   public int hashCode() {
-    return (int)this.uniqueId;
+    return Long.hashCode(this.uniqueId);
   }
   @Override
   public boolean equals(Object o) {

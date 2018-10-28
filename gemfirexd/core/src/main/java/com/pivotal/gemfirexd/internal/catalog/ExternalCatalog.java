@@ -47,12 +47,24 @@ public interface ExternalCatalog {
   boolean isColumnTable(String schema, String tableName, boolean skipLocks);
 
   /**
-   * Will be used by the execution engine to execute query in gemfirexd
-   * if tablename is of a row table.
+   * Will be used by the execution engine to route to JobServer
+   * when it finds out that this table is a column table.
+   * <p>
+   * This variant expects table meta-data as returned by {@link #getTable}.
    *
    * @return true if the table is column table, false if row/ref table
    */
-  boolean isRowTable(String schema, String tableName, boolean skipLocks);
+  boolean isColumnTable(Object hiveTable);
+
+  /**
+   * Will be used by the execution engine to execute query in gemfirexd
+   * if tablename is of a row table.
+   * <p>
+   * This variant expects table meta-data as returned by {@link #getTable}.
+   *
+   * @return true if the table is column table, false if row/ref table
+   */
+  boolean isRowTable(Object hiveTable);
 
   /**
    * Get the schema for a column table in Json format (as in Spark).
@@ -94,6 +106,8 @@ public interface ExternalCatalog {
    */
   public ExternalTableMetaData getHiveTableMetaData(String schema, String tableName,
       boolean skipLocks);
+
+  void clearCache(String schemaName, String tableName);
 
   void close();
 }
