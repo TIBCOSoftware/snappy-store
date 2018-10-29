@@ -731,6 +731,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         HAS_AUTO_GENERATED_COLUMNS,
         (isByteArrayStore() && !isPrimaryKeyBased())
             || (cdl != null ? cdl.hasAutoIncrementAlways() : false));
+    clearRowBufferFlag();
   }
 
   private long getDDLId(final LanguageConnectionContext lcc,
@@ -775,6 +776,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
           uuidAdvisor.handshake();
         }
       }
+      clearRowBufferFlag();
       this.iargs = null; // free the internal region arguments
     } catch (TimeoutException e) {
       throw StandardException.newException(
@@ -807,6 +809,20 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     if (r.getConcurrencyChecksEnabled()) {
       SanityManager.DEBUG_PRINT("info:" + GfxdConstants.TRACE_CONGLOM,
           "Concurrency checks enabled for table " + getQualifiedTableName());
+    }
+  }
+
+  /**
+   * reset the isRowBuffer flag for parent row buffer region
+   */
+  private void clearRowBufferFlag() {
+    if (isColumnStore()) {
+      String rowBufferTable = getRowBufferTableName(this.qualifiedName);
+      PartitionedRegion rowBuffer = (PartitionedRegion)Misc.getRegionForTableByPath(
+          rowBufferTable, false);
+      if (rowBuffer != null) {
+        rowBuffer.clearIsRowBuffer();
+      }
     }
   }
 
