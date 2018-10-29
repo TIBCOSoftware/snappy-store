@@ -755,7 +755,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
 
   public final boolean checkForColumnBatchCreation(TXStateInterface tx) {
     final PartitionedRegion pr = getPartitionedRegion();
-    return pr.needsBatching()
+    return pr.isRowBuffer()
         && (tx == null || !tx.getProxy().isColumnRolloverDisabled())
         && (getRegionSize() >= pr.getColumnMaxDeltaRows()
         || getTotalBytes() >= pr.getColumnBatchSize());
@@ -1248,7 +1248,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     if (lockGIIForSnapshot) { // test hook
       return true;
     }
-    if ((this.getPartitionedRegion().needsBatching() ||
+    if ((this.getPartitionedRegion().isRowBuffer() ||
         this.getPartitionedRegion().isInternalColumnTable()) &&
         cache.snapshotEnabled()) {
       return true;
@@ -1288,11 +1288,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     }
     return true;
   }
-
-  public boolean isRowBuffer() {
-    return getPartitionedRegion().needsBatching();
-  }
-
 
   public void takeSnapshotGIIReadLock() {
     if (readLockEnabled()) {
@@ -3387,6 +3382,11 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   }
 
   @Override
+  public boolean isRowBuffer() {
+    return getPartitionedRegion().isRowBuffer();
+  }
+
+  @Override
   public boolean isInternalColumnTable() {
     return getPartitionedRegion().isInternalColumnTable();
   }
@@ -3394,8 +3394,6 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   @Override
   public boolean isSnapshotEnabledRegion() {
     // concurrency checks is by default true in column table
-    return getPartitionedRegion().isInternalColumnTable() ||
-        getPartitionedRegion().needsBatching() || super.isSnapshotEnabledRegion();
+    return isInternalColumnTable() || isRowBuffer() || super.isSnapshotEnabledRegion();
   }
-
 }

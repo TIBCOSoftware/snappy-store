@@ -219,7 +219,6 @@ import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl.Chunk;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.sequencelog.RegionLogger;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
-import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.TransformUtils;
 import com.gemstone.gemfire.internal.util.concurrent.FutureResult;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableCountDownLatch;
@@ -2523,33 +2522,35 @@ public class PartitionedRegion extends LocalRegion implements
   }
 
 
-  private volatile Boolean columnBatching;
-  public boolean needsBatching() {
-    final Boolean columnBatching = this.columnBatching;
+  private volatile Boolean isRowBuffer;
+
+  @Override
+  public boolean isRowBuffer() {
+    final Boolean columnBatching = this.isRowBuffer;
     if (columnBatching != null) {
       return columnBatching;
     }
     // Find all the child region and see if they anyone of them has name ending
     // with _SHADOW_
     if (isInternalColumnTable()) {
-      this.columnBatching = false;
+      this.isRowBuffer = false;
       return false;
     } else {
-      boolean needsBatching = false;
+      boolean isRowBuffer = false;
       List<PartitionedRegion> childRegions = ColocationHelper.getColocatedChildRegions(this);
       for (PartitionedRegion pr : childRegions) {
         if (pr.isInternalColumnTable()) {
-          needsBatching = true;
+          isRowBuffer = true;
           break;
         }
       }
-      this.columnBatching = needsBatching;
-      return needsBatching;
+      this.isRowBuffer = isRowBuffer;
+      return isRowBuffer;
     }
   }
 
-  public void clearNeedsBatching() {
-    this.columnBatching = null;
+  public void clearIsRowBuffer() {
+    this.isRowBuffer = null;
   }
 
   private void handleSendOrWaitException(Exception ex,

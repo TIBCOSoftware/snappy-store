@@ -5099,7 +5099,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   }
 
   public final boolean isRowBuffer() {
-    return isPartitioned() && ((PartitionedRegion)this.region).needsBatching();
+    return isPartitioned() && this.region.isRowBuffer();
   }
 
   public final boolean isColumnStore() {
@@ -5627,11 +5627,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         if (senderIds != null) {
           senderIdsStr = SharedUtils.toCSV(senderIds);
         }
-        if (region instanceof PartitionedRegion) {
-          PartitionedRegion pr = (PartitionedRegion)region;
-          if (pr.needsBatching() || pr.isInternalColumnTable()) {
-            dvds[SYSTABLESRowFactory.SYSTABLES_TABLETYPE - 1] = new SQLChar("C");
-          }
+        if (region.isRowBuffer() || region.isInternalColumnTable()) {
+          dvds[SYSTABLESRowFactory.SYSTABLES_TABLETYPE - 1] = new SQLChar("C");
         }
 
         dvds[SYSTABLESRowFactory.SYSTABLES_DATAPOLICY - 1] = new SQLVarchar(

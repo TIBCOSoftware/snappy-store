@@ -14666,6 +14666,10 @@ public class LocalRegion extends AbstractRegion
     }
   }
 
+  public boolean isRowBuffer() {
+    return false;
+  }
+
   @Override
   public boolean isInternalColumnTable() {
     return isInternalColumnTable;
