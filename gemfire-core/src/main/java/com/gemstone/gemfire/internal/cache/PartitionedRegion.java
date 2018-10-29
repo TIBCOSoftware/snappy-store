@@ -2531,14 +2531,17 @@ public class PartitionedRegion extends LocalRegion implements
     }
     // Find all the child region and see if they anyone of them has name ending
     // with _SHADOW_
-    if (this.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
+    if (isInternalColumnTable()) {
       this.columnBatching = false;
       return false;
     } else {
       boolean needsBatching = false;
       List<PartitionedRegion> childRegions = ColocationHelper.getColocatedChildRegions(this);
       for (PartitionedRegion pr : childRegions) {
-        needsBatching |= pr.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
+        if (pr.isInternalColumnTable()) {
+          needsBatching = true;
+          break;
+        }
       }
       this.columnBatching = needsBatching;
       return needsBatching;
@@ -5613,10 +5616,15 @@ public class PartitionedRegion extends LocalRegion implements
     return (PartitionedRegion)o;
   }
 
-  @SuppressWarnings("unchecked")
   public static List<PartitionedRegion> getAllPartitionedRegions() {
     synchronized (prIdToPR) {
-      return new ArrayList<PartitionedRegion>(prIdToPR.values());
+      ArrayList<PartitionedRegion> allPRs = new ArrayList<>(prIdToPR.size());
+      for (Object pr : prIdToPR.values()) {
+        if (pr instanceof PartitionedRegion) {
+          allPRs.add((PartitionedRegion)pr);
+        }
+      }
+      return allPRs;
     }
   }
 

@@ -5106,8 +5106,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     // latter check is not useful currently since only column tables use
     // object store, but still added the check for possible future use
     // (e.g. local index table on column store)
-    return isObjectStore() &&
-        this.tableName.endsWith(SystemProperties.SHADOW_TABLE_SUFFIX);
+    return isObjectStore() && this.region.isInternalColumnTable();
   }
 
   public final boolean isOffHeap() {
@@ -5628,9 +5627,11 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         if (senderIds != null) {
           senderIdsStr = SharedUtils.toCSV(senderIds);
         }
-        if (region instanceof PartitionedRegion &&
-            ((PartitionedRegion)region).needsBatching()) {
-          dvds[SYSTABLESRowFactory.SYSTABLES_TABLETYPE - 1] = new SQLChar("C");
+        if (region instanceof PartitionedRegion) {
+          PartitionedRegion pr = (PartitionedRegion)region;
+          if (pr.needsBatching() || pr.isInternalColumnTable()) {
+            dvds[SYSTABLESRowFactory.SYSTABLES_TABLETYPE - 1] = new SQLChar("C");
+          }
         }
 
         dvds[SYSTABLESRowFactory.SYSTABLES_DATAPOLICY - 1] = new SQLVarchar(

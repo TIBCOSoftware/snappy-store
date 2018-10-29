@@ -36,7 +36,6 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.regex.Pattern;
 
 import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.cache.PartitionAttributesFactory;
@@ -66,7 +65,6 @@ import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl;
 import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl.Chunk;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
-import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 import com.pivotal.gemfirexd.Constants;
 import com.pivotal.gemfirexd.Constants.QueryHints.SizerHints;
@@ -639,7 +637,7 @@ public class ObjectSizer {
     long valInOffheapCount = 0;
     final boolean agentAttached = SIZE_OF_UTIL.isAgentAttached();
     boolean isValueTypeEvaluated = false;
-    final boolean isColumnTable = isColumnTable(c.getQualifiedTableName());
+    final boolean isColumnTable = c.isColumnStore();
     int numColumnsInColumnTable = -1;
     long dvdArraySize = 0;
     boolean gatewayEntries = false;
@@ -843,7 +841,7 @@ public class ObjectSizer {
           }
           else if (valClass == byte[][].class) {
 
-            if (isColumnTable(c.getQualifiedTableName())) {
+            if (c.isColumnStore()) {
               columnRowCount += getRowCountFromColumnTable(c, (byte[][])value);
             }
 
@@ -993,13 +991,6 @@ public class ObjectSizer {
       }
     }
 
-  }
-
-  private static final Pattern columnTableRegex =
-      Pattern.compile(".*" + SystemProperties.SHADOW_SCHEMA_NAME + "(.*)" +
-          SystemProperties.SHADOW_TABLE_SUFFIX);
-  private Boolean isColumnTable(String fullyQualifiedTable) {
-    return columnTableRegex.matcher(fullyQualifiedTable).matches();
   }
 
   private int getRowCountFromColumnTable(GemFireContainer c, byte[][] value) throws StandardException {
