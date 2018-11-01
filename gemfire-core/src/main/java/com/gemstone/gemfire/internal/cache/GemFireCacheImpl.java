@@ -649,7 +649,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     }
 
     if(getLoggerI18n().fineEnabled()) {
-      getLoggerI18n().fine("For region  " + regionPath + " adding " +
+      getLoggerI18n().fine("For " + regionPath + " adding " +
           oldRe + " to oldEntrMap");
     }
 
@@ -778,7 +778,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       };
 
       getLoggerI18n().info(LocalizedStrings.DEBUG,
-          "Snapshot is enabled, starting the cleaner thread.");
+          "Snapshot is enabled, starting the cleaner thread. with frequency " + OLD_ENTRIES_CLEANER_TIME_INTERVAL);
       oldEntryMapCleanerService = Executors.newScheduledThreadPool(1, oldEntryGCtf);
       oldEntryMapCleanerService.scheduleAtFixedRate(new OldEntriesCleanerThread(), 0, OLD_ENTRIES_CLEANER_TIME_INTERVAL,
           TimeUnit.MILLISECONDS);
@@ -798,38 +798,37 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
             Map<Object, BlockingQueue<RegionEntry>> regionEntryMap = entry.getValue();
             LocalRegion region = (LocalRegion)getRegion(entry.getKey());
             if (region == null) continue;
-            for (BlockingQueue<RegionEntry> oldEntriesQueue : regionEntryMap.values()) {
+
+            for (Entry<Object, BlockingQueue<RegionEntry>> oldEntry: regionEntryMap.entrySet()) {
+              Object key = oldEntry.getKey();
+              BlockingQueue<RegionEntry> oldEntriesQueue = oldEntry.getValue();
+
               for (RegionEntry re : oldEntriesQueue) {
-                boolean entryFoundInTxState = false;
-                for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
-                  TXState txState = txProxy.getLocalTXState();
-                  if (re.isUpdateInProgress() || (txState != null && !txState.isCommitted() && TXState.checkEntryInSnapshot
-                      (txState, region, re))) {
-                    entryFoundInTxState = true;
-                    break;
-                  }
-                }
-                if (!entryFoundInTxState) {
-                  if (getLoggerI18n().fineEnabled()) {
-                    getLoggerI18n().fine(
-                        "OldEntriesCleanerThread : Removing the entry " + re + " entry update in progress : " +
-                            re.isUpdateInProgress());
-                  }
-                  // continue if some explicit call removed the entry
-                  if (!oldEntriesQueue.remove(re)) continue;
-                  if (GemFireCacheImpl.hasNewOffHeap()) {
-                    // also remove reference to region buffer, if any
-                    Object value = re._getValue();
-                    if (value instanceof SerializedDiskBuffer) {
-                      ((SerializedDiskBuffer)value).release();
+                if (re.isUpdateInProgress()) {
+                  continue;
+                } else {
+                  if (notRequiredByAnyTx(oldEntriesQueue, region, re)) {
+                    if (getLoggerI18n().fineEnabled()) {
+                      getLoggerI18n().fine(
+                          "OldEntriesCleanerThread : Removing the entry " + re );
+                    }
+                    // continue if some explicit call removed the entry
+                    if (!oldEntriesQueue.remove(re)) continue;
+                    if (GemFireCacheImpl.hasNewOffHeap()) {
+                      // also remove reference to region buffer, if any
+                      Object value = re._getValue();
+                      if (value instanceof SerializedDiskBuffer) {
+                        ((SerializedDiskBuffer)value).release();
+                      }
+                    }
+                    // free the allocated memory
+                    if (!region.reservedTable() && region.needAccounting()) {
+                      NonLocalRegionEntry nre = (NonLocalRegionEntry)re;
+                      region.freePoolMemory(nre.getValueSize(), nre.isForDelete());
                     }
                   }
-                  // free the allocated memory
-                  if (!region.reservedTable() && region.needAccounting()) {
-                    NonLocalRegionEntry nre = (NonLocalRegionEntry)re;
-                    region.freePoolMemory(nre.getValueSize(), nre.isForDelete());
-                  }
                 }
+
               }
             }
           }
@@ -852,11 +851,64 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       catch (Exception e) {
         if (getLoggerI18n().warningEnabled()) {
           getLoggerI18n().warning(LocalizedStrings.DEBUG,
-              "OldEntriesCleanerThread : Error occured while cleaning the oldentries map.Actual " +
+              "OldEntriesCleanerThread : Error occured while cleaning the oldentries map. Actual " +
                   "Exception:", e);
         }
       }
     }
+
+    boolean notRequiredByAnyTx(BlockingQueue<RegionEntry> queue,
+        Region region, RegionEntry re) {
+      int myVersion = re.getVersionStamp().getEntryVersion();
+      Set<TXId> txIds = new HashSet<TXId>();
+
+      for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
+        TXState txState = txProxy.getLocalTXState();
+        if ((txState != null && !txState.isCommitted() && TXState.checkEntryInSnapshot
+            (txState, region, re))) {
+          txIds.add(txState.getTransactionId());
+        }
+      }
+
+      for (RegionEntry regionEntry : queue) {
+        if (regionEntry == re)
+          continue;
+        Set<TXId> othersTxIds = new HashSet<TXId>();
+        for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
+          TXState txState = txProxy.getLocalTXState();
+          if ((txState != null && !txState.isCommitted() && TXState.checkEntryInSnapshot
+              (txState, region, regionEntry))) {
+            othersTxIds.add(txState.getTransactionId());
+          }
+        }
+
+        if (txIds.size() == othersTxIds.size() &&
+            txIds.containsAll(othersTxIds) && othersTxIds.containsAll(txIds)
+            && regionEntry.getVersionStamp().getEntryVersion() > myVersion) {
+          return true;
+        }
+      }
+
+      // in the end check with the entry in region
+      RegionEntry entryInRegion = ((LocalRegion)region).entries.getEntry(re.getKey());
+      Set<TXId> othersTxIds = new HashSet<TXId>();
+      for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
+        TXState txState = txProxy.getLocalTXState();
+        if ((txState != null && !txState.isCommitted() && TXState.checkEntryInSnapshot
+            (txState, region, entryInRegion))) {
+          othersTxIds.add(txState.getTransactionId());
+        }
+      }
+
+      if (txIds.size() == othersTxIds.size() &&
+          txIds.containsAll(othersTxIds) && othersTxIds.containsAll(txIds)
+          && entryInRegion.getVersionStamp().getEntryVersion() > myVersion) {
+        return true;
+      }
+
+      return false;
+    }
+
   }
 
   /**
