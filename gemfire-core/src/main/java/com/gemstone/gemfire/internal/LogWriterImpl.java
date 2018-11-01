@@ -382,6 +382,7 @@ implements LogWriterI18n, LogWriter {
             && !group.getName()
                 .equals("GemFireConnectionFactory Shutdown Hook")) {
           group.cleanup();
+          itr.remove();
         }
       }
     }

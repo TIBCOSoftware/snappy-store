@@ -1488,7 +1488,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
           bucketCount[0] = 0;
         }
         // get index columns
-        if (hiveCatalog.isRowTable(schema, table, true)) {
+        if (hiveCatalog.isRowTable(t)) {
           getIndexColumns(indexColumns, region);
           getPKColumns(pkColumns, region);
         }

@@ -1472,7 +1472,7 @@ public final class InternalDistributedSystem
                   LocalizedStrings.InternalDistributedSystem_EXCEPTION_TRYING_TO_CLOSE_CACHE, e);
             }
             finally {
-              disconnectListenerThread.set(Boolean.FALSE);
+              disconnectListenerThread.remove();
             }
           }
           if (!preparingForReconnect) {

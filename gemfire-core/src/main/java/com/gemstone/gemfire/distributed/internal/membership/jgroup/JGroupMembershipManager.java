@@ -3453,7 +3453,7 @@ public final class JGroupMembershipManager implements MembershipManager {
   // MembershipManager method
   @Override
   public void releaseUDPMessagingForCurrentThread() {
-    forceUseJGroups.set(null);
+    forceUseJGroups.remove();
   }
   
   private boolean isForceUDPCommunications() {

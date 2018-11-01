@@ -29,25 +29,35 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Properties;
 import java.util.StringTokenizer;
+import java.util.concurrent.CyclicBarrier;
 
 import com.gemstone.gemfire.cache.persistence.PartitionOfflineException;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.internal.AvailablePort;
+import com.gemstone.gemfire.internal.cache.AbstractRegionEntry;
+import com.gemstone.gemfire.internal.cache.LocalRegion;
+import com.gemstone.gemfire.internal.concurrent.ConcurrentSkipListMap;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverAdapter;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
 import com.pivotal.gemfirexd.internal.engine.access.index.OpenMemIndex;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.DMLQueryInfo;
 import com.pivotal.gemfirexd.internal.engine.distributed.metadata.SelectQueryInfo;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.sql.execute.GemFireDistributedResultSet;
+import com.pivotal.gemfirexd.internal.engine.store.CompactCompositeIndexKey;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.iapi.error.DerbySQLException;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
+import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.sun.jna.Platform;
@@ -1646,5 +1656,96 @@ public class BugsTest extends JdbcTestBase {
       GemFireXDQueryObserverHolder.clearInstance();
     }
 
+  }
+  public void testBugSNAP2627() throws Exception {
+    Connection conn = getConnection();
+    Statement st = conn.createStatement();
+    st.execute("create table t1 (col1 int primary key, col2 varchar(10), col3 varchar(10), "
+        + "constraint t1_uq unique (col2, col3)) replicate");
+    st.execute("insert into t1 values (202, 'a0', 'lse')");
+    LocalRegion rgn = (LocalRegion)Misc.getRegionForTable("APP.T1", true);
+    AbstractRegionEntry are = (AbstractRegionEntry)rgn.entries.regionEntries().iterator().next();
+    st.execute("delete from t1");
+    assertTrue(are.isDestroyedOrRemoved());
+    GfxdIndexManager im = (GfxdIndexManager)rgn.getIndexUpdater();
+    List<GemFireContainer> allIndexes = im.getAllIndexes();
+    GemFireContainer uniqueIndex = null;
+    for (GemFireContainer gfc : allIndexes) {
+      if (gfc.isUniqueIndex()) {
+        uniqueIndex = gfc;
+        break;
+      }
+    }
+    ConcurrentSkipListMap sm = uniqueIndex.getSkipListMap();
+    DataValueDescriptor[] row = new DataValueDescriptor[2];
+
+    row[0] = DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.VARCHAR).
+        getNull();
+    row[0].setValue("a0");
+    row[1] = DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.VARCHAR).
+        getNull();
+    row[1].setValue("lse");
+
+
+    CompactCompositeIndexKey ccik = new CompactCompositeIndexKey(row, uniqueIndex.getExtraIndexInfo());
+    sm.put(ccik, are);
+    st.execute("insert into t1 values (202, 'a0', 'lse')");
+  }
+
+  public void testBugSNAP2640ConcurrentCreateDelete() throws Exception {
+    final int numOps = 10000;
+    boolean[] anyFailure = new boolean[] { false };
+    final int numKeysToOperate = 10;
+    final int numThreads = 30;
+    final CyclicBarrier barrier = new CyclicBarrier(numThreads);
+    Connection conn = getConnection();
+    Statement st = conn.createStatement();
+    st.execute("create table t1 (col1 int, col2 int not null unique) replicate");
+    Runnable task = new Runnable() {
+      @Override
+      public void run() {
+        try {
+          Connection conn1 = getConnection();
+          PreparedStatement insert = conn1.prepareStatement("insert into t1 values(?,?)");
+          PreparedStatement delete = conn1.prepareStatement("delete from t1 where col1 = ?");
+          barrier.await();
+          for (int i = 0; i < numOps; ++i) {
+            try {
+              insert.setInt(1, i % numKeysToOperate);
+              insert.setInt(2, i % numKeysToOperate);
+              insert.executeUpdate();
+            } catch (SQLException sqle) {
+              if (sqle.toString().toLowerCase().indexOf("violation") != -1
+                  && sqle.toString().toLowerCase().indexOf("constraint") != -1) {
+                // ok
+              }
+            }
+
+            delete.setInt(1, i % numKeysToOperate);
+            delete.executeUpdate();
+          }
+          conn1.close();
+        } catch (Exception sqle) {
+          sqle.printStackTrace();
+          fail("test failed due to exception = " + sqle);
+          anyFailure[0] = true;
+        }
+      }
+    };
+
+    Thread[] threads = new Thread[numThreads];
+    for (int i = 0; i < numThreads; ++i) {
+      threads[i] = new Thread(task);
+    }
+
+    for (Thread th : threads) {
+      th.start();
+    }
+
+    for (Thread th : threads) {
+      th.join();
+    }
+    conn.close();
+    assertFalse(anyFailure[0]);
   }
 }

@@ -1728,7 +1728,7 @@ public class DLockService extends DistributedLockService {
       if (!gotLock && interruptible && Thread.interrupted()) {
         throw new InterruptedException();
       }
-      blockedOn.set(null);
+      blockedOn.remove();
     }
 
     if (getLogWriter().fineEnabled()) {

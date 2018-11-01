@@ -83,7 +83,7 @@ task deleteGenerated(type: Delete) {
 clean.dependsOn deleteGenerated
 
 task generatePropertiesFiles(dependsOn: 'processResources') {
-  def infoDir = file("${buildDir}/resources/main/com/pivotal/gemfirexd/internal/info")
+  def infoDir = file("${buildDir}/classes/main/com/pivotal/gemfirexd/internal/info")
   outputs.files "${infoDir}/DBMS.properties", "${infoDir}/net.properties"
   inputs.dir compileJava.destinationDir
 
@@ -99,7 +99,7 @@ task generatePropertiesFiles(dependsOn: 'processResources') {
 }
 
 def msgDir = "${projectDir}/src/main/resources/${locDir}"
-def msgEnDir = "${buildDir}/resources/main/${locDir}"
+def msgEnDir = "${buildDir}/classes/main/${locDir}"
 
 task buildMessages {
   dependsOn subprojectBase + 'snappydata-store-prebuild:jar', 'processResources', subprojectBase + 'snappydata-store-client:processResources'
@@ -138,7 +138,7 @@ def splitMessages(def msgFile, def msgDir) {
 // create the client messages files for various languages
 task doSplit(dependsOn: buildMessages) {
   def msgXml = "${msgDir}/messages.xml"
-  def clientResourceDir = "${project(subprojectBase + 'snappydata-store-client').buildDir}/resources/main/${locDir}"
+  def clientResourceDir = "${project(subprojectBase + 'snappydata-store-client').buildDir}/classes/main/${locDir}"
 
   inputs.file msgXml
   outputs.files "${msgEnDir}/m0_en.properties", "${clientResourceDir}/clientmessages_en.properties"
@@ -169,7 +169,7 @@ task doSplit(dependsOn: buildMessages) {
     // copy the remaining properties files to their place in engine jar
     copy {
       from clientMsgOutDir
-      into "${buildDir}/resources/main/${locDir}"
+      into "${buildDir}/classes/main/${locDir}"
       include 'm*.properties'
     }
   }
@@ -177,7 +177,7 @@ task doSplit(dependsOn: buildMessages) {
 
 task odbcMeta {
   dependsOn "${subprojectBase}snappydata-store-prebuild:processResources", 'processResources', "${subprojectBase}snappydata-store-prebuild:jar"
-  def metaDir = file("${buildDir}/resources/main/com/pivotal/gemfirexd/internal/impl/jdbc")
+  def metaDir = file("${buildDir}/classes/main/com/pivotal/gemfirexd/internal/impl/jdbc")
   outputs.file "${metaDir}/metadata.properties"
   inputs.dir compileJava.destinationDir
 

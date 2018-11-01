@@ -67,9 +67,6 @@ import org.slf4j.LoggerFactory;
 public final class SnappyTSocket extends TNonblockingTransport implements
     SocketTimeout {
 
-  private static final Logger LOGGER = LoggerFactory
-      .getLogger(SnappyTSocket.class.getName());
-
   /**
    * Wrapped SocketChannel object.
    */
@@ -139,7 +136,6 @@ public final class SnappyTSocket extends TNonblockingTransport implements
       this.framedWrites = false;
       this.socketToSameHost = ClientSharedUtils.isSocketToSameHost(dataChannel);
     } catch (IOException ioe) {
-      LOGGER.warn("Failed to create or configure socket for client.", ioe);
       close();
       throw new TTransportException(TTransportException.NOT_OPEN,
           "Failed to create or configure socket for client.", ioe);
@@ -180,7 +176,6 @@ public final class SnappyTSocket extends TNonblockingTransport implements
       this.dataChannel = openChannel(clientId, useSSL, params);
       this.socketToSameHost = ClientSharedUtils.isSocketToSameHost(dataChannel);
     } catch (IOException ioe) {
-      LOGGER.warn("Failed to create or configure socket.", ioe);
       close();
       throw new TTransportException(TTransportException.NOT_OPEN,
           "Failed to create or configure socket.", ioe);

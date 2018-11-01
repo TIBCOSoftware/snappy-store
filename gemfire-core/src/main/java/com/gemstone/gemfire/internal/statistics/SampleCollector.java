@@ -226,7 +226,7 @@ public class SampleCollector {
     List<ResourceInstance> updatedResources = new ArrayList<ResourceInstance>();
     for (ResourceInstance ri : this.resourceInstMap.values()) {
       StatisticDescriptor[] stats = ri.getResourceType().getStatisticDescriptors();
-      if (ri.getStatistics().isClosed()) {
+      if (ri.getStatistics().isClosed() || stats.length == 0) {
         continue;
       }
       
@@ -253,6 +253,7 @@ public class SampleCollector {
           }
         }
         // resize updatedStats to only contain the the stats which were updated
+        if (updatedStatsIdx == 0) continue;
         updatedStats = Arrays.copyOf(updatedStats, updatedStatsIdx);
       }
       

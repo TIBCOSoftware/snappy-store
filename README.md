@@ -77,9 +77,9 @@ The GemFireXD layout is divided into separate logical modules namely:
 GemFireXD now builds completely using gradle. Due to the repository layout changes, the older ant builds no longer work (unless someone takes the effort to change them). The new scripts are much simpler, cleaner and way faster than old ant scripts but are still missing a bunch of old targets. Plan is to add them progressively as required.
 
   * Switch to "snappy/master" branch if not on that already. Update the branch to the latest version. Then test the build with: ./gradlew cleanAll && ./gradlew buildAll
-  * Run a GemFireXD junit test: ./gradlew :gemfirexd-tools:junit -Djunit.single='\*\*/BugsTest.class'
-  * Run a GemFireXD dunit test: ./gradlew :gemfirexd-tools:dunit -Ddunit.single='\*\*/BugsDUnit.class'
-  * Run a GemFireXD wan test:   ./gradlew :gemfirexd-tools:wan -Dwan.single='\*\*/GfxdSerialWanDUnit.class'
+  * Run a GemFireXD junit test: ./gradlew :snappy-store:snappydata-store-tools:junit -Djunit.single='\*\*/BugsTest.class'
+  * Run a GemFireXD dunit test: ./gradlew :snappy-store:snappydata-store-tools:dunitTest -Ddunit.single='**/BugsDUnit.class'
+  * Run a GemFireXD wan test:   ./gradlew :snappy-store:snappydata-store-tools:wan -Dwan.single='**/GfxdSerialWanDUnit.class'
 
 Useful build and test targets:
 ```

@@ -20,6 +20,7 @@ package com.pivotal.gemfirexd.internal.engine.distributed;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.sql.SQLWarning;
 import java.sql.Types;
 import java.util.Iterator;
 
@@ -53,6 +54,7 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
   private transient volatile int[] precisions;
   private transient volatile int[] scales;
   private transient volatile Object[] dataTypes;
+  private transient volatile SQLWarning warnings;
   private DataValueDescriptor[] templateDVDRow;
   private Iterator<ValueRow> execRows;
   private DataTypeDescriptor[] dtds;
@@ -81,6 +83,7 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
     this.precisions = other.precisions;
     this.scales = other.scales;
     this.dataTypes = other.dataTypes;
+    this.warnings = other.warnings;
   }
 
   public ByteArrayDataInput getByteArrayDataInput() {
@@ -105,7 +108,7 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
   }
 
   @Override
-  public void fromData(DataInput in) throws IOException {
+  public void fromData(DataInput in) throws IOException, ClassNotFoundException {
     final int numBytes = InternalDataSerializer.readArrayLength(in);
     if (numBytes > 0) {
       final byte[] rawData = DataSerializer.readByteArray(in, numBytes);
@@ -115,7 +118,8 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
   }
 
   public final void fromSerializedData(final byte[] rawData,
-      final int numBytes, final Version v) throws IOException {
+      final int numBytes, final Version v)
+      throws IOException, ClassNotFoundException {
     final ByteArrayDataInput dis = new ByteArrayDataInput();
     dis.initialize(rawData, 0, numBytes, v);
     byte metaInfo = dis.readByte();
@@ -150,6 +154,7 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
           scales[i] = -1;
         }
       }
+      this.warnings = DataSerializer.readObject(dis);
     }
     this.dis = dis;
   }
@@ -332,5 +337,9 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
   public DataTypeDescriptor[] getDtds() {
     makeTemplateDVDArr();
     return this.dtds;
+  }
+
+  public SQLWarning getWarnings() {
+    return this.warnings;
   }
 }

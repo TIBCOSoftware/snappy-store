@@ -838,7 +838,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
        synchronized (oldEntryMap) {
         for (Map<Object, BlockingQueue<RegionEntry>> regionEntryMap : oldEntryMap.values()) {
           for (Entry<Object, BlockingQueue<RegionEntry>> entry : regionEntryMap.entrySet()) {
-            if (entry.getValue().size() == 0) {
+            if (entry.getValue().isEmpty()) {
               regionEntryMap.remove(entry.getKey());
               if (getLoggerI18n().fineEnabled()) {
                 getLoggerI18n().fine(
@@ -3426,10 +3426,27 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       } catch (RedundancyAlreadyMetException e) {
         // don't log this
         throw e;
-      } catch (final RuntimeException validationException) {
+      } catch (final Exception validationException) {
         getLoggerI18n().warning(LocalizedStrings.GemFireCache_INITIALIZATION_FAILED_FOR_REGION_0, rgn.getFullPath(),
             validationException);
         throw validationException;
+      } catch (Error e) {
+        getLoggerI18n().warning(LocalizedStrings.GemFireCache_INITIALIZATION_FAILED_FOR_REGION_0,
+            rgn.getFullPath(), e);
+        // don't try cleanup for any of the fatal errors below
+        // else they themselves can get stuck
+        success = true;
+        if (SystemFailure.isJVMFailureError(e)) {
+          SystemFailure.initiateFailure(e);
+          // If this ever returns, rethrow the error. We're poisoned
+          // now, so don't let this thread continue.
+          throw e;
+        }
+        SystemFailure.checkFailure();
+        // do cleanup for any non-fatal errors
+        success = false;
+        stopper.checkCancelInProgress(e);
+        throw e;
       } finally {
         if (!success) {
           try {
@@ -6368,6 +6385,21 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
   public final DM getDistributionManager() {
     return this.dm;
+  }
+
+  /**
+   * Get a thread-pool for background execution. On normal DMs it will be the
+   * waiting thread pool which can have any size, or else in loner DMs (that
+   * don't have most execution thread pools) it will be the disk write pool
+   * that is a proper background thread pool even in loner DMs.
+   */
+  public final ThreadPoolExecutor getWaitingThreadPoolOrDiskWritePool() {
+    if (getDistributionManager().isLoner()) {
+      return getDiskDelayedWritePool();
+    } else {
+      return (ThreadPoolExecutor)getDistributionManager()
+          .getWaitingThreadPool();
+    }
   }
 
   public GatewaySenderFactory createGatewaySenderFactory(){

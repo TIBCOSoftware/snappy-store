@@ -300,7 +300,7 @@ public final class OffHeapMemoryMonitor implements ResourceMonitor,
     final MemoryEvent tempEvent = this.upcomingEvent.get();
     if (tempEvent != null) {
       this.mostRecentEvent = tempEvent;
-      this.upcomingEvent.set(null);
+      this.upcomingEvent.remove();
     }
     final MemoryEvent eventToPopulate = this.mostRecentEvent;
     profile.setOffHeapData(eventToPopulate.getBytesUsed(), eventToPopulate.getState(), eventToPopulate.getThresholds());

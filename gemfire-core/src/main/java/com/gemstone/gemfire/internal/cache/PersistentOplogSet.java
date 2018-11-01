@@ -539,21 +539,23 @@ public class PersistentOplogSet implements OplogSet {
         this.currentRecoveryMap.putAll(this.pendingRecoveryMap);
         this.pendingRecoveryMap.clear();
       }
-      Iterator<Map.Entry<Long, DiskRecoveryStore>> itr = this.currentRecoveryMap.entrySet().iterator();
-      boolean listMsgPrinted = false;
-      while (itr.hasNext()) {
-        if (!listMsgPrinted) {
-          listMsgPrinted = true;
-          System.out.println("Following validating disk regions" +
-              " are present in diskstore " + this.parent.getName());
+      if (parent.isValidating()) {
+        Iterator<Map.Entry<Long, DiskRecoveryStore>> itr = this.currentRecoveryMap.entrySet().iterator();
+        boolean listMsgPrinted = false;
+        while (itr.hasNext()) {
+          if (!listMsgPrinted) {
+            listMsgPrinted = true;
+            System.out.println("Following validating disk regions" +
+                " are present in diskstore " + this.parent.getName());
+          }
+          Map.Entry<Long, DiskRecoveryStore> e = itr.next();
+          // Print these irrespective of the sizes of the recovery map because
+          // a colocated bucket can be created but may be empty. So if just bucket
+          // existence needs to be checked this list will help. For column tables
+          // in snappydata it can be quite frequent that row buffer is empty but
+          // column table has some data.
+          System.out.println(e.getValue());
         }
-        Map.Entry<Long, DiskRecoveryStore> e = itr.next();
-        // Print these irrespective of the sizes of the recovery map because
-        // a colocated bucket can be created but may be empty. So if just bucket
-        // existence needs to be checked this list will help. For column tables
-        // in snappydata it can be quite frequent that row buffer is empty but
-        // column table has some data.
-        System.out.println(e.getValue());
       }
       if (this.currentRecoveryMap.isEmpty() && this.alreadyRecoveredOnce.get()) {
         // no recovery needed

@@ -134,7 +134,7 @@ dependencies {
 
 // Creates the version properties file and writes it to the classes dir
 task createVersionPropertiesFile(dependsOn: 'processResources') {
-  def propertiesDir = file("${buildDir}/resources/main/com/gemstone/gemfire/internal")
+  def propertiesDir = file("${buildDir}/classes/main/com/gemstone/gemfire/internal")
   outputs.file "${propertiesDir}/GemFireVersion.properties"
   inputs.dir compileJava.destinationDir
 
