@@ -836,10 +836,7 @@ public abstract class AbstractLRURegionMap extends AbstractRegionMap {
   
   @Override
   public final void resetThreadLocals() {
-    ThreadLocalEntry e = threadLocals.get();
-    e.lruDelta = null;
-    e.mustRemove = null;
-    e.callbackDisabled = null;
+    threadLocals.remove();
   }
 
   @Override

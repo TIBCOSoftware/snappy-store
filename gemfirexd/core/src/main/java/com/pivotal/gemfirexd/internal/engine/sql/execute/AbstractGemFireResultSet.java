@@ -53,8 +53,6 @@ public abstract class AbstractGemFireResultSet implements ResultSet {
 
   protected final GemFireTransaction tran;
 
-  protected SQLWarning warnings;
-
   protected boolean isClosed;
 
   protected final GemFireXDQueryObserver observer = GemFireXDQueryObserverHolder
@@ -114,7 +112,6 @@ public abstract class AbstractGemFireResultSet implements ResultSet {
     }
     
     this.tran = (GemFireTransaction)act.getTransactionController();
-    this.warnings = null;
     this.isClosed = true;
   }
 
@@ -402,16 +399,12 @@ public abstract class AbstractGemFireResultSet implements ResultSet {
   }
 
   protected final void addWarning(SQLWarning w) {
-    if (warnings == null)
-      warnings = w;
-    else
-      warnings.setNextWarning(w);
-    return;
+    this.activation.addResultsetWarning(w);
   }
 
   @Override
   public final SQLWarning getWarnings() {
-    return this.warnings;
+    return this.activation.getResultsetWarnings();
   }
 
   @Override

@@ -18,7 +18,12 @@
 package com.pivotal.gemfirexd.internal.engine.access.operations;
 
 import java.io.IOException;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
+import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.cache.ConflictException;
 import com.gemstone.gemfire.cache.query.IndexMaintenanceException;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
@@ -283,6 +288,52 @@ public final class SortedMap2IndexInsertOperation extends MemIndexOperation {
           }
           break;
         }
+
+        // TODO: identify the cause of Bug SNAP-2627
+        // Till then this is the crude fix
+        if (oldValue instanceof AbstractRegionEntry) {
+          final AbstractRegionEntry existingRe = (AbstractRegionEntry)oldValue;
+          if (existingRe.isDestroyedOrRemoved()) {
+            Callable<Boolean> deadEntryRemover = new Callable<Boolean>() {
+              @Override
+              public Boolean call() {
+                synchronized (existingRe) {
+                  if (existingRe.isDestroyedOrRemoved()) {
+                    if (!existingRe.isRemovedPhase1()) {
+                      // create a dummy exception
+                      Throwable th = GemFireXDUtils.newDuplicateKeyViolation("unique constraint",
+                          container.getQualifiedTableName(), "key=" + key.toString()
+                              + ", row=" + value, oldValue, null, null);
+                      final GemFireCacheImpl cache = Misc.getGemFireCache();
+                      final LogWriter logger = cache.getLogger();
+                      logger.error("Unique index constraint violation caused due to " +
+                          "removed/destroyed entry. The index is corrupted. Cleaning the index", th);
+
+                      skipListMap.remove(key, oldValue);
+                    }
+                    return true;
+                  }
+
+                }
+                return false;
+              }
+
+            };
+
+            ThreadPoolExecutor executor = Misc.getGemFireCache()
+                .getWaitingThreadPoolOrDiskWritePool();
+            try {
+              Future<Boolean> outcome = executor.submit(deadEntryRemover);
+              if (outcome.get(2000, TimeUnit.MILLISECONDS)) {
+                // either the entry was token removed or token destroyed, try again
+                continue;
+              }
+            } catch (Exception e) {
+              // not much can be done? let this thread throw duplicate key exception
+            }
+          }
+        }
+
         throw GemFireXDUtils.newDuplicateKeyViolation("unique constraint",
             container.getQualifiedTableName(), "key=" + key.toString()
                 + ", row=" + value, oldValue, null, null);

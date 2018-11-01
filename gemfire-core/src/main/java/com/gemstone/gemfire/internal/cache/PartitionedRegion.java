@@ -219,7 +219,6 @@ import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl.Chunk;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.sequencelog.RegionLogger;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
-import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.util.TransformUtils;
 import com.gemstone.gemfire.internal.util.concurrent.FutureResult;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableCountDownLatch;
@@ -255,20 +254,6 @@ public class PartitionedRegion extends LocalRegion implements
    * A debug flag used for testing calculation of starting bucket id
    */
   public static boolean BEFORE_CALCULATE_STARTING_BUCKET_FLAG = false;
-  
-  /**
-   * Thread specific random number
-   */
-  private static ThreadLocal threadRandom = new ThreadLocal() {
-    @Override
-    protected Object initialValue() {
-      int i = rand.nextInt();
-      if (i < 0) {
-        i = -1 * i;
-      }
-      return Integer.valueOf(i);
-    }
-  };
 
   /**
    * Global Region for storing PR config ( PRName->PRConfig). This region would
@@ -781,13 +766,8 @@ public class PartitionedRegion extends LocalRegion implements
   
   private ParallelGatewaySenderImpl parallelGatewaySender = null;
   
-  private final ThreadLocal<Boolean> queryHDFS = new ThreadLocal<Boolean>() {
-    @Override
-    protected Boolean initialValue() {
-      return false;
-    }
-  };
-  
+  private final ThreadLocal<Boolean> queryHDFS = new ThreadLocal<>();
+
   public PartitionedRegion(String regionname, RegionAttributes ra,
       LocalRegion parentRegion, GemFireCacheImpl cache,
       InternalRegionArguments internalRegionArgs) {
@@ -949,12 +929,17 @@ public class PartitionedRegion extends LocalRegion implements
   }
 
   public final void setQueryHDFS(boolean includeHDFS) {
-    queryHDFS.set(includeHDFS);
+    if (includeHDFS) {
+      queryHDFS.set(true);
+    } else {
+      queryHDFS.remove();
+    }
   }
 
   @Override
   public final boolean includeHDFSResults() {
-    return queryHDFS.get();
+    Boolean v = queryHDFS.get();
+    return v != null && v;
   }
 
   public final boolean isShadowPR() {
@@ -2523,26 +2508,35 @@ public class PartitionedRegion extends LocalRegion implements
   }
 
 
-  private volatile Boolean columnBatching;
-  public boolean needsBatching() {
-    final Boolean columnBatching = this.columnBatching;
+  private volatile Boolean isRowBuffer;
+
+  @Override
+  public boolean isRowBuffer() {
+    final Boolean columnBatching = this.isRowBuffer;
     if (columnBatching != null) {
       return columnBatching;
     }
     // Find all the child region and see if they anyone of them has name ending
     // with _SHADOW_
-    if (this.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX)) {
-      this.columnBatching = false;
+    if (isInternalColumnTable()) {
+      this.isRowBuffer = false;
       return false;
     } else {
-      boolean needsBatching = false;
+      boolean isRowBuffer = false;
       List<PartitionedRegion> childRegions = ColocationHelper.getColocatedChildRegions(this);
       for (PartitionedRegion pr : childRegions) {
-        needsBatching |= pr.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
+        if (pr.isInternalColumnTable()) {
+          isRowBuffer = true;
+          break;
+        }
       }
-      this.columnBatching = needsBatching;
-      return needsBatching;
+      this.isRowBuffer = isRowBuffer;
+      return isRowBuffer;
     }
+  }
+
+  public void clearIsRowBuffer() {
+    this.isRowBuffer = null;
   }
 
   private void handleSendOrWaitException(Exception ex,
@@ -5609,6 +5603,18 @@ public class PartitionedRegion extends LocalRegion implements
     return (PartitionedRegion)o;
   }
 
+  public static List<PartitionedRegion> getAllPartitionedRegions() {
+    synchronized (prIdToPR) {
+      ArrayList<PartitionedRegion> allPRs = new ArrayList<>(prIdToPR.size());
+      for (Object pr : prIdToPR.values()) {
+        if (pr instanceof PartitionedRegion) {
+          allPRs.add((PartitionedRegion)pr);
+        }
+      }
+      return allPRs;
+    }
+  }
+
   /**
    * Verify that the given prId is correct for the given region name in this vm
    * 
@@ -8053,14 +8059,6 @@ public class PartitionedRegion extends LocalRegion implements
       throw e;
     }
     return retVal;
-  }
-
-  static int getRandom(int max) {
-    if (max <= 0) {
-      return 0;
-    }
-    int ti = ((Integer)PartitionedRegion.threadRandom.get()).intValue();
-    return ti % max;
   }
 
   /**

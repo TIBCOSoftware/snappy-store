@@ -242,7 +242,11 @@ public final class ContextService //OLD extends Hashtable
         if (fact != null) {
             synchronized (fact) {
                 fact.allContexts = null;
-                fact.threadContextList = null;
+                final ThreadLocal contextList = fact.threadContextList;
+                if (contextList != null) {
+                    contextList.remove();
+                    fact.threadContextList = null;
+                }
                 ContextService.factory = null;
             }
         }

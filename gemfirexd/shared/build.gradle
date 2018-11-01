@@ -30,7 +30,7 @@ ext {
 
 // Creates the version properties file and writes it to the resources dir
 task createVersionPropertiesFile(dependsOn: 'processResources') {
-  def propertiesDir = file("${buildDir}/resources/main/com/pivotal/gemfirexd/internal")
+  def propertiesDir = file("${buildDir}/classes/main/com/pivotal/gemfirexd/internal")
   outputs.file "${propertiesDir}/GemFireXDVersion.properties"
   inputs.dir compileJava.destinationDir
   if (rootProject.hasProperty('snappydata.enterprise')) {

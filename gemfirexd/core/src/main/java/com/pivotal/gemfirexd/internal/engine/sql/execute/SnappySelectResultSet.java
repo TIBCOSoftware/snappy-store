@@ -18,6 +18,7 @@
 package com.pivotal.gemfirexd.internal.engine.sql.execute;
 
 import java.io.IOException;
+import java.sql.SQLWarning;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -237,13 +238,22 @@ public class SnappySelectResultSet
     GenericResultDescription resultDescription = new GenericResultDescription(
         new ResultColumnDescriptor[colTypes.length], null);
 
-    // TODO: KN remove hard coding
-    for(int i=0; i<colNames.length; i++) {
+    for (int i = 0; i < colNames.length; i++) {
+      String tableName = tableNames[i];
+      String schema = "";
+      String table = "";
+      if (!tableName.isEmpty()) {
+        int dotIndex = tableName.indexOf('.');
+        schema = tableName.substring(0, dotIndex);
+        table = tableName.substring(dotIndex + 1);
+      }
       ResultColumnDescriptor rcd = new GenericColumnDescriptor(
-          colNames[i], "APP", tableNames[i],
-          i+1, dtds[i], false, false);
-      resultDescription.setColumnDescriptor(
-          i, rcd);
+          colNames[i], schema, table, i + 1, dtds[i], false, false);
+      resultDescription.setColumnDescriptor(i, rcd);
+    }
+    final SQLWarning warnings = firstResultHolder.getWarnings();
+    if (warnings != null) {
+      addWarning(warnings);
     }
     return resultDescription;
   }

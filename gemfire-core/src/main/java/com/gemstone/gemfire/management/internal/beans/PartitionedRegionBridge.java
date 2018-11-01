@@ -27,7 +27,6 @@ import com.gemstone.gemfire.internal.cache.lru.Sizeable;
 import com.gemstone.gemfire.internal.cache.BucketRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegionStats;
-import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.management.FixedPartitionAttributesData;
 import com.gemstone.gemfire.management.PartitionAttributesData;
 import com.gemstone.gemfire.management.internal.ManagementConstants;
@@ -78,8 +77,6 @@ public class PartitionedRegionBridge<K, V>  extends RegionMBeanBridge<K, V> {
 
   private StatsAverageLatency remotePutAvgLatency;
 
-  private boolean isColumnTable = false;
-
   public static final String PAR_REGION_MONITOR = "PartitionedRegionMonitor";
   
   public static <K, V> PartitionedRegionBridge<K, V> getInstance(Region<K, V> region) {
@@ -100,9 +97,7 @@ public class PartitionedRegionBridge<K, V>  extends RegionMBeanBridge<K, V> {
     this.parRegion = (PartitionedRegion)region;
     this.prStats = parRegion.getPrStats();
 
-    this.isColumnTable = parRegion.getName().toUpperCase().endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
-    
-    PartitionAttributes<K, V>  partAttrs = parRegion.getPartitionAttributes();    
+    PartitionAttributes<K, V>  partAttrs = parRegion.getPartitionAttributes();
     
     this.parRegionMonitor = new MBeanStatsMonitor(PAR_REGION_MONITOR);
     
@@ -328,7 +323,7 @@ public class PartitionedRegionBridge<K, V>  extends RegionMBeanBridge<K, V> {
 
   @Override
   public boolean isColumnTable() {
-    return isColumnTable;
+    return parRegion.isInternalColumnTable();
   }
 
   @Override

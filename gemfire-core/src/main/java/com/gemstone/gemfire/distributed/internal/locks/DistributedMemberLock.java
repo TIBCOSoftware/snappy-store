@@ -260,7 +260,11 @@ public final class DistributedMemberLock implements Lock {
     }
     finally {
       this.threadState.interruptible = false;
-      this.dls.getThreadRequestState().set(oldThreadState);
+      if (oldThreadState == null) {
+        this.dls.getThreadRequestState().remove();
+      } else {
+        this.dls.getThreadRequestState().set(oldThreadState);
+      }
     }
   }
   

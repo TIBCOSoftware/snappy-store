@@ -1521,13 +1521,30 @@ public class LocalRegion extends AbstractRegion
       } catch(RedundancyAlreadyMetException e) {
         //don't log this
         throw e;
-      } catch (final RuntimeException validationException) {
+      } catch (final Exception validationException) {
         this.cache.getLoggerI18n().warning(LocalizedStrings.
             LocalRegion_INITIALIZATION_FAILED_FOR_REGION_0,
             newRegion.getFullPath(), validationException);
         throw validationException;
-      }
-      finally {
+      } catch (Error e) {
+        this.cache.getLoggerI18n().warning(LocalizedStrings.
+                LocalRegion_INITIALIZATION_FAILED_FOR_REGION_0,
+            newRegion.getFullPath(), e);
+        // don't try cleanup for any of the fatal errors below
+        // else they themselves can get stuck
+        success = true;
+        if (SystemFailure.isJVMFailureError(e)) {
+          SystemFailure.initiateFailure(e);
+          // If this ever returns, rethrow the error. We're poisoned
+          // now, so don't let this thread continue.
+          throw e;
+        }
+        SystemFailure.checkFailure();
+        // do cleanup for any non-fatal errors
+        success = false;
+        stopper.checkCancelInProgress(e);
+        throw e;
+      } finally {
         if (!success) {
           this.cache.setRegionByPath(newRegion.getFullPath(), null);
           initializationFailed(newRegion);
@@ -1582,7 +1599,7 @@ public class LocalRegion extends AbstractRegion
       } catch (RedundancyAlreadyMetException e) {
         // don't log this
         throw e;
-      } catch (final RuntimeException validationException) {
+      } catch (final Exception validationException) {
         this.cache.getLoggerI18n().warning(
             LocalizedStrings.LocalRegion_INITIALIZATION_FAILED_FOR_REGION_0,
             subRegion.getFullPath(), validationException);
@@ -1591,6 +1608,19 @@ public class LocalRegion extends AbstractRegion
         this.cache.getLoggerI18n().warning(
             LocalizedStrings.LocalRegion_INITIALIZATION_FAILED_FOR_REGION_0,
             subRegion.getFullPath(), e);
+        // don't try cleanup for any of the fatal errors below
+        // else they themselves can get stuck
+        success = true;
+        if (SystemFailure.isJVMFailureError(e)) {
+          SystemFailure.initiateFailure(e);
+          // If this ever returns, rethrow the error. We're poisoned
+          // now, so don't let this thread continue.
+          throw e;
+        }
+        SystemFailure.checkFailure();
+        // do cleanup for any non-fatal errors
+        success = false;
+        stopper.checkCancelInProgress(e);
         throw e;
       } finally {
         if (!success) {
@@ -14634,6 +14664,10 @@ public class LocalRegion extends AbstractRegion
       LogWriterI18n log = getLogWriterI18n();
       log.fine(mesage);
     }
+  }
+
+  public boolean isRowBuffer() {
+    return false;
   }
 
   @Override

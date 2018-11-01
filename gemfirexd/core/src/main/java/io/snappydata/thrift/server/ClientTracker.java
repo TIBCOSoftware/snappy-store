@@ -35,6 +35,7 @@
 
 package io.snappydata.thrift.server;
 
+import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.SystemTimer;
 import com.gemstone.gnu.trove.THashSet;
@@ -124,7 +125,12 @@ public class ClientTracker extends SystemTimer.SystemTimerTask {
     final ClientTracker tracker = service.clientSocketTrackerMap.remove(
         transport);
     if (tracker != null) {
-      tracker.removeClientSocket(transport);
+      try {
+        tracker.removeClientSocket(transport);
+      } catch (CancelException ce) {
+        // try to remove in-line
+        tracker.run();
+      }
     }
   }
 

@@ -731,6 +731,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         HAS_AUTO_GENERATED_COLUMNS,
         (isByteArrayStore() && !isPrimaryKeyBased())
             || (cdl != null ? cdl.hasAutoIncrementAlways() : false));
+    clearRowBufferFlag();
   }
 
   private long getDDLId(final LanguageConnectionContext lcc,
@@ -775,6 +776,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
           uuidAdvisor.handshake();
         }
       }
+      clearRowBufferFlag();
       this.iargs = null; // free the internal region arguments
     } catch (TimeoutException e) {
       throw StandardException.newException(
@@ -807,6 +809,20 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     if (r.getConcurrencyChecksEnabled()) {
       SanityManager.DEBUG_PRINT("info:" + GfxdConstants.TRACE_CONGLOM,
           "Concurrency checks enabled for table " + getQualifiedTableName());
+    }
+  }
+
+  /**
+   * reset the isRowBuffer flag for parent row buffer region
+   */
+  private void clearRowBufferFlag() {
+    if (isColumnStore()) {
+      String rowBufferTable = getRowBufferTableName(this.qualifiedName);
+      PartitionedRegion rowBuffer = (PartitionedRegion)Misc.getRegionForTableByPath(
+          rowBufferTable, false);
+      if (rowBuffer != null) {
+        rowBuffer.clearIsRowBuffer();
+      }
     }
   }
 
@@ -5099,15 +5115,14 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   }
 
   public final boolean isRowBuffer() {
-    return isPartitioned() && ((PartitionedRegion)this.region).needsBatching();
+    return isPartitioned() && this.region.isRowBuffer();
   }
 
   public final boolean isColumnStore() {
     // latter check is not useful currently since only column tables use
     // object store, but still added the check for possible future use
     // (e.g. local index table on column store)
-    return isObjectStore() &&
-        this.tableName.endsWith(SystemProperties.SHADOW_TABLE_SUFFIX);
+    return isObjectStore() && this.region.isInternalColumnTable();
   }
 
   public final boolean isOffHeap() {
@@ -5628,18 +5643,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         if (senderIds != null) {
           senderIdsStr = SharedUtils.toCSV(senderIds);
         }
-
-        final DataValueDescriptor tType = dvds[SYSTABLESRowFactory.SYSTABLES_TABLETYPE - 1];
-        if (tType != null && "T".equalsIgnoreCase(tType.toString()) &&
-            !LocalRegion.isMetaTable(region.getFullPath())) {
-          ExternalCatalog ec = Misc.getMemStore().getExternalCatalog();
-          LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
-          if (ec != null && lcc != null && (lcc.isQueryRoutingFlagTrue() ||
-              lcc.isSnappyInternalConnection()) && Misc.initialDDLReplayDone()) {
-            if (ec.isColumnTable(schemaName, table.toString(), true)) {
-              dvds[SYSTABLESRowFactory.SYSTABLES_TABLETYPE - 1] = new SQLChar("C");
-            }
-          }
+        if (region.isRowBuffer() || region.isInternalColumnTable()) {
+          dvds[SYSTABLESRowFactory.SYSTABLES_TABLETYPE - 1] = new SQLChar("C");
         }
 
         dvds[SYSTABLESRowFactory.SYSTABLES_DATAPOLICY - 1] = new SQLVarchar(

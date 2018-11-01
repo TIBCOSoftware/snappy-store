@@ -181,7 +181,7 @@ public class SerialGatewaySenderQueue implements RegionQueue {
 
   private static volatile int messageSyncInterval = DEFAULT_MESSAGE_SYNC_INTERVAL;
   
-  private BatchRemovalThread removalThread = null;
+  private final BatchRemovalThread removalThread;
 
   private final boolean keyPutNoSync;
   private final int maxPendingPuts;

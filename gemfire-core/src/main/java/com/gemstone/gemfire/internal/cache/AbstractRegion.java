@@ -972,7 +972,11 @@ public abstract class AbstractRegion implements Region, RegionAttributes,
   // Once the thread has created the Index , it will unset the value in the
   // ThreadLocal Object
   public final void setFlagForIndexCreationThread(boolean bool) {
-    this.isIndexCreator.set(bool ? Boolean.TRUE : null);
+    if (bool) {
+      this.isIndexCreator.set(true);
+    } else {
+      this.isIndexCreator.remove();
+    }
   }
 
   //Asif : The boolean is used in AbstractRegionEntry to skip the synchronized
@@ -2206,7 +2210,7 @@ public abstract class AbstractRegion implements Region, RegionAttributes,
     //InternalDistributedSystem.getLoggerI18n().warning(LocalizedStrings.DEBUG, "SWAP:operationCompleted", new Throwable());
     if (logHDFSCalls.get() != null && logHDFSCalls.get().decNestedCall() < 0) {
       logHDFSCalls.get().assertCalls();
-      logHDFSCalls.set(null);
+      logHDFSCalls.remove();
     }
   }
 

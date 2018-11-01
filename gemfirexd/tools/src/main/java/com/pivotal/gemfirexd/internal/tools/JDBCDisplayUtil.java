@@ -185,13 +185,13 @@ public class JDBCDisplayUtil {
 		@param rs the ResultSet that may have warnings on it
 	 */
 	static public int /* GemStoneChange void */ ShowWarnings(PrintWriter out, ResultSet rs) {
+	    int result = 0;
 	    try {
 		// GET RESULTSET WARNINGS
 		SQLWarning warning = null;
 
 		if (rs != null) {
-		  return // GemStoneAddition
-			ShowWarnings(out, rs.getWarnings());
+			result = ShowWarnings(out, rs.getWarnings());
 		}
 
 		if (rs != null) {
@@ -200,7 +200,7 @@ public class JDBCDisplayUtil {
 	    } catch (SQLException e) {
 			ShowSQLException(out, e);
 	    }
-	    return 0; // GemStoneAddition
+	    return result; // GemStoneAddition
 	} // ShowResultSetWarnings
 
 	/**

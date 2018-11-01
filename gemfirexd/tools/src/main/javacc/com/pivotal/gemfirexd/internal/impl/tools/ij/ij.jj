@@ -1064,11 +1064,16 @@ class ij {
 	   Outputs the names of all fields of given table. Outputs field
 	   names and data type.
 	 */
-	public ijResult describeTable(String schema, String table) throws SQLException {
+	public ijResult describeTable(String schema, String table) throws SQLException, ParseException {
 		ResultSet rs = null;
 		try {
 			haveConnection();
-			verifyTableExists(schema,table);
+			try {
+				verifyTableExists(schema,table);
+			} catch (ijException ignored) {
+				// fallback to full parser with routing for statements like DESCRIBE EXTENDED
+				throw new ParseException();
+			}
 
 			DatabaseMetaData dbmd = theConnection.getMetaData();
 			rs = dbmd.getColumns(null,schema,table,null);

@@ -223,13 +223,16 @@ public class Main {
 		  File histFile = new File(historyFileName);
 		  if (historyFileName.length() > 0) {
 		    final FileHistory hist;
+		    // skip doInit in FileHistory to enable setting max-size before load
 		    if (histFile.isAbsolute()) {
-		      hist = new FileHistory(new File(historyFileName));
+		      hist = new FileHistory(new File(historyFileName), false);
 		    }
 		    else {
 		      hist = new FileHistory(new File((System
-		          .getProperty("user.home")), historyFileName));
+		          .getProperty("user.home")), historyFileName), false);
 		    }
+		    hist.setMaxSize(50000);
+		    hist.load();
 		    reader.setHistory(hist);
 		  }
 			Runtime.getRuntime().addShutdownHook(new Thread() {

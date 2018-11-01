@@ -142,7 +142,8 @@ public class GenericStatement
         //private ProcedureProxy procProxy;
         private final GfxdHeapThresholdListener thresholdListener;
         private THashMap ncjMetaData = null;
-        private static final String MISC_DDL_PREFIX = "(STREAMING|DEPLOY|UNDEPLOY)";
+        private static final String MISC_DDL_PREFIX =
+            "(STREAMING|DEPLOY|UNDEPLOY|CACHE|UNCACHE|REFRESH|RESET)";
         private static final String TABLE_DML_SELECT_PATTERN =
             "((((INSERT|PUT)\\s+INTO)|(DELETE\\s+FROM))\\s+(TABLE)?.*\\s+SELECT)";
 	      private static final String CREATE_OR_DROP_PATTERN = "(FUNCTION|POLICY)";
