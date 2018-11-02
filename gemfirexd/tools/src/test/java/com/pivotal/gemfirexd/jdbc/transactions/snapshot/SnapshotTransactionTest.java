@@ -701,7 +701,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
         getOldEntriesForRegion("/__PR/_B__t1_0");
     for(Map.Entry e : entryMap.entrySet()) {
       System.out.println("SKSK " + e.getKey());
-      System.out.println("SKSK " + ((NonLocalRegionEntry)e.getValue())._getValue());
+      //System.out.println("SKSK " + ((NonLocalRegionEntry)e.getValue())._getValue());
     }
 
     // commit one
