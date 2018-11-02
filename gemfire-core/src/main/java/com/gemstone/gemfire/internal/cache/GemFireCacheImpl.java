@@ -761,6 +761,10 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     return oldEntryMap.get(regionName);
   }
 
+  public Map getOldEntriesMap() {
+    return oldEntryMap;
+  }
+
   public void startOldEntryCleanerService() {
     getLoggerI18n().info(LocalizedStrings.DEBUG,
         "Snapshot is enabled " + snapshotEnabled());
@@ -860,7 +864,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     boolean notRequiredByAnyTx(BlockingQueue<RegionEntry> queue,
         Region region, RegionEntry re) {
       int myVersion = re.getVersionStamp().getEntryVersion();
-      Set<TXId> txIds = new HashSet<TXId>();
+      Set<TXId> txIds = new OpenHashSet<TXId>(4);
 
       for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
         TXState txState = txProxy.getLocalTXState();
@@ -873,7 +877,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       for (RegionEntry regionEntry : queue) {
         if (regionEntry == re)
           continue;
-        Set<TXId> othersTxIds = new HashSet<TXId>();
+        Set<TXId> othersTxIds = new OpenHashSet<TXId>(4);
         for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
           TXState txState = txProxy.getLocalTXState();
           if ((txState != null && !txState.isCommitted() && TXState.checkEntryInSnapshot
@@ -882,8 +886,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
           }
         }
 
-        if (txIds.size() == othersTxIds.size() &&
-            txIds.containsAll(othersTxIds) && othersTxIds.containsAll(txIds)
+        if (txIds.equals(othersTxIds)
             && regionEntry.getVersionStamp().getEntryVersion() > myVersion) {
           return true;
         }
@@ -891,19 +894,20 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
       // in the end check with the entry in region
       RegionEntry entryInRegion = ((LocalRegion)region).entries.getEntry(re.getKey());
-      Set<TXId> othersTxIds = new HashSet<TXId>();
-      for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
-        TXState txState = txProxy.getLocalTXState();
-        if ((txState != null && !txState.isCommitted() && TXState.checkEntryInSnapshot
-            (txState, region, entryInRegion))) {
-          othersTxIds.add(txState.getTransactionId());
+      if (entryInRegion != null) {
+        Set<TXId> othersTxIds = new OpenHashSet<TXId>(4);
+        for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
+          TXState txState = txProxy.getLocalTXState();
+          if ((txState != null && !txState.isCommitted() && TXState.checkEntryInSnapshot
+              (txState, region, entryInRegion))) {
+            othersTxIds.add(txState.getTransactionId());
+          }
         }
-      }
 
-      if (txIds.size() == othersTxIds.size() &&
-          txIds.containsAll(othersTxIds) && othersTxIds.containsAll(txIds)
-          && entryInRegion.getVersionStamp().getEntryVersion() > myVersion) {
-        return true;
+        if (txIds.equals(othersTxIds)
+            && entryInRegion.getVersionStamp().getEntryVersion() > myVersion) {
+          return true;
+        }
       }
 
       return false;
