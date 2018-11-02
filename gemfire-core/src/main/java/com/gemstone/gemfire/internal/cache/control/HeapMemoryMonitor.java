@@ -690,12 +690,12 @@ public void stopMonitoring() {
       List<String> inputArgs = ManagementFactory.getRuntimeMXBean().getInputArguments();
       String[] jmapCommand;
       if (inputArgs.contains("-XX:+HeapDumpOnOutOfMemoryError")) {
-        jmapCommand = new String[] { "sh", "-c", "jmap -dump:format=b,file=" +
-            pid + PartitionedRegion.rand.nextInt() + ".hprof " + pid
+        jmapCommand = new String[] { "/bin/sh", "-c", "jmap -dump:format=b,file=" +
+            "java_pid" + pid + "-" + PartitionedRegion.rand.nextInt() + ".hprof " + pid
         };
       } else {
-        jmapCommand = new String[] { "sh", "-c", "jmap -histo " + pid + " > " +
-            pid + PartitionedRegion.rand.nextInt() + ".jmap"
+        jmapCommand = new String[] { "/bin/sh", "-c", "jmap -histo " + pid + " > " +
+            "java_pid" + pid + "-" + PartitionedRegion.rand.nextInt() + ".jmap"
         };
       }
       Process jmapProcess = Runtime.getRuntime().exec(jmapCommand);
