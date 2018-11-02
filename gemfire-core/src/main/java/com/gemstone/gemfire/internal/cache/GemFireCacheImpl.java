@@ -868,7 +868,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
       for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
         TXState txState = txProxy.getLocalTXState();
-        if ((txState != null && !txState.isCommitted() && TXState.checkEntryInSnapshot
+        if ((txState != null && !txState.isClosed() && TXState.checkEntryInSnapshot
             (txState, region, re))) {
           txIds.add(txState.getTransactionId());
         }
@@ -880,7 +880,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
         Set<TXId> othersTxIds = new OpenHashSet<TXId>(4);
         for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
           TXState txState = txProxy.getLocalTXState();
-          if ((txState != null && !txState.isCommitted() && TXState.checkEntryInSnapshot
+          if ((txState != null && !txState.isClosed() && TXState.checkEntryInSnapshot
               (txState, region, regionEntry))) {
             othersTxIds.add(txState.getTransactionId());
           }
@@ -898,7 +898,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
         Set<TXId> othersTxIds = new OpenHashSet<TXId>(4);
         for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
           TXState txState = txProxy.getLocalTXState();
-          if ((txState != null && !txState.isCommitted() && TXState.checkEntryInSnapshot
+          if ((txState != null && !txState.isClosed() && TXState.checkEntryInSnapshot
               (txState, region, entryInRegion))) {
             othersTxIds.add(txState.getTransactionId());
           }
