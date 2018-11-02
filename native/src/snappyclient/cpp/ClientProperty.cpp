@@ -37,7 +37,7 @@
 
 using namespace io::snappydata::client;
 
-#define _SNAPPY_SYSPROP_PREFIX "gemfirexd.client."
+#define _SNAPPY_SYSPROP_PREFIX "snappydata.client."
 
 const std::string ClientProperty::DEFAULT_PROPERTY_NAME_PREFIX(
     _SNAPPY_SYSPROP_PREFIX);

@@ -32,7 +32,7 @@ ext {
 task createVersionPropertiesFile(dependsOn: 'processResources') {
   def propertiesDir = file("${buildDir}/classes/main/com/pivotal/gemfirexd/internal")
   outputs.file "${propertiesDir}/GemFireXDVersion.properties"
-  inputs.dir compileJava.destinationDir
+  inputs.file "${rootProject.projectDir}/build.gradle"
   if (rootProject.hasProperty('snappydata.enterprise')) {
     isEnterprise = 'true'
   }

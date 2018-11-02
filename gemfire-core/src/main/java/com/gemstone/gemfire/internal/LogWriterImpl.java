@@ -258,13 +258,15 @@ implements LogWriterI18n, LogWriter {
         if ("all".equalsIgnoreCase(levelName)) {
           return ALL_LEVEL;
         }
-        if ("finest".equalsIgnoreCase(levelName)) {
+        if ("finest".equalsIgnoreCase(levelName) ||
+            "trace".equalsIgnoreCase(levelName)) {
           return FINEST_LEVEL;
         }
         if ("finer".equalsIgnoreCase(levelName)) {
           return FINER_LEVEL;
         }
-        if ("fine".equalsIgnoreCase(levelName)) {
+        if ("fine".equalsIgnoreCase(levelName) ||
+            "debug".equalsIgnoreCase(levelName)) {
           return FINE_LEVEL;
         }
         if ("config".equalsIgnoreCase(levelName)) {
@@ -273,16 +275,19 @@ implements LogWriterI18n, LogWriter {
         if ("info".equalsIgnoreCase(levelName)) {
           return INFO_LEVEL;
         }
-        if ("warning".equalsIgnoreCase(levelName)) {
+        if ("warning".equalsIgnoreCase(levelName) ||
+            "warn".equalsIgnoreCase(levelName)) {
           return WARNING_LEVEL;
         }
         if ("error".equalsIgnoreCase(levelName)) {
           return ERROR_LEVEL;
         }
-        if ("severe".equalsIgnoreCase(levelName)) {
+        if ("severe".equalsIgnoreCase(levelName) ||
+            "fatal".equalsIgnoreCase(levelName)) {
           return SEVERE_LEVEL;
         }
-        if ("none".equalsIgnoreCase(levelName)) {
+        if ("none".equalsIgnoreCase(levelName) ||
+            "off".equalsIgnoreCase(levelName)) {
           return NONE_LEVEL;
         }
         try {

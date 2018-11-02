@@ -1331,17 +1331,33 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     // a negative value of numLeads indicates that one or more leads have
     // been started with explicit heap-size/memory-size setting in which case
     // auto-configuration of memory-size is disabled to keep things simpler
-    int numLeads = Integer.getInteger("snappydata.numLeadsOnNode", 1);
+    int numLeads = Integer.getInteger("snappydata.numLeadsOnHost", 1);
     if (launcher != null && launcher.hostData() && numLeads >= 0) {
       long ramSize = LauncherBase.getPhysicalRAMSize();
+      int numServers = Integer.getInteger("snappydata.numServersOnHost", 1);
+      // if any of the servers on the host has explicit heap/memory settings, then skip
+      if (numServers < 0) {
+        return 0L;
+      }
       // use up-to 75% of total RAM for hosts having sufficiently large RAMs
       if (ramSize > LauncherBase.LARGE_RAM_LIMIT) {
-        long usableSize = (ramSize - Runtime.getRuntime().maxMemory()) * 3 / 4;
-        // reserve space for any leads started on this node
-        long reserved = numLeads > 0 ? numLeads * 1048576L *
+        // use max of 75% available RAM
+        long usableSize = ramSize * 3 / 4;
+        // reserve space for any leads started on this host
+        long leadReserved = numLeads > 0 ? 1048576L * numLeads *
             LauncherBase.getDefaultHeapSizeMB(ramSize, false) : 0L;
+        usableSize -= leadReserved;
+        // divide up the usable RAM into the servers running on this host
+        if (numServers > 1) {
+          usableSize = usableSize / numServers;
+        }
+        // adjust the heap memory already allocated
+        long maxHeapMemory = Runtime.getRuntime().maxMemory();
+        usableSize -= maxHeapMemory;
         // round to nearest GB
-        return Math.max(((usableSize - reserved + (1L << 29L)) >>> 30L) << 30L, 0L);
+        long memorySize = Math.max(((usableSize + (1L << 29L)) >>> 30L) << 30L, 0L);
+        // should be at least half of the heap size else not worth it
+        return memorySize >= (maxHeapMemory / 2) ? memorySize : 0L;
       }
     }
     return 0L;

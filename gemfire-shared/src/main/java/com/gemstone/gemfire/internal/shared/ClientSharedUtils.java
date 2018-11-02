@@ -1417,24 +1417,42 @@ public abstract class ClientSharedUtils {
     return javaLevel;
   }
 
-  public static String convertToLog4LogLevel(Level level) {
-    String levelStr = "INFO";
+  public static org.apache.log4j.Level convertToLog4LogLevel(String level)
+      throws IllegalArgumentException {
+    org.apache.log4j.Level logLevel = null;
+    if (level != null && !level.isEmpty()) {
+      level = level.trim().toUpperCase(Locale.ENGLISH);
+      // try log4j level first
+      logLevel = org.apache.log4j.Level.toLevel(level, null);
+      // try java util Logger next
+      if (logLevel == null) {
+        logLevel = convertToLog4LogLevel(Level.parse(level));
+      }
+    }
+    return logLevel;
+  }
+
+  public static org.apache.log4j.Level convertToLog4LogLevel(Level level) {
+    org.apache.log4j.Level log4Level = org.apache.log4j.Level.INFO;
     // convert to log4j level
     if (level == Level.SEVERE) {
-      levelStr = "ERROR";
+      log4Level = org.apache.log4j.Level.FATAL;
     } else if (level == Level.WARNING) {
-      levelStr = "WARN";
+      log4Level = org.apache.log4j.Level.WARN;
     } else if (level == Level.INFO || level == Level.CONFIG) {
-      levelStr = "INFO";
-    } else if (level == Level.FINE || level == Level.FINER ||
-        level == Level.FINEST) {
-      levelStr = "TRACE";
+      log4Level = org.apache.log4j.Level.INFO;
+    } else if (level == Level.FINE) {
+      log4Level = org.apache.log4j.Level.DEBUG;
+    } else if (level == Level.FINER || level == Level.FINEST) {
+      log4Level = org.apache.log4j.Level.TRACE;
     } else if (level == Level.ALL) {
-      levelStr = "DEBUG";
+      log4Level = org.apache.log4j.Level.ALL;
     } else if (level == Level.OFF) {
-      levelStr = "OFF";
+      log4Level = org.apache.log4j.Level.OFF;
+    } else if ("ERROR".equalsIgnoreCase(level.getName())) { // GemFireLevel.ERROR
+      log4Level = org.apache.log4j.Level.ERROR;
     }
-    return levelStr;
+    return log4Level;
   }
 
   public static void initLog4j(String logFile,
@@ -1475,11 +1493,11 @@ public abstract class ClientSharedUtils {
 
     // override file location and level
     if (level != null) {
-      final String levelStr = convertToLog4LogLevel(level);
+      final org.apache.log4j.Level log4Level = convertToLog4LogLevel(level);
       if (logFile != null) {
-        props.setProperty("log4j.rootCategory", levelStr + ", file");
+        props.setProperty("log4j.rootCategory", log4Level + ", file");
       } else {
-        props.setProperty("log4j.rootCategory", levelStr + ", console");
+        props.setProperty("log4j.rootCategory", log4Level + ", console");
       }
     }
     if (logFile != null) {

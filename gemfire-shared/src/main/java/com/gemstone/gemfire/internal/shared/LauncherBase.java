@@ -190,7 +190,7 @@ public abstract class LauncherBase {
     } catch (Exception e) {
       // ignore exception and return zero
     }
-    if (memSize != null && (memSize instanceof Number)) {
+    if (memSize instanceof Number) {
       totalMemory = ((Number)memSize).longValue();
     }
     return totalMemory;
