@@ -135,8 +135,8 @@ public class GFToSlf4jBridge extends LogWriterImpl {
               ? ClientSharedUtils.LOGGER_NAME + '.' + this.logName
               : ClientSharedUtils.LOGGER_NAME;
           try {
-            ClientSharedUtils.initLog4j(this.logFile,
-                GemFireLevel.create(this.level));
+            ClientSharedUtils.initLog4j(this.logFile, ClientSharedUtils
+                .convertToLog4LogLevel(GemFireLevel.create(this.level)));
           } catch (IOException ioe) {
             throw new GemFireIOException(ioe.getMessage(), ioe);
           }

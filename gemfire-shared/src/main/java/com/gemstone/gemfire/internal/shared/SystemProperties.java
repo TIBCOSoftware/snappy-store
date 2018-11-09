@@ -21,7 +21,8 @@ import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
-import java.util.logging.Logger;
+
+import org.apache.log4j.Logger;
 
 /**
  * Set the global system properties. This class is the supported way to change
@@ -70,7 +71,7 @@ public final class SystemProperties {
 
   public static final String DEFAULT_PROPERTY_NAME_PREFIX = "gemfire.";
   public static final String DEFAULT_GFXDCLIENT_PROPERTY_NAME_PREFIX =
-      "gemfirexd.client.";
+      "snappydata.client.";
 
   /** The prefix used for SnappyData properties set through java system properties */
   public static final String SNAPPY_PREFIX = "snappydata.store.";
@@ -274,14 +275,8 @@ public final class SystemProperties {
         return defaultValue;
       }
     } catch (PrivilegedActionException | SecurityException e) {
-      Logger log = ClientSharedUtils.getLogger();
-      if (log != null) {
-        StringBuilder msg = new StringBuilder(
-            "Could not read system property: ");
-        msg.append(name);
-        ClientSharedUtils.getStackTrace(e, msg, null);
-        log.warning(msg.toString());
-      }
+      Logger log = Logger.getLogger(getClass());
+      log.warn("Could not read system property: " + name, e);
     }
     return defaultValue;
   }

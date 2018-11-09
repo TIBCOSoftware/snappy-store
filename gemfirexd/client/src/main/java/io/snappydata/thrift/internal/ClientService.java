@@ -157,10 +157,6 @@ public final class ClientService extends ReentrantLock implements LobService {
     sb.append(pid).append('|');
     ClientSharedUtils.formatDate(currentTime, sb);
     hostId = sb.toString();
-    ClientConfiguration config = ClientConfiguration.getInstance();
-    ClientSharedUtils.getLogger().info("Starting client on '" + hostName +
-        "' with ID='" + hostId + "' Source-Revision=" +
-        config.getSourceRevision());
 
     // thread for periodic cleanup of finalizers
     invokeFinalizers = new FinalizeInvoker();
@@ -318,6 +314,12 @@ public final class ClientService extends ReentrantLock implements LobService {
 
   private ClientService(HostAddress hostAddr, OpenConnectionArgs connArgs)
       throws SnappyException {
+
+    ClientConfiguration config = ClientConfiguration.getInstance();
+    ClientSharedUtils.getLogger().info("Starting client on '" + hostName +
+        "' with ID='" + hostId + "' Source-Revision=" +
+        config.getSourceRevision());
+
     this.isClosed = true;
 
     this.currentHostConnection = null;

@@ -229,7 +229,7 @@ public class TestUtil extends TestCase {
       if (Misc.getGemFireCacheNoThrow() != null) {
         // convert logLevel to slf4j name
         String level = ClientSharedUtils.convertToLog4LogLevel(
-            java.util.logging.Level.parse(logLevel.toUpperCase(Locale.ENGLISH)));
+            logLevel).toString();
         GfxdSystemProcedureMessage.SysProcMethod.setLogLevel.processMessage(
             new Object[]{"", level}, Misc.getMyId());
       }

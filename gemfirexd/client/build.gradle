@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -31,7 +31,7 @@ dependencies {
 task generatePropertiesFiles(dependsOn: 'processResources') {
   def infoDir = file("${buildDir}/classes/main/com/pivotal/gemfirexd/internal/info")
   outputs.files "${infoDir}/dnc.properties", "${infoDir}/thrift.properties"
-  inputs.dir compileJava.destinationDir
+  inputs.dir "${projectDir}/../core/src/main/resources/com/pivotal/gemfirexd/internal/info"
 
   doLast {
     println('Creating DRDA client properties')

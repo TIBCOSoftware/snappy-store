@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -30,20 +30,24 @@ import java.util.stream.Collectors;
 import com.sun.xml.internal.fastinfoset.stax.events.Util;
 import org.apache.tomcat.jdbc.pool.DataSource;
 import org.apache.tomcat.jdbc.pool.PoolProperties;
+import org.apache.tomcat.jdbc.pool.interceptor.StatementFinalizer;
 
 /**
  * A class holds map of connection pools. Each pool is represented accessed
  * via unique key which is the connection Properties object.
- *
+ * <p>
  * Also, class support the jdbcInterceptor which resets the autocommit, readOnly
  * and isolation level value to default whenever a connection  borrowed from the pool.
  */
-class TomcatConnectionPool {
+public class TomcatConnectionPool {
 
   private static final Integer MAX_POOL_SIZE = Math.max(256,
       Runtime.getRuntime().availableProcessors() * 8);
 
-  static enum PoolProps {
+  public static final ThreadLocal<Connection> CURRENT_CONNECTION =
+      new ThreadLocal<>();
+
+  enum PoolProps {
 
     DRIVER_NAME("pool.driverClassName", ClientDriver.class.getName()),
     URL("pool.url", null), // Compulsory field user must provide
@@ -63,9 +67,9 @@ class TomcatConnectionPool {
     VALIDATION_INTERVAL("pool.validationInterval", "10000"),
 
     JDBC_INTERCEPTOR("pool.jdbcInterceptor", "org.apache.tomcat.jdbc.pool.interceptor.ConnectionState;" +
-        "org.apache.tomcat.jdbc.pool.interceptor.StatementFinalizer"),
+        getRequiredInterceptor()),
     // Default transaction values which will be resetted, when connection returned to the pool.
-    DEFAULT_AUTO_COMMIT("pool.defaultAutoCommit","false"),
+    DEFAULT_AUTO_COMMIT("pool.defaultAutoCommit", "false"),
     DEFAULT_READ_ONLY("pool.defaultReadOnly", "false"),
     DEFAULT_TRANSACTION_ISOLATION("pool.defaultTransactionIsolation",
         String.valueOf(Connection.TRANSACTION_NONE));
@@ -91,13 +95,24 @@ class TomcatConnectionPool {
   private DataSource datasource;
 
   private static final ConcurrentMap<Properties, TomcatConnectionPool> poolMap =
-      new ConcurrentHashMap<Properties, TomcatConnectionPool>();
+      new ConcurrentHashMap<>();
+
+  public static final class ClearConnection extends StatementFinalizer {
+    @Override
+    public void closeInvoked() {
+      super.closeInvoked();
+      CURRENT_CONNECTION.set(null);
+    }
+  }
+
+  private static String getRequiredInterceptor() {
+    return ClearConnection.class.getName();
+  }
 
   /**
    * Initialize the Data Source with the Connection pool and returns the connection
    *
    * @return java.sql.Connection
-   * @throws SQLException
    */
   private Connection getConnection() throws SQLException {
     return datasource.getConnection();
@@ -105,16 +120,16 @@ class TomcatConnectionPool {
 
   public static Connection getConnection(Properties properties) throws SQLException {
     TomcatConnectionPool pool = poolMap.computeIfAbsent(properties,
-        props -> new TomcatConnectionPool(props));
-    return pool.getConnection();
+        TomcatConnectionPool::new);
+    Connection connection = pool.getConnection();
+    CURRENT_CONNECTION.set(connection);
+    return connection;
   }
 
   /**
    * Initializes the Object with passed on properties.
-   *
-   * @param prop
    */
-  public TomcatConnectionPool(Properties prop) {
+  private TomcatConnectionPool(Properties prop) {
 
     List<String> listPoolPropKeys = PoolProps.getKeys();
 
@@ -124,7 +139,7 @@ class TomcatConnectionPool {
     // connection properties to pass on.
     Set<String> keys = prop.stringPropertyNames();
     String connectionProperties = keys.stream().filter(x -> !listPoolPropKeys.contains(x))
-        .map(i -> i.toString() + "=" + prop.getProperty(i.toString()))
+        .map(i -> i + "=" + prop.getProperty(i))
         .collect(Collectors.joining(";"));
     poolProperties.setConnectionProperties(connectionProperties);
 
@@ -136,10 +151,6 @@ class TomcatConnectionPool {
    * Method responsible for collecting pooled properties from the
    * properties object passed to connection and creates PoolProperties
    * object by setting the pool properties into it.
-   *
-   * @param prop
-   *
-   * @return
    */
   private PoolProperties getPoolProperties(Properties prop) {
 
@@ -225,7 +236,7 @@ class TomcatConnectionPool {
             PoolProps.DEFAULT_READ_ONLY.defValue));
     poolProperties.setDefaultReadOnly(defaultReadOnly);
 
-    Integer defaultTransactionIsolation = Integer.valueOf(
+    int defaultTransactionIsolation = Integer.parseInt(
         prop.getProperty(PoolProps.DEFAULT_TRANSACTION_ISOLATION.key,
             PoolProps.DEFAULT_TRANSACTION_ISOLATION.defValue));
     poolProperties.setDefaultTransactionIsolation(defaultTransactionIsolation);
@@ -233,10 +244,15 @@ class TomcatConnectionPool {
 
     // the connection is reset to the desired state each time its borrowed from the pool.
     // In this case above three, 1. autoCommit, 2. readOnly & 3. transactionIsolation level
-    // is resetted with the default value.
+    // is reset with the default value.
     String jdbcInterceptor =
         prop.getProperty(PoolProps.JDBC_INTERCEPTOR.key,
             PoolProps.JDBC_INTERCEPTOR.defValue);
+    // force add interceptor for clearing things on connection close else it can be a leak
+    String requiredInterceptor = getRequiredInterceptor();
+    if (!jdbcInterceptor.contains(requiredInterceptor)) {
+      jdbcInterceptor = jdbcInterceptor + ";" + requiredInterceptor;
+    }
     poolProperties.setJdbcInterceptors(jdbcInterceptor);
 
     return poolProperties;

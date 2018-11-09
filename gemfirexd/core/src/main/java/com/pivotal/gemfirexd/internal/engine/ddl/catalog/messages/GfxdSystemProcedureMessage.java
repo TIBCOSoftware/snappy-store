@@ -41,6 +41,7 @@ import com.gemstone.gemfire.internal.cache.Conflatable;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.pivotal.gemfirexd.Constants;
@@ -1082,7 +1083,7 @@ public final class GfxdSystemProcedureMessage extends
           throws StandardException {
         try {
           String logClass = (String) params[0];
-          Level level = org.apache.log4j.Level.toLevel((String) params[1]);
+          Level level = ClientSharedUtils.convertToLog4LogLevel((String)params[1]);
           SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
                   "GfxdSystemProcedureMessage: setting log level for class '" + logClass
                           + "' to " + level);

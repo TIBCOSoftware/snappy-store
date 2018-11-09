@@ -906,8 +906,8 @@ public class BugsDUnit extends DistributedSQLTestBase {
   }
 
   public void testInsertFailoverbug_47407() throws Exception {
-    // System.setProperty("gemfirexd.client.traceLevel", "");
-    // System.setProperty("gemfirexd.client.traceDirectory",
+    // System.setProperty("snappydata.client.traceLevel", "");
+    // System.setProperty("snappydata.client.traceDirectory",
     // getSysDirName(getGemFireDescription()));
     // final Properties extraProps = new Properties();
     // System.setProperty("gemfirexd.debug.true", "TraceSingleHop,TraceClientHA");

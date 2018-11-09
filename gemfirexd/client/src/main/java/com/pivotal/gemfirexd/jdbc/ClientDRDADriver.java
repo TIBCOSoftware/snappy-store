@@ -40,7 +40,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -59,6 +59,7 @@
 package com.pivotal.gemfirexd.jdbc;
 
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -132,7 +133,7 @@ public class ClientDRDADriver implements java.sql.Driver {
           return null;
         }
         com.pivotal.gemfirexd.internal.client.net.NetConnection conn;
-        try {    
+        try {
             if (exceptionsOnLoadDriver__ != null) {
                 throw exceptionsOnLoadDriver__;
             }
@@ -237,10 +238,10 @@ public class ClientDRDADriver implements java.sql.Driver {
         } catch(SqlException se) {
             throw se.getSQLException(null /* GemStoneAddition */);
         }
-        
+
         if(conn.isConnectionNull())
             return null;
-        
+
         return conn;
     }
 
@@ -517,7 +518,7 @@ public class ClientDRDADriver implements java.sql.Driver {
      *(or)
      *ClientJDBCObjectFactoryImpl40
      */
-    
+
     public static ClientJDBCObjectFactory getFactory() {
         if(factoryObject!=null)
             return factoryObject;
@@ -528,7 +529,7 @@ public class ClientDRDADriver implements java.sql.Driver {
         }
         return factoryObject;
     }
-    
+
     /**
      *Returns an instance of the ClientJDBCObjectFactoryImpl class
      */
@@ -550,7 +551,7 @@ public class ClientDRDADriver implements java.sql.Driver {
         */
 // GemStone changes END
     }
-    
+
     /**
      *Returns an instance of the ClientJDBCObjectFactoryImpl40 class
      *If a ClassNotFoundException occurs then it returns an
@@ -562,7 +563,7 @@ public class ClientDRDADriver implements java.sql.Driver {
      *return the lower version thus having a sort of cascading effect
      *until it gets a valid instance
      */
-    
+
     private static ClientJDBCObjectFactory createJDBC40FactoryImpl() {
         final String factoryName =
                 "com.pivotal.gemfirexd.internal.client.net.ClientJDBCObjectFactoryImpl40";
@@ -619,9 +620,8 @@ public class ClientDRDADriver implements java.sql.Driver {
     }
 
     // JDBC 4.1 methods since jdk 1.7
-    public Logger getParentLogger() {
-      throw new AssertionError("should be overridden in JDBC 4.1");
+    public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+      throw new SQLFeatureNotSupportedException("getParentLogger not supported", "0A000");
     }
 // GemStone changes END
 }
-

@@ -3,7 +3,6 @@ package com.pivotal.gemfirexd.internal.engine.sql.execute;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collection;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -25,6 +24,7 @@ import com.gemstone.gemfire.internal.WindowsSystemStats;
 import com.gemstone.gemfire.internal.cache.DirectoryHolder;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.statistics.VMStats;
@@ -39,8 +39,6 @@ import com.pivotal.gemfirexd.internal.engine.management.NetworkServerConnectionS
 import com.pivotal.gemfirexd.internal.engine.stats.ConnectionStats;
 import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
 import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
-import org.apache.log4j.Appender;
-import org.apache.log4j.FileAppender;
 import org.apache.log4j.Logger;
 
 public class MemberStatisticsMessage extends MemberExecutorMessage {
@@ -199,18 +197,8 @@ public class MemberStatisticsMessage extends MemberExecutorMessage {
   }
 
   private String getLogFile() {
-    Logger rootLogger = Logger.getRootLogger();
-    Appender appender;
-    if (rootLogger != null) {
-      Enumeration<?> e = rootLogger.getAllAppenders();
-      while (e.hasMoreElements()) {
-        appender = (Appender)e.nextElement();
-        if (appender instanceof FileAppender) {
-          return ((FileAppender)appender).getFile();
-        }
-      }
-    }
-    return "";
+    String logFile = ClientSharedUtils.getLog4jLogFile(Logger.getRootLogger());
+    return logFile != null ? logFile : "";
   }
 
   private String getProcessId(){

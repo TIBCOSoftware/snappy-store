@@ -21,6 +21,7 @@ import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
 import java.lang.management.MemoryUsage;
+import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -689,13 +690,16 @@ public void stopMonitoring() {
     try {
       List<String> inputArgs = ManagementFactory.getRuntimeMXBean().getInputArguments();
       String[] jmapCommand;
+      SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
+      String dateSuffix = dateFormat.format(new java.util.Date(
+          System.currentTimeMillis()));
       if (inputArgs.contains("-XX:+HeapDumpOnOutOfMemoryError")) {
-        jmapCommand = new String[] { "sh", "-c", "jmap -dump:format=b,file=" +
-            pid + PartitionedRegion.rand.nextInt() + ".hprof " + pid
+        jmapCommand = new String[] { "/bin/sh", "-c", "jmap -dump:format=b,file=" +
+            "java_pid" + pid + "-" + dateSuffix + ".hprof " + pid
         };
       } else {
-        jmapCommand = new String[] { "sh", "-c", "jmap -histo " + pid + " > " +
-            pid + PartitionedRegion.rand.nextInt() + ".jmap"
+        jmapCommand = new String[] { "/bin/sh", "-c", "jmap -histo " + pid + " > " +
+            "java_pid" + pid + "-" + dateSuffix + ".jmap"
         };
       }
       Process jmapProcess = Runtime.getRuntime().exec(jmapCommand);

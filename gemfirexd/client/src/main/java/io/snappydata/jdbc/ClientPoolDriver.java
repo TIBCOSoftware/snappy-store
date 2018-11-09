@@ -1,7 +1,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -42,14 +42,11 @@ public class ClientPoolDriver implements Driver {
 
   private static String SNAPPY_PROTOCOL = "jdbc:snappydata:";
 
-  private final static String SUBPROTOCOL = "(pool:){1}";
+  private final static String SUBPROTOCOL = "(pool:)";
 
-  public static final ThreadLocal<Connection> CURRENT_CONNECTION =
-      new ThreadLocal<>();
-
-  protected final static String URL_PREFIX_REGEX = "(" + SNAPPY_PROTOCOL + ")";
-  protected final static String URL_SUFFIX_REGEX =
-      "//(([^:]+:[0-9]+)|([^\\[]+\\[[0-9]+\\]))(/(snappydata;)?;?(.*)?)?";
+  private final static String URL_PREFIX_REGEX = "(" + SNAPPY_PROTOCOL + ")";
+  private final static String URL_SUFFIX_REGEX =
+      "//(([^:]+:[0-9]+)|([^\\[]+\\[[0-9]+]))(/(snappydata;)?;?(.*)?)?";
 
   /*private final static Pattern PROTOCOL_PATTERN = Pattern.compile(URL_PREFIX_REGEX +
       SUBPROTOCOL + "//.*", Pattern.CASE_INSENSITIVE);*/
@@ -85,7 +82,7 @@ public class ClientPoolDriver implements Driver {
   /**
    * {@inheritDoc}
    */
-  public boolean acceptsURL(String url) throws SQLException {
+  public boolean acceptsURL(String url) {
     return (url != null && URL_PATTERN.matcher(url).matches());
   }
 
@@ -102,10 +99,8 @@ public class ClientPoolDriver implements Driver {
         clientDriverURL);
     properties.setProperty(TomcatConnectionPool.PoolProps.DRIVER_NAME.key,
         ClientDriver.class.getName());
-    Connection connection = TomcatConnectionPool.getConnection(properties);
-    CURRENT_CONNECTION.set(connection);
-    //Read connection from the pool and return. 
-    return connection;
+    // Read connection from the pool and return.
+    return TomcatConnectionPool.getConnection(properties);
   }
 
   @Override
@@ -125,12 +120,12 @@ public class ClientPoolDriver implements Driver {
 
   @Override
   public Logger getParentLogger() throws SQLFeatureNotSupportedException {
-    throw new AssertionError("should be overridden in JDBC 4.1");
+    throw new SQLFeatureNotSupportedException("getParentLogger not supported", "0A000");
   }
 
   @Override
   public DriverPropertyInfo[] getPropertyInfo(String url, Properties properties)
       throws SQLException {
-    return ClientDRDADriver.getPropertyInfoUtility(url,properties);
+    return ClientDRDADriver.getPropertyInfoUtility(url, properties);
   }
 }

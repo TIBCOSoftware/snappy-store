@@ -7,6 +7,7 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 
 import com.gemstone.gemfire.cache.AttributesFactory;
 import com.gemstone.gemfire.cache.Cache;
@@ -33,6 +34,8 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
   private boolean gotConflict = false;
 
   private volatile Throwable threadEx;
+
+  private volatile boolean started = false;
 
   public SnapshotTransactionTest(String name) {
     super(name);
@@ -605,6 +608,186 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     }
     assertEquals(1, num);
     r.getCache().getCacheTransactionManager().commit();
+  }
+
+  public void testTwoSnapshotInsertSameKey() throws Exception {
+    Connection conn = getConnection();
+    PartitionAttributesFactory paf = new PartitionAttributesFactory();
+    PartitionAttributes prAttr = paf.setTotalNumBuckets(1).create();
+    AttributesFactory attr = new AttributesFactory();
+    attr.setConcurrencyChecksEnabled(true);
+    attr.setPartitionAttributes(prAttr);
+
+    final Region r1 = GemFireCacheImpl.getInstance().createRegion("t1", attr.create());
+
+    r1.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    r1.put(1, 1);
+    r1.put(2, 2);
+    r1.getCache().getCacheTransactionManager().commit();
+
+    final Object sync1 = new Object();
+    Runnable run1 = new Runnable() {
+      @Override
+      public void run() {
+        try {
+          r1.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+          assertEquals(r1.get(1), 1);
+          assertEquals(r1.get(2), 2);
+          synchronized (sync1) {
+            started = true;
+            try {
+              sync1.wait();
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
+          assertEquals(r1.get(1), 1);
+          assertEquals(r1.get(2), 2);
+          r1.getCache().getCacheTransactionManager().commit();
+        }
+        catch(Exception ex) {
+          threadEx = ex;
+        }
+      }
+    };
+
+    Thread t1 = new Thread(run1);
+    t1.start();
+
+    while (!started) {
+      Thread.sleep(10);
+    }
+    started = false;
+    r1.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    r1.put(1, 11);
+    r1.put(2, 22);
+    r1.getCache().getCacheTransactionManager().commit();
+
+    final Object sync2 = new Object();
+    Runnable run2 = new Runnable() {
+      @Override
+      public void run() {
+        try {
+          r1.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+          assertEquals(r1.get(1), 11);
+          assertEquals(r1.get(2), 22);
+          synchronized (sync2) {
+            try {
+              started = true;
+              sync2.wait();
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
+          assertEquals(r1.get(1), 11);
+          assertEquals(r1.get(2), 22);
+          r1.getCache().getCacheTransactionManager().commit();
+        } catch (Exception ex) {
+          threadEx = ex;
+        }
+      }
+    };
+
+    Thread t2 = new Thread(run2);
+    t2.start();
+    while (!started) {
+      Thread.sleep(10);
+    }
+    started = false;
+
+    GemFireCacheImpl.getInstance().runOldEntriesCleanerThread();
+    //verify old entrymap
+    Map<Object, BlockingQueue<RegionEntry>> entryMap = GemFireCacheImpl.getInstance().
+        getOldEntriesForRegion("/__PR/_B__t1_0");
+    for(Map.Entry e : entryMap.entrySet()) {
+      System.out.println("SKSK " + e.getKey());
+      //System.out.println("SKSK " + ((NonLocalRegionEntry)e.getValue())._getValue());
+    }
+
+    // commit one
+    // verify old entry map
+    // first one should be removed
+
+    synchronized (sync1) {
+      sync1.notifyAll();
+    }
+    t1.join();
+    GemFireCacheImpl.getInstance().runOldEntriesCleanerThread();
+
+    entryMap = GemFireCacheImpl.getInstance().
+        getOldEntriesForRegion("/__PR/_B__t1_0");
+    for(Map.Entry e : entryMap.entrySet()) {
+      System.out.println("SKSK after first commit " + e.getKey());
+      System.out.println("SKSK after first commit " + e.getValue());
+    }
+
+    r1.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    r1.put(1, 111);
+    r1.put(2, 222);
+    r1.getCache().getCacheTransactionManager().commit();
+
+
+    final Object sync3 = new Object();
+    Runnable run3 = new Runnable() {
+      @Override
+      public void run() {
+        try {
+          r1.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+          assertEquals(r1.get(1), 111);
+          assertEquals(r1.get(2), 222);
+          synchronized (sync3) {
+            try {
+              started = true;
+              sync3.wait();
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+          }
+          assertEquals(r1.get(1), 111);
+          assertEquals(r1.get(2), 222);
+          r1.getCache().getCacheTransactionManager().commit();
+        } catch (Exception ex) {
+          threadEx = ex;
+        }
+      }
+    };
+
+    Thread t3 = new Thread(run3);
+    t3.start();
+
+    while (!started) {
+      Thread.sleep(10);
+    }
+    synchronized (sync3) {
+      sync3.notifyAll();
+    }
+    t3.join();
+
+
+    GemFireCacheImpl.getInstance().runOldEntriesCleanerThread();
+
+    entryMap = GemFireCacheImpl.getInstance().
+        getOldEntriesForRegion("/__PR/_B__t1_0");
+    for(Map.Entry e : entryMap.entrySet()) {
+      System.out.println("SKSK after third commit " + e.getKey());
+      System.out.println("SKSK after third commit " + ((NonLocalRegionEntry)e.getValue())._getValue());
+    }
+
+    synchronized (sync2) {
+      sync2.notifyAll();
+    }
+    t2.join();
+    if (threadEx != null) {
+      fail("Got exception in thread", threadEx);
+    }
+    GemFireCacheImpl.getInstance().runOldEntriesCleanerThread();
+
+    entryMap = GemFireCacheImpl.getInstance().
+        getOldEntriesForRegion("/__PR/_B__t1_0");
+    for(Map.Entry e : entryMap.entrySet()) {
+      System.out.println("SKSK after second commit " + e.getKey());
+      System.out.println("SKSK after second commit " + e.getValue());
+    }
   }
 
 

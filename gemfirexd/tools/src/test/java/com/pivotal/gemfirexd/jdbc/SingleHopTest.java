@@ -72,7 +72,7 @@ public class SingleHopTest extends JdbcTestBase {
   }
 
   public void test0MaxConnectionsAndSetSchema() throws Exception {
-    System.setProperty("gemfirexd.client.single-hop-max-connections", "100");
+    System.setProperty("snappydata.client.single-hop-max-connections", "100");
     com.pivotal.gemfirexd.internal.client.am.Connection.initialize();
     Properties props1 = new Properties();
     int mport = AvailablePort.getRandomAvailablePort(AvailablePort.JGROUPS);
@@ -95,7 +95,7 @@ public class SingleHopTest extends JdbcTestBase {
     ResultSet rs = ps.getResultSet();
     rs.next();
     assertEquals(2, rs.getInt(2));
-    System.clearProperty("gemfirexd.client.single-hop-max-connections");
+    System.clearProperty("snappydata.client.single-hop-max-connections");
     com.pivotal.gemfirexd.internal.client.am.Connection.initialize();
   }
 
@@ -119,7 +119,7 @@ public class SingleHopTest extends JdbcTestBase {
     ResultSet rs = ps.getResultSet();
     rs.next();
     assertEquals(2, rs.getInt(2));
-    System.clearProperty("gemfirexd.client.single-hop-max-connections");
+    System.clearProperty("snappydata.client.single-hop-max-connections");
     
     s.execute("select * from example");
     s.execute("update example set c1 = 100 where c2 = 200");

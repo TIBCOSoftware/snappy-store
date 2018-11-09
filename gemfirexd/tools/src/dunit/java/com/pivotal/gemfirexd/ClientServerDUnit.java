@@ -1223,7 +1223,7 @@ public class ClientServerDUnit extends ClientServerTestBase {
   public void test44240() throws Exception {
     /*
     System.setProperty("gemfirexd.debug.true", "TraceClientHA");
-    System.setProperty("gemfirexd.client.traceDirectory",
+    System.setProperty("snappydata.client.traceDirectory",
         getSysDirName(getGemFireDescription()));
     */
 
@@ -1348,7 +1348,7 @@ public class ClientServerDUnit extends ClientServerTestBase {
   public void test44240_LOB() throws Exception {
     /*
     System.setProperty("gemfirexd.debug.true", "TraceClientHA");
-    System.setProperty("gemfirexd.client.traceDirectory",
+    System.setProperty("snappydata.client.traceDirectory",
         getSysDirName(getGemFireDescription()));
     */
 
