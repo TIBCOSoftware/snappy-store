@@ -40,7 +40,7 @@
 /*
  * Changes for SnappyData distributed computational and data platform.
  *
- * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -919,7 +919,7 @@ public class ODBCMetadataGenerator {
 
 		if (queryName.equals("getColumns")) {
 			subqueryText.insert(insertPos,
-				getFragment(unionIndex < 2 ? "GET_COLS_HELPER_COLS" : "GET_COLS_HELPER_COLS2"));
+				getFragment("GET_COLS_HELPER_COLS" + unionIndex));
 		}
 		else if (queryName.startsWith("getBestRowIdentifier")) {
 			subqueryText.insert(insertPos,

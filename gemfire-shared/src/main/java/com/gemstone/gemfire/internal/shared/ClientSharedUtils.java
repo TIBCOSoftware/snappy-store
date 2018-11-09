@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData data platform.
  *
- * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -72,6 +72,8 @@ import javax.naming.directory.DirContext;
 import javax.naming.directory.InitialDirContext;
 
 import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
+import org.apache.log4j.Appender;
+import org.apache.log4j.FileAppender;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.spark.unsafe.Platform;
@@ -1400,15 +1402,18 @@ public abstract class ClientSharedUtils {
   public static Level convertToJavaLogLevel(org.apache.log4j.Level log4jLevel) {
     Level javaLevel = Level.CONFIG;
     if (log4jLevel != null) {
-      if (log4jLevel == org.apache.log4j.Level.ERROR) {
+      if (log4jLevel == org.apache.log4j.Level.ERROR ||
+          log4jLevel == org.apache.log4j.Level.FATAL) {
         javaLevel = Level.SEVERE;
       } else if (log4jLevel == org.apache.log4j.Level.WARN) {
         javaLevel = Level.WARNING;
       } else if (log4jLevel == org.apache.log4j.Level.INFO) {
         javaLevel = Level.INFO;
-      } else if (log4jLevel == org.apache.log4j.Level.TRACE) {
-        javaLevel = Level.FINE;
       } else if (log4jLevel == org.apache.log4j.Level.DEBUG) {
+        javaLevel = Level.FINE;
+      } else if (log4jLevel == org.apache.log4j.Level.TRACE) {
+        javaLevel = Level.FINEST;
+      } else if (log4jLevel == org.apache.log4j.Level.ALL) {
         javaLevel = Level.ALL;
       } else if (log4jLevel == org.apache.log4j.Level.OFF) {
         javaLevel = Level.OFF;
@@ -1417,29 +1422,63 @@ public abstract class ClientSharedUtils {
     return javaLevel;
   }
 
-  public static String convertToLog4LogLevel(Level level) {
-    String levelStr = "INFO";
+  public static org.apache.log4j.Level convertToLog4LogLevel(String level)
+      throws IllegalArgumentException {
+    org.apache.log4j.Level logLevel = null;
+    if (level != null && !level.isEmpty()) {
+      level = level.trim().toUpperCase(Locale.ENGLISH);
+      // try log4j level first
+      logLevel = org.apache.log4j.Level.toLevel(level, null);
+      // try java util Logger next
+      if (logLevel == null) {
+        logLevel = convertToLog4LogLevel(Level.parse(level));
+      }
+    }
+    return logLevel;
+  }
+
+  public static org.apache.log4j.Level convertToLog4LogLevel(Level level) {
+    org.apache.log4j.Level log4Level = org.apache.log4j.Level.INFO;
     // convert to log4j level
     if (level == Level.SEVERE) {
-      levelStr = "ERROR";
+      log4Level = org.apache.log4j.Level.FATAL;
     } else if (level == Level.WARNING) {
-      levelStr = "WARN";
+      log4Level = org.apache.log4j.Level.WARN;
     } else if (level == Level.INFO || level == Level.CONFIG) {
-      levelStr = "INFO";
-    } else if (level == Level.FINE || level == Level.FINER ||
-        level == Level.FINEST) {
-      levelStr = "TRACE";
+      log4Level = org.apache.log4j.Level.INFO;
+    } else if (level == Level.FINE) {
+      log4Level = org.apache.log4j.Level.DEBUG;
+    } else if (level == Level.FINER || level == Level.FINEST) {
+      log4Level = org.apache.log4j.Level.TRACE;
     } else if (level == Level.ALL) {
-      levelStr = "DEBUG";
+      log4Level = org.apache.log4j.Level.ALL;
     } else if (level == Level.OFF) {
-      levelStr = "OFF";
+      log4Level = org.apache.log4j.Level.OFF;
+    } else if ("ERROR".equalsIgnoreCase(level.getName())) { // GemFireLevel.ERROR
+      log4Level = org.apache.log4j.Level.ERROR;
     }
-    return levelStr;
+    return log4Level;
   }
 
   public static void initLog4j(String logFile,
-      Level level) throws IOException {
+      org.apache.log4j.Level level) throws IOException {
     initLog4j(logFile, null, level);
+  }
+
+  /**
+   * Return currently configured log4j log-file or null if file logging is not set.
+   */
+  public static String getLog4jLogFile(org.apache.log4j.Logger rootLogger) {
+    if (rootLogger != null) {
+      Enumeration<?> e = rootLogger.getAllAppenders();
+      while (e.hasMoreElements()) {
+        Appender appender = (Appender)e.nextElement();
+        if (appender instanceof FileAppender) {
+          return ((FileAppender)appender).getFile();
+        }
+      }
+    }
+    return null;
   }
 
   public static Properties getLog4jConfProperties(
@@ -1456,7 +1495,7 @@ public abstract class ClientSharedUtils {
   }
 
   private static Properties getLog4jProperties(String logFile,
-      Level level) throws IOException {
+      org.apache.log4j.Level level) throws IOException {
     // check for user provided properties file in "conf/"
     String snappyHome = NativeCalls.getInstance().getEnvironment("SNAPPY_HOME");
     if (snappyHome != null) {
@@ -1475,11 +1514,10 @@ public abstract class ClientSharedUtils {
 
     // override file location and level
     if (level != null) {
-      final String levelStr = convertToLog4LogLevel(level);
       if (logFile != null) {
-        props.setProperty("log4j.rootCategory", levelStr + ", file");
+        props.setProperty("log4j.rootCategory", level + ", file");
       } else {
-        props.setProperty("log4j.rootCategory", levelStr + ", console");
+        props.setProperty("log4j.rootCategory", level + ", console");
       }
     }
     if (logFile != null) {
@@ -1498,7 +1536,7 @@ public abstract class ClientSharedUtils {
   }
 
   public static synchronized void initLog4j(String logFile,
-      Properties userProps, Level level) throws IOException {
+      Properties userProps, org.apache.log4j.Level level) throws IOException {
     Properties props;
     if (baseLoggerProperties.isEmpty() || logFile != null) {
       props = getLog4jProperties(logFile, level);
@@ -1535,7 +1573,7 @@ public abstract class ClientSharedUtils {
     clearLogger();
     if (initLog4j) {
       try {
-        initLog4j(logFile, level);
+        initLog4j(logFile, convertToLog4LogLevel(level));
       } catch (IOException ioe) {
         throw newRuntimeException(ioe.getMessage(), ioe);
       }

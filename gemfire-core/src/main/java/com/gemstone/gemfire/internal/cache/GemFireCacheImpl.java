@@ -17,7 +17,7 @@
 /*
  * Changes for SnappyData distributed computational and data platform.
  *
- * Portions Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ * Portions Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -649,7 +649,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     }
 
     if(getLoggerI18n().fineEnabled()) {
-      getLoggerI18n().fine("For region  " + regionPath + " adding " +
+      getLoggerI18n().fine("For " + regionPath + " adding " +
           oldRe + " to oldEntrMap");
     }
 
@@ -761,6 +761,10 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     return oldEntryMap.get(regionName);
   }
 
+  public Map getOldEntriesMap() {
+    return oldEntryMap;
+  }
+
   public void startOldEntryCleanerService() {
     getLoggerI18n().info(LocalizedStrings.DEBUG,
         "Snapshot is enabled " + snapshotEnabled());
@@ -778,7 +782,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       };
 
       getLoggerI18n().info(LocalizedStrings.DEBUG,
-          "Snapshot is enabled, starting the cleaner thread.");
+          "Snapshot is enabled, starting the cleaner thread. with frequency " + OLD_ENTRIES_CLEANER_TIME_INTERVAL);
       oldEntryMapCleanerService = Executors.newScheduledThreadPool(1, oldEntryGCtf);
       oldEntryMapCleanerService.scheduleAtFixedRate(new OldEntriesCleanerThread(), 0, OLD_ENTRIES_CLEANER_TIME_INTERVAL,
           TimeUnit.MILLISECONDS);
@@ -798,38 +802,37 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
             Map<Object, BlockingQueue<RegionEntry>> regionEntryMap = entry.getValue();
             LocalRegion region = (LocalRegion)getRegion(entry.getKey());
             if (region == null) continue;
-            for (BlockingQueue<RegionEntry> oldEntriesQueue : regionEntryMap.values()) {
+
+            for (Entry<Object, BlockingQueue<RegionEntry>> oldEntry: regionEntryMap.entrySet()) {
+              Object key = oldEntry.getKey();
+              BlockingQueue<RegionEntry> oldEntriesQueue = oldEntry.getValue();
+
               for (RegionEntry re : oldEntriesQueue) {
-                boolean entryFoundInTxState = false;
-                for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
-                  TXState txState = txProxy.getLocalTXState();
-                  if (re.isUpdateInProgress() || (txState != null && !txState.isCommitted() && TXState.checkEntryInSnapshot
-                      (txState, region, re))) {
-                    entryFoundInTxState = true;
-                    break;
-                  }
-                }
-                if (!entryFoundInTxState) {
-                  if (getLoggerI18n().fineEnabled()) {
-                    getLoggerI18n().fine(
-                        "OldEntriesCleanerThread : Removing the entry " + re + " entry update in progress : " +
-                            re.isUpdateInProgress());
-                  }
-                  // continue if some explicit call removed the entry
-                  if (!oldEntriesQueue.remove(re)) continue;
-                  if (GemFireCacheImpl.hasNewOffHeap()) {
-                    // also remove reference to region buffer, if any
-                    Object value = re._getValue();
-                    if (value instanceof SerializedDiskBuffer) {
-                      ((SerializedDiskBuffer)value).release();
+                if (re.isUpdateInProgress()) {
+                  continue;
+                } else {
+                  if (notRequiredByAnyTx(oldEntriesQueue, region, re)) {
+                    if (getLoggerI18n().fineEnabled()) {
+                      getLoggerI18n().fine(
+                          "OldEntriesCleanerThread : Removing the entry " + re );
+                    }
+                    // continue if some explicit call removed the entry
+                    if (!oldEntriesQueue.remove(re)) continue;
+                    if (GemFireCacheImpl.hasNewOffHeap()) {
+                      // also remove reference to region buffer, if any
+                      Object value = re._getValue();
+                      if (value instanceof SerializedDiskBuffer) {
+                        ((SerializedDiskBuffer)value).release();
+                      }
+                    }
+                    // free the allocated memory
+                    if (!region.reservedTable() && region.needAccounting()) {
+                      NonLocalRegionEntry nre = (NonLocalRegionEntry)re;
+                      region.freePoolMemory(nre.getValueSize(), nre.isForDelete());
                     }
                   }
-                  // free the allocated memory
-                  if (!region.reservedTable() && region.needAccounting()) {
-                    NonLocalRegionEntry nre = (NonLocalRegionEntry)re;
-                    region.freePoolMemory(nre.getValueSize(), nre.isForDelete());
-                  }
                 }
+
               }
             }
           }
@@ -852,11 +855,64 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       catch (Exception e) {
         if (getLoggerI18n().warningEnabled()) {
           getLoggerI18n().warning(LocalizedStrings.DEBUG,
-              "OldEntriesCleanerThread : Error occured while cleaning the oldentries map.Actual " +
+              "OldEntriesCleanerThread : Error occured while cleaning the oldentries map. Actual " +
                   "Exception:", e);
         }
       }
     }
+
+    boolean notRequiredByAnyTx(BlockingQueue<RegionEntry> queue,
+        Region region, RegionEntry re) {
+      int myVersion = re.getVersionStamp().getEntryVersion();
+      Set<TXId> txIds = new OpenHashSet<TXId>(4);
+
+      for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
+        TXState txState = txProxy.getLocalTXState();
+        if ((txState != null && !txState.isClosed() && TXState.checkEntryInSnapshot
+            (txState, region, re))) {
+          txIds.add(txState.getTransactionId());
+        }
+      }
+
+      for (RegionEntry regionEntry : queue) {
+        if (regionEntry == re)
+          continue;
+        Set<TXId> othersTxIds = new OpenHashSet<TXId>(4);
+        for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
+          TXState txState = txProxy.getLocalTXState();
+          if ((txState != null && !txState.isClosed() && TXState.checkEntryInSnapshot
+              (txState, region, regionEntry))) {
+            othersTxIds.add(txState.getTransactionId());
+          }
+        }
+
+        if (txIds.equals(othersTxIds)
+            && regionEntry.getVersionStamp().getEntryVersion() > myVersion) {
+          return true;
+        }
+      }
+
+      // in the end check with the entry in region
+      RegionEntry entryInRegion = ((LocalRegion)region).entries.getEntry(re.getKey());
+      if (entryInRegion != null) {
+        Set<TXId> othersTxIds = new OpenHashSet<TXId>(4);
+        for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
+          TXState txState = txProxy.getLocalTXState();
+          if ((txState != null && !txState.isClosed() && TXState.checkEntryInSnapshot
+              (txState, region, entryInRegion))) {
+            othersTxIds.add(txState.getTransactionId());
+          }
+        }
+
+        if (txIds.equals(othersTxIds)
+            && entryInRegion.getVersionStamp().getEntryVersion() > myVersion) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
   }
 
   /**
@@ -1279,17 +1335,33 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     // a negative value of numLeads indicates that one or more leads have
     // been started with explicit heap-size/memory-size setting in which case
     // auto-configuration of memory-size is disabled to keep things simpler
-    int numLeads = Integer.getInteger("snappydata.numLeadsOnNode", 1);
+    int numLeads = Integer.getInteger("snappydata.numLeadsOnHost", 1);
     if (launcher != null && launcher.hostData() && numLeads >= 0) {
       long ramSize = LauncherBase.getPhysicalRAMSize();
+      int numServers = Integer.getInteger("snappydata.numServersOnHost", 1);
+      // if any of the servers on the host has explicit heap/memory settings, then skip
+      if (numServers < 0) {
+        return 0L;
+      }
       // use up-to 75% of total RAM for hosts having sufficiently large RAMs
       if (ramSize > LauncherBase.LARGE_RAM_LIMIT) {
-        long usableSize = (ramSize - Runtime.getRuntime().maxMemory()) * 3 / 4;
-        // reserve space for any leads started on this node
-        long reserved = numLeads > 0 ? numLeads * 1048576L *
+        // use max of 75% available RAM
+        long usableSize = ramSize * 3 / 4;
+        // reserve space for any leads started on this host
+        long leadReserved = numLeads > 0 ? 1048576L * numLeads *
             LauncherBase.getDefaultHeapSizeMB(ramSize, false) : 0L;
+        usableSize -= leadReserved;
+        // divide up the usable RAM into the servers running on this host
+        if (numServers > 1) {
+          usableSize = usableSize / numServers;
+        }
+        // adjust the heap memory already allocated
+        long maxHeapMemory = Runtime.getRuntime().maxMemory();
+        usableSize -= maxHeapMemory;
         // round to nearest GB
-        return Math.max(((usableSize - reserved + (1L << 29L)) >>> 30L) << 30L, 0L);
+        long memorySize = Math.max(((usableSize + (1L << 29L)) >>> 30L) << 30L, 0L);
+        // should be at least half of the heap size else not worth it
+        return memorySize >= (maxHeapMemory / 2) ? memorySize : 0L;
       }
     }
     return 0L;

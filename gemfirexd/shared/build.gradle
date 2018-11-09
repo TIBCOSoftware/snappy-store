@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 SnappyData, Inc. All rights reserved.
+ * Copyright (c) 2018 SnappyData, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -32,7 +32,7 @@ ext {
 task createVersionPropertiesFile(dependsOn: 'processResources') {
   def propertiesDir = file("${buildDir}/classes/main/com/pivotal/gemfirexd/internal")
   outputs.file "${propertiesDir}/GemFireXDVersion.properties"
-  inputs.dir compileJava.destinationDir
+  inputs.file "${rootProject.projectDir}/build.gradle"
   if (rootProject.hasProperty('snappydata.enterprise')) {
     isEnterprise = 'true'
   }

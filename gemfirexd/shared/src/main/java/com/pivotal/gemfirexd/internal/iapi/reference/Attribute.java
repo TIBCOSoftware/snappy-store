@@ -331,7 +331,7 @@ public interface Attribute {
    * These 2 attributes can be sent through jdbc url directly (supported way) or
    * as JVM properties with the following prefix (undocumented way). DERBY-1275
    *
-  String CLIENT_JVM_PROPERTY_PREFIX = "gemfirexd.client.";
+  String CLIENT_JVM_PROPERTY_PREFIX = "snappydata.client.";
   */
 // GemStone changes END
 

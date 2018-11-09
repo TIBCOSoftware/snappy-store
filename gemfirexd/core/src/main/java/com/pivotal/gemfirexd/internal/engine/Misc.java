@@ -1159,13 +1159,12 @@ public abstract class Misc {
 
   public final static StandardException generateLowMemoryException(
       final String query) {
-    
     LogWriter logger = getCacheLogWriterNoThrow();
     if (logger != null && logger.warningEnabled()) {
       logger.warning(GfxdConstants.TRACE_HEAPTHRESH + " cancelling statement ["
           + query + "] due to low memory");
     }
-    
+    CallbackFactoryProvider.getStoreCallbacks().logMemoryStats();
     final StandardException se = StandardException.newException(
         SQLState.LANG_STATEMENT_CANCELLED_ON_LOW_MEMORY, query,
         GemFireStore.getMyId());

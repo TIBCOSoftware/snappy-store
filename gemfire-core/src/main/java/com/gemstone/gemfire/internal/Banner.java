@@ -78,7 +78,7 @@ public class Banner {
 
     out.println(SEPERATOR);
     out.println();
-    out.println("  Copyright (c) 2017 SnappyData, Inc. All rights reserved.");
+    out.println("  Copyright (c) 2018 SnappyData, Inc. All rights reserved.");
     out.println();
     out.println("  Licensed under the Apache License, Version 2.0 (the \"License\"); you");
     out.println("  may not use this file except in compliance with the License. You");

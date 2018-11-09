@@ -102,6 +102,7 @@ import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.AssertFailure;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import com.pivotal.gemfirexd.internal.impl.sql.rules.ExecutionEngineRule.ExecutionEngine;
+import org.apache.log4j.Logger;
 
 //GemStone changes BEGIN
 
@@ -119,6 +120,7 @@ public class GenericStatement
        // protected boolean        createQueryInfo;
         //final private boolean  needGfxdSubactivation;
         //protected final boolean isPreparedStatement;
+        static final Logger LOGGER = Logger.getLogger(GenericStatement.class);
         protected int hash;
         protected int stmtHash;
         protected short execFlags;
@@ -236,7 +238,7 @@ public class GenericStatement
 	// GemStone changes BEGIN
 	private GenericPreparedStatement getPreparedStatementForSnappy(boolean commitNestedTransaction,
 			StatementContext statementContext, LanguageConnectionContext lcc, boolean isDDL,
-			boolean checkCancellation, boolean isUpdateOrDelete) throws StandardException {
+			boolean checkCancellation, boolean isUpdateOrDelete, Throwable cause) throws StandardException {
       GenericPreparedStatement gps = preparedStmt;
       GeneratedClass ac = new SnappyActivationClass(lcc, !isDDL, isPreparedStatement() && !isDDL,
           isUpdateOrDelete);
@@ -254,7 +256,11 @@ public class GenericStatement
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
           "GenericStatement.getPreparedStatementForSnappy: Created SnappyActivation for sql: " +
               this.getSource() + " ,isDDL=" + isDDL + " ,isUpdateOrDelete=" + isUpdateOrDelete);
-	 }
+     }
+     if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("GenericStatement.getPreparedStatementForSnappy: routing sql: " +
+            this.getSource() + " ,isDDL=" + isDDL + " ,isUpdateOrDelete=" + isUpdateOrDelete, cause);
+     }
      if (checkCancellation) {
        Misc.checkMemory(thresholdListener, statementText, -1);
      }
@@ -610,7 +616,7 @@ public class GenericStatement
 							cc.markAsDDLForSnappyUse(true);
 							return getPreparedStatementForSnappy(false, statementContext, lcc,
 								cc.isMarkedAsDDLForSnappyUse(), checkCancellation,
-								DML_TABLE_PATTERN.matcher(source).find());
+								DML_TABLE_PATTERN.matcher(source).find(), null);
 					}
 					qt = p.parseStatement(getQueryStringForParse(lcc), paramDefaults);
 				}
@@ -620,7 +626,7 @@ public class GenericStatement
               !NON_ROUTED_QUERY.matcher(source).find()) {
             return getPreparedStatementForSnappy(false, statementContext, lcc,
                 cc.isMarkedAsDDLForSnappyUse(), checkCancellation,
-                DML_TABLE_PATTERN.matcher(source).find());
+                DML_TABLE_PATTERN.matcher(source).find(), ex);
           }
           throw ex;
 				}
@@ -633,7 +639,7 @@ public class GenericStatement
 				      observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
 				    }
 				    return getPreparedStatementForSnappy(false, statementContext, lcc, true,
-				        checkCancellation, DML_TABLE_PATTERN.matcher(source).find());
+				        checkCancellation, DML_TABLE_PATTERN.matcher(source).find(), null);
 				}
 				//GemStone changes END
 				parseTime = getCurrentTimeMillis(lcc);
@@ -709,7 +715,7 @@ public class GenericStatement
 					      observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
 					    }
 							return getPreparedStatementForSnappy(true, statementContext, lcc, false,
-							  checkCancellation, DML_TABLE_PATTERN.matcher(source).find());
+							  checkCancellation, DML_TABLE_PATTERN.matcher(source).find(), ex);
 					  }
 					  throw ex;
 					}
@@ -778,7 +784,7 @@ public class GenericStatement
 								observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
 							}
 							return getPreparedStatementForSnappy(true, statementContext, lcc, false,
-								checkCancellation, DML_TABLE_PATTERN.matcher(source).find());
+								checkCancellation, DML_TABLE_PATTERN.matcher(source).find(), ex);
 						}
 						throw ex;
 					}
@@ -811,7 +817,7 @@ public class GenericStatement
                                                 ExecutionEngine.SPARK, this.statementText);
                                           }
                                           return getPreparedStatementForSnappy(true,
-                                              statementContext, lcc, false, checkCancellation, false);
+                                              statementContext, lcc, false, checkCancellation, false, null);
                                         }
                                         if(this.createQueryInfo() && !forceSkipQueryInfoCreation) {
                                           final DataTypeDescriptor paramDTDS[] = qt.getParameterTypes();
@@ -840,7 +846,7 @@ public class GenericStatement
                                                 }
                                                 return getPreparedStatementForSnappy(true,
                                                     statementContext, lcc, false,
-                                                    checkCancellation, isUpdateOrDelete);
+                                                    checkCancellation, isUpdateOrDelete, null);
                                               }
                                             }
                                           }
@@ -956,7 +962,7 @@ public class GenericStatement
               observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
             }
             return getPreparedStatementForSnappy(true, statementContext, lcc, false,
-                checkCancellation, DML_TABLE_PATTERN.matcher(source).find());
+                checkCancellation, DML_TABLE_PATTERN.matcher(source).find(), se);
           }
 // GemStone changes END
 					lcc.commitNestedTransaction();
