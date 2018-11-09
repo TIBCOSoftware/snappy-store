@@ -31,7 +31,7 @@ public class SnappyRegionStats implements VersionedDataSerializable {
   private String tableName;
   private long rowCount = 0;
   private long sizeInMemory = 0;
-  private long sizeOnDisk = 0;
+  private long sizeSpillToDisk = 0;
   private long totalSize = 0;
   private boolean isReplicatedTable = false;
   private int bucketCount;
@@ -49,7 +49,7 @@ public class SnappyRegionStats implements VersionedDataSerializable {
     this.tableName = tableName;
     this.totalSize = totalSize;
     this.sizeInMemory = sizeInMemory;
-    this.sizeOnDisk = totalSize - sizeInMemory;
+    this.sizeSpillToDisk = totalSize - sizeInMemory;
     this.rowCount = rowCount;
     this.isColumnTable = isColumnTable;
     this.isReplicatedTable = isReplicatedTable;
@@ -97,12 +97,12 @@ public class SnappyRegionStats implements VersionedDataSerializable {
     this.sizeInMemory = sizeInMemory;
   }
 
-  public long getSizeOnDisk() {
-    return sizeOnDisk;
+  public long getSizeSpillToDisk() {
+    return sizeSpillToDisk;
   }
 
-  public void setSizeOnDisk(long sizeOnDisk) {
-    this.sizeOnDisk = sizeOnDisk;
+  public void setSizeSpillToDisk(long sizeSpillToDisk) {
+    this.sizeSpillToDisk = sizeSpillToDisk;
   }
 
   public long getTotalSize() {
@@ -132,7 +132,7 @@ public class SnappyRegionStats implements VersionedDataSerializable {
     }
 
     combinedStats.setSizeInMemory(stats.sizeInMemory + this.sizeInMemory);
-    combinedStats.setSizeOnDisk(stats.sizeOnDisk + this.sizeOnDisk);
+    combinedStats.setSizeSpillToDisk(stats.sizeSpillToDisk + this.sizeSpillToDisk);
     combinedStats.setTotalSize(stats.totalSize + this.totalSize);
     combinedStats.setColumnTable(this.isColumnTable || stats.isColumnTable);
     combinedStats.setReplicatedTable(this.isReplicatedTable());
@@ -151,7 +151,7 @@ public class SnappyRegionStats implements VersionedDataSerializable {
     DataSerializer.writeString(tableName, out);
     out.writeLong(totalSize);
     out.writeLong(sizeInMemory);
-    out.writeLong(sizeOnDisk);
+    out.writeLong(sizeSpillToDisk);
     out.writeLong(rowCount);
     out.writeBoolean(isColumnTable);
     out.writeBoolean(isReplicatedTable);
@@ -167,7 +167,7 @@ public class SnappyRegionStats implements VersionedDataSerializable {
     this.tableName = DataSerializer.readString(in);
     this.totalSize = in.readLong();
     this.sizeInMemory = in.readLong();
-    this.sizeOnDisk = in.readLong();
+    this.sizeSpillToDisk = in.readLong();
     this.rowCount = in.readLong();
     this.isColumnTable = in.readBoolean();
     this.isReplicatedTable = in.readBoolean();
@@ -182,7 +182,7 @@ public class SnappyRegionStats implements VersionedDataSerializable {
   @Override
   public String toString() {
     return "RegionStats for " + tableName + ": totalSize=" + totalSize +
-        " sizeInMemory=" + sizeInMemory + " sizeOnDisk=" + sizeOnDisk +
+        " sizeInMemory=" + sizeInMemory + " sizeSpillToDisk=" + sizeSpillToDisk +
         " rowCount=" + rowCount + " isColumnTable=" + isColumnTable + " isReplicatedTable=" +
         isReplicatedTable + " bucketCount=" + bucketCount;
   }
