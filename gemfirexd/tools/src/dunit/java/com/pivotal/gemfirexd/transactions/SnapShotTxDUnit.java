@@ -960,7 +960,7 @@ public class SnapShotTxDUnit extends DistributedSQLTestBase {
         oldEntries = cache.getOldEntriesForRegion("/__PR/_B__T1_0");
         System.out.println("Oldentries"+oldEntries);
         //Should be null as no transaction is active and we have executed System.gc
-        assertTrue(oldEntries.get(1) == null);
+        assertTrue(oldEntries == null);
         assertEquals(cache.getCacheTransactionManager().getHostedTransactionsInProgress().size(), 0);
         assertNull(cache.getCacheTransactionManager().getCurrentTXState());
 

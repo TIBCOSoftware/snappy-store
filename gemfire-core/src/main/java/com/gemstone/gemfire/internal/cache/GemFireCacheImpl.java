@@ -844,9 +844,28 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
             acquireWriteLockOnSnapshotRvv();
             try {
               if (getTxManager().getHostedTransactionsInProgress().size() == 0) {
-                if(getLoggerI18n().fineEnabled()) {
+                if (getLoggerI18n().fineEnabled()) {
                   getLoggerI18n().info(LocalizedStrings.DEBUG, "Clearing the Map");
-                  oldEntryMap.clear();
+                }
+                for (Entry<String, Map<Object, BlockingQueue<RegionEntry>>> entry : oldEntryMap.entrySet()) {
+                  Map<Object, BlockingQueue<RegionEntry>> regionEntryMap = entry.getValue();
+                  LocalRegion region = (LocalRegion)getRegion(entry.getKey());
+                  for (Entry<Object, BlockingQueue<RegionEntry>> oldEntry : regionEntryMap.entrySet()) {
+                    for (RegionEntry re : oldEntry.getValue()) {
+                      if (GemFireCacheImpl.hasNewOffHeap()) {
+                        // also remove reference to region buffer, if any
+                        Object value = re._getValue();
+                        if (value instanceof SerializedDiskBuffer) {
+                          ((SerializedDiskBuffer)value).release();
+                        }
+                      }
+                      // free the allocated memory
+                      if (!region.reservedTable() && region.needAccounting()) {
+                        NonLocalRegionEntry nre = (NonLocalRegionEntry)re;
+                        region.freePoolMemory(nre.getValueSize(), nre.isForDelete());
+                      }
+                    }
+                  }
                 }
                 return;
               }
@@ -869,7 +888,6 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
             for (Entry<Object, BlockingQueue<RegionEntry>> oldEntry: regionEntryMap.entrySet()) {
               Object key = oldEntry.getKey();
               BlockingQueue<RegionEntry> oldEntriesQueue = oldEntry.getValue();
-
 
               for (RegionEntry re : oldEntriesQueue) {
                 if (re.isUpdateInProgress()) {
@@ -896,7 +914,6 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
                     }
                   }
                 }
-
               }
             }
           }

@@ -803,9 +803,11 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     //verify old entrymap
     Map<Object, BlockingQueue<RegionEntry>> entryMap = GemFireCacheImpl.getInstance().
         getOldEntriesForRegion("/__PR/_B__t1_0");
-    for(Map.Entry e : entryMap.entrySet()) {
-      System.out.println("Key in oldEntriesMap: " + e.getKey());
-      System.out.println("Queue in oldEntriesMap " + e.getValue());
+    if (entryMap != null) {
+      for (Map.Entry e : entryMap.entrySet()) {
+        System.out.println("Key in oldEntriesMap: " + e.getKey());
+        System.out.println("Queue in oldEntriesMap " + e.getValue());
+      }
     }
 
     // commit one
@@ -820,9 +822,11 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
     entryMap = GemFireCacheImpl.getInstance().
         getOldEntriesForRegion("/__PR/_B__t1_0");
-    for(Map.Entry e : entryMap.entrySet()) {
-      System.out.println("Key after first commit " + e.getKey());
-      System.out.println("Queue after first commit " + e.getValue());
+    if (entryMap != null) {
+      for (Map.Entry e : entryMap.entrySet()) {
+        System.out.println("Key after first commit " + e.getKey());
+        System.out.println("Queue after first commit " + e.getValue());
+      }
     }
 
     r1.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
@@ -872,9 +876,11 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
     entryMap = GemFireCacheImpl.getInstance().
         getOldEntriesForRegion("/__PR/_B__t1_0");
-    for(Map.Entry e : entryMap.entrySet()) {
-      System.out.println("Key after third commit " + e.getKey());
-      System.out.println("Queue after third commit " + e.getValue());
+    if (entryMap != null) {
+      for (Map.Entry e : entryMap.entrySet()) {
+        System.out.println("Key after third commit " + e.getKey());
+        System.out.println("Queue after third commit " + e.getValue());
+      }
     }
 
     synchronized (sync2) {
@@ -888,9 +894,11 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
     entryMap = GemFireCacheImpl.getInstance().
         getOldEntriesForRegion("/__PR/_B__t1_0");
-    for(Map.Entry e : entryMap.entrySet()) {
-      System.out.println("Key after second commit " + e.getKey());
-      System.out.println("Queue after second commit " + e.getValue());
+    if(entryMap != null) {
+      for (Map.Entry e : entryMap.entrySet()) {
+        System.out.println("Key after second commit " + e.getKey());
+        System.out.println("Queue after second commit " + e.getValue());
+      }
     }
   }
 
