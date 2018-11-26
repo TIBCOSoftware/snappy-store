@@ -404,7 +404,6 @@ public final class TXState implements TXStateInterface {
     }
   }
 
-  //TODO: Suranjan, FOR RC: We should set create snapshot and set it in every stmt.
   public void takeSnapshot() {
     this.snapshot = getCache().getSnapshotRVV();
     if (TXStateProxy.LOG_FINE) {
@@ -4012,10 +4011,11 @@ public final class TXState implements TXStateInterface {
       oldEntry = dataRegion.getCache().readOldEntry(dataRegion, key, tx.getCurrentSnapshot(), true, re, tx);
       int numtimes = 0;
       while (oldEntry == null) {
+        LogWriterI18n logger = dataRegion.getLogWriterI18n();
         if (TXStateProxy.LOG_FINE) {
-          LogWriterI18n logger = dataRegion.getLogWriterI18n();
           logger.info(LocalizedStrings.DEBUG, " Waiting for older entry for this snapshot to arrive " +
-              "for key " + key + " re " + re + " for region " + dataRegion.getFullPath());
+              "for key " + key + " re " + re + " for region " + dataRegion.getFullPath() + " my txId is "
+              + tx.getTransactionId());
         }
         try {
           // Suranjan Should we wait indefinitely? or throw warning and return the current entry.
@@ -4032,7 +4032,6 @@ public final class TXState implements TXStateInterface {
           }
         } catch (InterruptedException e) {
           if (TXStateProxy.LOG_FINE) {
-            LogWriterI18n logger = dataRegion.getLogWriterI18n();
             logger.info(LocalizedStrings.DEBUG, " Interrupted while waiting for older entry.");
           }
         }
