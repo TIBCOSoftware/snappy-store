@@ -9,13 +9,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 
-import com.gemstone.gemfire.cache.AttributesFactory;
-import com.gemstone.gemfire.cache.Cache;
-import com.gemstone.gemfire.cache.ConflictException;
-import com.gemstone.gemfire.cache.IsolationLevel;
-import com.gemstone.gemfire.cache.PartitionAttributes;
-import com.gemstone.gemfire.cache.PartitionAttributesFactory;
-import com.gemstone.gemfire.cache.Region;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
 import com.gemstone.gemfire.internal.cache.versions.DiskRegionVersionVector;
@@ -380,7 +374,6 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     r.getCache().getCacheTransactionManager().commit();
   }
 
-
   public void testSnapshotInsertAPI() throws Exception {
 
     Connection conn = getConnection();
@@ -698,9 +691,11 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     //verify old entrymap
     Map<Object, BlockingQueue<RegionEntry>> entryMap = GemFireCacheImpl.getInstance().
         getOldEntriesForRegion("/__PR/_B__t1_0");
-    for(Map.Entry e : entryMap.entrySet()) {
-      System.out.println("Key in oldEntriesMap: " + e.getKey());
-      System.out.println("Queue in oldEntriesMap " + e.getValue());
+    if (entryMap != null) {
+      for (Map.Entry e : entryMap.entrySet()) {
+        System.out.println("Key in oldEntriesMap: " + e.getKey());
+        System.out.println("Queue in oldEntriesMap " + e.getValue());
+      }
     }
 
     // commit one
@@ -715,9 +710,11 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
     entryMap = GemFireCacheImpl.getInstance().
         getOldEntriesForRegion("/__PR/_B__t1_0");
-    for(Map.Entry e : entryMap.entrySet()) {
-      System.out.println("Key after first commit " + e.getKey());
-      System.out.println("Queue after first commit " + e.getValue());
+    if (entryMap != null) {
+      for (Map.Entry e : entryMap.entrySet()) {
+        System.out.println("Key after first commit " + e.getKey());
+        System.out.println("Queue after first commit " + e.getValue());
+      }
     }
 
     r1.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
@@ -767,9 +764,11 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
     entryMap = GemFireCacheImpl.getInstance().
         getOldEntriesForRegion("/__PR/_B__t1_0");
-    for(Map.Entry e : entryMap.entrySet()) {
-      System.out.println("Key after third commit " + e.getKey());
-      System.out.println("Queue after third commit " + e.getValue());
+    if (entryMap != null) {
+      for (Map.Entry e : entryMap.entrySet()) {
+        System.out.println("Key after third commit " + e.getKey());
+        System.out.println("Queue after third commit " + e.getValue());
+      }
     }
 
     synchronized (sync2) {
@@ -783,9 +782,11 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
     entryMap = GemFireCacheImpl.getInstance().
         getOldEntriesForRegion("/__PR/_B__t1_0");
-    for(Map.Entry e : entryMap.entrySet()) {
-      System.out.println("Key after second commit " + e.getKey());
-      System.out.println("Queue after second commit " + e.getValue());
+    if(entryMap != null) {
+      for (Map.Entry e : entryMap.entrySet()) {
+        System.out.println("Key after second commit " + e.getKey());
+        System.out.println("Queue after second commit " + e.getValue());
+      }
     }
   }
 
