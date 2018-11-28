@@ -1516,7 +1516,7 @@ public interface SQLState {
 // GemStone changes BEGIN
     String LANG_STATEMENT_CANCELLED_ON_LOW_MEMORY                         = "XCL54.T";
     String LANG_STATEMENT_CANCELLED_ON_USER_REQUEST                       = "XCL56.T";
-    String SNAPPY_RELATION_DESTROY_VERSION_MISMATCH                       = "XCL57";
+    String SNAPPY_CATALOG_SCHEMA_VERSION_MISMATCH                         = "XCL57";
 
 // GemStone changes END
     /*

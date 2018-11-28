@@ -90,7 +90,6 @@ import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer.Serializable
 import com.pivotal.gemfirexd.internal.engine.ui.SnappyRegionStatsCollectorResult;
 import com.pivotal.gemfirexd.internal.impl.store.raw.data.GfxdJarMessage;
 import com.pivotal.gemfirexd.internal.snappy.LeadNodeExecutionContext;
-import com.pivotal.gemfirexd.internal.snappy.LeadNodeSmartConnectorOpContext;
 import com.pivotal.gemfirexd.tools.planexporter.ExecutionPlanMessage;
 
 /**
@@ -272,10 +271,6 @@ public abstract class GfxdDataSerializable implements GfxdSerializable {
         () -> new MemberStatisticsMessage());
     DSFIDFactory.registerGemFireXDClass(MEMBER_LOGS_MESSAGE,
         () -> new MemberLogsMessage());
-    DSFIDFactory.registerGemFireXDClass(LEAD_NODE_CONN_OP_CTX,
-        () -> new LeadNodeSmartConnectorOpContext());
-    DSFIDFactory.registerGemFireXDClass(LEAD_NODE_CONN_OP_MSG,
-        () -> new LeadNodeSmartConnectorOpMsg());
     DSFIDFactory.registerGemFireXDClass(LEAD_NODE_GET_STATS,
         () -> new LeadNodeGetStatsMessage());
     DSFIDFactory.registerGemFireXDClass(PROJECTION_ROW,

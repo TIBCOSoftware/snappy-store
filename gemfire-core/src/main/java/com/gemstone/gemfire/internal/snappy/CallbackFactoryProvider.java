@@ -91,11 +91,7 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
-    public void registerRelationDestroyForHiveStore() {
-    }
-
-    @Override
-    public void performConnectorOp(Object ctx) {
+    public void registerCatalogSchemaChange() {
     }
 
     @Override

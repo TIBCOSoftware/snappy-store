@@ -132,6 +132,46 @@ public class snappydataConstants {
 
   public static final byte STATEMENT_TYPE_DDL = (byte)5;
 
+  public static final int CATALOG_GET_SCHEMA = 1;
+
+  public static final int CATALOG_SCHEMA_EXISTS = 2;
+
+  public static final int CATALOG_LIST_SCHEMAS = 3;
+
+  public static final int CATALOG_GET_TABLE = 4;
+
+  public static final int CATALOG_TABLE_EXISTS = 5;
+
+  public static final int CATALOG_LIST_TABLES = 6;
+
+  public static final int CATALOG_GET_PARTITION = 7;
+
+  public static final int CATALOG_LIST_PARTITION_NAMES = 8;
+
+  public static final int CATALOG_LIST_PARTITIONS = 9;
+
+  public static final int CATALOG_GET_FUNCTION = 10;
+
+  public static final int CATALOG_FUNCTION_EXISTS = 11;
+
+  public static final int CATALOG_LIST_FUNCTIONS = 12;
+
+  public static final int CATALOG_CREATE_SCHEMA = 101;
+
+  public static final int CATALOG_DROP_SCHEMA = 102;
+
+  public static final int CATALOG_CREATE_TABLE = 103;
+
+  public static final int CATALOG_DROP_TABLE = 104;
+
+  public static final int CATALOG_ALTER_TABLE = 105;
+
+  public static final int CATALOG_CREATE_FUNCTION = 106;
+
+  public static final int CATALOG_DROP_FUNCTION = 107;
+
+  public static final int CATALOG_RENAME_FUNCTION = 108;
+
   public static final byte BULK_CLOSE_RESULTSET = (byte)1;
 
   public static final byte BULK_CLOSE_LOB = (byte)2;

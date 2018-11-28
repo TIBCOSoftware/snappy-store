@@ -62,9 +62,7 @@ public interface StoreCallbacks {
       int[] projection, byte[] serializedFilters,
       Set<Integer> bucketIds) throws SQLException;
 
-  void registerRelationDestroyForHiveStore();
-
-  void performConnectorOp(Object ctx);
+  void registerCatalogSchemaChange();
 
   Object getSnappyTableStats();
 

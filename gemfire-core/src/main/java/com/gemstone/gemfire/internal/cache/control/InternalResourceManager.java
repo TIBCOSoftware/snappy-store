@@ -342,7 +342,7 @@ public class InternalResourceManager implements ResourceManager {
       op.start();
       // needed for Snappy Spark Smart connector as we cache buckets to server
       // mapping for tables
-      CallbackFactoryProvider.getStoreCallbacks().registerRelationDestroyForHiveStore();
+      CallbackFactoryProvider.getStoreCallbacks().registerCatalogSchemaChange();
       return op;
     }
 

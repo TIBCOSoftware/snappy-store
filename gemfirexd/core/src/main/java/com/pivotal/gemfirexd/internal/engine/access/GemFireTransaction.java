@@ -3711,7 +3711,12 @@ public final class GemFireTransaction extends RawTransaction implements
           else if (tx != TXStateProxy.TX_NOT_SET
               && tx != (context = TXManagerImpl.getOrCreateTXContext())
                   .getTXState()) {
-            if (tx != null) {
+            // for snapshot TX, never set into thread-context from GemFireTransaction
+            // but always the other way
+            if (context.getSnapshotTXState() != null) {
+              tran.setTXState(context.getSnapshotTXState());
+            }
+            else if (tx != null) {
               context.setTXState(tx);
             }
             else {
@@ -3757,7 +3762,12 @@ public final class GemFireTransaction extends RawTransaction implements
       else if (tx != TXStateProxy.TX_NOT_SET
           && tx != (context = TXManagerImpl.getOrCreateTXContext())
               .getTXState()) {
-        if (tx != null) {
+        // for snapshot TX, never set into thread-context from GemFireTransaction
+        // but always the other way
+        if (context.getSnapshotTXState() != null) {
+          tran.setTXState(context.getSnapshotTXState());
+        }
+        else if (tx != null) {
           context.setTXState(tx);
         }
         else {

@@ -515,7 +515,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       }
       ExternalCatalog extcat = Misc.getMemStore().getExistingExternalCatalog();
       // containers are created during initialization, ignore them
-      externalTableMetaData.compareAndSet(null, extcat.getHiveTableMetaData(
+      externalTableMetaData.compareAndSet(null, extcat.getCatalogTableMetadata(
               schemaName, tableName, true));
       if (isPartitioned()) {
         metaData = externalTableMetaData.get();
@@ -953,7 +953,6 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
     // ???:ezoerner:20080609 do temp tables get created here
     // if so, then they need to be Scope LOCAL in a session schema
-    // TODO: SW: why LOCAL for session schema? should be replicated with empty
     // on accessors as usual; possibly also needs changes to QueryInfo routing
     if (rattrs == null) {
       af = new AttributesFactory<Object, Object>();
@@ -5102,7 +5101,6 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
   private final boolean isCandidateForByteArrayStore() {
     return !GfxdConstants.SYSTEM_SCHEMA_NAME.equals(this.schemaName)
-        // TODO: SW: why for session schema??
         && !GfxdConstants.SESSION_SCHEMA_NAME.equals(this.schemaName)
         && !isObjectStore();
   }

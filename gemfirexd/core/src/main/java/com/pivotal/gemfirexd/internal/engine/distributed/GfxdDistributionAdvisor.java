@@ -45,7 +45,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.DataSerializer;
@@ -268,8 +268,11 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
   @Override
   protected final GfxdProfile instantiateProfile(
       InternalDistributedMember memberId, int version) {
-    return new GfxdProfile(memberId, version,
-        CallbackFactoryProvider.getClusterCallbacks().getDriverURL());
+    final GfxdProfile currentProfile = this.myProfile;
+    long catalogVersion = currentProfile != null
+        ? currentProfile.getCatalogSchemaVersion() : 0;
+    return new GfxdProfile(memberId, version, CallbackFactoryProvider
+        .getClusterCallbacks().getDriverURL(), catalogVersion);
   }
 
   /**
@@ -309,6 +312,8 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
           removeMemberGroups(m);
           addMemberGroups(m, profile.getServerGroups(), profile.getVMKind());
         }
+        // update own catalog version
+        this.myProfile.updateCatalogSchemaVersion(profile.getCatalogSchemaVersion());
       }
       else if (p instanceof BridgeServerProfile) {
         final BridgeServerProfile bp = (BridgeServerProfile)p;
@@ -1339,6 +1344,8 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     private static final byte F_HAS_SPARK_DRIVERURL = 0x4;
 
     private static final byte F_HAS_PROCESSOR_COUNT = 0x8;
+
+    private static final byte F_HAS_LONG_CATALOG_VERSION = 0x10;
     // end bitmasks
 
     /** OR of various bitmasks above */
@@ -1365,7 +1372,12 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
      */
     private String sparkDriverUrl;
 
-    private AtomicInteger relationDestroyVersion;
+    /**
+     * The schema version of ExternalCatalog implementation (SnappyHiveExternalCatalog)
+     * is tracked in the profile because it needs to be exchanged with other nodes
+     * to make sure that it is consistent on all the nodes.
+     */
+    private AtomicLong catalogSchemaVersion;
 
     /** for deserialization */
     public GfxdProfile() {
@@ -1373,20 +1385,22 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     }
 
     /** construct a new instance for given member and with given version */
-    public GfxdProfile(InternalDistributedMember memberId, int version, String sparkUrl) {
+    public GfxdProfile(InternalDistributedMember memberId, int version,
+        String sparkUrl, long catalogVersion) {
       super(memberId, version);
       this.initialized = true;
       this.numProcessors = Runtime.getRuntime().availableProcessors();
       this.sparkDriverUrl = sparkUrl;
       boolean hasURL = sparkDriverUrl != null && !sparkDriverUrl.equals("");
+      this.catalogSchemaVersion = new AtomicLong(catalogVersion);
       setHasSparkURL(hasURL);
       initFlags();
-      relationDestroyVersion = new AtomicInteger(0);
     }
 
     private void initFlags() {
       this.flags |= F_HASLOCALE;
       this.flags |= F_HAS_PROCESSOR_COUNT;
+      this.flags |= F_HAS_LONG_CATALOG_VERSION;
     }
 
     public final VMKind getVMKind() {
@@ -1435,9 +1449,25 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       return (this.flags & F_HAS_SPARK_DRIVERURL) != 0;
     }
 
-    public final void setRelationDestroyVersion(int value){ relationDestroyVersion.set(value); }
+    public final long getCatalogSchemaVersion() {
+      return catalogSchemaVersion.get();
+    }
 
-    public final int getRelationDestroyVersion() { return relationDestroyVersion.get(); }
+    public final void updateCatalogSchemaVersion(long version) {
+      // update the catalog version only if it is higher than the one already present
+      while (true) {
+        long currentVersion = catalogSchemaVersion.get();
+        if (version > currentVersion) {
+          if (catalogSchemaVersion.compareAndSet(currentVersion, version)) {
+            return;
+          }
+        } else return;
+      }
+    }
+
+    public final void incrementCatalogSchemaVersion() {
+      this.catalogSchemaVersion.incrementAndGet();
+    }
 
     public final void setInitialized(boolean initialized) {
       this.initialized = initialized;
@@ -1539,7 +1569,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       if (hasSparkURL()) {
         DataSerializer.writeString(sparkDriverUrl, out);
       }
-      DataSerializer.writeInteger(relationDestroyVersion.get(), out);
+      out.writeLong(this.catalogSchemaVersion.get());
     }
 
     @Override
@@ -1571,7 +1601,12 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       if (hasSparkURL()) {
         this.sparkDriverUrl = DataSerializer.readString(in);
       }
-      relationDestroyVersion = new AtomicInteger(DataSerializer.readInteger(in));
+      // older version nodes have integer catalog version while new ones use long
+      if ((this.flags & F_HAS_LONG_CATALOG_VERSION) != 0) {
+        this.catalogSchemaVersion = new AtomicLong(in.readLong());
+      } else {
+        this.catalogSchemaVersion = new AtomicLong(in.readInt());
+      }
     }
 
     @Override
@@ -1589,6 +1624,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       sb.append("; initialized=").append(this.initialized);
       sb.append("; dbLocaleStr=").append(this.dbLocaleStr);
       sb.append("; numProcessors=").append(this.numProcessors);
+      sb.append("; catalogVersion=").append(this.catalogSchemaVersion.get());
     }
   }
 
