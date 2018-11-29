@@ -2537,6 +2537,7 @@ public class EntryEventImpl extends KeyInfo implements
     } catch (IllegalStateException ex) {
       buf.append("OFFHEAP_VALUE_FREED");
     }
+    if (this.isPutDML) buf.append(";isPutDML=true");
     buf.append(";callbackArg=");
     buf.append(this.getRawCallbackArgument());
     buf.append(";originRemote=");

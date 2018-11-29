@@ -2331,7 +2331,8 @@ public class GfxdSystemProcedures extends SystemProcedures {
 
     if ((catalogSchemaVersion != -1) &&
         (actualVersion != catalogSchemaVersion)) {
-      throw StandardException.newException(SQLState.SNAPPY_CATALOG_SCHEMA_VERSION_MISMATCH);
+      throw StandardException.newException(SQLState.SNAPPY_CATALOG_SCHEMA_VERSION_MISMATCH,
+          actualVersion, catalogSchemaVersion);
     }
 
     Region region = Misc.getRegionForTable(tableName, true);

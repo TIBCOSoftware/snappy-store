@@ -1653,7 +1653,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         final long catalogVersion = target.getCatalogVersion();
         if (catalogVersion != -1 && actualVersion != catalogVersion) {
           throw Util.generateCsSQLException(
-              SQLState.SNAPPY_CATALOG_SCHEMA_VERSION_MISMATCH);
+              SQLState.SNAPPY_CATALOG_SCHEMA_VERSION_MISMATCH,
+              actualVersion, catalogVersion);
         }
       }
       if (target.isSetSnapshotTransactionId()) {

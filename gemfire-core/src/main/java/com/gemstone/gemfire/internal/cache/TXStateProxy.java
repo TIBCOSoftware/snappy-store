@@ -102,6 +102,8 @@ import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.THashSet;
 import com.gemstone.gnu.trove.TObjectLongProcedure;
 import com.gemstone.gnu.trove.TObjectObjectProcedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
 
 /**
  * TXStateProxy lives on the source node when we are remoting a transaction. It
@@ -726,7 +728,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
   }
 
   public static final boolean VERBOSE_ON() {
-    return true; // SW: Boolean.getBoolean(VERBOSE_PROPERTY);
+    return Boolean.getBoolean(VERBOSE_PROPERTY);
   }
 
   public static final boolean VERBOSEVERBOSE_ON() {
@@ -1488,10 +1490,12 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       }
       final ArrayList<TXBatchResponse> batchResponses =
         new ArrayList<TXBatchResponse>(numPending);
-      final THashMap pendingOpsMap = new THashMap();
-      final THashMap pendingOpsRegionsMap = new THashMap();
-      final THashMap pendingRegions = new THashMap(
-          ObjectEqualsHashingStrategy.getInstance());
+      final UnifiedMap<InternalDistributedMember, ArrayList<Object>> pendingOpsMap =
+          new UnifiedMap<>();
+      final UnifiedMap<InternalDistributedMember, ArrayList<LocalRegion>> pendingOpsRegionsMap =
+          new UnifiedMap<>();
+      final UnifiedMap<LocalRegion, Set<InternalDistributedMember>> pendingRegions =
+          new UnifiedMap<>();
       ArrayList<Object> pendingOps;
       ArrayList<LocalRegion> pendingOpsRegions;
       Set<InternalDistributedMember> recipients;
@@ -1521,8 +1525,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
           }
           // find the recipients for this entry
           // cache the recipients per region
-          if ((recipients = (Set<InternalDistributedMember>)pendingRegions
-              .get(dataRegion)) == null) {
+          if ((recipients = pendingRegions.get(dataRegion)) == null) {
             if (dataRegion.isUsedForPartitionedRegionBucket()) {
               final PartitionedRegion pr = dataRegion.getPartitionedRegion();
               recipients = getOtherMembersForOperation(pr,
@@ -1535,16 +1538,14 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
             pendingRegions.put(dataRegion, recipients);
           }
           for (InternalDistributedMember member : recipients) {
-            if ((pendingOps = (ArrayList<Object>)pendingOpsMap.get(
-                member)) == null) {
-              pendingOps = new ArrayList<Object>();
-              pendingOpsRegions = new ArrayList<LocalRegion>();
+            if ((pendingOps = pendingOpsMap.get(member)) == null) {
+              pendingOps = new ArrayList<>();
+              pendingOpsRegions = new ArrayList<>();
               pendingOpsMap.put(member, pendingOps);
               pendingOpsRegionsMap.put(member, pendingOpsRegions);
             }
             else {
-              pendingOpsRegions = (ArrayList<LocalRegion>)pendingOpsRegionsMap
-                  .get(member);
+              pendingOpsRegions = pendingOpsRegionsMap.get(member);
             }
             pendingOps.add(op);
             pendingOpsRegions.add(dataRegion);
@@ -1556,16 +1557,15 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
         Assert.fail("Unexpected pending operations remaining " + numPending
             + " for " + toString() + " at the end of iteration.");
       }
-      pendingOpsMap.forEachEntry(new TObjectObjectProcedure() {
+      pendingOpsMap.forEachKeyValue(new Procedure2<InternalDistributedMember,
+          ArrayList<Object>>() {
         final TXManagerImpl.TXContext context = TXManagerImpl
             .currentTXContext();
-        public final boolean execute(Object key, Object val) {
-          final InternalDistributedMember m = (InternalDistributedMember)key;
+        @Override
+        public final void value(InternalDistributedMember m, ArrayList<Object> ops) {
           batchResponses.add(TXBatchMessage.send(dm, m, TXStateProxy.this,
-              this.context, (ArrayList<Object>)val,
-              (ArrayList<LocalRegion>)pendingOpsRegionsMap.get(m),
+              this.context, ops, pendingOpsRegionsMap.get(m),
               postMessages, conflictWithEX));
-          return true;
         }
       });
       // cleanup pending information for the entries sent in the batch
@@ -3567,9 +3567,6 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
             + (pbr != null ? pbr.getFullPath() : region) + " to "
             + this.txId.shortToString()/*, new Exception()*/);
       }
-      // TODO: SW: do we need the block below? apparently some GFE tests depend
-      // on this but I see no reason why below is required and the tests should
-      // be fixed instead
       if (pbr != null) {
         this.regions.add(pbr.getPartitionedRegion());
       }
