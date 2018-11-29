@@ -16,58 +16,9 @@
  */
 package parReg.execute;
 
-import getInitialImage.InitImageBB;
-import hydra.BridgeHelper;
-import hydra.BridgePrms;
-import hydra.CacheHelper;
-import hydra.ClientVmMgr;
-import hydra.ClientVmNotFoundException;
-import hydra.ConfigPrms;
-import hydra.DistributedSystemHelper;
-import hydra.GatewayHubHelper;
-import hydra.GatewayPrms;
-import hydra.Log;
-import hydra.PoolHelper;
-import hydra.RegionHelper;
-import hydra.RemoteTestModule;
-import hydra.StopSchedulingTaskOnClientOrder;
-import hydra.TestConfig;
+import java.util.*;
 
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import parReg.KnownKeysTest;
-import parReg.ParRegBB;
-import parReg.ParRegPrms;
-import parReg.ParRegUtil;
-import parReg.colocation.Month;
-import pdx.PdxTest;
-import pdx.PdxTestVersionHelper;
-import util.KeyIntervals;
-import util.NameFactory;
-import util.PRObserver;
-import util.RandomValues;
-import util.SilenceListener;
-import util.TestException;
-import util.TestHelper;
-import util.TestHelperPrms;
-import util.TxHelper;
-
-import com.gemstone.gemfire.cache.Cache;
-import com.gemstone.gemfire.cache.CommitConflictException;
-import com.gemstone.gemfire.cache.DataPolicy;
-import com.gemstone.gemfire.cache.PartitionAttributes;
-import com.gemstone.gemfire.cache.RegionAttributes;
-import com.gemstone.gemfire.cache.TransactionDataNodeHasDepartedException;
-import com.gemstone.gemfire.cache.TransactionDataRebalancedException;
-import com.gemstone.gemfire.cache.TransactionException;
-import com.gemstone.gemfire.cache.TransactionInDoubtException;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.client.Pool;
 import com.gemstone.gemfire.cache.execute.Execution;
 import com.gemstone.gemfire.cache.execute.Function;
@@ -85,6 +36,16 @@ import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
 import com.gemstone.gemfire.internal.cache.execute.InternalExecution;
 import com.gemstone.gemfire.internal.cache.execute.MemberMappedArgument;
 import com.gemstone.gemfire.pdx.PdxInstance;
+import getInitialImage.InitImageBB;
+import hydra.*;
+import parReg.KnownKeysTest;
+import parReg.ParRegBB;
+import parReg.ParRegPrms;
+import parReg.ParRegUtil;
+import parReg.colocation.Month;
+import pdx.PdxTest;
+import pdx.PdxTestVersionHelper;
+import util.*;
 
 public class ExecutionAndColocationTest extends KnownKeysTest {
 
@@ -436,7 +397,7 @@ public class ExecutionAndColocationTest extends KnownKeysTest {
         } catch (TransactionInDoubtException e) {
           Log.getLogWriter().info("Caught Exception " + e + ".  Expected with concurrent execution, continuing test.");
           recordFailedOps(ParRegBB.INDOUBT_TXOPS);
-        } catch (CommitConflictException e) {
+        } catch (ConflictException e) {
           // not expected (with only one op per tx)
           throw new TestException("Unexpected Exception " + e + ". " + TestHelper.getStackTrace(e));
         }

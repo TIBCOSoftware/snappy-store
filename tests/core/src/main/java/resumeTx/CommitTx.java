@@ -17,19 +17,25 @@
 
 package resumeTx;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
-import com.gemstone.gemfire.cache.*;
-import com.gemstone.gemfire.distributed.*;
-import com.gemstone.gemfire.cache.execute.*;
-import com.gemstone.gemfire.cache.partition.PartitionRegionHelper;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-
-import hydra.*;
-
-import util.*;
-import tx.*;
+import com.gemstone.gemfire.cache.ConflictException;
+import com.gemstone.gemfire.cache.Declarable;
+import com.gemstone.gemfire.cache.TransactionDataNodeHasDepartedException;
+import com.gemstone.gemfire.cache.TransactionDataRebalancedException;
+import com.gemstone.gemfire.cache.TransactionId;
+import com.gemstone.gemfire.cache.TransactionInDoubtException;
+import com.gemstone.gemfire.cache.execute.Function;
+import com.gemstone.gemfire.cache.execute.FunctionContext;
+import com.gemstone.gemfire.distributed.DistributedMember;
+import hydra.CacheHelper;
+import hydra.Log;
+import hydra.TestConfig;
+import util.TestException;
+import util.TestHelper;
+import util.TxHelper;
 
 /** CommitTx
  *  A Function to commit a resumeable transaction.
@@ -60,7 +66,7 @@ public class CommitTx implements Function, Declarable {
        Log.getLogWriter().fine("CommitTx RESUMED " + txId);
        try {
           TxHelper.commit();
-       } catch (CommitConflictException e) {
+       } catch (ConflictException e) {
          committed = false;
          if (isSerialExecution) {
             // rethrow original Exception

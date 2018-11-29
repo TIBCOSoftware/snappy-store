@@ -17,15 +17,26 @@
 
 package wan;
 
-import java.util.*;
-
-import com.gemstone.gemfire.cache.*;
+import com.gemstone.gemfire.cache.ConflictException;
+import com.gemstone.gemfire.cache.Region;
+import com.gemstone.gemfire.cache.TransactionDataNodeHasDepartedException;
+import com.gemstone.gemfire.cache.TransactionException;
+import com.gemstone.gemfire.cache.TransactionInDoubtException;
+import hydra.CacheHelper;
+import hydra.DiskStoreHelper;
+import hydra.GsRandom;
+import hydra.Log;
+import hydra.MasterController;
+import hydra.RegionHelper;
+import hydra.TestConfig;
+import objects.ObjectHelper;
 import pdx.PdxTest;
-
-import hydra.*;
-import hydra.blackboard.*;
-import objects.*;
-import util.*;
+import util.BaseValueHolder;
+import util.NameFactory;
+import util.RandomValues;
+import util.TestException;
+import util.TestHelper;
+import util.TxHelper;
 
 /**
  * VersionHelper class for WANClient (TXInDoubtExceptions prevent backward compatibility in test code)
@@ -118,9 +129,9 @@ public class WANClientVersionHelper {
           Log.getLogWriter().info("Caught TransactionDataNodeHasDepartedException.  Expected with concurrent execution, continuing test.");
         } catch (TransactionInDoubtException e) {
           Log.getLogWriter().info("Caught TransactionInDoubtException.  Expected with concurrent execution, continuing test.");
-        } catch (CommitConflictException e) {
+        } catch (ConflictException e) {
           // we don't expect this as each thread works on its own set of keys
-          throw new TestException("Unexpected CommitConflictException " + e + " " + TestHelper.getStackTrace(e));
+          throw new TestException("Unexpected ConflictException " + e + " " + TestHelper.getStackTrace(e));
         }
       }
     }

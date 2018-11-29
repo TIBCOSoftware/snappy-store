@@ -16,80 +16,23 @@
  */
 package parReg.colocation;
 
-import getInitialImage.InitImageBB;
-import getInitialImage.InitImagePrms;
-import hydra.BridgeHelper;
-import hydra.BridgePrms;
-import hydra.CacheHelper;
-import hydra.ClientVmInfo;
-import hydra.ClientVmMgr;
-import hydra.ClientVmNotFoundException;
-import hydra.ConfigPrms;
-import hydra.DiskStorePrms;
-import hydra.DistributedSystemHelper;
-import hydra.GatewayPrms;
-import hydra.GatewaySenderHelper;
-import hydra.GatewaySenderPrms;
-import hydra.HDFSStoreHelper;
-import hydra.Log;
-import hydra.PoolHelper;
-import hydra.PoolPrms;
-import hydra.RegionHelper;
-import hydra.RegionPrms;
-import hydra.RemoteTestModule;
-import hydra.StopSchedulingTaskOnClientOrder;
-import hydra.TestConfig;
-import hydratest.grid.GridPrms;
-
 import java.io.File;
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Vector;
+import java.util.*;
 
-import parReg.ParRegBB;
-import parReg.ParRegPrms;
-import parReg.ParRegUtil;
-import parReg.ParRegUtilVersionHelper;
-import parReg.execute.UpdateBBPartitionListener;
-import pdx.PdxTest;
-import util.BaseValueHolder;
-import util.KeyIntervals;
-import util.NameBB;
-import util.NameFactory;
-import util.PRObserver;
-import util.RandomValues;
-import util.SilenceListener;
-import util.StopStartVMs;
-import util.TestException;
-import util.TestHelper;
-import util.TestHelperPrms;
-import util.TxHelper;
-import util.ValueHolder;
-import util.ValueHolderPrms;
-
-import com.gemstone.gemfire.cache.Cache;
-import com.gemstone.gemfire.cache.CacheLoaderException;
-import com.gemstone.gemfire.cache.CacheWriterException;
-import com.gemstone.gemfire.cache.CommitConflictException;
-import com.gemstone.gemfire.cache.DataPolicy;
-import com.gemstone.gemfire.cache.PartitionAttributes;
-import com.gemstone.gemfire.cache.Region;
-import com.gemstone.gemfire.cache.RegionAttributes;
-import com.gemstone.gemfire.cache.RegionExistsException;
-import com.gemstone.gemfire.cache.TimeoutException;
-import com.gemstone.gemfire.cache.TransactionDataNodeHasDepartedException;
-import com.gemstone.gemfire.cache.TransactionDataRebalancedException;
-import com.gemstone.gemfire.cache.TransactionException;
-import com.gemstone.gemfire.cache.TransactionInDoubtException;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.internal.cache.BucketDump;
 import com.gemstone.gemfire.internal.cache.ForceReattemptException;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
+import getInitialImage.InitImageBB;
+import getInitialImage.InitImagePrms;
+import hydra.*;
+import hydratest.grid.GridPrms;
+import parReg.ParRegBB;
+import parReg.ParRegPrms;
+import parReg.ParRegUtil;
+import parReg.execute.UpdateBBPartitionListener;
+import pdx.PdxTest;
+import util.*;
 
 
 public class ParRegColocation {
@@ -996,9 +939,9 @@ public class ParRegColocation {
         } catch (TransactionInDoubtException e) {
           Log.getLogWriter().info("Caught Exception " + e + ".  Expected with concurrent execution, continuing test.");
           recordFailedOps(ParRegBB.INDOUBT_TXOPS);
-        } catch (CommitConflictException e) {
+        } catch (ConflictException e) {
           // Not expected as there is only one op per tx
-          throw new TestException("Unexpected CommitConflictException " + TestHelper.getStackTrace(e));
+          throw new TestException("Unexpected ConflictException " + TestHelper.getStackTrace(e));
         }
       }
 
@@ -1091,8 +1034,6 @@ public class ParRegColocation {
    *                The key to check.
    * @param value
    *                The value for the key.
-   * @param logStr
-   *                Used if throwing an error due to an unexpected value.
    */
   protected void checkValue(Object key, Object value) {
     if (value instanceof BaseValueHolder) {
@@ -1124,8 +1065,6 @@ public class ParRegColocation {
    *                The key to check.
    * @param value
    *                The value for the key.
-   * @param logStr
-   *                Used if throwing an error due to an unexpected value.
    */
   protected void checkUpdatedValue(Object key, Object value) {
     if (value instanceof BaseValueHolder) {

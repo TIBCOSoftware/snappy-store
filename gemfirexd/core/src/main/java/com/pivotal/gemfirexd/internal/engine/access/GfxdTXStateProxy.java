@@ -117,6 +117,12 @@ public final class GfxdTXStateProxy extends TXStateProxy {
   @Override
   protected Set<InternalDistributedMember> getRollbackTargets(
       VMIdAdvisor advisor) {
+    // hive meta-store tables are persisted on locators too, so send rollback
+    // to all nodes for the case when "default-persistent" is set on the connection
+    final LanguageConnectionContext lcc = Misc.getLanguageConnectionContext();
+    if (lcc != null && lcc.isDefaultPersistent()) {
+      return super.getRollbackTargets(advisor);
+    }
     // send rollback only to GFXD stores
     @SuppressWarnings({ "unchecked", "rawtypes" })
     Set<InternalDistributedMember> stores = (Set)GemFireXDUtils

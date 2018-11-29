@@ -16,43 +16,31 @@
  */
 package nbsTests;
 
-import getInitialImage.InitImageBB;
-import getInitialImage.InitImageTest;
-import getInitialImage.InitImagePrms;
-import hct.BBoard;
-import hct.HctPrms;
-import hct.InterestPolicyTest;
-import hydra.ClientVmInfo;
-import hydra.ClientVmMgr;
-import hydra.ClientVmNotFoundException;
-import hydra.Log;
-import hydra.MasterController;
-import hydra.CacheHelper;
-import hydra.RegionHelper;
-import hydra.StopSchedulingTaskOnClientOrder;
-import hydra.TestConfig;
-import hydra.blackboard.*;
-
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Vector;
 
+import com.gemstone.gemfire.cache.CacheWriterException;
+import com.gemstone.gemfire.cache.ConflictException;
+import com.gemstone.gemfire.cache.TransactionDataNodeHasDepartedException;
+import com.gemstone.gemfire.cache.TransactionDataRebalancedException;
+import com.gemstone.gemfire.cache.TransactionException;
+import com.gemstone.gemfire.cache.TransactionInDoubtException;
+import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
+import durableClients.DurableClientsBB;
+import getInitialImage.InitImageBB;
+import getInitialImage.InitImagePrms;
+import getInitialImage.InitImageTest;
+import hct.BBoard;
+import hct.HctPrms;
+import hct.InterestPolicyTest;
+import hydra.*;
+import hydra.blackboard.SharedCounters;
 import parReg.ParRegBB;
-
 import util.KeyIntervals;
 import util.TestException;
 import util.TestHelper;
 import util.TxHelper;
-
-import com.gemstone.gemfire.cache.CacheWriterException;
-import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
-import com.gemstone.gemfire.cache.TransactionDataNodeHasDepartedException;
-import com.gemstone.gemfire.cache.TransactionException;
-import com.gemstone.gemfire.cache.TransactionInDoubtException;
-import com.gemstone.gemfire.cache.TransactionDataRebalancedException;
-import com.gemstone.gemfire.cache.CommitConflictException;
-
-import durableClients.DurableClientsBB;
 
 public class NBSTest extends InterestPolicyTest{
   
@@ -351,9 +339,9 @@ public class NBSTest extends InterestPolicyTest{
                 Log.getLogWriter().info("Caught " + e + " Expected with 6.5 PR Tx behavior, continuing test.");
                 incrementFailedOpCounter(whichOp);
               }
-          } catch (CommitConflictException e) {
+          } catch (ConflictException e) {
             // currently not expecting any conflicts ... only one op per tx
-            throw new TestException("Unexpected CommitConflictException " + TestHelper.getStackTrace(e));
+            throw new TestException("Unexpected ConflictException " + TestHelper.getStackTrace(e));
           }
         }
   
@@ -559,8 +547,6 @@ public class NBSTest extends InterestPolicyTest{
 *  @param isPartial If true, we only registered a partial set of keys,
 *         rather than all keys used by the test.
 *         (Used only if verify is true)
-*  @param expected The expected region contents if we should verify after
-*         each registerInterest call, false otherwise.
 */
 protected void registerInterestSingle(boolean isPartial, boolean receiveValues) throws Exception {
   final int NUM_CASES = 3;

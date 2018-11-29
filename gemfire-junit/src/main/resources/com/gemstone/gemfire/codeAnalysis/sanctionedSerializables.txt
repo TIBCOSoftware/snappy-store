@@ -44,15 +44,11 @@ com/gemstone/gemfire/cache/CacheLoaderException,true,-3383072059406642140
 com/gemstone/gemfire/cache/CacheRuntimeException,false
 com/gemstone/gemfire/cache/CacheWriterException,true,-2872212342970454458
 com/gemstone/gemfire/cache/CacheXmlException,true,-4343870964883131754
-com/gemstone/gemfire/cache/CommitConflictException,true,-1491184174802596675
-com/gemstone/gemfire/cache/CommitDistributionException,true,-3517820638706581823,regionDistributionExceptions:java/util/Set
-com/gemstone/gemfire/cache/CommitIncompleteException,true,1017741483744420800
 com/gemstone/gemfire/cache/DiskAccessException,true,5799100281147167888
 com/gemstone/gemfire/cache/DuplicatePrimaryPartitionException,true,1
 com/gemstone/gemfire/cache/EntryDestroyedException,true,831865939772672542
 com/gemstone/gemfire/cache/EntryExistsException,true,2925082493103537925,oldValue:java/lang/Object
 com/gemstone/gemfire/cache/EntryNotFoundException,true,-2404101631744605659
-com/gemstone/gemfire/cache/EntryNotFoundInRegion,true,5572550909947420405
 com/gemstone/gemfire/cache/EvictionAction,true,-98840597493242980
 com/gemstone/gemfire/cache/EvictionAlgorithm,true,5778669432033106789
 com/gemstone/gemfire/cache/FailedSynchronizationException,true,-6225053492344591496
@@ -72,7 +68,6 @@ com/gemstone/gemfire/cache/RegionExistsException,true,-5643670216230359426
 com/gemstone/gemfire/cache/RegionReinitializedException,true,8532904304288670752
 com/gemstone/gemfire/cache/RegionRoleException,false,regionFullPath:java/lang/String
 com/gemstone/gemfire/cache/RegionShortcut,false
-com/gemstone/gemfire/cache/RemoteTransactionException,true,-2217135580436381984
 com/gemstone/gemfire/cache/ResourceException,false
 com/gemstone/gemfire/cache/RoleException,true,-7521056108445887394
 com/gemstone/gemfire/cache/StatisticsDisabledException,true,-2987721454129719551

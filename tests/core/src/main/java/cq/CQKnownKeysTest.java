@@ -14,17 +14,22 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-package cq; 
+package cq;
 
-import hydra.*;
-import hydra.blackboard.*;
-import util.*;
 import java.util.*;
-import com.gemstone.gemfire.cache.*;
-import com.gemstone.gemfire.cache.util.*;
+
+import com.gemstone.gemfire.cache.CacheLoaderException;
+import com.gemstone.gemfire.cache.CacheWriterException;
+import com.gemstone.gemfire.cache.ConflictException;
+import com.gemstone.gemfire.cache.EntryNotFoundException;
+import com.gemstone.gemfire.cache.InterestResultPolicy;
+import com.gemstone.gemfire.cache.Region;
+import com.gemstone.gemfire.cache.TimeoutException;
 import com.gemstone.gemfire.cache.client.Pool;
 import com.gemstone.gemfire.cache.query.*;
-import com.gemstone.gemfire.distributed.*;
+import hydra.*;
+import hydra.blackboard.SharedCounters;
+import util.*;
 
 public class CQKnownKeysTest {
 
@@ -411,9 +416,9 @@ public void doOps(BitSet availableOps) {
       if (useTransactions) {
         try {
           TxHelper.commit();
-        } catch (CommitConflictException e) {
+        } catch (ConflictException e) {
           // currently not expecting any conflicts ...
-          throw new TestException("Unexpected CommitConflictException " + TestHelper.getStackTrace(e));
+          throw new TestException("Unexpected ConflictException " + TestHelper.getStackTrace(e));
         }
       }
 
@@ -763,7 +768,6 @@ protected void checkContainsValueForKey(Object key, boolean expected, String log
  *  
  *  @param key The key to check.
  *  @param value The value for the key.
- *  @param logStr Used if throwing an error due to an unexpected value.
  */
 protected void checkValue(Object key, Object value) {
    if (value instanceof QueryObject) {
@@ -783,7 +787,6 @@ protected void checkValue(Object key, Object value) {
  *  
  *  @param key The key to check.
  *  @param value The value for the key.
- *  @param logStr Used if throwing an error due to an unexpected value.
  */
 protected void checkUpdatedValue(Object key, Object value) {
    if (value instanceof QueryObject) {

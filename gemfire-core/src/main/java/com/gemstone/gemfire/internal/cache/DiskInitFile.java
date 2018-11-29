@@ -16,30 +16,9 @@
  */
 package com.gemstone.gemfire.internal.cache;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.DataInput;
-import java.io.DataInputStream;
-import java.io.DataOutput;
-import java.io.EOFException;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.gemstone.gemfire.CancelCriterion;
@@ -58,15 +37,7 @@ import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.InternalInstantiator;
 import com.gemstone.gemfire.internal.InternalInstantiator.InstantiatorAttributesHolder;
-import com.gemstone.gemfire.internal.cache.persistence.CanonicalIdHolder;
-import com.gemstone.gemfire.internal.cache.persistence.DiskExceptionHandler;
-import com.gemstone.gemfire.internal.cache.persistence.DiskInitFileInterpreter;
-import com.gemstone.gemfire.internal.cache.persistence.DiskInitFileParser;
-import com.gemstone.gemfire.internal.cache.persistence.DiskRegionView;
-import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
-import com.gemstone.gemfire.internal.cache.persistence.PRPersistentConfig;
-import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
-import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberPattern;
+import com.gemstone.gemfire.internal.cache.persistence.*;
 import com.gemstone.gemfire.internal.cache.versions.DiskRegionVersionVector;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionHolder;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
@@ -75,7 +46,7 @@ import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gnu.trove.TIntHashSet;
 import com.gemstone.gnu.trove.TLongHashSet;
 import com.gemstone.gnu.trove.TLongIterator;
-import io.snappydata.collection.IntObjectHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.IntObjectHashMap;
 
 /**
  * Does all the IF file work for a DiskStoreImpl.
@@ -1840,10 +1811,7 @@ public class DiskInitFile implements DiskInitFileInterpreter {
 
   private void saveCanonicalIds() {
     IntObjectHashMap<Object> mappings = canonicalIdHolder.getAllMappings();
-    mappings.forEachWhile((id, v) -> {
-      writeCanonicalId(id, v);
-      return true;
-    });
+    mappings.forEachKeyValue(this::writeCanonicalId);
   }
 
   private void saveRevokedMembers() {

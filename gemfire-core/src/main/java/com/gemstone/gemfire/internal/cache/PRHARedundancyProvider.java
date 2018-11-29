@@ -60,8 +60,8 @@ import com.gemstone.gemfire.internal.cache.persistence.MembershipFlushRequest;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentStateListener;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-import io.snappydata.collection.OpenHashSet;
 import com.gemstone.org.jgroups.util.StringId;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 /**
  * This class provides the redundancy management for partitioned region. It will
@@ -549,7 +549,7 @@ public class PRHARedundancyProvider
           this.prRegion.bucketStringForLogs(bucketId));
     }
     Collection<InternalDistributedMember> acceptedMembers = new ArrayList<InternalDistributedMember>(); // ArrayList<DataBucketStores>
-    OpenHashSet<InternalDistributedMember> excludedMembers = new OpenHashSet<>();
+    UnifiedSet<InternalDistributedMember> excludedMembers = new UnifiedSet<>();
     ArrayListWithClearState<InternalDistributedMember> failedMembers = new ArrayListWithClearState<InternalDistributedMember>();
     final long timeOut = System.currentTimeMillis() + computeTimeout();
     BucketMembershipObserver observer = null;
@@ -1395,7 +1395,7 @@ public class PRHARedundancyProvider
     
     // Convert peers to DataStoreBuckets
     ArrayList<DataStoreBuckets> stores = this.prRegion.getRegionAdvisor()
-        .adviseFilteredDataStores(new OpenHashSet<>(candidates));
+        .adviseFilteredDataStores(new UnifiedSet<>(candidates));
     
     final DM dm = this.prRegion.getDistributionManager();
     // Add ourself as a candidate, if appropriate

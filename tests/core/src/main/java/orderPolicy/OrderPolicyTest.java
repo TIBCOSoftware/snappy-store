@@ -17,86 +17,27 @@
 
 package orderPolicy;
 
-import hct.BBoard;
-import hct.HctPrms;
-import hydra.blackboard.*;
-import hydra.BridgeHelper;
-import hydra.CacheHelper;
-import hydra.ClientPrms;
-import hydra.ClientVmInfo;
-import hydra.ClientVmMgr;
-import hydra.ClientVmNotFoundException;
-import hydra.ConfigHashtable;
-import hydra.ConfigPrms;
-import hydra.DistributedSystemHelper;
-import hydra.EdgeHelper;
-import hydra.GatewayHubHelper;
-import hydra.GatewaySenderHelper;
-import hydra.GatewaySenderPrms;
-import hydra.GsRandom;
-import hydra.HydraRuntimeException;
-import hydra.HydraThreadLocal;
-import hydra.Log;
-import hydra.MasterController;
-import hydra.RegionHelper;
-import hydra.RemoteTestModule;
-import hydra.StopSchedulingTaskOnClientOrder;
-import hydra.TestConfig;
-import hydra.BridgeHelper.Endpoint;
-import hydra.blackboard.SharedCounters;
-import hydra.blackboard.SharedMap;
-
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Vector;
 
-import security.SecurityClientsPrms;
+import com.gemstone.gemfire.cache.Cache;
+import com.gemstone.gemfire.cache.ClientHelper;
+import com.gemstone.gemfire.cache.Region;
+import com.gemstone.gemfire.cache.client.internal.PoolImpl;
+import com.gemstone.gemfire.cache.util.GatewayHub;
+import com.gemstone.gemfire.distributed.internal.ServerLocation;
+import hct.HctPrms;
+import hydra.*;
+import hydra.blackboard.Blackboard;
 import util.NameFactory;
 import util.RandomValues;
 import util.TestException;
 import util.TestHelper;
 import util.TestHelperPrms;
-import util.TxHelper;
 import util.ValueHolder;
-
-import com.gemstone.gemfire.InternalGemFireException;
-import com.gemstone.gemfire.LogWriter;
-import com.gemstone.gemfire.Statistics;
-import com.gemstone.gemfire.StatisticsFactory;
-import com.gemstone.gemfire.SystemFailure;
-import com.gemstone.gemfire.cache.Cache;
-import com.gemstone.gemfire.cache.CacheException;
-import com.gemstone.gemfire.cache.ClientHelper;
-import com.gemstone.gemfire.cache.EntryDestroyedException;
-import com.gemstone.gemfire.cache.EntryNotFoundException;
-import com.gemstone.gemfire.cache.InterestResultPolicy;
-import com.gemstone.gemfire.cache.PartitionAttributes;
-import com.gemstone.gemfire.cache.Region;
-import com.gemstone.gemfire.cache.client.internal.PoolImpl;
-import com.gemstone.gemfire.cache.query.SelectResults;
-import com.gemstone.gemfire.cache.server.CacheServer;
-import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
-import com.gemstone.gemfire.distributed.internal.ServerLocation;
-import com.gemstone.gemfire.internal.cache.GatewayStats;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.security.AuthenticationFailedException;
-
-import com.gemstone.gemfire.cache.CommitConflictException;
-import com.gemstone.gemfire.cache.TransactionDataNodeHasDepartedException;
-import com.gemstone.gemfire.cache.TransactionException;
-import com.gemstone.gemfire.cache.TransactionInDoubtException;
-import com.gemstone.gemfire.cache.util.GatewayHub;
-
-import cq.CQUtil;
-import cq.CQUtilBB;
-import diskReg.DiskRegUtil;
-import durableClients.DurableClientsBB;
-import wan.*;
+import wan.CacheClientPrms;
+import wan.CacheServerPrms;
+import wan.WANBlackboard;
+import wan.WANClient;
 
 /**
  * Extends wan.OrderPolicyTest for Gateway.OrderPolicy and Gateway.ConcurrencyLevel

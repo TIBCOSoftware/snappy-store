@@ -16,10 +16,15 @@
  */
 package com.gemstone.gemfire.cache;
 
-import java.io.*;
-import java.util.*;
-import junit.framework.TestCase;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.util.HashSet;
+import java.util.Set;
+
 import com.gemstone.gemfire.distributed.internal.membership.InternalRole;
+import junit.framework.TestCase;
 
 /** Tests the subclasses of RoleException to make sure they are Serializable */
 public class RoleExceptionJUnitTest extends TestCase {
@@ -78,36 +83,6 @@ public class RoleExceptionJUnitTest extends TestCase {
 
     assertEquals(out.getMessage(), in.getMessage());
     assertEquals(out.getRegionFullPath(), in.getRegionFullPath());
-  }
-
-  /**
-   * Assert that CommitDistributionException is serializable.
-   */
-  public void testCommitDistributionExceptionIsSerializable() throws Exception {
-    String s = "MyString";
-    Set outExceptions = new HashSet();
-    outExceptions.add(createRegionDistributionException());
-    
-    CommitDistributionException out = new CommitDistributionException(
-        s, outExceptions);
-    ByteArrayOutputStream baos = new ByteArrayOutputStream(100);
-    ObjectOutputStream oos = new ObjectOutputStream(baos);
-    oos.writeObject(out);
-    
-    byte[] data = baos.toByteArray();
-    
-    ByteArrayInputStream bais = new ByteArrayInputStream(data);
-    ObjectInputStream ois = new ObjectInputStream(bais);
-    CommitDistributionException in = (CommitDistributionException) ois.readObject();
-    
-    Set inExceptions = in.getRegionDistributionExceptions();
-    assertNotNull(inExceptions);
-    Iterator iter = inExceptions.iterator();
-    assertTrue(iter.hasNext());
-    RegionDistributionException e = (RegionDistributionException) iter.next();
-    assertEquals(createSetOfRoles(), e.getFailedRoles());
-
-    assertEquals(out.getMessage(), in.getMessage());
   }
 
   private Set createSetOfRoles() {

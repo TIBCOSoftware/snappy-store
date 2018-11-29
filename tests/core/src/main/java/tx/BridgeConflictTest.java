@@ -14,15 +14,31 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-package tx; 
+package tx;
 
-import util.*;
-import hydra.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 
-import com.gemstone.gemfire.cache.*;
-import com.gemstone.gemfire.internal.cache.*;
-
-import java.util.*;
+import com.gemstone.gemfire.cache.ConflictException;
+import com.gemstone.gemfire.cache.Region;
+import com.gemstone.gemfire.internal.cache.LocalRegion;
+import com.gemstone.gemfire.internal.cache.TXStateProxy;
+import hydra.BridgeHelper;
+import hydra.ClientDescription;
+import hydra.GsRandom;
+import hydra.HydraThreadLocal;
+import hydra.Log;
+import hydra.ProcessMgr;
+import hydra.TestConfig;
+import util.BaseValueHolder;
+import util.CacheUtil;
+import util.NameFactory;
+import util.TestException;
+import util.TestHelper;
+import util.TxHelper;
+import util.ValueHolder;
 
 /**
  * A class to test conflicts in transactions.
@@ -166,7 +182,7 @@ protected void concConflictTest() {
          try {
             TxHelper.commit();
             TxBB.inc(TxBB.TX_SUCCESS);
-         } catch (CommitConflictException e) {
+         } catch (ConflictException e) {
             TxBB.inc(TxBB.TX_FAILURE);
             Log.getLogWriter().info("Caught " + e + "; continuing test");
          }
@@ -490,7 +506,7 @@ protected OpList doOps(OpList opList, int numOps, boolean targetSame) {
 /** Given an operation, execute an operation that involves that same 
  *  key and/or region.
  *
- *  @param Operation - the operation to base the new operation on.
+ *  @param operation - the operation to base the new operation on.
  *
  *  @return The operation that was executed.
  */
@@ -1018,7 +1034,7 @@ protected boolean thread1HasConflict(OpList opList1, OpList opList2, boolean inT
  *
  *  @param op1 The operation done by thread1.
  *  @param op2 The operation done by thread2.
- *  @param inTrans True if op2 was done in a transaction, false otherwise.
+ *  @param op2InTrans True if op2 was done in a transaction, false otherwise.
  *  @param logStr A buffer to append any logging to.
  *
  *  @return True if thread1 will have a conflict (because of op2) if it 

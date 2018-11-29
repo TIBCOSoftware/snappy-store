@@ -60,10 +60,11 @@ import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericParameter;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericParameterValueSet;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericPreparedStatement;
-import io.snappydata.collection.LongObjectHashMap;
 import io.snappydata.test.dunit.SerializableCallable;
 import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.dunit.VM;
+import org.eclipse.collections.api.iterator.LongIterator;
+import org.eclipse.collections.impl.map.mutable.primitive.LongObjectHashMap;
 
 /**
  * Tests whether the statementID , connectionID etc are being passed correctly
@@ -2805,18 +2806,14 @@ public class PreparedStatementDUnit extends DistributedSQLTestBase {
           wrapper.getStatementMapForTEST();
       // invoke a getStatement to force drain refQueue
       final GfxdConnectionWrapper connWrapper = wrapper;
-      stmntMap.forEachWhile((key, stmtRef) -> {
-        try {
-          EmbedConnection conn = connWrapper.getConnectionForSynchronization();
-          synchronized (conn.getConnectionSynchronization()) {
-            connWrapper.getStatement(null, key, true, false, false, false,
-                null, false, 0, 0);
-          }
-          return false;
-        } catch (SQLException sqle) {
-          throw new RuntimeException(sqle);
+      LongIterator keys = stmntMap.keySet().longIterator();
+      if (keys.hasNext()) {
+        EmbedConnection conn = connWrapper.getConnectionForSynchronization();
+        synchronized (conn.getConnectionSynchronization()) {
+          connWrapper.getStatement(null, keys.next(), true, false, false,
+              false, null, false, 0, 0);
         }
-      });
+      }
       mapSize = stmntMap.size();
       if (mapSize <= expectedSize) {
         return mapSize;

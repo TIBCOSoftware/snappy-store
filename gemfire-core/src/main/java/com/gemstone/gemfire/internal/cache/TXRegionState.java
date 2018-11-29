@@ -77,9 +77,6 @@ public final class TXRegionState extends ReentrantLock {
 
   TObjectLongHashMapDSFID tailKeysForParallelWAN;
 
-  // A map of Objects (entry keys) -> TXEntryUserAttrState
-  //private HashMap uaMods;
-
   private transient final StoppableReentrantReadWriteLock.StoppableReadLock
       expiryReadLock;
 
@@ -332,50 +329,6 @@ public final class TXRegionState extends ReentrantLock {
   public final TXState getTXState() {
     return this.txState;
   }
-
-  /*
-  public void rmEntry(Object entryKey, TXState txState, LocalRegion r) {
-    rmEntryUserAttr(entryKey);
-    TXEntryState e = (TXEntryState)this.entryMods.remove(entryKey);
-    if (e != null) {
-      e.cleanup(r);
-    }
-    if (this.uaMods == null && this.entryMods.size() == 0) {
-      txState.rmRegion(r);
-    }
-  }
-
-  public TXEntryUserAttrState readEntryUserAttr(Object entryKey) {
-    TXEntryUserAttrState result = null;
-    if (this.uaMods != null) {
-      result = (TXEntryUserAttrState)this.uaMods.get(entryKey);
-    }
-    return result;
-  }
-
-  public TXEntryUserAttrState writeEntryUserAttr(Object entryKey, LocalRegion r) {
-    if (this.uaMods == null) {
-      this.uaMods = new HashMap();
-    }
-    TXEntryUserAttrState result = (TXEntryUserAttrState)this.uaMods
-        .get(entryKey);
-    if (result == null) {
-      result = new TXEntryUserAttrState(r.basicGetEntryUserAttribute(entryKey));
-      this.uaMods.put(entryKey, result);
-    }
-    return result;
-  }
-
-  public void rmEntryUserAttr(Object entryKey) {
-    if (this.uaMods != null) {
-      if (this.uaMods.remove(entryKey) != null) {
-        if (this.uaMods.size() == 0) {
-          this.uaMods = null;
-        }
-      }
-    }
-  }
-  */
 
   /**
    * Returns the total number of modifications made by this transaction to this
@@ -690,21 +643,6 @@ public final class TXRegionState extends ReentrantLock {
 
   final void applyChangesEnd(LocalRegion r, boolean commit) {
     try {
-      /*
-      try {
-        if (this.uaMods != null) {
-          Iterator it = this.uaMods.entrySet().iterator();
-          while (it.hasNext()) {
-            Map.Entry me = (Map.Entry)it.next();
-            Object eKey = me.getKey();
-            TXEntryUserAttrState txes = (TXEntryUserAttrState)me.getValue();
-            txes.applyChanges(r, eKey);
-          }
-        }
-      } finally {
-        r.txLRUEnd();
-      }
-      */
       r.txLRUEnd(commit);
     } catch (RegionDestroyedException ex) {
       // Region was destroyed out from under us. So act as if the region

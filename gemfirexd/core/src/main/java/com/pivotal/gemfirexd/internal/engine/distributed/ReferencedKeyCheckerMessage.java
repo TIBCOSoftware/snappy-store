@@ -92,7 +92,7 @@ import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.xplain.XPLAINUtil;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
-import io.snappydata.collection.IntObjectHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.IntObjectHashMap;
 
 /**
  * This function is used to check the referenced key constraint after we
@@ -885,8 +885,7 @@ public final class ReferencedKeyCheckerMessage extends
         boolean refColSameAfterModFlag = in.readBoolean();
         if (refColSameAfterModFlag) {
           int numElements = in.readInt();
-          this.refColSameAfterModBitsMapping = IntObjectHashMap.withExpectedSize(
-              numElements);
+          this.refColSameAfterModBitsMapping = new IntObjectHashMap<>(numElements);
           int byteArraySize = FormatableBitSet
               .numBytesFromBits(this.refColsUpdtdBits.getNumBitsSet());
           for (int i = 0; i < numElements; ++i) {
@@ -896,7 +895,7 @@ public final class ReferencedKeyCheckerMessage extends
             for (int j = 0; j < byteArraySize; ++j) {
               bytes[j] = in.readByte();
             }
-            this.refColSameAfterModBitsMapping.justPut(rowNum,bytes);
+            this.refColSameAfterModBitsMapping.put(rowNum,bytes);
             
           }
         }
@@ -989,13 +988,12 @@ public final class ReferencedKeyCheckerMessage extends
         if (this.refColSameAfterModBitsMapping != null) {
           out.writeBoolean(true);
           out.writeInt(this.refColSameAfterModBitsMapping.size());
-          this.refColSameAfterModBitsMapping.forEachWhile((rowNum, refColSameAfterUpdt) -> {
+          this.refColSameAfterModBitsMapping.forEachKeyValue((rowNum, refColSameAfterUpdt) -> {
             try {
               out.writeInt(rowNum);
               for (byte b : refColSameAfterUpdt) {
                 out.writeByte(b);
               }
-              return true;
             } catch (IOException ioe) {
               throw new GemFireIOException(ioe.getMessage(), ioe);
             }
@@ -1121,14 +1119,13 @@ public final class ReferencedKeyCheckerMessage extends
       if (old.equals(modified)) {
         // set bit on to indicate no change
         if (this.refColSameAfterModBitsMapping == null) {
-          this.refColSameAfterModBitsMapping =
-              IntObjectHashMap.withExpectedSize(8);
+          this.refColSameAfterModBitsMapping = new IntObjectHashMap<>(8);
         }
         if (refColSameAfterUpdt == null) {
           int numCols = this.refColUpdtd2DependentCols.size();
           refColSameAfterUpdt = new byte[FormatableBitSet
               .numBytesFromBits(numCols)];
-          this.refColSameAfterModBitsMapping.justPut(rowNum, refColSameAfterUpdt);
+          this.refColSameAfterModBitsMapping.put(rowNum, refColSameAfterUpdt);
         }
         // based on j identify the right byte from array & its pos
         // TODO:Asif clean up.

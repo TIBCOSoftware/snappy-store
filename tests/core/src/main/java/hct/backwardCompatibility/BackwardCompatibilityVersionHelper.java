@@ -14,15 +14,20 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-package hct.backwardCompatibility; 
+package hct.backwardCompatibility;
 
-import java.util.*;
-
-import hydra.*;
-import util.*;
-import cq.*;
-
-import com.gemstone.gemfire.cache.*;
+import com.gemstone.gemfire.cache.ConflictException;
+import com.gemstone.gemfire.cache.Region;
+import com.gemstone.gemfire.cache.TransactionDataNodeHasDepartedException;
+import com.gemstone.gemfire.cache.TransactionDataRebalancedException;
+import com.gemstone.gemfire.cache.TransactionException;
+import com.gemstone.gemfire.cache.TransactionInDoubtException;
+import hydra.Log;
+import hydra.TestConfig;
+import util.TestException;
+import util.TestHelper;
+import util.TestHelperPrms;
+import util.TxHelper;
 
 /** VersionHelper class (for Transaction support) */
 public class BackwardCompatibilityVersionHelper {
@@ -104,8 +109,8 @@ public class BackwardCompatibilityVersionHelper {
               Log.getLogWriter().info("Caught TransactionDataNodeHasDepartedException.  Expected with concurrent execution, continuing test.");
             } catch (TransactionInDoubtException e) {
               Log.getLogWriter().info("Caught TransactionInDoubtException.  Expected with concurrent execution, continuing test.");
-            } catch (CommitConflictException e) {
-               Log.getLogWriter().info("CommitConflictException " + e + " expected, continuing test");
+            } catch (ConflictException e) {
+               Log.getLogWriter().info("ConflictException " + e + " expected, continuing test");
             }
           } else {
               TxHelper.rollback();

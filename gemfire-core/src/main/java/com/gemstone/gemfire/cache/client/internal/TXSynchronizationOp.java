@@ -18,7 +18,7 @@
 package com.gemstone.gemfire.cache.client.internal;
 
 import com.gemstone.gemfire.GemFireException;
-import com.gemstone.gemfire.cache.CommitConflictException;
+import com.gemstone.gemfire.cache.ConflictException;
 import com.gemstone.gemfire.cache.SynchronizationCommitConflictException;
 import com.gemstone.gemfire.cache.client.ServerOperationException;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
@@ -94,7 +94,7 @@ public class TXSynchronizationOp {
       Part part = msg.getPart(0);
       if (msgType == MessageType.EXCEPTION) {
         Throwable t = (Throwable) part.getObject();
-        if (t instanceof CommitConflictException ||
+        if (t instanceof ConflictException ||
             t instanceof SynchronizationCommitConflictException) {
           throw (GemFireException)t;
         }

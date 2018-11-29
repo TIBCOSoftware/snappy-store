@@ -112,7 +112,6 @@ import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.load.Import;
-import io.snappydata.collection.OpenHashSet;
 import io.snappydata.thrift.BucketOwners;
 import io.snappydata.thrift.CatalogMetadataDetails;
 import io.snappydata.thrift.CatalogMetadataRequest;
@@ -121,6 +120,7 @@ import io.snappydata.thrift.ServerType;
 import io.snappydata.thrift.internal.ClientBlob;
 import io.snappydata.thrift.snappydataConstants;
 import org.apache.log4j.Logger;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 /**
  * GemFireXD built-in system procedures that will get executed on every
@@ -1459,7 +1459,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
   private static void getReplicaServerMapping(final DistributedRegion region,
       final CatalogTableObject catalogTable) {
     // replica to server mapping
-    Set<InternalDistributedMember> owners = new OpenHashSet<>();
+    Set<InternalDistributedMember> owners = new UnifiedSet<>();
     Set<InternalDistributedMember> replicas =
         region.getDistributionAdvisor().adviseInitializedReplicates();
     Map<InternalDistributedMember, String> mbrToServerMap = GemFireXDUtils
@@ -2336,7 +2336,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
 
     Region region = Misc.getRegionForTable(tableName, true);
     LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
-    Set<Integer> bucketSet = new OpenHashSet<>();
+    Set<Integer> bucketSet = new UnifiedSet<>();
     StringTokenizer st = new StringTokenizer(buckets,",");
     while(st.hasMoreTokens()){
       bucketSet.add(Integer.parseInt(st.nextToken()));
@@ -2803,7 +2803,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
       ddLocked = lcc.getDataDictionary().lockForWriting(tc, false);
       // make a copy of currentMembers since it gets modified in
       // refreshLdapGroup call below
-      final OpenHashSet<String> origMembers = new OpenHashSet<>(currentMembers);
+      final UnifiedSet<String> origMembers = new UnifiedSet<>(currentMembers);
       // refresh the LDAP groups on this node first
       final Object[] params = new Object[] { ldapGroup, currentMembers };
       GfxdSystemProcedureMessage.SysProcMethod.refreshLdapGroup

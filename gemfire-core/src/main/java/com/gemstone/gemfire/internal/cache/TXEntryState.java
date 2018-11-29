@@ -47,8 +47,7 @@ import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 
 /**
- * TXEntryState is the entity that tracks transactional changes, except for
- * those tracked by {@link TXEntryUserAttrState}, to an entry.
+ * TXEntryState is the entity that tracks transactional changes.
  * 
  * @author Darrel Schneider
  * @author swale

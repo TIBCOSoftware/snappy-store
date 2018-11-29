@@ -726,7 +726,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
   }
 
   public static final boolean VERBOSE_ON() {
-    return Boolean.getBoolean(VERBOSE_PROPERTY);
+    return true; // SW: Boolean.getBoolean(VERBOSE_PROPERTY);
   }
 
   public static final boolean VERBOSEVERBOSE_ON() {

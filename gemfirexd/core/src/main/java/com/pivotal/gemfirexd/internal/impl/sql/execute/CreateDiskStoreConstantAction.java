@@ -28,7 +28,6 @@ import java.util.Map;
 
 import com.gemstone.gemfire.cache.DiskAccessException;
 import com.gemstone.gemfire.cache.DiskStoreFactory;
-import io.snappydata.collection.OpenHashSet;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
@@ -44,6 +43,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.NumericConstantNode;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 public class CreateDiskStoreConstantAction extends DDLConstantAction {
 
@@ -140,7 +140,7 @@ public class CreateDiskStoreConstantAction extends DDLConstantAction {
       int sizes[] = new int[numDirs];
       boolean dirCreated[] = new boolean[numDirs];
       Arrays.fill(dirCreated, false);
-      OpenHashSet<String> ht = new OpenHashSet<>(numDirs);
+      UnifiedSet<String> ht = new UnifiedSet<>(numDirs);
       String canonicalPath;
       boolean foundExplicitSize = false;
       for (int i = 0; i < numDirs; ++i) {

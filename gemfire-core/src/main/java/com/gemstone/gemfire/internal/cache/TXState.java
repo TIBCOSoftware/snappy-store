@@ -67,7 +67,6 @@ import com.gemstone.gnu.trove.THash;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.TObjectHashingStrategy;
 import com.gemstone.gnu.trove.TObjectProcedure;
-import io.snappydata.collection.OpenHashSet;
 
 /**
  * TXState is the entity that tracks the transaction state on a per thread

@@ -16,8 +16,8 @@
  */
 package com.gemstone.gemfire.internal.cache.persistence;
 
-import io.snappydata.collection.IntObjectHashMap;
-import io.snappydata.collection.ObjectLongHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.IntObjectHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.ObjectLongHashMap;
 
 /**
  * This class manages in memory copy of the canonical ids held in the disk
@@ -34,13 +34,13 @@ public class CanonicalIdHolder {
    * Map of integer representation to canonicalized member ids.
    */
   private final IntObjectHashMap<Object> idToObject =
-      IntObjectHashMap.withExpectedSize(10);
+      new IntObjectHashMap<>(10);
   
   /**
    * Map of canonicalized member ids to integer representation.
    */
   private final ObjectLongHashMap<Object> objectToID =
-      ObjectLongHashMap.withExpectedSize(10);
+      new ObjectLongHashMap<>(10);
   
   private int highestID = 0;
   
@@ -49,7 +49,7 @@ public class CanonicalIdHolder {
    */
   public void addMapping(int id, Object object) {
     //Store the mapping
-    idToObject.justPut(id, object);
+    idToObject.put(id, object);
     objectToID.put(object, id);
     
     //increase the next canonical id the recovered id is higher than it.
@@ -60,7 +60,7 @@ public class CanonicalIdHolder {
    * Get the id for a given object 
    */
   public int getId(Object object) {
-    return (int)objectToID.getLong(object);
+    return (int)objectToID.get(object);
   }
   
   /**
@@ -78,7 +78,7 @@ public class CanonicalIdHolder {
     assert !objectToID.containsKey(object);
     int id = ++highestID;
     objectToID.put(object, id);
-    idToObject.justPut(id, object);
+    idToObject.put(id, object);
     return id;
   }
   

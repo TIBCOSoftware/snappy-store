@@ -14,19 +14,32 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-package resumeTx; 
+package resumeTx;
 
-import util.*;
-import hydra.*;
-import hydra.blackboard.*;
-import tx.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import com.gemstone.gemfire.cache.*;
-import com.gemstone.gemfire.cache.client.*;
-import com.gemstone.gemfire.cache.execute.*;
-import com.gemstone.gemfire.distributed.*;
-
-import java.util.*;
+import com.gemstone.gemfire.cache.client.Pool;
+import com.gemstone.gemfire.cache.client.PoolManager;
+import com.gemstone.gemfire.cache.client.ServerConnectivityException;
+import com.gemstone.gemfire.cache.execute.Execution;
+import com.gemstone.gemfire.cache.execute.FunctionException;
+import com.gemstone.gemfire.cache.execute.FunctionInvocationTargetException;
+import com.gemstone.gemfire.cache.execute.FunctionService;
+import com.gemstone.gemfire.cache.execute.ResultCollector;
+import com.gemstone.gemfire.distributed.DistributedMember;
+import com.gemstone.gemfire.distributed.DistributedSystem;
+import hydra.*;
+import hydra.blackboard.Blackboard;
+import hydra.blackboard.SharedMap;
+import tx.TxPrms;
+import util.*;
 
 /**
  * A class to test resumeable transactions.
@@ -105,7 +118,7 @@ protected void concTxWithFE() throws Exception {
          Log.getLogWriter().info("causedBy = " + causedBy);
          Throwable lastCause = TestHelper.getLastCausedBy(e);
          Log.getLogWriter().info("lastCause = " + lastCause);
-         if (causedBy instanceof CommitConflictException) {
+         if (causedBy instanceof ConflictException) {
             Log.getLogWriter().info("Caught " + e + ", expected with concurrent execution, continuing test");
          } else if ((causedBy instanceof TransactionDataRebalancedException) ||
                     (causedBy instanceof TransactionDataNodeHasDepartedException) ||
@@ -270,7 +283,7 @@ protected void finishAllActiveTx() throws Exception{
          commit(txInfo);
       } catch (FunctionException e) {
          Throwable causedBy = e.getCause();
-         if (causedBy instanceof CommitConflictException) {
+         if (causedBy instanceof ConflictException) {
             if (isSerialExecution) {
                throw new TestException("Caught " + e + " " + TestHelper.getStackTrace(e));
             } else {

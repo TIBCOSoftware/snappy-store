@@ -22,7 +22,10 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.GemFireCheckedException;
@@ -59,7 +62,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedStatement;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
-import io.snappydata.collection.LongObjectHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.LongObjectHashMap;
 
 /**
  * {@link DistributionMessage} for sending GemFireXD DDL statements to members
@@ -95,7 +98,7 @@ public final class GfxdDDLMessage extends GfxdMessage implements
    * pending commit/rollback messages.
    */
   private static final LongObjectHashMap<GfxdDDLMessage> pendingDDLMessages =
-      LongObjectHashMap.withExpectedSize(4);
+      new LongObjectHashMap<>(4);
 
   /**
    * MembershipListener to commit/rollback DDLs if node fails before sending
@@ -269,7 +272,7 @@ public final class GfxdDDLMessage extends GfxdMessage implements
         // indicates that this node should not execute anything in finish
         // message or if origin node goes down before finish message
         this.args.connId = EmbedConnection.UNINITIALIZED;
-        pendingDDLMessages.justPut(ddlId, this);
+        pendingDDLMessages.put(ddlId, this);
       }
       return;
     }
@@ -358,7 +361,7 @@ public final class GfxdDDLMessage extends GfxdMessage implements
         // add self as the pending message to handle sender failure before
         // DDL commit/rollback
         synchronized (pendingDDLMessages) {
-          pendingDDLMessages.justPut(ddlId, this);
+          pendingDDLMessages.put(ddlId, this);
         }
       }
       if (GemFireXDUtils.TraceDDLReplay) {
@@ -450,7 +453,7 @@ public final class GfxdDDLMessage extends GfxdMessage implements
 
   static GfxdDDLMessage removePendingDDLMessage(final long ddlId) {
     synchronized (pendingDDLMessages) {
-      return pendingDDLMessages.remove(ddlId);
+      return pendingDDLMessages.removeKey(ddlId);
     }
   }
 
@@ -587,12 +590,11 @@ public final class GfxdDDLMessage extends GfxdMessage implements
       final ArrayList<GfxdDDLMessage> memberPendingMessages =
         new ArrayList<GfxdDDLMessage>(4);
       synchronized (pendingDDLMessages) {
-        pendingDDLMessages.forEachWhile((ddlId, pendingMessage) -> {
+        pendingDDLMessages.forEachKeyValue((ddlId, pendingMessage) -> {
           if (member.equals(pendingMessage.getSender())) {
             memberPendingMessages.add(pendingMessage);
-            pendingDDLMessages.remove(ddlId);
+            pendingDDLMessages.removeKey(ddlId);
           }
-          return true;
         });
       }
 
@@ -608,7 +610,7 @@ public final class GfxdDDLMessage extends GfxdMessage implements
         if (doCommit) {
           actionStr = "committed";
           GfxdDDLFinishMessage.doPutInDDLRegion(
-              Long.valueOf(pendingMessage.args.id), pendingMessage.args.ddl,
+              pendingMessage.args.id, pendingMessage.args.ddl,
               -1, "MembershipListener for DDLs:");
         }
         else {

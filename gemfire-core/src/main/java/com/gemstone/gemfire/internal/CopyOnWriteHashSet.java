@@ -25,7 +25,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Set;
 
-import io.snappydata.collection.OpenHashSet;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 /**
  * A Hash set where every modification makes an internal copy 
@@ -43,16 +43,16 @@ public class CopyOnWriteHashSet<T> implements Set<T>, Serializable  {
   
   private static final long serialVersionUID = 8591978652141659932L;
 
-  private static final OpenHashSet EMPTY_SET = new OpenHashSet(1);
+  private static final UnifiedSet EMPTY_SET = new UnifiedSet(1);
 
   @SuppressWarnings("unchecked")
-  private volatile transient OpenHashSet<T> snapshot = EMPTY_SET;
+  private volatile transient UnifiedSet<T> snapshot = EMPTY_SET;
 
   public CopyOnWriteHashSet() {
   }
 
   public CopyOnWriteHashSet(Set<T> copy) {
-    this.snapshot = new OpenHashSet<>(copy);
+    this.snapshot = new UnifiedSet<>(copy);
   }
 
   /**
@@ -69,7 +69,7 @@ public class CopyOnWriteHashSet<T> implements Set<T>, Serializable  {
 
   public boolean add(T e) {
     synchronized(this) {
-      OpenHashSet<T> set = new OpenHashSet<>(snapshot);
+      UnifiedSet<T> set = new UnifiedSet<>(snapshot);
       boolean result = set.add(e);
       snapshot = set;
       return result;
@@ -78,7 +78,7 @@ public class CopyOnWriteHashSet<T> implements Set<T>, Serializable  {
 
   public boolean addAll(Collection<? extends T> c) {
     synchronized(this) {
-      OpenHashSet<T> set = new OpenHashSet<>(snapshot);
+      UnifiedSet<T> set = new UnifiedSet<>(snapshot);
       boolean result = set.addAll(c);
       snapshot = set;
       return result;
@@ -105,7 +105,7 @@ public class CopyOnWriteHashSet<T> implements Set<T>, Serializable  {
 
   public boolean remove(Object o) {
     synchronized(this) {
-      OpenHashSet<T> set = new OpenHashSet<>(snapshot);
+      UnifiedSet<T> set = new UnifiedSet<>(snapshot);
       boolean result = set.remove(o);
       snapshot = set;
       return result;
@@ -114,7 +114,7 @@ public class CopyOnWriteHashSet<T> implements Set<T>, Serializable  {
 
   public boolean retainAll(Collection<?> c) {
     synchronized(this) {
-      OpenHashSet<T> set = new OpenHashSet<>(snapshot);
+      UnifiedSet<T> set = new UnifiedSet<>(snapshot);
       boolean result = set.retainAll(c);
       snapshot = set;
       return result;
@@ -141,7 +141,7 @@ public class CopyOnWriteHashSet<T> implements Set<T>, Serializable  {
 
   public boolean removeAll(Collection<?> c) {
     synchronized(this) {
-      OpenHashSet<T> set = new OpenHashSet<>(snapshot);
+      UnifiedSet<T> set = new UnifiedSet<>(snapshot);
       boolean result = set.removeAll(c);
       snapshot = set;
       return result;
@@ -174,6 +174,6 @@ public class CopyOnWriteHashSet<T> implements Set<T>, Serializable  {
   private void readObject(ObjectInputStream s)
       throws java.io.IOException, ClassNotFoundException {
     s.defaultReadObject();
-    this.snapshot = (OpenHashSet<T>)s.readObject();
+    this.snapshot = (UnifiedSet<T>)s.readObject();
   }
 }

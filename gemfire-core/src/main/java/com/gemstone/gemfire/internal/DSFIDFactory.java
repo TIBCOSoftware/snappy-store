@@ -17,13 +17,31 @@
 
 package com.gemstone.gemfire.internal;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+import java.io.NotSerializableException;
+import java.util.function.Supplier;
+
 import com.gemstone.gemfire.DataSerializer;
-import com.gemstone.gemfire.admin.internal.*;
+import com.gemstone.gemfire.admin.internal.FinishBackupRequest;
+import com.gemstone.gemfire.admin.internal.FinishBackupResponse;
+import com.gemstone.gemfire.admin.internal.FlushToDiskRequest;
+import com.gemstone.gemfire.admin.internal.FlushToDiskResponse;
+import com.gemstone.gemfire.admin.internal.PrepareBackupRequest;
+import com.gemstone.gemfire.admin.internal.PrepareBackupResponse;
+import com.gemstone.gemfire.admin.internal.SystemMemberCacheEventProcessor;
 import com.gemstone.gemfire.admin.jmx.internal.StatAlertNotification;
 import com.gemstone.gemfire.cache.InterestResultPolicy;
 import com.gemstone.gemfire.cache.client.internal.BridgeServerLoadMessage;
 import com.gemstone.gemfire.cache.client.internal.locator.*;
-import com.gemstone.gemfire.cache.client.internal.locator.wan.*;
+import com.gemstone.gemfire.cache.client.internal.locator.wan.LocatorJoinMessage;
+import com.gemstone.gemfire.cache.client.internal.locator.wan.RemoteLocatorJoinRequest;
+import com.gemstone.gemfire.cache.client.internal.locator.wan.RemoteLocatorJoinResponse;
+import com.gemstone.gemfire.cache.client.internal.locator.wan.RemoteLocatorPingRequest;
+import com.gemstone.gemfire.cache.client.internal.locator.wan.RemoteLocatorPingResponse;
+import com.gemstone.gemfire.cache.client.internal.locator.wan.RemoteLocatorRequest;
+import com.gemstone.gemfire.cache.client.internal.locator.wan.RemoteLocatorResponse;
 import com.gemstone.gemfire.cache.hdfs.internal.HDFSGatewayEventImpl;
 import com.gemstone.gemfire.cache.query.QueryService;
 import com.gemstone.gemfire.cache.query.internal.*;
@@ -95,9 +113,15 @@ import com.gemstone.gemfire.internal.cache.partitioned.PutMessage.PutReplyMessag
 import com.gemstone.gemfire.internal.cache.partitioned.RemoveBucketMessage.RemoveBucketReplyMessage;
 import com.gemstone.gemfire.internal.cache.partitioned.RemoveIndexesMessage.RemoveIndexesReplyMessage;
 import com.gemstone.gemfire.internal.cache.partitioned.SizeMessage.SizeReplyMessage;
-import com.gemstone.gemfire.internal.cache.persistence.*;
+import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
+import com.gemstone.gemfire.internal.cache.persistence.MembershipFlushRequest;
+import com.gemstone.gemfire.internal.cache.persistence.MembershipViewRequest;
 import com.gemstone.gemfire.internal.cache.persistence.MembershipViewRequest.MembershipViewReplyMessage;
+import com.gemstone.gemfire.internal.cache.persistence.PersistentStateQueryMessage;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentStateQueryMessage.PersistentStateQueryReplyMessage;
+import com.gemstone.gemfire.internal.cache.persistence.PrepareNewPersistentMemberMessage;
+import com.gemstone.gemfire.internal.cache.persistence.RemovePersistentMemberMessage;
+import com.gemstone.gemfire.internal.cache.persistence.StartupSequenceQueryMesasge;
 import com.gemstone.gemfire.internal.cache.snapshot.FlowController.FlowControlAbortMessage;
 import com.gemstone.gemfire.internal.cache.snapshot.FlowController.FlowControlAckMessage;
 import com.gemstone.gemfire.internal.cache.snapshot.SnapshotPacket;
@@ -129,13 +153,7 @@ import com.gemstone.org.jgroups.View;
 import com.gemstone.org.jgroups.protocols.pbcast.JoinRsp;
 import com.gemstone.org.jgroups.stack.IpAddress;
 import com.gemstone.org.jgroups.util.StreamableFixedID;
-import io.snappydata.collection.IntObjectHashMap;
-
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
-import java.io.NotSerializableException;
-import java.util.function.Supplier;
+import org.eclipse.collections.impl.map.mutable.primitive.IntObjectHashMap;
 
 /**
  * Factory for instances of DataSerializableFixedID instances.
@@ -170,7 +188,7 @@ public final class DSFIDFactory implements DataSerializableFixedID {
   private static volatile boolean typesRegistered;
   private static final Supplier[] dsfidMap = new Supplier[256];
   private static final IntObjectHashMap<Supplier<?>> dsfidMap2 =
-      IntObjectHashMap.withExpectedSize(512);
+      new IntObjectHashMap<>(512);
 
   static {
     if (!InternalDistributedSystem.isHadoopGfxdLonerMode()) {
@@ -182,7 +200,7 @@ public final class DSFIDFactory implements DataSerializableFixedID {
     if (dsfid >= Byte.MIN_VALUE && dsfid <= Byte.MAX_VALUE) {
       dsfidMap[dsfid + Byte.MAX_VALUE + 1] = creator;
     } else {
-      dsfidMap2.justPut(dsfid, creator);
+      dsfidMap2.put(dsfid, creator);
     }
   }
 

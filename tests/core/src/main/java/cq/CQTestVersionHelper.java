@@ -16,30 +16,28 @@
  */
 package cq;
 
-import java.util.*;
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Vector;
 
-import pdx.PdxTest;
-import pdx.PdxTestVersionHelper;
-import util.*;
-import hydra.*;
-
-import com.gemstone.gemfire.cache.*;
-import com.gemstone.gemfire.cache.client.Pool;
-import com.gemstone.gemfire.pdx.PdxSerializable;
+import com.gemstone.gemfire.cache.ConflictException;
+import com.gemstone.gemfire.cache.GemFireCache;
+import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.TransactionDataNodeHasDepartedException;
 import com.gemstone.gemfire.cache.TransactionDataRebalancedException;
 import com.gemstone.gemfire.cache.TransactionException;
 import com.gemstone.gemfire.cache.TransactionInDoubtException;
+import com.gemstone.gemfire.cache.client.Pool;
 import com.gemstone.gemfire.pdx.PdxInstance;
-
-import java.io.File;
-import java.lang.reflect.Field;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Vector;
+import hydra.*;
+import pdx.PdxTest;
+import pdx.PdxTestVersionHelper;
+import util.CacheUtil;
+import util.TestException;
+import util.TestHelper;
+import util.TestHelperPrms;
+import util.TxHelper;
 
 /**
  * @author lhughes
@@ -60,8 +58,6 @@ public CQTestVersionHelper(CQTest testInstance) {
 
 /**
  *  Create a region with the given region description name.
- *
- *  @param regDescriptName The name of a region description.
  */
 public static void setTxMgr() {
    if (getInitialImage.InitImagePrms.useTransactions()) {
@@ -261,7 +257,7 @@ protected void doEntryOperations(Region aRegion) {
              // Known to cause data inconsistency, keep track of keys involved in TxInDoubt transactions on the BB
              recordFailedOps(CQUtilBB.INDOUBT_TXOPS);
           }
-        } catch (CommitConflictException e) {
+        } catch (ConflictException e) {
           if (isSerialExecution) {  // only one tx active, so we should have no conflicts
             throw new TestException("Unexpected " + e + " " + TestHelper.getStackTrace(e));
           } else { // can occur with concurrent execution

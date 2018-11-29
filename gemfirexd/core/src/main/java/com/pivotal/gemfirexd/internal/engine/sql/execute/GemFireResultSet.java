@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
-
 import javax.annotation.Nonnull;
 
 import com.gemstone.gemfire.GemFireException;
@@ -46,7 +45,6 @@ import com.gemstone.gemfire.internal.cache.TXManagerImpl.TXContext;
 import com.gemstone.gemfire.internal.cache.TXState;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
-import io.snappydata.collection.OpenHashSet;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.index.GlobalRowLocation;
@@ -97,7 +95,8 @@ import com.pivotal.gemfirexd.internal.impl.sql.execute.ResultSetStatisticsVisito
 import com.pivotal.gemfirexd.internal.impl.sql.execute.RowUtil;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.xplain.XPLAINUtil;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
-import io.snappydata.collection.ObjectObjectHashMap;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 /**
  * @author soubhikc
@@ -150,7 +149,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
    * Map Keys -> Routing Objects
    * Store keys and routingObjects used in getAll for Global Index Case.
    */
-  private ObjectObjectHashMap<Object, Object> getAllKeysAndRoutingObjects;
+  private UnifiedMap<Object, Object> getAllKeysAndRoutingObjects;
 
   private int currPos;
 
@@ -300,7 +299,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
          */
         if (policy.withPartitioning()) {
           this.doGetAll = true;
-          this.getAllKeysAndRoutingObjects = ObjectObjectHashMap.withExpectedSize(8);
+          this.getAllKeysAndRoutingObjects = new UnifiedMap<>(8);
           if (GemFireXDUtils.TraceQuery | GemFireXDUtils.TraceNCJ) {
             SanityManager
                 .DEBUG_PRINT(
@@ -961,8 +960,8 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
     assert giRegion != null;
 
     // Also remove duplicates
-    ObjectObjectHashMap<Object, CompactCompositeRegionKey> giKeys =
-        ObjectObjectHashMap.withExpectedSize(this.gfKeys.length);
+    UnifiedMap<Object, CompactCompositeRegionKey> giKeys =
+        new UnifiedMap<>(this.gfKeys.length);
     for (Object gfKey : this.gfKeys) {
       // also see assertion in constructor
       assert gfKey instanceof CompactCompositeRegionKey;
@@ -1089,7 +1088,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
     }
     else
     {
-      OpenHashSet<Object> keysSet = new OpenHashSet<>(this.gfKeys.length);
+      UnifiedSet<Object> keysSet = new UnifiedSet<>(this.gfKeys.length);
       // remove duplicates
       for (Object key : this.gfKeys) {
         keysSet.add(key);
@@ -1180,7 +1179,7 @@ public final class GemFireResultSet extends AbstractGemFireResultSet implements
 
     final Object[] getAllKeys;
     @SuppressWarnings("unchecked")
-    OpenHashSet<Object> keysSet = new OpenHashSet<>(this.gfKeys.length);
+    UnifiedSet<Object> keysSet = new UnifiedSet<>(this.gfKeys.length);
     // remove duplicates
     for (Object key : this.gfKeys) {
       keysSet.add(key);

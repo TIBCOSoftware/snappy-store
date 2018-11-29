@@ -17,18 +17,17 @@
 package hct.ha;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.Random;
 
-
-import com.gemstone.gemfire.cache.*;
-
-import util.TestException;
-import util.TestHelper;
-import util.TxHelper;
+import com.gemstone.gemfire.cache.Cache;
+import com.gemstone.gemfire.cache.ConflictException;
+import com.gemstone.gemfire.cache.EntryExistsException;
+import com.gemstone.gemfire.cache.EntryNotFoundException;
+import com.gemstone.gemfire.cache.Region;
 import hct.HctPrms;
 import hydra.CacheHelper;
 import hydra.ConfigPrms;
@@ -36,6 +35,9 @@ import hydra.Log;
 import hydra.ProcessMgr;
 import hydra.RegionHelper;
 import hydra.TestConfig;
+import util.TestException;
+import util.TestHelper;
+import util.TxHelper;
 
 
 /**
@@ -745,8 +747,8 @@ public class Feeder
                  try {
                    TxHelper.commit();
                  }
-                 catch (CommitConflictException e){
-                  // revert the counters in case of CommitConflictException
+                 catch (ConflictException e){
+                  // revert the counters in case of ConflictException
                   numCreate = 0 ;
                   numDestroy = 0 ; 
                   numInvalidate = 0 ;

@@ -53,7 +53,7 @@ import com.pivotal.gemfirexd.internal.iapi.reference.MessageId;
 import com.pivotal.gemfirexd.internal.iapi.services.monitor.Monitor;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
-import io.snappydata.collection.OpenHashSet;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 import javax.naming.*;
 import javax.naming.directory.*;
@@ -912,7 +912,7 @@ implements CredentialInitializer
               this.searchGroupAttributes, true, ldapGroup, groupMembers);
           ctx.close();
           // Return all the unique members collected for the group
-          return new OpenHashSet<>(groupMembers);
+          return new UnifiedSet<>(groupMembers);
         }
 
         @Override
