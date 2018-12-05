@@ -56,9 +56,10 @@ public abstract class BufferAllocator implements Closeable {
   public abstract ByteBuffer allocateForStorage(int size);
 
   /**
-   * Clears the memory to be zeros immediately after allocation.
+   * Clears the memory to be zeros immediately after allocation
+   * from given position to end.
    */
-  public abstract void clearPostAllocate(ByteBuffer buffer);
+  public abstract void clearPostAllocate(ByteBuffer buffer, int position);
 
   /**
    * Fill the given portion of the buffer setting it with given byte.
@@ -88,7 +89,8 @@ public abstract class BufferAllocator implements Closeable {
 
   /**
    * Expand given ByteBuffer to new capacity. The new buffer is positioned
-   * at the start and caller has to reposition if required.
+   * at the start and caller has to reposition if required. The ByteOrder
+   * will be copied from the source buffer.
    *
    * @return the new expanded ByteBuffer
    */
