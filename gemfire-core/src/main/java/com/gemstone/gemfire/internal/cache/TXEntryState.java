@@ -1931,7 +1931,7 @@ public class TXEntryState implements TXEntryId, Releasable {
   /**
    * Returns true if this entry may have been created by this transaction.
    */
-  protected final boolean wasCreatedByTX() {
+  public final boolean wasCreatedByTX() {
     return Token.isRemoved(this.originalVersionId);
   }
 

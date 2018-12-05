@@ -706,7 +706,8 @@ public final class GfxdTXEntryState extends TXEntryState implements
     }
     boolean isOpDestroy = isOpDestroy();
 
-    assert isOpPut() || isOpDestroy;
+    // TODO This has to be commented out. Check sie effects.
+    // assert isOpPut() || isOpDestroy;
 
     final TXRegionState txrs = this.txRegionState;
     txrs.lock();
@@ -1713,5 +1714,15 @@ public final class GfxdTXEntryState extends TXEntryState implements
   @Override
   public Version[] getSerializationVersions() {
     return null;
+  }
+
+  private volatile RegionEntry committedRegionEntry = null;
+
+  public void setCommittedRegionEntry(RegionEntry committedRegionEntry) {
+    this.committedRegionEntry = committedRegionEntry;
+  }
+
+  public RegionEntry getCommittedEntry() {
+    return this.committedRegionEntry;
   }
 }

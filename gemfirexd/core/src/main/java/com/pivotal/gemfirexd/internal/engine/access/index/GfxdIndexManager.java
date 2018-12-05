@@ -2483,7 +2483,6 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
         }
       }      
       
-     
       if (!deleted &&  exceptionToThrow == null) {
         try {
         handleNotDeleted(event.isPossibleDuplicate(), owner, indexContainer,
