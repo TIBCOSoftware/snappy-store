@@ -700,6 +700,12 @@ public class LocalRegion extends AbstractRegion
     return this.keyRequiresRegionContext;
   }
 
+  private volatile AtomicLong totalOldEntryMapPoolMemory = new AtomicLong(0);
+
+  public AtomicLong getOldEntryMapPoolMemorySize() {
+    return totalOldEntryMapPoolMemory;
+  }
+
   /**
    * Set the {@link #keyRequiresRegionContext} flag to given value.
    */
@@ -14560,10 +14566,10 @@ public class LocalRegion extends AbstractRegion
     }
   }
 
-  public void acquirePoolMemory(long oldSize, long newSize, boolean withEntryOverHead,
+  public long acquirePoolMemory(long oldSize, long newSize, boolean withEntryOverHead,
       UMMMemoryTracker buffer, boolean shouldEvict) throws LowMemoryException {
+    long size = 0L;
     if (!this.reservedTable() && needAccounting()) {
-      long size = 0L;
       if (withEntryOverHead) {
         size = (newSize - oldSize) + Math.max(0L, entryOverHead);
       } else {
@@ -14574,6 +14580,7 @@ public class LocalRegion extends AbstractRegion
         throwLowMemoryException(size);
       }
     }
+    return size;
   }
 
 
@@ -14597,15 +14604,19 @@ public class LocalRegion extends AbstractRegion
     throw lowMemoryException(cache, size);
   }
 
-  public void freePoolMemory(long oldSize, boolean withEntryOverHead) {
+  public long freePoolMemory(long oldSize, boolean withEntryOverHead) {
+    long freed = 0L;
     if (!this.reservedTable() && needAccounting()) {
+      freed = oldSize;
       if (withEntryOverHead) {
+        freed += Math.max(0L, entryOverHead);
         callback.releaseStorageMemory(getFullPath(),
-            oldSize + Math.max(0L, entryOverHead), false);
+            freed , false);
       } else {
-        callback.releaseStorageMemory(getFullPath(), oldSize, false);
+        callback.releaseStorageMemory(getFullPath(), freed, false);
       }
     }
+    return freed;
   }
 
   public static boolean isMetaTable(String fullpath) {
