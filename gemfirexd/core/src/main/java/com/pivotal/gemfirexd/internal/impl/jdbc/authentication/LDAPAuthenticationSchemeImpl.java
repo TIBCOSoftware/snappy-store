@@ -585,7 +585,36 @@ implements CredentialInitializer
 
 	
 	
-	
+	private NamingEnumeration getUserInformation(String uid, DirContext ctx) throws Exception {
+		// We bind to the LDAP server here
+		// Note that this bind might be anonymous (if anonymous searches
+		// are allowed in the LDAP server, or authenticated if we were
+		// told/configured to.
+		//
+
+
+		// Construct Search Filter
+		SearchControls ctls = new SearchControls();
+		// Set-up a LDAP subtree search scope
+		ctls.setSearchScope(SearchControls.SUBTREE_SCOPE);
+
+		// Just retrieve the DN
+		ctls.setReturningAttributes(attrDN);
+
+		String searchFilter =
+				this.leftSearchFilter + uid + this.rightSearchFilter;
+// GemStone changes BEGIN
+		if (GemFireXDUtils.TraceAuthentication) {
+			SanityManager.DEBUG_PRINT(AuthenticationServiceBase
+					.AuthenticationTrace, "Searching for DN for uid="
+					+ uid + ", baseDN=" + searchBaseDN
+					+ ", searchFilter=" + searchFilter);
+		}
+// GemStone changes END
+		NamingEnumeration results =
+				ctx.search(searchBaseDN, searchFilter, ctls);
+		return results;
+	}
 
 	/**
 	 * Search for the full user's DN in the LDAP server.
@@ -600,52 +629,9 @@ implements CredentialInitializer
 	private String getDNFromUID(String uid)
 		throws Exception
 	{
-		//
-		// We bind to the LDAP server here
-		// Note that this bind might be anonymous (if anonymous searches
-		// are allowed in the LDAP server, or authenticated if we were
-		// told/configured to.
-		//
-		Properties env = null;
-		if (this.searchAuthDN != (String) null) {
-			env = (Properties) initDirContextEnv.clone();
-			env.put(Context.SECURITY_PRINCIPAL, this.searchAuthDN);
-			env.put(Context.SECURITY_CREDENTIALS, getSearchAuthPwd());
-		}
-		else
-			env = initDirContextEnv;
+		DirContext ctx = getDirContext(uid);
 
-// GemStone changes BEGIN
-		if (GemFireXDUtils.TraceAuthentication) {
-		  GemFireXDUtils.dumpProperties(env, "Initializing DN for uid="
-		      + uid + " with ",
-		      AuthenticationServiceBase.AuthenticationTrace,
-		      GemFireXDUtils.TraceAuthentication, null);
-		}
-// GemStone changes END
-		DirContext ctx = privInitialDirContext(env);
-
-		// Construct Search Filter
-		SearchControls ctls = new SearchControls();
-		// Set-up a LDAP subtree search scope
-		ctls.setSearchScope(SearchControls.SUBTREE_SCOPE);
-
-		// Just retrieve the DN
-		ctls.setReturningAttributes(attrDN);
-
-		String searchFilter =
-						this.leftSearchFilter + uid + this.rightSearchFilter; 
-// GemStone changes BEGIN
-		if (GemFireXDUtils.TraceAuthentication) {
-		  SanityManager.DEBUG_PRINT(AuthenticationServiceBase
-		      .AuthenticationTrace, "Searching for DN for uid="
-		          + uid + ", baseDN=" + searchBaseDN
-		          + ", searchFilter=" + searchFilter);
-		}
-// GemStone changes END
-		NamingEnumeration results =
-						ctx.search(searchBaseDN, searchFilter, ctls);
-			
+		NamingEnumeration results = getUserInformation(uid, ctx);
 		// If we did not find anything then login failed
 		if (results == null || !results.hasMore())
 			throw new NameNotFoundException();
@@ -678,7 +664,8 @@ implements CredentialInitializer
 			{
 				if (SanityManager.DEBUG_ON(
 						AuthenticationServiceBase.AuthenticationTrace)) {
-
+					String searchFilter =
+							this.leftSearchFilter + uid + this.rightSearchFilter;
 					java.io.PrintWriter iDbgStream =
 						SanityManager.GET_DEBUG_STREAM();
 
@@ -703,6 +690,28 @@ implements CredentialInitializer
 		
 		// Return the full user's DN
 		return userDN.toString();
+	}
+
+	private DirContext getDirContext(String uid) throws Exception {
+		//
+		Properties env = null;
+		if (this.searchAuthDN != (String) null) {
+			env = (Properties) initDirContextEnv.clone();
+			env.put(Context.SECURITY_PRINCIPAL, this.searchAuthDN);
+			env.put(Context.SECURITY_CREDENTIALS, getSearchAuthPwd());
+		}
+		else
+			env = initDirContextEnv;
+
+// GemStone changes BEGIN
+		if (GemFireXDUtils.TraceAuthentication) {
+			GemFireXDUtils.dumpProperties(env, "Initializing DN for uid="
+							+ uid + " with ",
+					AuthenticationServiceBase.AuthenticationTrace,
+					GemFireXDUtils.TraceAuthentication, null);
+		}
+// GemStone changes END
+		return privInitialDirContext(env);
 	}
 
 	private String getEncrypted(String pwd) {
@@ -917,7 +926,43 @@ implements CredentialInitializer
           return uniqueMembers;
         }
 
-        @Override
+	/**
+	 * Search for the all the Groups the user is member of, the LDAP server. LDAP server bind
+	 * may or not be anonymous.
+	 *
+	 * If the admin does not want us to do anonymous bind/search, then we
+	 * must have been given principal/credentials in order to successfully
+	 * bind to perform the user's DN search.
+	 *
+	 * @exception NamingException
+	 *              on failure to retrieve the LDAP group's base DN
+	 */
+	/*public Set<String> getLdapGroupsOfUser(String uid)
+			throws Exception {
+
+		DirContext ctx = getDirContext(uid);
+
+		NamingEnumeration results = getUserInformation(uid, ctx);
+		// If we did not find anything then login failed
+		if (results == null || !results.hasMore())
+			throw new NameNotFoundException();
+		ArrayList<String> groups = new ArrayList<String>();
+		SearchResult result = (SearchResult)results.next();
+		NamingEnumeration ne = result.getAttributes().get("memberOf").getAll();
+		while(ne.hasMore()) {
+			String groupMember  = (String)ne.next()
+		}
+
+		resolveDNForGroup(ctx, this.searchGroupBase, searchFilter,
+				this.searchGroupAttributes, true, ldapGroup, groupMembers);
+		ctx.close();
+		// Return all the unique members collected for the group
+		@SuppressWarnings("unchecked")
+		final Set<String> uniqueMembers = new THashSet(groupMembers);
+		return uniqueMembers;
+	} */
+
+	@Override
         public String toString() {
           return Constants.AUTHENTICATION_PROVIDER_LDAP;
         }
