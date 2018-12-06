@@ -716,11 +716,15 @@ cleanup:	for (int index = holder.size() - 1; index >= 0; index--) {
 	 */
 	private void flushErrorString()
 	{
-		errorStream.print(errorStringBuilder.get().toString());
+		// Filter to avoid logging errors(harmless) in snappyleader.log on cluster startup.See SNAP-2556
+		String errorString = errorStringBuilder.get().toString();
+		if(!(errorString.contains("SET @@session.sql_mode=ANSI_QUOTES") ||
+        errorString.contains("SELECT version FROM v$instance") || errorString.contains("SELECT @@version"))) {
+      errorStream.print(errorStringBuilder.get().toString());
+    }
 		errorStream.flush();
 		errorStringBuilder.reset();
 	}
-
 	/*
 	** Class methods
 	*/
