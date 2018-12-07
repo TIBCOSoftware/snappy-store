@@ -248,14 +248,21 @@ public abstract class DiskId
      * StringBuffer temp = new StringBuffer("Oplog Key ID = ");
      * temp.append(this.keyId);
      */
-    StringBuffer temp = new StringBuffer("Oplog ID = ");
-    temp.append(this.getOplogId());
+    StringBuilder temp = new StringBuilder("Oplog ID = ");
+    final long id = this.id;
+    //mask the first byte to get the oplogId
+    long oplogId = id & MAX_OPLOG_ID;
+    //Check to see if the oplog id should be negative
+    if ((id & OPLOG_ID_SIGN_BIT) != 0) {
+      oplogId = -1L * oplogId;
+    }
+    temp.append(oplogId);
     temp.append("; Offset in Oplog = ");
     temp.append(getOffsetInOplog());
     temp.append("; Value Length = ");
     temp.append(getValueLength());
     temp.append("; UserBits is = ");
-    temp.append(this.getUserBits());
+    temp.append(id >> USER_BITS_SHIFT);
     return temp.toString();
   }
 
@@ -647,7 +654,7 @@ public abstract class DiskId
 
     @Override
     public String toString() {
-      StringBuffer temp = new StringBuffer("Oplog Key ID = ");
+      StringBuilder temp = new StringBuilder("Oplog Key ID = ");
       temp.append(this.keyId);
       temp.append("; ");
       temp.append(super.toString());
@@ -737,7 +744,7 @@ public abstract class DiskId
 
     @Override
     public String toString() {
-      StringBuffer temp = new StringBuffer("Oplog Key ID = ");
+      StringBuilder temp = new StringBuilder("Oplog Key ID = ");
       temp.append(this.keyId);
       temp.append("; ");
       temp.append(super.toString());
