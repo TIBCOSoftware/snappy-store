@@ -658,7 +658,7 @@ public final class FabricDatabase implements ModuleControl,
 
     try {
       lcc.getDataDictionary().lockForReading(tc);
-      hiveDBTablesMap = externalCatalog.getAllStoreTablesInCatalog(true);
+      hiveDBTablesMap = externalCatalog.getAllStoreTablesInCatalog();
       gfDBTablesMap = getAllGFXDTables();
     } finally {
       lcc.getDataDictionary().unlockAfterReading(tc);

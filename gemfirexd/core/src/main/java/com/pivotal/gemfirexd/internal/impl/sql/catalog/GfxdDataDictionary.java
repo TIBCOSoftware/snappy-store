@@ -237,16 +237,30 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
       { SYSFUN_MODE, SYSFUN_MODE }, { SYSFUN_MODE, SYSFUN_MODE, SYSFUN_MODE },
       { SYSFUN_MODE, SYSFUN_MODE, SYSFUN_MODE, SYSFUN_MODE } };
 
+  public static final class SkipCatalogOperations {
+    /**
+     * Skip calls to inbuilt hive catalog (for cases that can lead
+     * to recursive calls from within hive catalog query threads).
+     */
+    public boolean skipHiveCatalogCalls;
+    /**
+     * Skip DataDictionary locks to avoid deadlocks in some cases.
+     */
+    public boolean skipDDLocks;
+
+    SkipCatalogOperations(boolean skipHiveCatalogCalls, boolean skipDDLocks) {
+      this.skipHiveCatalogCalls = skipHiveCatalogCalls;
+      this.skipDDLocks = skipDDLocks;
+    }
+  }
+
   /**
    * This allows a thread to skip acquiring read lock on GfxdDataDictionary
    * and/or GemFireContainer. Used at the time of checking if a table is
    * columnar or not while setting its tabletype.
    */
-  public static final ThreadLocal<Boolean> SKIP_LOCKS = new ThreadLocal<Boolean>() {
-    public Boolean initialValue() {
-      return Boolean.FALSE;
-    }
-  };
+  public static final ThreadLocal<SkipCatalogOperations> SKIP_CATALOG_OPS =
+      ThreadLocal.withInitial(() -> new SkipCatalogOperations(false, false));
 
   static {
     // populate the set of system schemas
@@ -417,8 +431,8 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
   public final boolean lockForReadingNoThrow(TransactionController tc,
       long maxWaitMillis) {
     try {
-      return SKIP_LOCKS.get() || GemFireXDUtils.lockObjectNoThrow(ddLockObject, null, false, false,
-          tc, maxWaitMillis) != GfxdLockSet.LOCK_FAIL;
+      return SKIP_CATALOG_OPS.get().skipDDLocks || GemFireXDUtils.lockObjectNoThrow(
+          ddLockObject, null, false, false, tc, maxWaitMillis) != GfxdLockSet.LOCK_FAIL;
     } catch (StandardException se) {
       // unexpected
       throw GemFireXDRuntimeException.newRuntimeException(
@@ -474,7 +488,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
    */
   @Override
   public final boolean unlockAfterReading(TransactionController tc) {
-    if (!SKIP_LOCKS.get()) {
+    if (!SKIP_CATALOG_OPS.get().skipDDLocks) {
       return GemFireXDUtils.unlockObject(ddLockObject, null, false, false, tc);
     } else {
       return false;
@@ -615,8 +629,8 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
   @Override
   public final boolean lockForWriting(TransactionController tc,
       boolean localOnly) throws StandardException {
-    return SKIP_LOCKS.get() || GemFireXDUtils.lockObject(ddLockObject, null, true, localOnly, tc,
-        GfxdLockSet.MAX_LOCKWAIT_VAL);
+    return SKIP_CATALOG_OPS.get().skipDDLocks || GemFireXDUtils.lockObject(
+        ddLockObject, null, true, localOnly, tc, GfxdLockSet.MAX_LOCKWAIT_VAL);
   }
 
   /**
@@ -647,7 +661,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
   @Override
   public final void unlockAfterWriting(TransactionController tc,
       boolean localOnly) {
-    if (!SKIP_LOCKS.get()) {
+    if (!SKIP_CATALOG_OPS.get().skipDDLocks) {
       GemFireXDUtils.unlockObject(ddLockObject, null, true, localOnly, tc);
     }
   }
@@ -1722,7 +1736,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
         TypeDescriptor[] argTypes = new TypeDescriptor[] {
             DataTypeDescriptor.getBuiltInDataTypeDescriptor(
                 Types.BOOLEAN, false).getCatalogType() };
-        super.createSystemProcedureOrFunction("GET_SNAPSHOT_TXID", sysUUID,
+        super.createSystemProcedureOrFunction("GET_SNAPSHOT_TXID_AND_HOSTURL", sysUUID,
             argNames, argTypes, 0, 0, RoutineAliasInfo.READS_SQL_DATA,
             DataTypeDescriptor.getCatalogType(Types.VARCHAR), newlyCreatedRoutines,
             tc, GFXD_SYS_PROC_CLASSNAME, false);

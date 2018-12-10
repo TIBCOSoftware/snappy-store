@@ -776,15 +776,16 @@ struct CatalogMetadataRequest {
 // encapsulates either the results for different kinds of get operations
 // or the input for update operations listed as constants with prefix CATALOG_
 struct CatalogMetadataDetails {
-  1: optional i64                                          catalogSchemaVersion
-  2: optional bool                                         exists
-  3: optional bool                                         updateFlag
-  4: optional list<string>                                 names
-  5: optional map<string, string>                          properties
-  6: optional CatalogSchemaObject                          catalogSchema
-  7: optional CatalogTableObject                           catalogTable
-  8: optional CatalogFunctionObject                        catalogFunction
-  9: optional list<CatalogPartitionObject>                 catalogPartitions
+  1: optional list<string>                                 names
+  2: optional list<map<string, string>>                    properties
+  3: optional list<map<string, string>>                    newProperties
+  4: optional i64                                          catalogSchemaVersion
+  5: optional bool                                         exists
+  6: optional list<i32>                                    otherFlags
+  7: optional CatalogSchemaObject                          catalogSchema
+  8: optional CatalogTableObject                           catalogTable
+  9: optional CatalogFunctionObject                        catalogFunction
+ 10: optional list<CatalogPartitionObject>                 catalogPartitions
 }
 
 // different types of get operations returning CatalogMetadataDetails
@@ -794,12 +795,12 @@ const i32 CATALOG_LIST_SCHEMAS                             = 3
 const i32 CATALOG_GET_TABLE                                = 4
 const i32 CATALOG_TABLE_EXISTS                             = 5
 const i32 CATALOG_LIST_TABLES                              = 6
-const i32 CATALOG_GET_PARTITION                            = 7
-const i32 CATALOG_LIST_PARTITION_NAMES                     = 8
-const i32 CATALOG_LIST_PARTITIONS                          = 9
-const i32 CATALOG_GET_FUNCTION                             = 10
-const i32 CATALOG_FUNCTION_EXISTS                          = 11
-const i32 CATALOG_LIST_FUNCTIONS                           = 12
+const i32 CATALOG_GET_FUNCTION                             = 7
+const i32 CATALOG_FUNCTION_EXISTS                          = 8
+const i32 CATALOG_LIST_FUNCTIONS                           = 9
+const i32 CATALOG_GET_PARTITION                            = 10
+const i32 CATALOG_LIST_PARTITION_NAMES                     = 11
+const i32 CATALOG_LIST_PARTITIONS                          = 12
 
 // different types of update operations passing CatalogMetadataDetails
 const i32 CATALOG_CREATE_SCHEMA                            = 101
@@ -807,9 +808,17 @@ const i32 CATALOG_DROP_SCHEMA                              = 102
 const i32 CATALOG_CREATE_TABLE                             = 103
 const i32 CATALOG_DROP_TABLE                               = 104
 const i32 CATALOG_ALTER_TABLE                              = 105
-const i32 CATALOG_CREATE_FUNCTION                          = 106
-const i32 CATALOG_DROP_FUNCTION                            = 107
-const i32 CATALOG_RENAME_FUNCTION                          = 108
+const i32 CATALOG_RENAME_TABLE                             = 106
+const i32 CATALOG_LOAD_TABLE                               = 107
+const i32 CATALOG_CREATE_FUNCTION                          = 108
+const i32 CATALOG_DROP_FUNCTION                            = 109
+const i32 CATALOG_RENAME_FUNCTION                          = 110
+const i32 CATALOG_CREATE_PARTITIONS                        = 111
+const i32 CATALOG_DROP_PARTITIONS                          = 112
+const i32 CATALOG_ALTER_PARTITIONS                         = 113
+const i32 CATALOG_RENAME_PARTITIONS                        = 114
+const i32 CATALOG_LOAD_PARTITION                           = 115
+const i32 CATALOG_LOAD_DYNAMIC_PARTITIONS                  = 116
 
 // type IDs for EntityId used by bulkClose API
 const byte BULK_CLOSE_RESULTSET                            = 1

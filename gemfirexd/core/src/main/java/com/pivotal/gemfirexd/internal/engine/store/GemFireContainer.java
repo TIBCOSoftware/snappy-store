@@ -516,7 +516,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       ExternalCatalog extcat = Misc.getMemStore().getExistingExternalCatalog();
       // containers are created during initialization, ignore them
       externalTableMetaData.compareAndSet(null, extcat.getCatalogTableMetadata(
-              schemaName, tableName, true));
+              schemaName, tableName));
       if (isPartitioned()) {
         metaData = externalTableMetaData.get();
         if (metaData == null) return null;
@@ -6304,7 +6304,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
             GemFireXDUtils.TraceLock ? new Throwable() : null);
       }
       final GfxdLockSet lockSet = t.getLockSpace();
-      if (GfxdDataDictionary.SKIP_LOCKS.get()) {
+      if (GfxdDataDictionary.SKIP_CATALOG_OPS.get().skipDDLocks) {
         return true;
       }
       if (lockSet.acquireLock(lockObject,

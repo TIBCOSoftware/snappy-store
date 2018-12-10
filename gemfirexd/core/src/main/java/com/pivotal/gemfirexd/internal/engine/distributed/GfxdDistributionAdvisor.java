@@ -72,7 +72,6 @@ import com.gemstone.gemfire.internal.cache.UpdateAttributesProcessor;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
-import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.THashSet;
 import com.gemstone.gnu.trove.TObjectProcedure;
 import com.pivotal.gemfirexd.FabricService;
@@ -895,43 +894,6 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
   }
 
   /**
-   * Get all the thrift servers in the distributed system. Returns a map from
-   * the {@link InternalDistributedMember} for the member to the set of
-   * {@link HostAddress}es of the thrift servers active on that member.
-   */
-  public final Map<InternalDistributedMember, Set<HostAddress>>
-      getAllThriftServers() {
-    @SuppressWarnings("unchecked")
-    Map<InternalDistributedMember, Set<HostAddress>> servers = new THashMap();
-    this.mapLock.readLock().lock();
-    try {
-      // first add for self
-      final FabricService service = FabricServiceManager
-          .currentFabricServiceInstance();
-      if (service != null) {
-        ServerType serverType;
-        Collection<NetworkInterface> ifaces = service.getAllNetworkServers();
-        @SuppressWarnings("unchecked")
-        Set<HostAddress> thriftServers = new THashSet(ifaces.size());
-        for (NetworkInterface ni : ifaces) {
-          serverType = ni.getServerType();
-          if (!serverType.isThrift()) {
-            continue;
-          }
-          thriftServers.add(ThriftUtils.getHostAddress(ni.getHostName(),
-              ni.getPort()).setServerType(serverType));
-        }
-        servers.put(this.myProfile.getDistributedMember(), thriftServers);
-      }
-      // then for all the other members of the DS
-      servers.putAll(this.thriftServers);
-    } finally {
-      this.mapLock.readLock().unlock();
-    }
-    return servers;
-  }
-
-  /**
    * Get all the Thrift servers running on the given member as a comma-separated
    * host[port] list.
    */
@@ -1039,6 +1001,43 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
   }
 
   /**
+   * Get the network servers hosted on this server, if any.
+   */
+  public final String getOwnNetServers() {
+    this.mapLock.readLock().lock();
+    try {
+      return getSelfNetServers(ClientSharedUtils.isThriftDefault());
+    } finally {
+      this.mapLock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get the network servers hosted on this server, if any.
+   * Should be invoked under mapLock.readLock().
+   */
+  private String getSelfNetServers(boolean useThrift) {
+    StringBuilder serverSB = new StringBuilder();
+    VMKind kind = this.myProfile.getVMKind();
+    // first add for self
+    final FabricService service = FabricServiceManager
+        .currentFabricServiceInstance();
+    if (service != null) {
+      for (NetworkInterface ni : service.getAllNetworkServers()) {
+        if (useThrift) {
+          if (!ni.getServerType().isThrift()) continue;
+        } else if (!ni.getServerType().isDRDA()) continue;
+        if (serverSB.length() > 0) {
+          serverSB.append(',');
+        }
+        serverSB.append(ni.asString()).append(MEMBER_KIND_BEGIN)
+            .append(kind.toString()).append(MEMBER_KIND_END);
+      }
+    }
+    return serverSB.toString();
+  }
+
+  /**
    * Get the mapping of InternalDistributedMember to corresponding DRDA/Thrift servers
    * they have in the entire system. The format of the network server string is:
    * <p>
@@ -1055,33 +1054,22 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
   public final Map<InternalDistributedMember, String> getAllNetServersWithMembers() {
     HashMap<InternalDistributedMember, String> mbrToNetworkServerMap =
       new HashMap<InternalDistributedMember, String>();
-    StringBuilder serverSB = new StringBuilder();
     final boolean useThrift = ClientSharedUtils.isThriftDefault();
     this.mapLock.readLock().lock();
     try {
-      VMKind kind = this.myProfile.getVMKind();
       // first add for self
-      final FabricService service = FabricServiceManager
-          .currentFabricServiceInstance();
-      if (service != null) {
-        for (NetworkInterface ni : service.getAllNetworkServers()) {
-          if (useThrift) {
-            if (!ni.getServerType().isThrift()) continue;
-          } else if (!ni.getServerType().isDRDA()) continue;
-          if (serverSB.length() > 0) {
-            serverSB.append(',');
-          }
-          serverSB.append(ni.asString()).append(MEMBER_KIND_BEGIN)
-              .append(kind.toString()).append(MEMBER_KIND_END);
-        }
+      String selfNetServers = getSelfNetServers(useThrift);
+      if (selfNetServers.length() > 0) {
         mbrToNetworkServerMap.put(this.myProfile.getDistributedMember(),
-            serverSB.toString());
+            selfNetServers);
       }
       // then for all the other members of the DS
       final Map<InternalDistributedMember, VMKind> gfxdMembers =
         this.serverGroupMap.get(DEFAULT_GROUP);
       Set<?> servers;
       Map<?, ?> serverMap = useThrift ? thriftServers : drdaServerMap;
+      StringBuilder serverSB;
+      VMKind kind;
       for (Map.Entry<?, ?> entry : serverMap.entrySet()) {
         InternalDistributedMember m = (InternalDistributedMember)entry.getKey();
         servers = (Set<?>)entry.getValue();
@@ -1101,8 +1089,8 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
             serverSB.append(MEMBER_KIND_BEGIN).append(kind.toString())
                 .append(MEMBER_KIND_END);
           }
+          mbrToNetworkServerMap.put(m, serverSB.toString());
         }
-        mbrToNetworkServerMap.put(m, serverSB.toString());
       }
     } finally {
       this.mapLock.readLock().unlock();

@@ -144,17 +144,17 @@ public class snappydataConstants {
 
   public static final int CATALOG_LIST_TABLES = 6;
 
-  public static final int CATALOG_GET_PARTITION = 7;
+  public static final int CATALOG_GET_FUNCTION = 7;
 
-  public static final int CATALOG_LIST_PARTITION_NAMES = 8;
+  public static final int CATALOG_FUNCTION_EXISTS = 8;
 
-  public static final int CATALOG_LIST_PARTITIONS = 9;
+  public static final int CATALOG_LIST_FUNCTIONS = 9;
 
-  public static final int CATALOG_GET_FUNCTION = 10;
+  public static final int CATALOG_GET_PARTITION = 10;
 
-  public static final int CATALOG_FUNCTION_EXISTS = 11;
+  public static final int CATALOG_LIST_PARTITION_NAMES = 11;
 
-  public static final int CATALOG_LIST_FUNCTIONS = 12;
+  public static final int CATALOG_LIST_PARTITIONS = 12;
 
   public static final int CATALOG_CREATE_SCHEMA = 101;
 
@@ -166,11 +166,27 @@ public class snappydataConstants {
 
   public static final int CATALOG_ALTER_TABLE = 105;
 
-  public static final int CATALOG_CREATE_FUNCTION = 106;
+  public static final int CATALOG_RENAME_TABLE = 106;
 
-  public static final int CATALOG_DROP_FUNCTION = 107;
+  public static final int CATALOG_LOAD_TABLE = 107;
 
-  public static final int CATALOG_RENAME_FUNCTION = 108;
+  public static final int CATALOG_CREATE_FUNCTION = 108;
+
+  public static final int CATALOG_DROP_FUNCTION = 109;
+
+  public static final int CATALOG_RENAME_FUNCTION = 110;
+
+  public static final int CATALOG_CREATE_PARTITIONS = 111;
+
+  public static final int CATALOG_DROP_PARTITIONS = 112;
+
+  public static final int CATALOG_ALTER_PARTITIONS = 113;
+
+  public static final int CATALOG_RENAME_PARTITIONS = 114;
+
+  public static final int CATALOG_LOAD_PARTITION = 115;
+
+  public static final int CATALOG_LOAD_DYNAMIC_PARTITIONS = 116;
 
   public static final byte BULK_CLOSE_RESULTSET = (byte)1;
 
