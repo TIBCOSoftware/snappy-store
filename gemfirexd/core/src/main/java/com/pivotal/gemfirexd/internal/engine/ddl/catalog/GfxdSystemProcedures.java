@@ -2400,12 +2400,18 @@ public class GfxdSystemProcedures extends SystemProcedures {
                 + " TxManager " + TXManagerImpl.getCurrentTXId()
                 + " snapshot tx = " + TXManagerImpl.getCurrentSnapshotTXState());
       }
+      boolean success = false;
       try {
         if (!rolloverTable.isEmpty()) {
           flushLocalBuckets(rolloverTable, false);
         }
+        success = true;
       } finally {
-        commitSnapShotTXId(txId, lcc, tc);
+        if (success) {
+          commitSnapShotTXId(txId, lcc, tc);
+        } else {
+          rollbackSnapshotTXId(txId, lcc, tc);
+        }
       }
     } catch (SQLException sqle) {
       throw sqle;
@@ -2464,12 +2470,6 @@ public class GfxdSystemProcedures extends SystemProcedures {
       LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
       GemFireTransaction tc = (GemFireTransaction)lcc.getTransactionExecute();
 
-      if (GemFireXDUtils.TraceExecution) {
-        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
-            "in procedure ROLLBACK_SNAPSHOT_TXID()  " + txId + " for connid " + tc.getConnectionID()
-                + " TxManager " + TXManagerImpl.getCurrentTXId()
-                + " snapshot tx : " + TXManagerImpl.getCurrentSnapshotTXState());
-      }
       rollbackSnapshotTXId(txId, lcc, tc);
     } catch (SQLException sqle) {
       throw sqle;
@@ -2483,6 +2483,13 @@ public class GfxdSystemProcedures extends SystemProcedures {
     TXStateProxy txState = null;
     TXManagerImpl.TXContext context;
     TXManagerImpl txManager = tc.getTransactionManager();
+
+    if (GemFireXDUtils.TraceExecution) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "in procedure ROLLBACK_SNAPSHOT_TXID()  " + txId + " for connid " + tc.getConnectionID()
+              + " TxManager " + TXManagerImpl.getCurrentTXId()
+              + " snapshot tx : " + TXManagerImpl.getCurrentSnapshotTXState());
+    }
 
     if (!txId.isEmpty()) {
       StringTokenizer st = new StringTokenizer(txId, ":");
