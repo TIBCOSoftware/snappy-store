@@ -449,10 +449,10 @@ public class BugsTest extends JdbcTestBase {
         hasExportDir = true;
         remDirName = exportDir + "/preBlow-" + currTime;
       } else {
-        exportDir = "/export/shared/users/" + userName;
-        exportFile = new File(exportDir);
-        if (exportFile.mkdirs() ||
-            (exportFile.exists() && exportFile.isDirectory())) {
+        exportDir = "/export/shared/users";
+        exportFile = new File(exportDir + "/" + userName);
+        if (new File(exportDir).exists() && (exportFile.mkdirs() ||
+            (exportFile.exists() && exportFile.isDirectory()))) {
           hasExportDir = true;
           remDirName = exportDir + "/preBlow-" + currTime;
         } else {
