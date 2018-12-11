@@ -1518,6 +1518,19 @@ public abstract class ClientSharedUtils {
         props.setProperty("log4j.rootCategory", level + ", file");
       } else {
         props.setProperty("log4j.rootCategory", level + ", console");
+        // remove all "code" appenders that dump generatedcode.log
+        final String[] codegenerationClasses = new String[] {
+            "org.apache.spark.sql.execution.WholeStageCodegenExec",
+            "org.apache.spark.sql.execution.WholeStageCodegenRDD",
+            "org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator",
+            "org.apache.spark.sql.store.CodeGeneration"
+        };
+        for (String className : codegenerationClasses) {
+          String loggerKey = "log4j.logger." + className;
+          String additivityKey = "log4j.additivity." + className;
+          props.remove(loggerKey);
+          props.remove(additivityKey);
+        }
       }
     }
     if (logFile != null) {
