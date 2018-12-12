@@ -69,7 +69,7 @@
 #include "DNSCacheService.h"
 #include "InternalLogger.h"
 #include "InternalUtils.h"
-
+#include "ControlConnection.h"
 using namespace io::snappydata;
 using namespace io::snappydata::client;
 using namespace io::snappydata::client::impl;
@@ -239,67 +239,13 @@ void ClientService::handleTException(const char* op, const TException& te) {
 
   handleStdException(op, te);
 }
-
 /*
-void ClientService::handleException(const TException* te, const thrift::SnappyException* se,
-    const std::set<thrift::HostAddress>& failedServers, bool tryFailover,
+void ClientService::handleException(const TException* te,
+    const std::set<thrift::HostAddress>& failedServers, bool tryFailover, bool ignoreFailOver,
     bool createNewConnection, const std::string& op)
 {
-    if (!m_isOpen && createNewConnection) {
-      if (se != NULL) {
-        throw GET_SQLEXCEPTION2(se);
-      } else {
-        throw GET_SQLEXCEPTION2(SQLState::NO_CURRENT_CONNECTION, te);
-      }
-    }
-  if (!m_loadBalance
-  // no failover for transactions yet
-      || m_isolationLevel != IsolationLevel::NONE) {
-    tryFailover = false;
-  }
-    if (se != NULL) {
-      const thrift::SnappyExceptionData& sedata = se->exceptionData;
-      const std::string& sqlState = sedata.sqlState;
-      NetConnection::FailoverStatus status;
-      if ((status = NetConnection.getFailoverStatus(sqlState,
-          sedata.getSeverity(), se)).isNone()) {
-        // convert DATA_CONTAINTER_CLOSED to "X0Z01" for non-transactional case
-        if (this.isolationLevel == Connection.TRANSACTION_NONE
-            && SQLState.DATA_CONTAINER_CLOSED.equals(sqlState)) {
-          throw newSnappyExceptionForNodeFailure(op,
-              ClientSharedUtils.newRuntimeException(sedata.getReason(),
-                  se.getCause()));
-        } else {
-          throw se;
-        }
-      } else if (!tryFailover) {
-        throw newSnappyExceptionForNodeFailure(op, se);
-      } else if (status == NetConnection.FailoverStatus.RETRY) {
-        return failedServers;
-      }
-    } else if (t instanceof TException) {
-      if (!tryFailover) {
-        throw newSnappyExceptionForNodeFailure(op, t);
-      }
-    } else {
-      throw ClientExceptionUtil.newSnappyException(SQLState.JAVA_EXCEPTION, t,
-          t.getClass(), t.getMessage() + " (Server=" + this.currentHostAddr
-              + ')');
-    }
-    // need to do failover to new server, so get the next one
-    if (failedServers == null) {
-      @SuppressWarnings("unchecked")
-      Set<HostAddress> servers = new THashSet(2);
-      failedServers = servers;
-    }
-    failedServers.add(this.currentHostAddr);
 
-    if (createNewConnection) {
-      openConnection(this.currentHostAddr, failedServers);
-    }
-    return failedServers;
-}
-*/
+}*/
 
 void ClientService::throwSQLExceptionForNodeFailure(const char* op,
     const std::exception& se) {
@@ -343,14 +289,14 @@ void ClientService::setPendingTransactionAttrs(
 // settings; this could become configurable in future
 ClientService::ClientService(const std::string& host, const int port,
     thrift::OpenConnectionArgs& connArgs) :
-    // default for load-balance is true
-    m_connArgs(initConnectionArgs(connArgs)), m_loadBalance(true),
-    m_reqdServerType(thrift::ServerType::THRIFT_SNAPPY_CP),
-    m_useFramedTransport(false), m_serverGroups(),
-    m_transport(), m_client(createDummyProtocol()),
-    m_connHosts(1), m_connId(0), m_token(), m_isOpen(false),
-    m_pendingTXAttrs(), m_hasPendingTXAttrs(false),
-    m_isolationLevel(IsolationLevel::NONE), m_lock() {
+            // default for load-balance is true
+            m_connArgs(initConnectionArgs(connArgs)), m_loadBalance(true),
+            m_reqdServerType(thrift::ServerType::THRIFT_SNAPPY_CP),
+            m_useFramedTransport(false), m_serverGroups(),
+            m_transport(), m_client(createDummyProtocol()),
+            m_connHosts(1), m_connId(0), m_token(), m_isOpen(false),
+            m_pendingTXAttrs(), m_hasPendingTXAttrs(false),
+            m_isolationLevel(IsolationLevel::NONE), m_lock() {
   std::map<std::string, std::string>& props = connArgs.properties;
   std::map<std::string, std::string>::iterator propValue;
 
@@ -362,7 +308,7 @@ ClientService::ClientService(const std::string& host, const int port,
   if (!props.empty()) {
     if ((propValue = props.find(ClientAttribute::LOAD_BALANCE))
         != props.end()) {
-      m_loadBalance = boost::iequals("false", propValue->second);
+      m_loadBalance = !(boost::iequals("false", propValue->second));
       props.erase(propValue);
     }
 
@@ -437,17 +383,13 @@ void ClientService::openConnection(thrift::HostAddress& hostAddr,
         m_connId, m_token, ex.get());
   }
 
-  m_currentHostAddr = hostAddr;
   while (true) {
-    /*
-     if (m_loadBalance) {
-     ControlConnection controlService = ControlConnection
-     .getOrCreateControlConnection(this.connHosts.get(0), this);
-     // at this point query the control service for preferred server
-     hostAddr = controlService.getPreferredServer(failedServers,
-     this.serverGroups, false);
-     }
-     */
+    boost::lock_guard<boost::mutex> serviceGuard(m_lock);
+    if (m_loadBalance) {
+      boost::optional<ControlConnection&> controlService = ControlConnection::getOrCreateControlConnection(m_connHosts,this,nullptr);
+      // at this point query the control service for preferred server
+      controlService->getPreferredServer(hostAddr ,nullptr,failedServers,this->m_serverGroups, false);
+    }
 
     try {
       // first close any existing transport
@@ -542,7 +484,7 @@ thrift::OpenConnectionArgs& ClientService::initConnectionArgs(
 }
 
 thrift::ServerType::type ClientService::getServerType(bool isServer,
-bool useBinaryProtocol, bool useSSL) {
+    bool useBinaryProtocol, bool useSSL) {
   if (isServer) {
     if (useSSL) {
       return useBinaryProtocol ? thrift::ServerType::THRIFT_SNAPPY_BP_SSL
@@ -1557,4 +1499,18 @@ void ClientService::close() {
   } catch (...) {
     handleUnknownException("close");
   }
+}
+void ClientService::updateFailedServersForCurrent(std::set<thrift::HostAddress>& failedServers,
+    bool checkAllFailed, std::exception* failure){
+
+  //TODO:: Need to discuss with sumedh about this method
+  thrift::HostAddress host = this->m_currentHostAddr;
+
+  auto ret = failedServers.insert(host);
+  if(ret.second==false && checkAllFailed){
+    boost::optional<ControlConnection&> controlService = ControlConnection::getOrCreateControlConnection(m_connHosts,this,failure);
+    thrift::HostAddress pHost;
+    controlService->searchRandomServer(failedServers,failure,pHost);
+  }
+
 }
