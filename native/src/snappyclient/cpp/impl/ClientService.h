@@ -134,6 +134,9 @@ namespace impl {
         //const SSLSocketParameters& sslParams,
         boost::shared_ptr<ClientTransport>& returnTransport);
 
+    void updateFailedServersForCurrent(std::set<thrift::HostAddress>& failedServers,
+        bool checkAllFailed,std::exception* failure);
+
   protected:
     virtual void checkConnection(const char* op);
 
@@ -166,6 +169,10 @@ namespace impl {
         std::map<thrift::TransactionAttribute::type, bool>& result);
 
     void destroyTransport() noexcept;
+
+//    void handleException(const TException* te,
+//        const std::set<thrift::HostAddress>& failedServers, bool tryFailover, bool ignoreFailOver,
+//        bool createNewConnection, const std::string& op);
 
   private:
     // the static hostName and hostId used by all connections
@@ -338,6 +345,19 @@ namespace impl {
     void bulkClose(const std::vector<thrift::EntityId>& entities);
 
     void close();
+
+    const std::vector<thrift::HostAddress>& getLocators() const noexcept{
+    	return m_connHosts;
+    }
+
+    const std::set<std::string>& getServerGrps() const noexcept{
+        	return m_serverGroups;
+        }
+
+    inline bool isFrameTransport() const noexcept {
+          return m_useFramedTransport;
+        }
+
   };
 
 } /* namespace impl */
