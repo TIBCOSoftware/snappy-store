@@ -193,6 +193,11 @@ public abstract class CallbackFactoryProvider {
     @Override
     public void refreshPolicies(String ldapGroup) {
     }
+
+    @Override
+    public String checkSchemaPermission(String schema, String currentUser) {
+      return null;
+    }
   };
 
   public static void setStoreCallbacks(StoreCallbacks cb) {

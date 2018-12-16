@@ -145,4 +145,9 @@ public interface StoreCallbacks {
    * @param ldapGroup
    */
   void refreshPolicies(String ldapGroup);
+
+  /**
+   * Check permission for current user on given schema.
+   */
+  String checkSchemaPermission(String schema, String currentUser);
 }

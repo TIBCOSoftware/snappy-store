@@ -45,13 +45,13 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
-import com.pivotal.gemfirexd.internal.engine.access.index.SortedMap2Index;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
+import com.pivotal.gemfirexd.internal.engine.access.index.SortedMap2Index;
 import com.pivotal.gemfirexd.internal.engine.access.operations.SortedMap2IndexDeleteOperation.UpdateReplacementValue;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.store.CompactCompositeIndexKey;
@@ -167,7 +167,7 @@ public final class SortedMap2IndexInsertOperation extends MemIndexOperation {
               container, null);
         } catch (IndexMaintenanceException ime) {
           if (isPutDML) {
-            // indicate to higher layer that don't try the delete portion
+            // indicate to higher layer to not try the delete portion if applicable
             return false;
           }
           // this always wraps a StandardException
@@ -333,7 +333,10 @@ public final class SortedMap2IndexInsertOperation extends MemIndexOperation {
             }
           }
         }
-
+        if (isPutDML) {
+          // indicate to higher layer to not try the delete portion if applicable
+          return false;
+        }
         throw GemFireXDUtils.newDuplicateKeyViolation("unique constraint",
             container.getQualifiedTableName(), "key=" + key.toString()
                 + ", row=" + value, oldValue, null, null);
@@ -417,7 +420,7 @@ public final class SortedMap2IndexInsertOperation extends MemIndexOperation {
       }
     } catch (IndexMaintenanceException ime) {
       if (isPutDML) {
-        // indicate to higher layer that don't try the delete portion
+        // indicate to higher layer to not try the delete portion if applicable
         return false;
       }
       // this always wraps a StandardException

@@ -1549,6 +1549,42 @@ public class GfxdSystemProcedures extends SystemProcedures {
   }
 
   /**
+   * Create or drop reservoir region for sampler.
+   */
+  public static void CREATE_OR_DROP_RESERVOIR_REGION(String reservoirRegionName,
+      String resolvedBaseName, Boolean isDrop) throws SQLException {
+    try {
+      // check for permission on the sample table schema
+      LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+      String currentUser = ((GenericLanguageConnectionContext)lcc).getUserName();
+      int dotIndex = resolvedBaseName.indexOf('.');
+      if (dotIndex == -1) {
+        throw new UnsupportedOperationException(
+            "Cannot created reservoir region for base name = " +
+                resolvedBaseName + " having no schema");
+      }
+      String schema = resolvedBaseName.substring(0, dotIndex);
+      CallbackFactoryProvider.getStoreCallbacks().checkSchemaPermission(
+          schema, currentUser);
+
+      // first create/drop locally
+      final Object[] args = new Object[] { reservoirRegionName,
+          resolvedBaseName, isDrop };
+      GfxdSystemProcedureMessage.SysProcMethod.createOrDropReservoirRegion
+          .processMessage(args, Misc.getMyId());
+
+      // send to other nodes
+      publishMessage(args, false,
+          GfxdSystemProcedureMessage.SysProcMethod.createOrDropReservoirRegion,
+          true, false);
+    } catch (StandardException se) {
+      throw PublicAPI.wrapStandardException(se);
+    } catch (Throwable t) {
+      throw TransactionResourceImpl.wrapInSQLException(t);
+    }
+  }
+
+  /**
    * Create all buckets in the given table.
    *
    * @param tableName

@@ -209,13 +209,12 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
 
   private MembershipManager membershipManager;
 
-
-  public enum Index{
+  public enum Index {
     LOCAL,
     GLOBAL,
     BOTH
   }
-  
+
   protected GfxdIndexManager(DataDictionary dd, TableDescriptor td,
       Database db, GemFireContainer gfc, boolean hasFk) {
     this.dd = (GfxdDataDictionary)dd;

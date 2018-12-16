@@ -1421,24 +1421,6 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
   /**
    * {@inheritDoc}
    */
-  @Override
-  public void insertIntoIndex(SortedIndexKey indexKey, RegionEntry entry,
-      boolean isPutDML) {    
-    if (GemFireXDUtils.TraceIndex) {
-      GfxdIndexManager.traceIndex("GemFireContainer#insertIntoIndexes: "
-          + "index key = %s DiskEntry to be inserted = %s", entry);
-    }
-    try {
-      SortedMap2IndexInsertOperation.doMe(null, null, this, indexKey,
-          (RowLocation)entry, isUniqueIndex(), null, isPutDML);
-    } catch (StandardException se) {
-      throw new IndexMaintenanceException(se);
-    }
-  }
-
-  /**
-   * {@inheritDoc}
-   */
   @SuppressWarnings({ "unchecked", "rawtypes" })
   @Override
   public void buildIndexFromSorted(

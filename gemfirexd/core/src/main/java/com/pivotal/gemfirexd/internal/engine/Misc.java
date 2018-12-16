@@ -369,13 +369,14 @@ public abstract class Misc {
 
   public volatile static boolean reservoirRegionCreated = false;
 
-  public static <K, V> PartitionedRegion createReservoirRegionForSampleTable(String reservoirRegionName, String resolvedBaseName) {
-    Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
-    GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
-    Region<K, V> childRegion = cache.getRegion(reservoirRegionName);
-    if (childRegion == null) {
-      RegionAttributes<K, V> attributesBase = regionBase.getAttributes();
-      PartitionAttributes<K, V> partitionAttributesBase = attributesBase.getPartitionAttributes();
+  public static PartitionedRegion createReservoirRegionForSampleTable(
+      String reservoirRegionName, String resolvedBaseName) {
+    Region<?, ?> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
+    GemFireCacheImpl cache = GemFireCacheImpl.getExisting();
+    Region<?, ?> childRegion = cache.getRegion(reservoirRegionName);
+    if (childRegion == null && regionBase != null) {
+      RegionAttributes<?, ?> attributesBase = regionBase.getAttributes();
+      PartitionAttributes<?, ?> partitionAttributesBase = attributesBase.getPartitionAttributes();
       AttributesFactory afact = new AttributesFactory();
       afact.setDataPolicy(attributesBase.getDataPolicy());
       PartitionAttributesFactory paf = new PartitionAttributesFactory();
@@ -388,14 +389,14 @@ public abstract class Misc {
       afact.setPartitionAttributes(paf.create());
       childRegion = cache.createRegion(reservoirRegionName, afact.create());
     }
-    reservoirRegionCreated = true;
+    if (childRegion != null) reservoirRegionCreated = true;
     return (PartitionedRegion)childRegion;
   }
 
-  public static <K, V> PartitionedRegion getReservoirRegionForSampleTable(String reservoirRegionName) {
+  public static PartitionedRegion getReservoirRegionForSampleTable(String reservoirRegionName) {
     if (reservoirRegionName != null) {
       GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
-      Region<K, V> childRegion = cache.getRegion(reservoirRegionName);
+      Region<?, ?> childRegion = cache.getRegion(reservoirRegionName);
       if (childRegion != null) {
         return (PartitionedRegion) childRegion;
       }
