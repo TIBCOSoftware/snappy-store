@@ -207,7 +207,7 @@ public interface GfxdSerializable extends GfxdDSFID {
 
   byte LEAD_NODE_EXN_MSG = 56;
 
-  // 57 is unused -- used for new message IDs
+  // 57 is unused -- use for the next new message ID
 
   byte LEAD_NODE_GET_STATS = 58;
 

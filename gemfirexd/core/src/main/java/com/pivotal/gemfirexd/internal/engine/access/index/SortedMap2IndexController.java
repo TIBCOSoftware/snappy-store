@@ -23,6 +23,7 @@ import com.pivotal.gemfirexd.internal.engine.access.operations.SortedMap2IndexIn
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
+import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.store.access.ConglomerateController;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueFactory;
@@ -69,13 +70,16 @@ final class SortedMap2IndexController extends MemIndexController {
     assert rowLocation != DataValueFactory.DUMMY;
     try {
       final GemFireTransaction tran = this.open_conglom.getTransaction();
+      final LanguageConnectionContext lcc = tran.getLanguageConnectionContext();
+      final boolean skipConstraintChecks = lcc != null && lcc.isSkipConstraintChecks();
       final GemFireContainer container = this.open_conglom
           .getGemFireContainer();
       // this path is only taken for DataDictionary ops, so
       // isPutDML/skipConstraintChecks are always false
       SortedMap2IndexInsertOperation.doMe(tran,
           container.getActiveTXState(tran), container, key, rowLocation,
-          this.open_conglom.isUnique(), null, false /* isPutDML */);
+          this.open_conglom.isUnique(), null,
+          false /* isPutDML */, skipConstraintChecks);
     } catch (StandardException se) {
       if (SQLState.LANG_DUPLICATE_KEY_CONSTRAINT.equals(se.getMessageId())) {
         // for system tables return back ROWISDUPLICATE else throw back the

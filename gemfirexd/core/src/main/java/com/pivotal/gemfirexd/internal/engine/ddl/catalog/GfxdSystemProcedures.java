@@ -1763,7 +1763,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
         Misc.getRegionPath(schema, table, null), true);
     getBucketToServerMapping(region, catalogTable);
     StringBuilder bucketInfo = new StringBuilder();
-    bucketInfo.append(catalogTable.getNumBuckets());
+    bucketInfo.append(region.getTotalNumberOfBuckets());
     bucketInfo.append(':');
     bucketInfo.append(catalogTable.getRedundancy());
     bucketInfo.append(':');

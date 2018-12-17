@@ -93,13 +93,13 @@ public final class SortedMap2IndexInsertOperation extends MemIndexOperation {
   public void doMe(Transaction tran, LogInstant instant, LimitObjectInput in)
       throws StandardException, IOException {
     this.result = doMe(null, null, this.memcontainer, this.key, this.row,
-        this.isUnique, null, false /*isPutDML*/);
+        this.isUnique, null, false /* isPutDML */, false);
   }
 
   public static boolean doMe(GemFireTransaction tran, TXStateInterface tx,
       GemFireContainer container, Object key, RowLocation value,
       boolean isUnique, WrapperRowLocationForTxn wrapperToReplaceUniqEntry,
-      boolean isPutDML) throws StandardException {
+      boolean isPutDML, boolean skipConstraintChecks) throws StandardException {
     if (tran != null && tran.needLogging()) {
       SortedMap2IndexInsertOperation op = new SortedMap2IndexInsertOperation(
           container, key, value, isUnique);
@@ -108,14 +108,15 @@ public final class SortedMap2IndexInsertOperation extends MemIndexOperation {
     }
 
     return insertIntoSkipListMap(tx, container, key, value, isUnique,
-        wrapperToReplaceUniqEntry, isPutDML);
+        wrapperToReplaceUniqEntry, isPutDML, skipConstraintChecks);
   }
 
   private static boolean insertIntoSkipListMap(final TXStateInterface tx,
       final GemFireContainer container, Object key, final RowLocation value,
       final boolean isUnique,
       final WrapperRowLocationForTxn wrapperToReplaceUniqEntry,
-      boolean isPutDML) throws StandardException {
+      boolean isPutDML, boolean skipConstraintChecks) throws StandardException {
+    isPutDML |= skipConstraintChecks;
     final ConcurrentSkipListMap<Object, Object> skipListMap = container
         .getSkipListMap();
     long lockTimeout = -1L;
@@ -333,7 +334,7 @@ public final class SortedMap2IndexInsertOperation extends MemIndexOperation {
             }
           }
         }
-        if (isPutDML) {
+        if (skipConstraintChecks) {
           // indicate to higher layer to not try the delete portion if applicable
           return false;
         }

@@ -1446,7 +1446,7 @@ public final class Oplog implements CompactableOplog {
     Map<String,File> baselineOplogMap = TransformUtils.transformAndMap(baselineOplogFiles,TransformUtils.fileNameTransformer);
     
     // Returned Map of baseline file to current oplog file
-    Map<File, File> baselineToOplogMap = new UnifiedMap<>(16);
+    UnifiedMap<File, File> baselineToOplogMap = new UnifiedMap<>(16);
     for(Iterator<File> itr = allFiles.iterator(); itr.hasNext(); ) {
       File file = itr.next();
       // If the file is in the baseline, add it to the baseline map and remove

@@ -1538,12 +1538,12 @@ public final class RegionAdvisor extends CacheDistributionAdvisor {
         new ObjectLongHashMap<>(16);
     for (ProxyBucketRegion pbr : this.buckets) {
       // quick dirty check
-      InternalDistributedMember p=pbr.getBucketAdvisor().basicGetPrimaryMember(); 
-      if (p!=null) {
-        memberToPrimaryCount.put(p, memberToPrimaryCount.get(p) + 1);
+      InternalDistributedMember p = pbr.getBucketAdvisor().basicGetPrimaryMember();
+      if (p != null) {
+        memberToPrimaryCount.addToValue(p, 1);
       }
     }
-    
+
     final ArrayList<DataStoreBuckets> ds = new ArrayList<DataStoreBuckets>(memberFilter.size());
     adviseFilter(new Filter() {
       public boolean include(Profile profile) {
@@ -1557,8 +1557,7 @@ public final class RegionAdvisor extends CacheDistributionAdvisor {
         return false;
       }
     });
-    
-    
+
     return ds;
   }
 

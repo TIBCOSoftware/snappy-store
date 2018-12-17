@@ -1608,7 +1608,7 @@ class CreateIndexConstantAction extends IndexConstantAction
             .findConglomerate(ContainerKey.valueOf(
                 ContainerHandle.TABLE_SEGMENT, conglomId));
         final GemFireContainer indexContainer = conglom.getGemFireContainer();
-        final boolean isPutDML = lcc != null && lcc.isSkipConstraintChecks();
+        final boolean skipConstraintChecks = lcc != null && lcc.isSkipConstraintChecks();
 
         boolean loadIndex = true;
         final LocalRegion baseRegion = indexManager.getContainer().getRegion();
@@ -1670,7 +1670,8 @@ class CreateIndexConstantAction extends IndexConstantAction
 
               indexManager.insertIntoIndex(null, null, owners[i], event, false,
                   false, rl, baseRowArray[i], null, null, rl.getBucketID(),
-                  indexContainer, null, isPutDML, Index.BOTH, false);
+                  indexContainer, null, skipConstraintChecks, skipConstraintChecks,
+                  Index.BOTH, false);
 
               rowCount++;
             }
