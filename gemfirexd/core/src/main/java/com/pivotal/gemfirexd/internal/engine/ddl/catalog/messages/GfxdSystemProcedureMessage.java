@@ -1947,7 +1947,7 @@ public final class GfxdSystemProcedureMessage extends
      * if it is a {@link VMKind#LOCATOR}, for example.
      */
     boolean allowExecution(Object[] params) throws StandardException {
-      return GemFireXDUtils.getMyVMKind().isAccessorOrStore();
+      return Misc.getMemStoreBooting().getMyVMKind().isAccessorOrStore();
     }
 
     public abstract void processMessage(Object[] params,
