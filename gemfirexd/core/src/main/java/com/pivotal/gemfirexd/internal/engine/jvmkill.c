@@ -45,7 +45,23 @@ resourceExhausted(
       jint flags,
       const void *reserved,
       const char *description) {
-   logMessage("ResourceExhausted: %s: killing current process!", description);
+   int sleepSeconds = 0;
+   if (getenv("JVMKILL_SLEEP_SECONDS")) {
+     const char* s = getenv("JVMKILL_SLEEP_SECONDS");
+     char *ptr;
+     sleepSeconds = strtol(s, &ptr, 10);
+   }
+   if (sleepSeconds < 1) {
+     sleepSeconds = 30;
+   }
+
+   logMessage("ResourceExhausted: %s: terminating current process!\n", description);
+   kill(getpid(), SIGTERM);
+
+   logMessage("SIGKILL will be issued after %d seconds if pid doesn't exit\n", sleepSeconds);
+   sleep(sleepSeconds);
+
+   logMessage("ResourceExhausted: %s: killing current process!\n", description);
    kill(getpid(), SIGKILL);
 }
 
