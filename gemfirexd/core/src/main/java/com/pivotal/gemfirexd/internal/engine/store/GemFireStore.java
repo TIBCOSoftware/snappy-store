@@ -2432,7 +2432,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           // Instantiate using reflection
           try {
             this.externalCatalog = (ExternalCatalog)ClassPathLoader
-                .getLatest().forName("io.snappydata.sql.catalog.StoreHiveCatalog")
+                .getLatest().forName("io.snappydata.sql.catalog.impl.StoreHiveCatalog")
                 .newInstance();
           } catch (InstantiationException | IllegalAccessException
               | ClassNotFoundException e) {
