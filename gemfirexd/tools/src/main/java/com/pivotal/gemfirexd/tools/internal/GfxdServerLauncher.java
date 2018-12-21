@@ -261,7 +261,10 @@ public class GfxdServerLauncher extends CacheServerLauncher {
     if (thresholdOffHeap > 0.0f) {
       props.setProperty(EVICTION_OFF_HEAP_PERCENTAGE, Float.toString(thresholdOffHeap));
     }
-    
+
+    if (options.containsKey(CacheServerLauncher.RECOVER)) {
+      props.put(GfxdConstants.SNAPPY_PREFIX + CacheServerLauncher.RECOVER, "true");
+    }
     return props;
   }
 

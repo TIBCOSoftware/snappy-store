@@ -39,19 +39,7 @@ import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ConstantAction;
-import com.pivotal.gemfirexd.internal.impl.sql.execute.AlterHDFSStoreConstantAction;
-import com.pivotal.gemfirexd.internal.impl.sql.execute.AlterTableConstantAction;
-import com.pivotal.gemfirexd.internal.impl.sql.execute.ConstraintConstantAction;
-import com.pivotal.gemfirexd.internal.impl.sql.execute.CreateAliasConstantAction;
-import com.pivotal.gemfirexd.internal.impl.sql.execute.CreateConstraintConstantAction;
-import com.pivotal.gemfirexd.internal.impl.sql.execute.CreateHDFSStoreConstantAction;
-import com.pivotal.gemfirexd.internal.impl.sql.execute.CreateIndexConstantAction;
-import com.pivotal.gemfirexd.internal.impl.sql.execute.CreateSchemaConstantAction;
-import com.pivotal.gemfirexd.internal.impl.sql.execute.CreateTableConstantAction;
-import com.pivotal.gemfirexd.internal.impl.sql.execute.DDLConstantAction;
-import com.pivotal.gemfirexd.internal.impl.sql.execute.DropAliasConstantAction;
-import com.pivotal.gemfirexd.internal.impl.sql.execute.DropConstraintConstantAction;
-import com.pivotal.gemfirexd.internal.impl.sql.execute.DropSchemaConstantAction;
+import com.pivotal.gemfirexd.internal.impl.sql.execute.*;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 
 /**
@@ -145,6 +133,8 @@ public final class DDLConflatable extends GfxdDataSerializable implements
   private static final int F_DEFAULT_PERSISTENT = 0x10;
   /** true if metastore should be stored in datadictionary */
   private static final int F_METASTORE_IN_DD = 0x20;
+  /** true if ddl is a create disk store statement */
+  private static final int F_IS_CREATE_DISKSTORE = 0x40;
 
   private String constraintName; 
   private Set<String> droppedFKConstraints = null;
@@ -162,6 +152,10 @@ public final class DDLConflatable extends GfxdDataSerializable implements
       LanguageConnectionContext lcc) {
     // by default newer versions always store metastore in datadictionary
     this.additionalFlags = F_METASTORE_IN_DD;
+    if (constantAction instanceof CreateDiskStoreConstantAction) {
+      this.additionalFlags = GemFireXDUtils.set(this.additionalFlags,
+          F_IS_CREATE_DISKSTORE);
+    }
     if (constantAction instanceof CreateTableConstantAction) {
       this.flags = GemFireXDUtils.set(this.flags, IS_CREATE_TABLE);
       this.colocatedWithTable = ((CreateTableConstantAction)constantAction)
@@ -362,7 +356,12 @@ public final class DDLConflatable extends GfxdDataSerializable implements
   public final boolean isCreateIndex() {
     return GemFireXDUtils.isSet(this.flags, IS_CREATE_INDEX);
   }
-  
+
+  public final boolean isCreateDiskStore() {
+    return GemFireXDUtils.isSet(this.additionalFlags,
+        F_IS_CREATE_DISKSTORE);
+  }
+
   public boolean shouldBeConflated() {
     return this.isDropStatement;
   }

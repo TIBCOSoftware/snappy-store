@@ -24,13 +24,7 @@ import java.io.PrintStream;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.AbstractList;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import com.gemstone.gemfire.SystemFailure;
@@ -271,6 +265,7 @@ public class CacheServerLauncher extends LauncherBase {
 
   protected static final String PROPERTIES = "properties";
   public static final String REBALANCE = "rebalance";
+  public static final String RECOVER = "recover";
   public static final String SERVER_PORT = "server-port";
   public static final String SERVER_BIND_ADDRESS = "server-bind-address";
   public static final String DISABLE_DEFAULT_SERVER = "disable-default-server";
@@ -341,6 +336,9 @@ public class CacheServerLauncher extends LauncherBase {
       }
       else if (arg.startsWith("-rebalance")) {
         options.put(REBALANCE, Boolean.TRUE);
+      }
+      else if (arg.startsWith("-recover")) {
+        options.put(RECOVER, Boolean.TRUE);
       }
       else if (arg.startsWith("-server-port")) {
         options.put(SERVER_PORT, arg);
@@ -470,6 +468,9 @@ public class CacheServerLauncher extends LauncherBase {
       }
       else if (arg.startsWith("-rebalance")) {
         options.put(REBALANCE, Boolean.TRUE);
+      }
+      else if (arg.startsWith("-recover")) {
+        options.put(RECOVER, "true");
       }
       else if (arg.startsWith("-disable-default-server")) {
         options.put(DISABLE_DEFAULT_SERVER, Boolean.TRUE);
@@ -771,8 +772,8 @@ public class CacheServerLauncher extends LauncherBase {
       }
     }
 
-    installLogListener();    
-    final AsyncServerLauncher launcher = this.new AsyncServerLauncher(this, props, options); 
+    installLogListener();
+    final AsyncServerLauncher launcher = this.new AsyncServerLauncher(this, props, options);
     final Thread serverConnector = new Thread( launcher, "serverConnector");
     
     serverConnector.start();

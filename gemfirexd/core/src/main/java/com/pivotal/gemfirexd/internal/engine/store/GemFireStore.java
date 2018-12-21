@@ -1114,6 +1114,14 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
         this.gemFireCache = (GemFireCacheImpl)c.create();
         this.gemFireCache.getLogger().info(
             "GemFire Cache successfully created.");
+        if (props.containsKey(GfxdConstants.SNAPPY_PREFIX + CacheServerLauncher.RECOVER)) {
+          String recoveryMode = props.getProperty(GfxdConstants.SNAPPY_PREFIX + CacheServerLauncher.RECOVER);
+          if (recoveryMode != null && recoveryMode.equals("true")) {
+            this.gemFireCache.getLogger().info(
+                "GemFire Cache has come up in recovery mode.");
+            this.gemFireCache.setRecoverMode(true);
+          }
+        }
       } catch (CacheExistsException ex) {
         this.gemFireCache = GemFireCacheImpl.getExisting();
         this.gemFireCache.getLogger().info("Found existing GemFire Cache.");
@@ -2166,6 +2174,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           }
         }
       }
+      cache.setRecoverMode(false);
       this.gemFireCache = null;
       this.gfxdDefaultDiskStore = null;
       this.identityRegion = null;   
