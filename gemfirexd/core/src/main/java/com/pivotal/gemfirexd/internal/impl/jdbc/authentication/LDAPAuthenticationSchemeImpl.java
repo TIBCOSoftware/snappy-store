@@ -63,6 +63,7 @@ import javax.naming.ldap.Rdn;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -935,7 +936,7 @@ implements CredentialInitializer
 	 * @exception NamingException
 	 *              on failure to retrieve the LDAP group's base DN
 	 */
-	/*public Set<String> getLdapGroupsOfUser(String uid)
+	public List<String> getLdapGroupsOfUser(String uid, boolean includeParentGroups)
 			throws Exception {
 
 		DirContext ctx = getDirContext(uid);
@@ -944,21 +945,29 @@ implements CredentialInitializer
 		// If we did not find anything then login failed
 		if (results == null || !results.hasMore())
 			throw new NameNotFoundException();
-		ArrayList<String> groups = new ArrayList<String>();
+		List<String> groups = new LinkedList<String>();
 		SearchResult result = (SearchResult)results.next();
-		NamingEnumeration ne = result.getAttributes().get("memberOf").getAll();
-		while(ne.hasMore()) {
-			String groupMember  = (String)ne.next()
+		Attribute memberOfAttr = result.getAttributes().get("memberOf");
+		List<String> ldapGroups = new LinkedList<>();
+		if (memberOfAttr != null) {
+			NamingEnumeration ne = memberOfAttr.getAll();
+			while (ne.hasMore()) {
+				String group = (String)ne.next();
+				if ((group = group.trim()).length() > 0) {
+					ldapGroups.add(StringUtil.SQLToUpperCase(group));
+				}
+			}
+
+			if (includeParentGroups) {
+				throw new UnsupportedOperationException("Not implemented yet");
+			}
+
+		} else {
+			throw new UnsupportedOperationException("Not implemented yet");
 		}
 
-		resolveDNForGroup(ctx, this.searchGroupBase, searchFilter,
-				this.searchGroupAttributes, true, ldapGroup, groupMembers);
-		ctx.close();
-		// Return all the unique members collected for the group
-		@SuppressWarnings("unchecked")
-		final Set<String> uniqueMembers = new THashSet(groupMembers);
-		return uniqueMembers;
-	} */
+	  return groups;
+	}
 
 	@Override
         public String toString() {
