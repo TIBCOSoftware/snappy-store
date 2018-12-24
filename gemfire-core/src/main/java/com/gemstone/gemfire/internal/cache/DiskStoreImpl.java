@@ -552,7 +552,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     this.sortManager = new DiskBlockSortManager();
 
     // complex init
-    if (isCompactionPossible() && !isOfflineCompacting()) {
+    if (!this.snappyRecoverMode && isCompactionPossible() && !isOfflineCompacting()) {
       this.oplogCompactor = new OplogCompactor();
       this.oplogCompactor.startCompactor();
     } else {
@@ -2280,7 +2280,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
   }
 
   void scheduleCompaction() {
-    if (isCompactionEnabled() && !isOfflineCompacting()) {
+    if (!this.snappyRecoverMode && isCompactionEnabled() && !isOfflineCompacting()) {
       this.oplogCompactor.scheduleIfNeeded(getOplogToBeCompacted());
     }
   }

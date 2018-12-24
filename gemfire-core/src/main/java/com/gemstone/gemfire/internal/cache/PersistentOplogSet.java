@@ -726,7 +726,7 @@ public class PersistentOplogSet implements OplogSet {
         }
       }
  
-      if (!parent.isOffline()) {
+      if (!parent.isOffline() && !parent.getCache().isSnappyRecoveryMode()) {
         // schedule GFXD index recovery first
         parent.scheduleIndexRecovery(oplogSet, false);
         if(recoverValues() && !recoverValuesSync()) {

@@ -117,6 +117,7 @@ import com.pivotal.gemfirexd.internal.engine.distributed.DistributedConnectionCl
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdConnectionHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.QueryCancelFunction;
+import com.pivotal.gemfirexd.internal.engine.distributed.message.PersistentStateToLeadNodeMsg;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl.NetworkInterfaceImpl;
@@ -3105,5 +3106,48 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
   /** returns true if row-level security is enabled on the system */
   public boolean isRLSEnabled() {
     return rlsEnabled;
+  }
+
+  public void sendPersistentViewMsg() throws InterruptedException {
+    if (this.gemFireCache.isSnappyRecoveryMode()) {
+      if (GemFireXDUtils.TraceDDLReplay) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLREPLAY,
+            "sendPersistentViewMsg called");
+      }
+      // This can come before the persistent state is prepared.
+      // Wait in a loop with exponential wait and then fail the executor.
+      int maxRetry = 10;
+      int retryCnt = 0;
+      int powerOfTwo = 1;
+      while (retryCnt < maxRetry) {
+        if (this.persistentStateMsg != null) {
+          // send msg
+        }
+        else {
+          if (retryCnt == maxRetry - 1) {
+            throw new IllegalStateException("persistent state message" +
+                " should have been created");
+          }
+          powerOfTwo = powerOfTwo * 2;
+          long timeToSleep = powerOfTwo * 1000;
+          Thread.sleep(timeToSleep);
+          if (GemFireXDUtils.TraceDDLReplay) {
+            SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLREPLAY,
+                "persistent state message is not prpared retry attempt = " + retryCnt);
+          }
+          retryCnt++;
+        }
+      }
+    }
+  }
+
+  private volatile PersistentStateToLeadNodeMsg persistentStateMsg = null;
+
+  public void setPersistentStateMsg(PersistentStateToLeadNodeMsg msg) {
+    if (GemFireXDUtils.TraceDDLReplay) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_DDLREPLAY,
+          "persistent state message is: " + msg);
+    }
+    this.persistentStateMsg = msg;
   }
 }

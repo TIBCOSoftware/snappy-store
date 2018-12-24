@@ -84,7 +84,9 @@ import com.pivotal.gemfirexd.internal.engine.access.index.MemIndex;
 import com.pivotal.gemfirexd.internal.engine.ddl.*;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.messages.GfxdSystemProcedureMessage;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.AbstractGfxdReplayableMessage;
+import com.pivotal.gemfirexd.internal.engine.distributed.GfxdListResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdMessage;
+import com.pivotal.gemfirexd.internal.engine.distributed.message.PersistentStateToLeadNodeMsg;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServerImpl;
 import com.pivotal.gemfirexd.internal.engine.fabricservice.FabricServiceImpl;
@@ -507,7 +509,9 @@ public final class FabricDatabase implements ModuleControl,
         GemFireXDUtils.executeSQLScripts(embedConn, postScriptPaths, false,
             logger, null, null, false);
       }
-      initializeCatalog();
+      if (!this.memStore.getGemFireCache().isSnappyRecoveryMode()) {
+        initializeCatalog();
+      }
     } catch (Throwable t) {
       try {
         LogWriter logger = Misc.getCacheLogWriter();
@@ -1069,7 +1073,8 @@ public final class FabricDatabase implements ModuleControl,
             .getPreprocessedDDLQueue(currentQueue, skipRegionInit,
                 lastCurrentSchema, pre11TableSchemaVer, traceConflation);
 
-        if (this.memStore.getGemFireCache().isSnappyRecoveryMode()) {
+        final boolean recoveryMode = this.memStore.getGemFireCache().isSnappyRecoveryMode();
+        if (recoveryMode) {
           recoveryModeDDLReplay(preprocessedQueue, stmt,
               embedConn, lastCurrentSchema, lcc, tc, logger);
         } else {
@@ -1188,8 +1193,6 @@ public final class FabricDatabase implements ModuleControl,
               // recovery from disk so that appropriate RowFormatter can be
               // attached when schema matches that from the last version
               // recovered from disk
-              logger.info("FabricDatabase: " +
-                  "KNKN conflatable = " + conflatable + " text = " + conflatable.getValueToConflate());
               String schema = executeDDL(conflatable, stmt, skipInitialization,
                   embedConn, lastCurrentSchema, lcc, tc, logger);
               if (isCreateTable && skipInitialization) {
@@ -1280,35 +1283,37 @@ public final class FabricDatabase implements ModuleControl,
         observer.setIndexRecoveryAccountingMap(accountingMap);
       }
 
-      this.memStore.markIndexLoadBegin();
+      if (!recoveryMode) {
+        this.memStore.markIndexLoadBegin();
 
-      for (DiskStoreImpl dsi : cache.listDiskStores()) {
-        long start = 0;
-        if (logger.infoEnabled()) {
-          start = System.currentTimeMillis();
-          logger.info("FabricDatabase: waiting for index loading from "
-              + dsi.getName());
+        for (DiskStoreImpl dsi : cache.listDiskStores()) {
+          long start = 0;
+          if (logger.infoEnabled()) {
+            start = System.currentTimeMillis();
+            logger.info("FabricDatabase: waiting for index loading from "
+                + dsi.getName());
+          }
+          dsi.waitForIndexRecoveryEnd(-1);
+          if (logger.infoEnabled()) {
+            long end = System.currentTimeMillis();
+            logger.info(MessageFormat.format(
+                "FabricDatabase: Index loading completed for {0} in {1} ms",
+                dsi.getName(), (end - start)));
+          }
         }
-        dsi.waitForIndexRecoveryEnd(-1);
-        if (logger.infoEnabled()) {
-          long end = System.currentTimeMillis();
-          logger.info(MessageFormat.format(
-              "FabricDatabase: Index loading completed for {0} in {1} ms",
-              dsi.getName(), (end - start)));
-        }
-      }
 
-      // By now the index recovery is done. Also the change owner is done in
-      // pre-initialize so before fully initializing the container and hence the
-      // underlying region let's do a sanity check on the index size and region size
-      // for sorted indexes.
-      if (!skipIndexCheck && this.memStore.isPersistIndexes() &&
-          this.memStore.getMyVMKind() == GemFireStore.VMKind.DATASTORE) {
-        try {
-          checkRecoveredIndex(uninitializedContainers, logger, false);
-        } catch (RuntimeException ex) {
-          logger.info("Runtime exception while doing checkRecoveredIndex ex: " + ex.getMessage(), ex);
-          throw ex;
+        // By now the index recovery is done. Also the change owner is done in
+        // pre-initialize so before fully initializing the container and hence the
+        // underlying region let's do a sanity check on the index size and region size
+        // for sorted indexes.
+        if (!skipIndexCheck && this.memStore.isPersistIndexes() &&
+            this.memStore.getMyVMKind() == GemFireStore.VMKind.DATASTORE) {
+          try {
+            checkRecoveredIndex(uninitializedContainers, logger, false);
+          } catch (RuntimeException ex) {
+            logger.info("Runtime exception while doing checkRecoveredIndex ex: " + ex.getMessage(), ex);
+            throw ex;
+          }
         }
       }
 
@@ -1534,28 +1539,34 @@ public final class FabricDatabase implements ModuleControl,
         }
       }
     }
-    sendRegionDiskStates(logger);
+    preparePersistentStatesMsg(logger);
   }
 
-  private void sendRegionDiskStates(final LogWriter logger) {
+  private void preparePersistentStatesMsg(final LogWriter logger) {
     GemFireCacheImpl c = this.memStore.getGemFireCache();
     Collection<DiskStoreImpl> diskStores = c.listDiskStores();
-    logger.info("sendRegionDiskStates: diskstores list = " + diskStores);
+    logger.info("preparePersistentStatesMsg: diskstores list = " + diskStores);
+    GfxdListResultCollector collector = new GfxdListResultCollector();
+    PersistentStateToLeadNodeMsg pmsg = new PersistentStateToLeadNodeMsg(collector);
     for (DiskStoreImpl ds : diskStores) {
       Map<Long, AbstractDiskRegion> drs = ds.getAllDiskRegions();
       if (drs != null && !drs.isEmpty()) {
         Iterator<Map.Entry<Long, AbstractDiskRegion>> iter = drs.entrySet().iterator();
         if (logger.fineEnabled()) {
-          logger.fine("sendRegionDiskStates: disk store = " + ds.getName());
+          logger.fine("preparePersistentStatesMsg: disk store = " + ds.getName());
         }
         while (iter.hasNext()) {
           Map.Entry<Long, AbstractDiskRegion> elem = iter.next();
-          if (logger.fineEnabled()) {
-            logger.fine("sendRegionDiskStates: diskregion = " + elem.getValue());
-          }
+          AbstractDiskRegion adr = elem.getValue();
+          PersistentStateToLeadNodeMsg.DiskPersistentView dpv
+              = new PersistentStateToLeadNodeMsg.DiskPersistentView(
+                  adr.getName(), adr.getOnlineMembers(),
+                  adr.getOfflineMembers(), adr.getOfflineAndEqualMembers());
+          pmsg.addView(dpv);
         }
       }
     }
+    this.memStore.setPersistentStateMsg(pmsg);
   }
 
   private void checkRecoveredIndex(ArrayList<GemFireContainer> uninitializedContainers,
