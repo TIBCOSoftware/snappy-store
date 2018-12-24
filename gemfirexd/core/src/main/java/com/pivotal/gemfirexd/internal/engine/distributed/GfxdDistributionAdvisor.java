@@ -312,7 +312,10 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
           addMemberGroups(m, profile.getServerGroups(), profile.getVMKind());
         }
         // update own catalog version
-        this.myProfile.updateCatalogSchemaVersion(profile.getCatalogSchemaVersion());
+        final GfxdProfile myProfile = this.myProfile;
+        if (myProfile != null) {
+          myProfile.updateCatalogSchemaVersion(profile.getCatalogSchemaVersion());
+        }
       }
       else if (p instanceof BridgeServerProfile) {
         final BridgeServerProfile bp = (BridgeServerProfile)p;
@@ -637,51 +640,11 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     return adviseSingleVMOfKind(groups, VMKindToken.SERVER, preferSelf);
   }
 
-  /**
-   * Return a single member that has a server locator running, including those
-   * with pure GFE locators when the "skipNonGfxd" parameter is false.
-   * 
-   * @param preferSelf
-   *          prefer this VM if it has a server locator running
-   * @param skipNonGfxd
-   *          when true then skip non GemFireXD locators else include pure GFE
-   *          locators too in the search
-   */
-  public final DistributedMember adviseServerLocator(boolean preferSelf,
-      boolean skipNonGfxd) {
-    this.mapLock.readLock().lock();
-    try {
-      InternalDistributedMember member;
-      if (preferSelf) {
-        member = this.myProfile.getDistributedMember();
-        if (this.locatorMap.get(member) != null) {
-          return member;
-        }
-      }
-      Map<InternalDistributedMember, VMKind> gfxdMembers = null;
-      if (skipNonGfxd) {
-        gfxdMembers = this.serverGroupMap.get(DEFAULT_GROUP);
-      }
-      for (Map.Entry<InternalDistributedMember, String> entry : locatorMap
-          .entrySet()) {
-        if (entry.getValue() != null) {
-          member = entry.getKey();
-          if (gfxdMembers == null || gfxdMembers.containsKey(member)) {
-            return member;
-          }
-        }
-      }
-    } finally {
-      this.mapLock.readLock().unlock();
-    }
-    return null;
-  }
-
   /** Get the {@link Profile} for the given member including self. */
   public GfxdProfile getProfile(InternalDistributedMember member) {
     Profile profile = super.getProfile(member);
-    if (profile != null
-        || (profile = getMyProfile()).getDistributedMember().equals(member)) {
+    if (profile != null || ((profile = getMyProfile()) != null &&
+        profile.getDistributedMember().equals(member))) {
       return (GfxdProfile)profile;
     }
     return null;
@@ -700,7 +663,8 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       }
     }
     GfxdProfile profile = getMyProfile();
-    if (profile.getDistributedMember().canonicalString().equals(memberStr)) {
+    if (profile != null &&
+        profile.getDistributedMember().canonicalString().equals(memberStr)) {
       return profile;
     } else {
       return null;

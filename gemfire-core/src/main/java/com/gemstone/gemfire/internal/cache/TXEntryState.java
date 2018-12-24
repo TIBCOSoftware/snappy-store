@@ -17,19 +17,10 @@
 
 package com.gemstone.gemfire.internal.cache;
 
-import static com.gemstone.gemfire.internal.offheap.annotations.OffHeapIdentifier.TX_ENTRY_STATE;
-
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.gemstone.gemfire.cache.CacheWriter;
-import com.gemstone.gemfire.cache.CacheWriterException;
-import com.gemstone.gemfire.cache.EntryDestroyedException;
-import com.gemstone.gemfire.cache.EntryNotFoundException;
-import com.gemstone.gemfire.cache.Operation;
-import com.gemstone.gemfire.cache.Region;
-import com.gemstone.gemfire.cache.RegionDestroyedException;
-import com.gemstone.gemfire.cache.TimeoutException;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
@@ -45,6 +36,9 @@ import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+
+import static com.gemstone.gemfire.internal.offheap.annotations.OffHeapIdentifier.TX_ENTRY_STATE;
 
 /**
  * TXEntryState is the entity that tracks transactional changes.
@@ -1774,8 +1768,8 @@ public class TXEntryState implements TXEntryId, Releasable {
       lockPolicy.releaseLock(entry, lockPolicy.getReadLockMode(), txState.txId,
           false, dataRegion);
     }
-    final THashMapWithCreate entryMap = checkValid ? txrs.getEntryMap() : txrs
-        .getInternalEntryMap();
+    final UnifiedMap<Object, Object> entryMap = checkValid ? txrs.getEntryMap()
+        : txrs.getInternalEntryMap();
     entryMap.put(this.regionKey, this);
     if (isDirty()) {
       updateForCommit(txState);

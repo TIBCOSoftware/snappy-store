@@ -1554,7 +1554,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       // set then that can be used for overflow/gateway
 
       String serverGroup = this.getBootProperty("server-groups");
-      Boolean isLeadMember = serverGroup != null ? serverGroup.contains("IMPLICIT_LEADER_SERVERGROUP") : false;
+      boolean isLeadMember = serverGroup != null &&
+          serverGroup.contains(ServerGroupUtils.LEADER_SERVERGROUP);
 
       if (this.persistingDD || this.persistenceDir != null || isLeadMember) {
         try {
@@ -2441,7 +2442,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           // Instantiate using reflection
           try {
             this.externalCatalog = (ExternalCatalog)ClassPathLoader
-                .getLatest().forName("io.snappydata.impl.StoreHiveCatalog")
+                .getLatest().forName("io.snappydata.sql.catalog.impl.StoreHiveCatalog")
                 .newInstance();
           } catch (InstantiationException | IllegalAccessException
               | ClassNotFoundException e) {

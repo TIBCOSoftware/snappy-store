@@ -34,7 +34,7 @@ import com.gemstone.gemfire.cache.query.data.Portfolio;
 import com.gemstone.gemfire.cache.query.internal.ResultsSet;
 import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.internal.NanoTimer;
-import com.gemstone.gnu.trove.TFloatArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.FloatArrayList;
 
 /**
  *
@@ -60,16 +60,16 @@ public class PerfQuery {
   protected Cache cache;
   
   // RESULTS
-  private final TFloatArrayList[] results;
+  private final FloatArrayList[] results;
   
     
   /** Creates a new instance of PerfQuery */
   public PerfQuery() {
-    results = new TFloatArrayList[4];
-    results[BRUTE_FORCE] = new TFloatArrayList();
-    results[HAND_CODED] = new TFloatArrayList();
-    results[INDEXED] = new TFloatArrayList();
-    results[INDEX_CREATE] = new TFloatArrayList();
+    results = new FloatArrayList[4];
+    results[BRUTE_FORCE] = new FloatArrayList();
+    results[HAND_CODED] = new FloatArrayList();
+    results[INDEXED] = new FloatArrayList();
+    results[INDEX_CREATE] = new FloatArrayList();
   }
   
   public void run() throws Exception {

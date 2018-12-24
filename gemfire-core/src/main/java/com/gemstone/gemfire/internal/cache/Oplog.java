@@ -105,7 +105,11 @@ import com.gemstone.gemfire.internal.util.IOUtils;
 import com.gemstone.gemfire.internal.util.TransformUtils;
 import com.gemstone.gemfire.pdx.internal.PdxWriterImpl;
 import com.gemstone.gnu.trove.TLongHashSet;
+import org.eclipse.collections.api.iterator.IntIterator;
+import org.eclipse.collections.api.iterator.LongIterator;
 import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.map.mutable.primitive.IntObjectHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.LongObjectHashMap;
 import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 /**
@@ -2645,9 +2649,8 @@ public final class Oplog implements CompactableOplog {
     } else {
       // For every live entry in this oplog add it to the deleted set
       // so that we will skip it when we recovery the next oplogs.
-      for (OplogEntryIdMap.Iterator it = getRecoveryMap().iterator(); it.hasNext();) {
-        it.advance();
-        deletedIds.add(it.key());
+      for (LongIterator it = getRecoveryMap().keys(); it.hasNext(); ) {
+        deletedIds.add(it.next());
       }
       close();
     }
@@ -8985,8 +8988,8 @@ public final class Oplog implements CompactableOplog {
    * Memory is optimized by using an int[] for ids in the unsigned int range.
    */
   public static class OplogEntryIdMap {
-    private final TStatelessIntObjectHashMap ints = new TStatelessIntObjectHashMap((int)DiskStoreImpl.INVALID_ID);
-    private final TStatelessLongObjectHashMap longs = new TStatelessLongObjectHashMap(DiskStoreImpl.INVALID_ID);
+    private final IntObjectHashMap<Object> ints = new IntObjectHashMap<>(8);
+    private final LongObjectHashMap<Object> longs = new LongObjectHashMap<>(8);
 
     public Object put(long id, Object v) {
       Object result;
@@ -9010,15 +9013,17 @@ public final class Oplog implements CompactableOplog {
       }
       return result;
     }
-    
-    public Iterator iterator() {
+
+    public LongIterator keys() {
       return new Iterator();
     }
 
-    public class Iterator {
+    public class Iterator implements LongIterator {
+
       private boolean doingInt = true;
-      TStatelessIntObjectIterator intIt = ints.iterator();
-      TStatelessLongObjectIterator longIt = longs.iterator();
+      IntIterator intIt = ints.keySet().intIterator();
+      LongIterator longIt = longs.keySet().longIterator();
+
       public boolean hasNext() {
         if (this.intIt.hasNext()) {
           return true;
@@ -9027,25 +9032,12 @@ public final class Oplog implements CompactableOplog {
           return this.longIt.hasNext();
         }
       }
-      public void advance() {
+
+      public long next() {
         if (doingInt) {
-          this.intIt.advance();
+          return this.intIt.next();
         } else {
-          this.longIt.advance();
-        }
-      }
-      public long key() {
-        if (doingInt) {
-          return this.intIt.key();
-        } else {
-          return this.longIt.key();
-        }
-      }
-      public Object value() {
-        if (doingInt) {
-          return this.intIt.value();
-        } else {
-          return this.longIt.value();
+          return this.longIt.next();
         }
       }
     }

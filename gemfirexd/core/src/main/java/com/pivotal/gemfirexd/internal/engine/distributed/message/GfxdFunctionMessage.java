@@ -42,20 +42,11 @@ import com.gemstone.gemfire.cache.execute.FunctionInvocationTargetException;
 import com.gemstone.gemfire.cache.execute.ResultCollector;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.DistributedSystemDisconnectedException;
-import com.gemstone.gemfire.distributed.internal.DM;
-import com.gemstone.gemfire.distributed.internal.DistributionAdvisor;
-import com.gemstone.gemfire.distributed.internal.DistributionManager;
-import com.gemstone.gemfire.distributed.internal.DistributionMessage;
-import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
-import com.gemstone.gemfire.distributed.internal.ReplyException;
-import com.gemstone.gemfire.distributed.internal.ReplyMessage;
-import com.gemstone.gemfire.distributed.internal.ReplyProcessor21;
-import com.gemstone.gemfire.distributed.internal.ReplySender;
+import com.gemstone.gemfire.distributed.internal.*;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.cache.DirectReplyMessage;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.cache.THashMapWithCreate;
 import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.cache.TXStateProxy;
@@ -71,18 +62,10 @@ import com.gemstone.gemfire.internal.tcp.DirectReplySender;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableCountDownLatch;
 import com.gemstone.gnu.trove.THashSet;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
-import com.pivotal.gemfirexd.internal.engine.distributed.FunctionExecutionException;
-import com.pivotal.gemfirexd.internal.engine.distributed.ResultHolder;
-import com.pivotal.gemfirexd.internal.engine.distributed.GfxdMessage;
-import com.pivotal.gemfirexd.internal.engine.distributed.GfxdReplyMessage;
-import com.pivotal.gemfirexd.internal.engine.distributed.GfxdReplyMessageProcessor;
-import com.pivotal.gemfirexd.internal.engine.distributed.GfxdResponseCode;
-import com.pivotal.gemfirexd.internal.engine.distributed.GfxdResultCollector;
-import com.pivotal.gemfirexd.internal.engine.distributed.GfxdResultCollectorHelper;
-import com.pivotal.gemfirexd.internal.engine.distributed.GfxdWaitingReplyProcessorBase;
+import com.pivotal.gemfirexd.internal.engine.distributed.*;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GfxdDDLReplayInProgressException;
@@ -95,6 +78,8 @@ import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.xplain.XPLAINUtil;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
 
 /**
  * Base abstract class for GemFireXD function messages. This is not directly
@@ -1702,28 +1687,22 @@ public abstract class GfxdFunctionMessage<T> extends
     /**
      * Map of a DistributedMember to its pending {@link ListOfReplies}.
      */
-    protected final THashMapWithCreate pendingReplies;
+    protected final UnifiedMap<InternalDistributedMember, Object> pendingReplies;
 
-    static final THashMapWithCreate.ValueCreator pendingListCreator =
-        new THashMapWithCreate.ValueCreator() {
-      @Override
-      public final Object create(Object key, Object params) {
-        // create with size zero optimizing for the case when no out of order
-        // replies are received
-        return new ListOfReplies(0);
-      }
-    };
+    // create with size zero optimizing for the case when no out of order
+    // replies are received
+    static final Function0<Object> pendingListCreator = () -> new ListOfReplies(0);
 
     public GfxdFunctionOrderedReplyMessageProcessor(DM dm,
         Set<DistributedMember> members, GfxdFunctionMessage<T> msg) {
       super(dm, members, msg);
-      this.pendingReplies = new THashMapWithCreate();
+      this.pendingReplies = new UnifiedMap<>();
     }
 
     public GfxdFunctionOrderedReplyMessageProcessor(DM dm,
         InternalDistributedMember member, GfxdFunctionMessage<T> msg) {
       super(dm, member, msg);
-      this.pendingReplies = new THashMapWithCreate();
+      this.pendingReplies = new UnifiedMap<>();
     }
 
     /**
@@ -1737,8 +1716,8 @@ public abstract class GfxdFunctionMessage<T> extends
       final InternalDistributedMember sender = replyMsg.getSender();
       final boolean isLastResult = responseCode.isGrant();
       if (isLastResult || responseCode.isWaiting()) {
-        final Object replies = this.pendingReplies.create(sender,
-            pendingListCreator, null);
+        final Object replies = this.pendingReplies.getIfAbsentPut(sender,
+            pendingListCreator);
         if (replies != Token.DESTROYED) {
           return ((ListOfReplies)replies).add(this, sender, replyMsg
               .singleResult, isLastResult ? responseCode.grantedSequenceId()

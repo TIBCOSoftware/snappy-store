@@ -262,12 +262,6 @@ com/gemstone/gemfire/internal/cache/RegionQueueException,true,415930758632582110
 com/gemstone/gemfire/internal/cache/RemoteOperationException,true,-595988965679204903,hasHash:boolean,keyHash:int
 com/gemstone/gemfire/internal/cache/RemoteRegionOperation$Operation,false
 com/gemstone/gemfire/internal/cache/SearchLoadAndWriteProcessor$TryAgainException,false
-com/gemstone/gemfire/internal/cache/TStatelessIntHash,false,_FREE:int,_hashingStrategy:com/gemstone/gnu/trove/TIntHashingStrategy
-com/gemstone/gemfire/internal/cache/TStatelessIntHashSet,false
-com/gemstone/gemfire/internal/cache/TStatelessIntObjectHashMap,false
-com/gemstone/gemfire/internal/cache/TStatelessLongHash,false,_FREE:long,_hashingStrategy:com/gemstone/gnu/trove/TLongHashingStrategy
-com/gemstone/gemfire/internal/cache/TStatelessLongHashSet,false
-com/gemstone/gemfire/internal/cache/TStatelessLongObjectHashMap,false
 com/gemstone/gemfire/internal/cache/TXCommitMessage$CommitExceptionCollectingException,true,589384721273797822,cacheExceptions:java/util/Set,fatalExceptions:java/util/Map,id:com/gemstone/gemfire/internal/cache/TXId,regionExceptions:java/util/Map
 com/gemstone/gemfire/internal/cache/TXCommitMessage$RegionCommitList,true,-8910813949027683641
 com/gemstone/gemfire/internal/cache/TXFarSideCMTracker$2,false,this$0:com/gemstone/gemfire/internal/cache/TXFarSideCMTracker
@@ -554,7 +548,6 @@ com/gemstone/gnu/trove/TIntIntHashMap,true,-8732217708418898237
 com/gemstone/gnu/trove/TIntObjectHashMap,true,-313496576027551184
 com/gemstone/gnu/trove/TLongHash,false,_hashingStrategy:com/gemstone/gnu/trove/TLongHashingStrategy
 com/gemstone/gnu/trove/TLongHashSet,true,-7341114291520670738
-com/gemstone/gnu/trove/TLongObjectHashMap,true,7524673861954387917
 com/gemstone/gnu/trove/TObjectHash,false,_hashingStrategy:com/gemstone/gnu/trove/TObjectHashingStrategy
 com/gemstone/gnu/trove/TObjectIntHashMap,true,309134146652813984
 com/gemstone/java/util/concurrent/SynchronousQueueNoSpin,true,-3223113410248163686,qlock:java/util/concurrent/locks/ReentrantLock,waitingConsumers:com/gemstone/java/util/concurrent/SynchronousQueueNoSpin$WaitQueue,waitingProducers:com/gemstone/java/util/concurrent/SynchronousQueueNoSpin$WaitQueue

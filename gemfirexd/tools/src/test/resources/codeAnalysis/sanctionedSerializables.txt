@@ -340,14 +340,7 @@ com/gemstone/gemfire/internal/cache/RegionStatus,true,3442040750396350302,heapSi
 com/gemstone/gemfire/internal/cache/RemoteOperationException,true,-595988965679204903,hasHash:boolean,keyHash:int
 com/gemstone/gemfire/internal/cache/RemoteRegionOperation$Operation,false
 com/gemstone/gemfire/internal/cache/SearchLoadAndWriteProcessor$TryAgainException,false
-com/gemstone/gemfire/internal/cache/THashMapWithCreate,true,2440644010877735505
 com/gemstone/gemfire/internal/cache/THashMapWithKeyPair,true,6832841924272527019
-com/gemstone/gemfire/internal/cache/TStatelessIntHash,false,_FREE:int,_hashingStrategy:com/gemstone/gnu/trove/TIntHashingStrategy
-com/gemstone/gemfire/internal/cache/TStatelessIntHashSet,false
-com/gemstone/gemfire/internal/cache/TStatelessIntObjectHashMap,false
-com/gemstone/gemfire/internal/cache/TStatelessLongHash,false,_FREE:long,_hashingStrategy:com/gemstone/gnu/trove/TLongHashingStrategy
-com/gemstone/gemfire/internal/cache/TStatelessLongHashSet,false
-com/gemstone/gemfire/internal/cache/TStatelessLongObjectHashMap,false
 com/gemstone/gemfire/internal/cache/TXCacheWriterException,true,1885220451811584517
 com/gemstone/gemfire/internal/cache/TXManagerImpl$TXFinishedMap$1,false,this$0:com/gemstone/gemfire/internal/cache/TXManagerImpl$TXFinishedMap
 com/gemstone/gemfire/internal/cache/TXState$1,false
@@ -788,7 +781,6 @@ com/gemstone/gemfire/security/AuthenticationFailedException,true,-82028664722790
 com/gemstone/gemfire/security/AuthenticationRequiredException,true,4675976651103154919
 com/gemstone/gemfire/security/GemFireSecurityException,true,3814254578203076926
 com/gemstone/gemfire/security/NotAuthorizedException,true,419215768216387745,principal:java/security/Principal
-com/gemstone/gnu/trove/TFloatArrayList,true,4142259042805691586,_data:float[],_pos:int
 com/gemstone/gnu/trove/THashMap,true,7557893848987411935
 com/gemstone/gnu/trove/THashSet,true,2705415913937015662
 com/gemstone/gnu/trove/TIntArrayList,true,-6514945712673108507
@@ -800,7 +792,6 @@ com/gemstone/gnu/trove/TLongArrayList,true,-8774302755765699167,_data:long[],_po
 com/gemstone/gnu/trove/TLongHash,false,_hashingStrategy:com/gemstone/gnu/trove/TLongHashingStrategy
 com/gemstone/gnu/trove/TLongHashSet,true,-7341114291520670738
 com/gemstone/gnu/trove/TLongIntHashMap,true,-823076275246207033
-com/gemstone/gnu/trove/TLongObjectHashMap,true,7524673861954387917
 com/gemstone/gnu/trove/TObjectHash,false,_hashingStrategy:com/gemstone/gnu/trove/TObjectHashingStrategy
 com/gemstone/gnu/trove/TObjectIdentityHashingStrategy,true,-5193908370672076866
 com/gemstone/gnu/trove/TObjectIntHashMap,true,309134146652813984

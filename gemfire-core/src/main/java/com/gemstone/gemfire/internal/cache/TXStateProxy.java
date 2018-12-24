@@ -17,17 +17,9 @@
 
 package com.gemstone.gemfire.internal.cache;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-
 import javax.transaction.Status;
 import javax.transaction.Synchronization;
 
@@ -35,25 +27,7 @@ import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.GemFireException;
 import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.SystemFailure;
-import com.gemstone.gemfire.cache.CacheException;
-import com.gemstone.gemfire.cache.ConflictException;
-import com.gemstone.gemfire.cache.DataPolicy;
-import com.gemstone.gemfire.cache.EntryNotFoundException;
-import com.gemstone.gemfire.cache.IllegalTransactionStateException;
-import com.gemstone.gemfire.cache.IsolationLevel;
-import com.gemstone.gemfire.cache.Operation;
-import com.gemstone.gemfire.cache.PartitionAttributes;
-import com.gemstone.gemfire.cache.Region;
-import com.gemstone.gemfire.cache.RegionDestroyedException;
-import com.gemstone.gemfire.cache.SynchronizationCommitConflictException;
-import com.gemstone.gemfire.cache.TransactionBatchException;
-import com.gemstone.gemfire.cache.TransactionDataNodeHasDepartedException;
-import com.gemstone.gemfire.cache.TransactionDataRebalancedException;
-import com.gemstone.gemfire.cache.TransactionException;
-import com.gemstone.gemfire.cache.TransactionFlag;
-import com.gemstone.gemfire.cache.TransactionInDoubtException;
-import com.gemstone.gemfire.cache.TransactionStateReadOnlyException;
-import com.gemstone.gemfire.cache.UnsupportedOperationInTransactionException;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.execute.ResultCollector;
 import com.gemstone.gemfire.cache.query.internal.IndexUpdater;
 import com.gemstone.gemfire.distributed.internal.DM;
@@ -101,7 +75,7 @@ import com.gemstone.gnu.trove.THash;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.THashSet;
 import com.gemstone.gnu.trove.TObjectLongProcedure;
-import com.gemstone.gnu.trove.TObjectObjectProcedure;
+import org.eclipse.collections.api.block.function.Function;
 import org.eclipse.collections.api.block.procedure.Procedure2;
 import org.eclipse.collections.impl.map.mutable.UnifiedMap;
 
@@ -352,14 +326,11 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       assert profile instanceof BucketProfile;
       BucketProfile bp = (BucketProfile)profile;
       if (!bp.inRecovery && bp.cachedOrAllEventsWithListener()) {
-        Object uninitializedRegions = recipients.members.create(
+        ArrayList<Object> uninitializedRegions = recipients.members.getIfAbsentPutWith(
             bp.getDistributedMember(), recipients, bp);
         if (uninitializedRegions != null) {
           final ProxyBucketRegion pbr = ((BucketAdvisor)advisor)
               .getProxyBucketRegion();
-          @SuppressWarnings("unchecked")
-          final ArrayList<Object> memberData =
-              (ArrayList<Object>)uninitializedRegions;
           final THashMap tailKeys = recipients.eventsToBePublished;
           if (tailKeys != null) {
             // at this point we still don't have the actual list, but we will
@@ -367,11 +338,11 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
             // show up after commit phase1, and will remove for which this
             // node itself is the primary; this avoids having to do full
             // profile scan later again
-            ((THashMap)memberData.get(0)).put(pbr.getFullPath(), null);
+            ((THashMap)uninitializedRegions.get(0)).put(pbr.getFullPath(), null);
           }
           if (!bp.regionInitialized) {
             RegionInfoShip regionInfo = new RegionInfoShip(pbr);
-            memberData.add(regionInfo);
+            uninitializedRegions.add(regionInfo);
           }
         }
       }
@@ -405,13 +376,12 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       if (!(profile instanceof PartitionProfile)) {
         final CacheProfile cp = (CacheProfile)profile;
         if (!cp.inRecovery && cp.cachedOrAllEventsWithListener()) {
-          Object uninitializedRegions = recipients.members.create(
+          ArrayList<Object> uninitializedRegions = recipients.members.getIfAbsentPutWith(
               cp.getDistributedMember(), recipients, cp);
           if (uninitializedRegions != null) {
             if (!cp.regionInitialized) {
-              RegionInfoShip regionInfo = new RegionInfoShip(
-                  ((CacheDistributionAdvisor)advisor).getAdvisee());
-              ((ArrayList<Object>)uninitializedRegions).add(regionInfo);
+              RegionInfoShip regionInfo = new RegionInfoShip(advisor.getAdvisee());
+              uninitializedRegions.add(regionInfo);
             }
           }
         }
@@ -422,8 +392,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
             if (versionSources == null) {
               recipients.regionDiskVersionSources = versionSources = new THashMap();
             }
-            RegionInfoShip regionInfo = new RegionInfoShip(
-                ((CacheDistributionAdvisor)advisor).getAdvisee());
+            RegionInfoShip regionInfo = new RegionInfoShip(advisor.getAdvisee());
             versionSources.put(regionInfo, cp.persistentID.diskStoreId);
             recipients.hasRegionDiskVersionSource = true;
           }
@@ -433,9 +402,9 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     }
   };
 
-  public static final class MemberToGIIRegions implements
-      THashMapWithCreate.ValueCreator {
-    final THashMapWithCreate members;
+  public static final class MemberToGIIRegions
+      implements Function<CacheProfile, ArrayList<Object>> {
+    final UnifiedMap<InternalDistributedMember, ArrayList<Object>> members;
     final THashMap eventsToBePublished;
     long[] viewVersions;
     DistributionAdvisor[] viewAdvisors;
@@ -461,7 +430,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
 
     MemberToGIIRegions(int initSize, int numRegions,
         THashMap eventsToBePublished) {
-      this.members = new THashMapWithCreate(initSize);
+      this.members = new UnifiedMap<>(initSize);
       this.eventsToBePublished = eventsToBePublished;
       if (numRegions > 0) {
         this.viewVersions = new long[numRegions];
@@ -477,7 +446,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       this.hasUninitialized = false;
     }
 
-    public final THashMapWithCreate getMembers() {
+    public final UnifiedMap<InternalDistributedMember, ArrayList<Object>> getMembers() {
       return this.members;
     }
 
@@ -515,8 +484,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     }
 
     @Override
-    public Object create(Object key, Object params) {
-      CacheProfile cp = (CacheProfile)params;
+    public ArrayList<Object> valueOf(CacheProfile cp) {
       if (cp.regionInitialized) {
         if (this.eventsToBePublished == null) {
           return null;
@@ -538,7 +506,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
         return data;
       }
     }
-  };
+  }
 
   private static MapCallback<TXId, TXStateProxy, Object, Void> checkEmpty =
       new MapCallbackAdapter<TXId, TXStateProxy, Object, Void>() {
@@ -901,11 +869,8 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
               //    already filled in by finishRecipients)
               // b) member is not the one that sent the map in the first place
               //    (check from the response and send separate commit messages)
-              finishRecipients.members
-                  .forEachEntry(new TObjectObjectProcedure() {
-                @Override
-                public final boolean execute(Object mbr, Object data) {
-                  THashMap memberData = (THashMap)((ArrayList<?>)data).get(0);
+              finishRecipients.members.forEachKeyValue((mbr, data) -> {
+                  THashMap memberData = (THashMap)data.get(0);
                   Map<String, TObjectLongHashMapDSFID> memberEvents =
                       eventsToBeDispatched.get(mbr);
                   if (memberEvents != null && !memberEvents.isEmpty()) {
@@ -924,8 +889,6 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
                       miter.setValueAtCurrent(map);
                     }
                   }
-                  return true;
-                }
               });
             }
           }
@@ -1089,7 +1052,8 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       // final commit message
       checkAllCopiesDown(dm);
 
-      final THashMapWithCreate recipientsData = finishRecipients.members;
+      final UnifiedMap<InternalDistributedMember, ArrayList<Object>> recipientsData =
+          finishRecipients.members;
       // set the commit time only once
       if (this.commitTime == 0) {
         setCommitVersionSources(dm.cacheTimeMillis(),
@@ -1610,18 +1574,12 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
   protected final void sendNewGIINodeMessages(
       final MemberToGIIRegions finishRecipients, final DM dm,
       final boolean forCommit) {
-    THashMap members;
+    UnifiedMap<InternalDistributedMember, ArrayList<Object>> members;
     if (finishRecipients.hasUninitialized
         && !(members = finishRecipients.members).isEmpty()) {
-      members.forEachEntry(new TObjectObjectProcedure() {
-        @SuppressWarnings("unchecked")
-        @Override
-        public boolean execute(Object m, Object l) {
-          if (l != null) {
-            TXNewGIINode.send(dm.getSystem(), dm, TXStateProxy.this,
-                (InternalDistributedMember)m, (ArrayList<Object>)l, forCommit);
-          }
-          return true;
+      members.forEachKeyValue((m, l) -> {
+        if (l != null) {
+          TXNewGIINode.send(dm.getSystem(), dm, TXStateProxy.this, m, l, forCommit);
         }
       });
     }

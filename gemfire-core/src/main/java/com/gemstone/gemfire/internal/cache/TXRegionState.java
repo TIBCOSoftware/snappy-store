@@ -41,9 +41,10 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
 import com.gemstone.gnu.trove.THashMap;
-import com.gemstone.gnu.trove.THashSet;
 import com.gemstone.gnu.trove.TIntArrayList;
-import com.gemstone.gnu.trove.TObjectProcedure;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 /**
  * TXRegionState is the entity that tracks all the changes a transaction has
@@ -69,7 +70,7 @@ import com.gemstone.gnu.trove.TObjectProcedure;
 public final class TXRegionState extends ReentrantLock {
 
   // A map of Objects (entry keys) -> TXEntryState
-  private final THashMapWithCreate entryMods;
+  private final UnifiedMap<Object, Object> entryMods;
 
   // uncommitted/commit list for snapshot isolation
   private ArrayDeque<RegionEntry> unCommittedEntryReference;
@@ -148,7 +149,7 @@ public final class TXRegionState extends ReentrantLock {
     this.region = r;
     this.isPersistent = r.getDataPolicy().withPersistence();
     this.txState = tx;
-    this.entryMods = new THashMapWithCreate(4);
+    this.entryMods = new UnifiedMap<>(4);
     this.expiryReadLock = r.getTxEntryExpirationReadLock();
     this.isValid = true;
 
@@ -176,16 +177,12 @@ public final class TXRegionState extends ReentrantLock {
    */
   @SuppressWarnings("unchecked")
   public final Set<Object> getEntryKeys() {
-    final THashSet keys = new THashSet(this.entryMods.size());
-    this.entryMods.forEachKey(new TObjectProcedure() {
-      public final boolean execute(final Object obj) {
-        if (obj instanceof RegionEntry) {
-          keys.add(((RegionEntry)obj).getKeyCopy());
-        }
-        else {
-          keys.add(obj);
-        }
-        return true;
+    final UnifiedSet<Object> keys = new UnifiedSet<>(this.entryMods.size());
+    this.entryMods.forEachKey(obj -> {
+      if (obj instanceof RegionEntry) {
+        keys.add(((RegionEntry)obj).getKeyCopy());
+      } else {
+        keys.add(obj);
       }
     });
     return keys;
@@ -194,7 +191,7 @@ public final class TXRegionState extends ReentrantLock {
   /**
    * Get the key to {@link TXEntryState} map.
    */
-  final THashMapWithCreate getEntryMap() {
+  final UnifiedMap<Object, Object> getEntryMap() {
     if (this.isValid) {
       return this.entryMods;
     }
@@ -209,7 +206,7 @@ public final class TXRegionState extends ReentrantLock {
    * Gets raw handle to the map returned by {@link #getEntryMap()}. Do not use
    * unless sure that it is being used for read-only.
    */
-  final THashMapWithCreate getInternalEntryMap() {
+  final UnifiedMap<Object, Object> getInternalEntryMap() {
     return this.entryMods;
   }
 
@@ -222,15 +219,12 @@ public final class TXRegionState extends ReentrantLock {
   
   @SuppressWarnings("unchecked")
   public final Set<Object> getCreatedEntryKeys() {
-    final THashSet keys = new THashSet(this.entryMods.size());
-    this.entryMods.forEachValue(new TObjectProcedure() {
-      public final boolean execute(final Object obj) {
-        if(obj instanceof TXEntryState) {
-          if(((TXEntryState)obj).wasCreatedByTX()) {
-            keys.add(((TXEntryState)obj).getUnderlyingRegionEntry());
-          }
+    final UnifiedSet<Object> keys = new UnifiedSet<>(this.entryMods.size());
+    this.entryMods.forEachValue(obj -> {
+      if (obj instanceof TXEntryState) {
+        if (((TXEntryState)obj).wasCreatedByTX()) {
+          keys.add(((TXEntryState)obj).getUnderlyingRegionEntry());
         }
-        return true;
       }
     });
     return keys;
@@ -263,7 +257,7 @@ public final class TXRegionState extends ReentrantLock {
   public final Object readEntry(final Object entryKey,
       final boolean checkValid) {
     if (!checkValid || this.isValid) {
-      final THashMapWithCreate entryMap = this.entryMods;
+      final UnifiedMap<Object, Object> entryMap = this.entryMods;
       final Object txEntry = entryMap.size() > 0 ? entryMap.get(entryKey)
           : null;
       if (TXStateProxy.LOG_FINEST) {
@@ -337,12 +331,9 @@ public final class TXRegionState extends ReentrantLock {
    */
   final int entryCountMod() {
     this.tmpEntryCount = 0;
-    this.entryMods.forEachValue(new TObjectProcedure() {
-      public final boolean execute(final Object txes) {
-        if (txes instanceof TXEntryState) {
-          tmpEntryCount += ((TXEntryState)txes).entryCountMod();
-        }
-        return true;
+    this.entryMods.forEachValue(txes -> {
+      if (txes instanceof TXEntryState) {
+        tmpEntryCount += ((TXEntryState)txes).entryCountMod();
       }
     });
     return this.tmpEntryCount;
@@ -704,8 +695,9 @@ public final class TXRegionState extends ReentrantLock {
       final TXId txId = tx.txId;
       final LockMode readMode = lockPolicy.getReadLockMode();
       this.numChanges = 0;
-      this.entryMods.forEachValue(new TObjectProcedure() {
-        public final boolean execute(final Object obj) {
+      this.entryMods.forEachValue(new Procedure<Object>() {
+        @Override
+        public final void value(final Object obj) {
           if (obj instanceof TXEntryState) {
             final TXEntryState txes = (TXEntryState)obj;
             try {
@@ -735,13 +727,11 @@ public final class TXRegionState extends ReentrantLock {
               }
               tmpEx = TXState.processCleanupException(t, tmpEx);
             }
-            return true;
           }
           else {
             // case of read locked entry
             lockPolicy.releaseLock((AbstractRegionEntry)obj, readMode, txId,
                 false, rgn);
-            return true;
           }
         }
       });
@@ -768,13 +758,9 @@ public final class TXRegionState extends ReentrantLock {
 
   int getChanges() {
     this.tmpEntryCount = 0;
-    this.entryMods.forEachValue(new TObjectProcedure() {
-      @Override
-      public final boolean execute(final Object txes) {
-        if (txes instanceof TXEntryState && ((TXEntryState)txes).isDirty()) {
-          tmpEntryCount++;
-        }
-        return true;
+    this.entryMods.forEachValue(txes -> {
+      if (txes instanceof TXEntryState && ((TXEntryState)txes).isDirty()) {
+        tmpEntryCount++;
       }
     });
     /*

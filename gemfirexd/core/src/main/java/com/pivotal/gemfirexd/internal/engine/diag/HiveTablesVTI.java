@@ -115,9 +115,7 @@ public class HiveTablesVTI extends GfxdVTITemplate
       case 5: // SOURCEPATH
         // only show for ordinal 0 and avoid repetition
         if (this.currentTableColumns.nextIndex() == 1) {
-          return provider != null && (provider.startsWith("jdbc")
-              || provider.endsWith("JdbcRelationProvider"))
-              ? currentTableMeta.driverClass : currentTableMeta.dataSourcePath;
+          return currentTableMeta.dataSourcePath;
         } else return "";
       case 6: // COMPRESSION
         String compression = this.currentTableMeta.compressionCodec;
