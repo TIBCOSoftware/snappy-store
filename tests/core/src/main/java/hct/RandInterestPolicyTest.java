@@ -16,12 +16,17 @@
  */
 package hct;
 
-import java.util.*;
-import util.*;
-import hydra.*;
-import cq.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+
 import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
+import cq.CQUtil;
+import hydra.*;
+import util.*;
 
 public class RandInterestPolicyTest {
     
@@ -453,9 +458,9 @@ protected void doEntryOperations(Region aRegion) {
           Log.getLogWriter().info("Caught Exception " + e + ".  Expected with concurrent execution, continuing test.");
         } catch (TransactionInDoubtException e) {
           Log.getLogWriter().info("Caught TransactionInDoubtException.  Expected with concurrent execution, continuing test.");
-        } catch (CommitConflictException e) {
+        } catch (ConflictException e) {
           // can occur with concurrent execution
-          Log.getLogWriter().info("Caught CommitConflictException. Expected with concurrent execution, continuing test.");
+          Log.getLogWriter().info("Caught ConflictException. Expected with concurrent execution, continuing test.");
         }
       }
 
@@ -1256,7 +1261,7 @@ protected static void verifyContainsValueForKey(Region aRegion, Object key, bool
  * @param key The key in aRegion to verify.
  * @param expectedValue The expected myValue field of a ValueHolder in aRegion, or null
  *        if the expected value should be null.
- * @param valuetoCheck This is expected to be a ValueHolder, whose myValue field compares
+ * @param valueToCheck This is expected to be a ValueHolder, whose myValue field compares
  *        to expectedValue, according to comparStrategy
  * @param compareStrategy Whether the compare is equals or equivalent (for ValueHolders)
  *

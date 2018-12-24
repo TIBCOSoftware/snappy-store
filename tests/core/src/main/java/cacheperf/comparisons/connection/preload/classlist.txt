@@ -140,7 +140,7 @@ com.gemstone.gemfire.cache.RegionExistsException
 com.gemstone.gemfire.internal.cache.HasCachePerfStats
 com.gemstone.gemfire.cache.EntryNotFoundException
 com.gemstone.gemfire.cache.TransactionException
-com.gemstone.gemfire.cache.CommitConflictException
+com.gemstone.gemfire.cache.ConflictException
 com.gemstone.gemfire.admin.AdminDistributedSystem
 com.gemstone.gemfire.cache.query.IndexNameConflictException
 com.gemstone.gemfire.cache.query.IndexExistsException

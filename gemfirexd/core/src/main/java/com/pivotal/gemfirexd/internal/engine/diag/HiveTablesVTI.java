@@ -36,6 +36,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.ResultColumnDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.HarmonySerialClob;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSetMetaData;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
+import com.pivotal.gemfirexd.internal.impl.sql.catalog.GfxdDataDictionary;
 import com.pivotal.gemfirexd.internal.shared.common.reference.Limits;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import org.slf4j.Logger;
@@ -47,9 +48,6 @@ import org.slf4j.LoggerFactory;
  */
 public class HiveTablesVTI extends GfxdVTITemplate
     implements GfxdVTITemplateNoAllNodesRoute {
-
-  public static final ThreadLocal<Boolean> SKIP_HIVE_TABLE_CALLS =
-      new ThreadLocal<>();
 
   private final Logger logger = LoggerFactory.getLogger(getClass().getName());
 
@@ -67,10 +65,10 @@ public class HiveTablesVTI extends GfxdVTITemplate
   public boolean next() {
     if (this.tableMetas == null) {
       final ExternalCatalog hiveCatalog;
-      if (!Boolean.TRUE.equals(HiveTablesVTI.SKIP_HIVE_TABLE_CALLS.get()) &&
+      if (!GfxdDataDictionary.SKIP_CATALOG_OPS.get().skipHiveCatalogCalls &&
           (hiveCatalog = Misc.getMemStore().getExternalCatalog()) != null) {
         try {
-          this.tableMetas = hiveCatalog.getHiveTables(true).iterator();
+          this.tableMetas = hiveCatalog.getCatalogTables().iterator();
         } catch (Exception e) {
           // log and move on
           logger.warn("ERROR in retrieving Hive tables: " + e.toString());
@@ -98,7 +96,7 @@ public class HiveTablesVTI extends GfxdVTITemplate
   }
 
   @Override
-  protected Object getObjectForColumn(int columnNumber) throws SQLException {
+  protected Object getObjectForColumn(int columnNumber) {
     String provider = this.currentTableMeta.shortProvider;
     switch (columnNumber) {
       case 1: // SCHEMA
@@ -117,14 +115,14 @@ public class HiveTablesVTI extends GfxdVTITemplate
       case 5: // SOURCEPATH
         // only show for ordinal 0 and avoid repetition
         if (this.currentTableColumns.nextIndex() == 1) {
-          return provider != null && (provider.startsWith("jdbc")
-              || provider.endsWith("JdbcRelationProvider"))
-              ? currentTableMeta.driverClass : currentTableMeta.dataSourcePath;
+          return currentTableMeta.dataSourcePath;
         } else return "";
       case 6: // COMPRESSION
         String compression = this.currentTableMeta.compressionCodec;
         return compression != null ? compression
-            : ("COLUMN".equals(this.currentTableMeta.tableType)
+            : ("COLUMN".equalsIgnoreCase(this.currentTableMeta.tableType) ||
+            "INDEX".equalsIgnoreCase(this.currentTableMeta.tableType) ||
+            "SAMPLE".equalsIgnoreCase(this.currentTableMeta.tableType)
             ? SystemProperties.SNAPPY_DEFAULT_COMPRESSION_CODEC : null);
       case 7: // COLUMN
         return this.currentTableColumn.name;

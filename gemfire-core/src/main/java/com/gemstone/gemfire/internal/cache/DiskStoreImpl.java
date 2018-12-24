@@ -45,7 +45,12 @@ import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -100,6 +105,8 @@ import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.THashSet;
+import org.eclipse.collections.impl.set.mutable.primitive.IntHashSet;
+import org.eclipse.collections.impl.set.mutable.primitive.LongHashSet;
 
 import static com.gemstone.gemfire.internal.cache.GemFireCacheImpl.sysProps;
 
@@ -3943,10 +3950,8 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
    * in the unsigned int range.
    */
   public static class OplogEntryIdSet {
-    private final TStatelessIntHashSet ints = new TStatelessIntHashSet(
-        (int) INVALID_ID);
-    private final TStatelessLongHashSet longs = new TStatelessLongHashSet(
-        INVALID_ID);
+    private final IntHashSet ints = new IntHashSet(8);
+    private final LongHashSet longs = new LongHashSet(8);
 
     public void add(long id) {
       if (id >= 0 && id <= 0x00000000FFFFFFFFL) {

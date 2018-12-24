@@ -51,10 +51,10 @@ import com.gemstone.gemfire.cache.wan.EventSequenceID;
  *    2) For each event's DistributedMembershipID_ThreadID, if current_SequenceID > last_SequenceId then proceed, else ignore as event is duplicate.
  *    3) Provide key level synchronisation while processing duplicated keys. I.e. if event k1v1 is received by two vms vm1 and vm2, 
  *       we want only one to be processed and other to be ignore. We are using transaction to achieve this. Tx provides key level isolation and 
- *       makes processing event and updating sequenceID as atomic operation, so if vm1 is processing k1v1, vm2 will get CommitConflictException
+ *       makes processing event and updating sequenceID as atomic operation, so if vm1 is processing k1v1, vm2 will get ConflictException
  *    4) We should hold on processing the subsequent events till duplicate event is successfully processed i.e. say vm1 received (and processing) k1v1, 
  *       whereas vm2 received events k1v1(duplicate) followed by k1v2; then vm2 should ignore k1v1 and wait till vm1 process k1v1. To achieve this, 
- *       we loops on CommitConflictException in vm2 till vm1 successfully processed k1v1 and updated SequenceID in dupEventPRegion.
+ *       we loops on ConflictException in vm2 till vm1 successfully processed k1v1 and updated SequenceID in dupEventPRegion.
  *
  * @author Rahul Diyewar
  * @since 7.0

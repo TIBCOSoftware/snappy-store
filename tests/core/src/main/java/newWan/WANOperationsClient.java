@@ -16,52 +16,13 @@
  */
 package newWan;
 
-import hydra.CacheHelper;
-import hydra.GatewaySenderHelper;
-import hydra.GsRandom;
-import hydra.HydraRuntimeException;
-import hydra.Log;
-import hydra.MasterController;
-import hydra.ProcessMgr;
-import hydra.RemoteTestModule;
-import hydra.StopSchedulingOrder;
-import hydra.TestConfig;
-import hydra.TestTask;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Hashtable;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Set;
-import java.util.TreeMap;
-
-import util.BaseValueHolder;
-import util.NameFactory;
-import util.OperationCountersBB;
-import util.OperationsClient;
-import util.OperationsClientPrms;
-import util.StopStartVMs;
-import util.TestException;
-import util.TestHelper;
-import util.TxHelper;
-import util.ValueHolder;
+import java.util.*;
 
 import com.gemstone.gemfire.LogWriter;
-import com.gemstone.gemfire.cache.CacheClosedException;
-import com.gemstone.gemfire.cache.CacheLoaderException;
-import com.gemstone.gemfire.cache.CommitConflictException;
-import com.gemstone.gemfire.cache.Region;
-import com.gemstone.gemfire.cache.TimeoutException;
-import com.gemstone.gemfire.cache.TransactionDataNodeHasDepartedException;
-import com.gemstone.gemfire.cache.TransactionDataRebalancedException;
-import com.gemstone.gemfire.cache.TransactionException;
-import com.gemstone.gemfire.cache.TransactionInDoubtException;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.wan.GatewaySender;
+import hydra.*;
+import util.*;
 
 public class WANOperationsClient extends OperationsClient {
 
@@ -277,13 +238,13 @@ public class WANOperationsClient extends OperationsClient {
             "Caught TransactionInDoubtException.  "
                 + "Expected with concurrent execution, continuing test.");
       }
-      catch (CommitConflictException e) {
+      catch (ConflictException e) {
         Log.getLogWriter().info(
-            "CommitConflictException " + e + " expected, continuing test");
+            "ConflictException " + e + " expected, continuing test");
       }
       catch (TransactionDataRebalancedException e) {
         Log.getLogWriter().info(
-            "CommitConflictException " + e + " expected, continuing test");
+            "TransactionDataRebalancedException " + e + " expected, continuing test");
       }
     }
     else {
@@ -385,10 +346,8 @@ public class WANOperationsClient extends OperationsClient {
 
   /**
    * putall a map to the given region.
-   * 
-   * @param aRegion
-   *          The region to use for putall a map.
-   * 
+   *
+   * @param r The region to use for putall a map.
    */
   protected void putAll(Region r) {
     // determine the number of new keys to put in the putAll

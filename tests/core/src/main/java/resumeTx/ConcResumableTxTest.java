@@ -16,28 +16,17 @@
  */
 package resumeTx;
 
-import hydra.BridgeHelper;
-import hydra.BridgePrms;
-import hydra.CacheHelper;
-import hydra.GsRandom;
-import hydra.Log;
-import hydra.MasterController;
-import hydra.RegionHelper;
-import hydra.RegionPrms;
-import hydra.RemoteTestModule;
-import hydra.TestConfig;
+import java.util.*;
+
+import com.gemstone.gemfire.cache.Cache;
+import com.gemstone.gemfire.cache.CacheTransactionManager;
+import com.gemstone.gemfire.cache.ConflictException;
+import com.gemstone.gemfire.cache.EntryNotFoundException;
+import com.gemstone.gemfire.cache.Region;
+import com.gemstone.gemfire.cache.TransactionId;
+import com.gemstone.gemfire.cache.partition.PartitionRegionHelper;
+import hydra.*;
 import hydra.blackboard.SharedCounters;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Set;
-import java.util.Vector;
-
 import parReg.ParRegUtil;
 import tx.TxUtil;
 import util.NameFactory;
@@ -46,16 +35,6 @@ import util.TestException;
 import util.TestHelper;
 import util.TestHelperPrms;
 import util.TxHelper;
-
-import com.gemstone.gemfire.cache.Cache;
-import com.gemstone.gemfire.cache.CacheTransactionManager;
-import com.gemstone.gemfire.cache.CommitConflictException;
-import com.gemstone.gemfire.cache.EntryNotFoundException;
-import com.gemstone.gemfire.cache.Region;
-import com.gemstone.gemfire.cache.TransactionId;
-import com.gemstone.gemfire.cache.partition.PartitionRegionHelper;
-
-import diskRecovery.RecoveryTestVersionHelper;
 
 public class ConcResumableTxTest {
 
@@ -215,7 +194,7 @@ public class ConcResumableTxTest {
         try {
           TxHelper.commit();
           sc.increment(ResumeTxBB.numSuccessfulCommits);
-        } catch (CommitConflictException e) {
+        } catch (ConflictException e) {
           sc.increment(ResumeTxBB.numFailedCommits);
         }
         sc.increment(ResumeTxBB.numCommits);
@@ -395,7 +374,7 @@ public class ConcResumableTxTest {
             try {
               TxHelper.commit();
               sc.increment(ResumeTxBB.numSuccessfulCommits);
-            } catch (CommitConflictException e) {
+            } catch (ConflictException e) {
               sc.increment(ResumeTxBB.numFailedCommits);
             }
             sc.increment(ResumeTxBB.numCommits);

@@ -44,15 +44,11 @@ com/gemstone/gemfire/cache/CacheLoaderException,true,-3383072059406642140
 com/gemstone/gemfire/cache/CacheRuntimeException,false
 com/gemstone/gemfire/cache/CacheWriterException,true,-2872212342970454458
 com/gemstone/gemfire/cache/CacheXmlException,true,-4343870964883131754
-com/gemstone/gemfire/cache/CommitConflictException,true,-1491184174802596675
-com/gemstone/gemfire/cache/CommitDistributionException,true,-3517820638706581823,regionDistributionExceptions:java/util/Set
-com/gemstone/gemfire/cache/CommitIncompleteException,true,1017741483744420800
 com/gemstone/gemfire/cache/DiskAccessException,true,5799100281147167888
 com/gemstone/gemfire/cache/DuplicatePrimaryPartitionException,true,1
 com/gemstone/gemfire/cache/EntryDestroyedException,true,831865939772672542
 com/gemstone/gemfire/cache/EntryExistsException,true,2925082493103537925,oldValue:java/lang/Object
 com/gemstone/gemfire/cache/EntryNotFoundException,true,-2404101631744605659
-com/gemstone/gemfire/cache/EntryNotFoundInRegion,true,5572550909947420405
 com/gemstone/gemfire/cache/EvictionAction,true,-98840597493242980
 com/gemstone/gemfire/cache/EvictionAlgorithm,true,5778669432033106789
 com/gemstone/gemfire/cache/FailedSynchronizationException,true,-6225053492344591496
@@ -72,7 +68,6 @@ com/gemstone/gemfire/cache/RegionExistsException,true,-5643670216230359426
 com/gemstone/gemfire/cache/RegionReinitializedException,true,8532904304288670752
 com/gemstone/gemfire/cache/RegionRoleException,false,regionFullPath:java/lang/String
 com/gemstone/gemfire/cache/RegionShortcut,false
-com/gemstone/gemfire/cache/RemoteTransactionException,true,-2217135580436381984
 com/gemstone/gemfire/cache/ResourceException,false
 com/gemstone/gemfire/cache/RoleException,true,-7521056108445887394
 com/gemstone/gemfire/cache/StatisticsDisabledException,true,-2987721454129719551
@@ -267,12 +262,6 @@ com/gemstone/gemfire/internal/cache/RegionQueueException,true,415930758632582110
 com/gemstone/gemfire/internal/cache/RemoteOperationException,true,-595988965679204903,hasHash:boolean,keyHash:int
 com/gemstone/gemfire/internal/cache/RemoteRegionOperation$Operation,false
 com/gemstone/gemfire/internal/cache/SearchLoadAndWriteProcessor$TryAgainException,false
-com/gemstone/gemfire/internal/cache/TStatelessIntHash,false,_FREE:int,_hashingStrategy:com/gemstone/gnu/trove/TIntHashingStrategy
-com/gemstone/gemfire/internal/cache/TStatelessIntHashSet,false
-com/gemstone/gemfire/internal/cache/TStatelessIntObjectHashMap,false
-com/gemstone/gemfire/internal/cache/TStatelessLongHash,false,_FREE:long,_hashingStrategy:com/gemstone/gnu/trove/TLongHashingStrategy
-com/gemstone/gemfire/internal/cache/TStatelessLongHashSet,false
-com/gemstone/gemfire/internal/cache/TStatelessLongObjectHashMap,false
 com/gemstone/gemfire/internal/cache/TXCommitMessage$CommitExceptionCollectingException,true,589384721273797822,cacheExceptions:java/util/Set,fatalExceptions:java/util/Map,id:com/gemstone/gemfire/internal/cache/TXId,regionExceptions:java/util/Map
 com/gemstone/gemfire/internal/cache/TXCommitMessage$RegionCommitList,true,-8910813949027683641
 com/gemstone/gemfire/internal/cache/TXFarSideCMTracker$2,false,this$0:com/gemstone/gemfire/internal/cache/TXFarSideCMTracker
@@ -559,7 +548,6 @@ com/gemstone/gnu/trove/TIntIntHashMap,true,-8732217708418898237
 com/gemstone/gnu/trove/TIntObjectHashMap,true,-313496576027551184
 com/gemstone/gnu/trove/TLongHash,false,_hashingStrategy:com/gemstone/gnu/trove/TLongHashingStrategy
 com/gemstone/gnu/trove/TLongHashSet,true,-7341114291520670738
-com/gemstone/gnu/trove/TLongObjectHashMap,true,7524673861954387917
 com/gemstone/gnu/trove/TObjectHash,false,_hashingStrategy:com/gemstone/gnu/trove/TObjectHashingStrategy
 com/gemstone/gnu/trove/TObjectIntHashMap,true,309134146652813984
 com/gemstone/java/util/concurrent/SynchronousQueueNoSpin,true,-3223113410248163686,qlock:java/util/concurrent/locks/ReentrantLock,waitingConsumers:com/gemstone/java/util/concurrent/SynchronousQueueNoSpin$WaitQueue,waitingProducers:com/gemstone/java/util/concurrent/SynchronousQueueNoSpin$WaitQueue

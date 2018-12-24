@@ -51,8 +51,8 @@ import com.gemstone.gemfire.internal.process.StartupStatus;
 import com.gemstone.gemfire.internal.process.StartupStatusListener;
 import com.gemstone.gemfire.internal.shared.LauncherBase;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
-import io.snappydata.collection.OpenHashSet;
 import com.gemstone.gemfire.internal.util.JavaCommandBuilder;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 import static com.gemstone.gemfire.internal.cache.Status.*;
 
@@ -86,14 +86,14 @@ public class CacheServerLauncher extends LauncherBase {
   protected LogWriterI18n logger = null;
   protected String offHeapSize;
   protected volatile String serverStartupMessage;
-  protected final OpenHashSet<String> knownOptions;
+  protected final UnifiedSet<String> knownOptions;
 
   protected static CacheServerLauncher instance;
 
   public CacheServerLauncher(final String baseName) {
     super(baseName, null);
     assert baseName != null : "The base name used for the cache server launcher files cannot be null!";
-    knownOptions = new OpenHashSet<>();
+    knownOptions = new UnifiedSet<>();
     initKnownOptions();
   }
 

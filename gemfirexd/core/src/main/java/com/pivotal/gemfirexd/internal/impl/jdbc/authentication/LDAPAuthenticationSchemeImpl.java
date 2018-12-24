@@ -42,7 +42,6 @@ package com.pivotal.gemfirexd.internal.impl.jdbc.authentication;
 
 
 
-import com.gemstone.gnu.trove.THashSet;
 import com.pivotal.gemfirexd.*;
 import com.pivotal.gemfirexd.auth.callback.CredentialInitializer;
 import com.pivotal.gemfirexd.callbacks.AsyncEventHelper;
@@ -54,6 +53,7 @@ import com.pivotal.gemfirexd.internal.iapi.reference.MessageId;
 import com.pivotal.gemfirexd.internal.iapi.services.monitor.Monitor;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 import javax.naming.*;
 import javax.naming.directory.*;
@@ -921,9 +921,7 @@ implements CredentialInitializer
               this.searchGroupAttributes, true, ldapGroup, groupMembers);
           ctx.close();
           // Return all the unique members collected for the group
-          @SuppressWarnings("unchecked")
-          final Set<String> uniqueMembers = new THashSet(groupMembers);
-          return uniqueMembers;
+          return new UnifiedSet<>(groupMembers);
         }
 
 	/**

@@ -653,12 +653,12 @@ public final class FabricDatabase implements ModuleControl,
     final LanguageConnectionContext lcc = embedConn.getLanguageConnection();
     final GemFireTransaction tc = (GemFireTransaction)lcc
         .getTransactionExecute();
-    HashMap<String, List<String>> hiveDBTablesMap = null;
-    HashMap<String, List<String>> gfDBTablesMap = null;
+    Map<String, List<String>> hiveDBTablesMap;
+    Map<String, List<String>> gfDBTablesMap;
 
     try {
       lcc.getDataDictionary().lockForReading(tc);
-      hiveDBTablesMap = externalCatalog.getAllStoreTablesInCatalog(true);
+      hiveDBTablesMap = externalCatalog.getAllStoreTablesInCatalog();
       gfDBTablesMap = getAllGFXDTables();
     } finally {
       lcc.getDataDictionary().unlockAfterReading(tc);
@@ -682,15 +682,13 @@ public final class FabricDatabase implements ModuleControl,
     }
     // creating a set here just for lookup, will not consume too much
     // memory as size limited by no of tables
-    Set<String> internalColumnTablesSet = new HashSet<>();
-    if (internalColumnTablesList != null) {
-      internalColumnTablesSet.addAll(internalColumnTablesList);
-    }
+    Set<String> internalColumnTablesSet = new HashSet<>(internalColumnTablesList);
 
 //     SanityManager.DEBUG_PRINT("info", "tables in hive store = " + hiveDBTablesMap);
 //     SanityManager.DEBUG_PRINT("info", "tables in DD  = " + gfDBTablesMap);
     removeInconsistentDDEntries(embedConn, hiveDBTablesMap,
-        gfDBTablesMap, internalColumnTablesSet, externalCatalog, removeInconsistentEntries, removeTablesWithData);
+        gfDBTablesMap, internalColumnTablesSet, externalCatalog,
+        removeInconsistentEntries, removeTablesWithData);
     removeInconsistentHiveEntries(hiveDBTablesMap, gfDBTablesMap,
         externalCatalog, removeInconsistentEntries, removeTablesWithData);
   }
@@ -708,8 +706,8 @@ public final class FabricDatabase implements ModuleControl,
    * @throws SQLException
    */
   private static void removeInconsistentDDEntries(EmbedConnection embedConn,
-      HashMap<String, List<String>> hiveDBTablesMap,
-      HashMap<String, List<String>> gfDBTablesMap,
+      Map<String, List<String>> hiveDBTablesMap,
+      Map<String, List<String>> gfDBTablesMap,
       Set<String> internalColumnTablesSet,
       ExternalCatalog externalCatalog, boolean removeInconsistentEntries,
       boolean removeTablesWithData) throws SQLException {
@@ -773,8 +771,8 @@ public final class FabricDatabase implements ModuleControl,
    * @param removeTablesWithData remove entries for tables even if there is data in tables
    */
   private static void removeInconsistentHiveEntries(
-      HashMap<String, List<String>> hiveDBTablesMap,
-      HashMap<String, List<String>> gfDBTablesMap,
+      Map<String, List<String>> hiveDBTablesMap,
+      Map<String, List<String>> gfDBTablesMap,
       ExternalCatalog externalCatalog, boolean removeInconsistentEntries, boolean removeTablesWithData) {
     // remove tables that are in Hive store but not in datadictionary
     for (Map.Entry<String, List<String>> hiveEntry : hiveDBTablesMap.entrySet()) {
@@ -810,7 +808,7 @@ public final class FabricDatabase implements ModuleControl,
     for (String table : tables) {
       SanityManager.DEBUG_PRINT("warning:CATALOG", "Removing table " +
           schema + "." + table + " from Hive metastore");
-      externalCatalog.removeTable(schema, table, false);
+      externalCatalog.removeTableIfExists(schema, table, false);
     }
   }
 

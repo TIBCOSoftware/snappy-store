@@ -43,7 +43,7 @@ import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.TXStateInterface;
 import com.gemstone.gemfire.internal.cache.control.MemoryThresholds;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-import io.snappydata.collection.OpenHashSet;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 /**
  * 
@@ -118,7 +118,7 @@ public class MemberFunctionExecutor extends AbstractExecution {
   private ResultCollector executeFunction(final Function function,
       ResultCollector resultCollector) {
     final DM dm = this.ds.getDistributionManager();
-    final Set<InternalDistributedMember> dest = new OpenHashSet<>(this.members);
+    final Set<InternalDistributedMember> dest = new UnifiedSet<>(this.members);
     if (dest.isEmpty()) {
       throw new NoMemberFoundException(LocalizedStrings
           .MemberFunctionExecutor_NO_MEMBER_FOUND_FOR_EXECUTING_FUNCTION_0

@@ -17,6 +17,27 @@
 
 package com.gemstone.gemfire.internal.cache;
 
+import java.io.PrintWriter;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
+import javax.transaction.Transaction;
+
+import com.gemstone.gemfire.CancelCriterion;
+import com.gemstone.gemfire.GemFireException;
+import com.gemstone.gemfire.SystemFailure;
+import com.gemstone.gemfire.cache.*;
+import com.gemstone.gemfire.distributed.TXManagerCancelledException;
+import com.gemstone.gemfire.distributed.internal.DM;
+import com.gemstone.gemfire.distributed.internal.DistributionManager;
+import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
+import com.gemstone.gemfire.distributed.internal.MembershipListener;
+import com.gemstone.gemfire.distributed.internal.OrderedMembershipListener;
+import com.gemstone.gemfire.distributed.internal.ReplyException;
+import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.SystemTimer.SystemTimerTask;
 import com.gemstone.gemfire.internal.cache.TXRemoteCommitMessage.CommitResponse;
@@ -33,40 +54,8 @@ import com.gemstone.gemfire.internal.concurrent.MapResult;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
-import com.gemstone.gemfire.cache.*;
-import com.gemstone.gemfire.CancelCriterion;
-import com.gemstone.gemfire.GemFireException;
-import com.gemstone.gemfire.SystemFailure;
-import com.gemstone.gemfire.distributed.TXManagerCancelledException;
-import com.gemstone.gemfire.distributed.internal.DM;
-import com.gemstone.gemfire.distributed.internal.DistributionManager;
-import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
-import com.gemstone.gemfire.distributed.internal.MembershipListener;
-import com.gemstone.gemfire.distributed.internal.OrderedMembershipListener;
-import com.gemstone.gemfire.distributed.internal.ReplyException;
-import com.gemstone.gemfire.distributed.internal.membership.*;
 import com.gemstone.gnu.trove.TObjectIntHashMap;
-
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.ConcurrentModificationException;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.WeakHashMap;
-import java.util.Queue;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.LockSupport;
-
-import javax.transaction.Transaction;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
 
 /**
  * <p>
@@ -1412,7 +1401,7 @@ public final class TXManagerImpl implements CacheTransactionManager,
         final TXRegionState[] txrs = tx.getTXRegionStatesSnap();
         for (TXRegionState txr : txrs) {
           if (txr != null) {
-            THashMapWithCreate entryMods = txr.getInternalEntryMap();
+            UnifiedMap<Object, Object> entryMods = txr.getInternalEntryMap();
             for (Object obj : entryMods.values()) {
               if (obj instanceof TXEntryState) {
                 TXEntryState txe = (TXEntryState) obj;

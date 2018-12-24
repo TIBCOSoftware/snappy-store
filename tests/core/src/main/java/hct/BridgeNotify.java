@@ -18,22 +18,24 @@
 
 package hct;
 
-import java.util.*;
-import hydra.*;
-import util.*;
-import vsphere.vijava.VMotionTestBase;
-import delta.DeltaValueHolder;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Set;
 
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.*;
+import com.gemstone.gemfire.cache.query.QueryInvocationTargetException;
+import com.gemstone.gemfire.cache.query.SelectResults;
 import com.gemstone.gemfire.cache.server.CacheServer;
-import com.gemstone.gemfire.cache.util.*;
-import com.gemstone.gemfire.cache.client.PoolManager;
-import com.gemstone.gemfire.cache.query.*;   // SelectResults
-import com.gemstone.gemfire.distributed.*;
-
-
+import com.gemstone.gemfire.cache.util.BridgeWriterException;
 import cq.CQUtil;
+import delta.DeltaValueHolder;
+import hydra.*;
+import util.*;
+import vsphere.vijava.VMotionTestBase;
 
 /**
  * Contains Hydra tasks and supporting methods for testing the GemFire
@@ -169,7 +171,7 @@ public class BridgeNotify {
   }
 
   /**
-   * @see HydraTask_initialize
+   * see HydraTask_initialize
    */
   public void initialize() {
 
@@ -307,7 +309,7 @@ public class BridgeNotify {
    * bridgeClients with notifyBySubscription = false need to get all the 
    * entries after the region has been created/populated
    *
-   * @see HydraTask_populateRegion
+   * see HydraTask_populateRegion
    */
   public static void HydraTask_getEntriesFromServer() {
     Region rootRegion = CacheHelper.getCache().getRegion(BridgeNotify.REGION_NAME);
@@ -445,9 +447,9 @@ public class BridgeNotify {
           throw new TestException("Unexpected Exception " + e + ".  " + TestHelper.getStackTrace(e));
         } catch (TransactionInDoubtException e) {
           Log.getLogWriter().info("Caught TransactionInDoubtException.  Expected with concurrent execution, continuing test.");
-        } catch (CommitConflictException e) {
+        } catch (ConflictException e) {
           // can occur with concurrent execution
-          Log.getLogWriter().info("Caught CommitConflictException. Expected with concurrent execution, continuing test.");
+          Log.getLogWriter().info("Caught ConflictException. Expected with concurrent execution, continuing test.");
         }
 
         if (isSerialExecution) {
@@ -1321,7 +1323,7 @@ public class BridgeNotify {
   }
 
   /**
-   * @see HydraTask_validateEventsReceived
+   * see HydraTask_validateEventsReceived
    */
   protected void validateEventsReceived() {
     Log.getLogWriter().info("invoked validateEventReceived()");

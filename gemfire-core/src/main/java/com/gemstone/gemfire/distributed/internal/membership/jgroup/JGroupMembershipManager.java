@@ -30,32 +30,14 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import com.gemstone.gemfire.CancelException;
-import com.gemstone.gemfire.DataSerializer;
-import com.gemstone.gemfire.ForcedDisconnectException;
-import com.gemstone.gemfire.GemFireConfigException;
-import com.gemstone.gemfire.InternalGemFireError;
-import com.gemstone.gemfire.SystemConnectException;
-import com.gemstone.gemfire.SystemFailure;
-import com.gemstone.gemfire.ToDataException;
+import com.gemstone.gemfire.*;
 import com.gemstone.gemfire.cache.Cache;
 import com.gemstone.gemfire.cache.util.BoundedLinkedHashMap;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.distributed.DistributedSystemDisconnectedException;
 import com.gemstone.gemfire.distributed.Locator;
-import com.gemstone.gemfire.distributed.internal.DMStats;
-import com.gemstone.gemfire.distributed.internal.DistributionConfig;
-import com.gemstone.gemfire.distributed.internal.DistributionException;
-import com.gemstone.gemfire.distributed.internal.DistributionManager;
-import com.gemstone.gemfire.distributed.internal.DistributionMessage;
-import com.gemstone.gemfire.distributed.internal.DistributionStats;
-import com.gemstone.gemfire.distributed.internal.HighPriorityDistributionMessage;
-import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
-import com.gemstone.gemfire.distributed.internal.InternalLocator;
-import com.gemstone.gemfire.distributed.internal.SizeableRunnable;
-import com.gemstone.gemfire.distributed.internal.StartupMessage;
-import com.gemstone.gemfire.distributed.internal.ThrottlingMemLinkedQueueWithDMStats;
+import com.gemstone.gemfire.distributed.internal.*;
 import com.gemstone.gemfire.distributed.internal.direct.DirectChannel;
 import com.gemstone.gemfire.distributed.internal.membership.DistributedMembershipListener;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
@@ -84,16 +66,8 @@ import com.gemstone.gemfire.internal.tcp.MemberShunnedException;
 import com.gemstone.gemfire.internal.tcp.Stub;
 import com.gemstone.gemfire.internal.tcp.TCPConduit;
 import com.gemstone.gemfire.internal.util.Breadcrumbs;
-import com.gemstone.org.jgroups.Address;
-import com.gemstone.org.jgroups.Channel;
-import com.gemstone.org.jgroups.ChannelClosedException;
-import com.gemstone.org.jgroups.ChannelNotConnectedException;
-import com.gemstone.org.jgroups.JChannel;
-import com.gemstone.org.jgroups.Message;
-import com.gemstone.org.jgroups.Receiver;
-import com.gemstone.org.jgroups.ShunnedAddressException;
-import com.gemstone.org.jgroups.SuspectMember;
-import com.gemstone.org.jgroups.View;
+import com.gemstone.gnu.trove.TObjectProcedure;
+import com.gemstone.org.jgroups.*;
 import com.gemstone.org.jgroups.debug.JChannelTestHook;
 import com.gemstone.org.jgroups.protocols.FD;
 import com.gemstone.org.jgroups.protocols.FD_SOCK;
@@ -109,8 +83,7 @@ import com.gemstone.org.jgroups.stack.GossipServer;
 import com.gemstone.org.jgroups.stack.IpAddress;
 import com.gemstone.org.jgroups.stack.ProtocolStack;
 import com.gemstone.org.jgroups.util.GemFireTracer;
-import com.gemstone.gnu.trove.TObjectProcedure;
-import io.snappydata.collection.IntObjectHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.IntObjectHashMap;
 
 public final class JGroupMembershipManager implements MembershipManager {
 
@@ -3293,15 +3266,15 @@ public final class JGroupMembershipManager implements MembershipManager {
             calculatedMembers.add((JGroupMember)destinations[i].getNetMember());
           }
         } // send to explicit list
-        IntObjectHashMap<Message> messages = IntObjectHashMap.withExpectedSize(2);
+        IntObjectHashMap<Message> messages = new IntObjectHashMap<>(2);
         long startSer = theStats.startMsgSerialization();
         boolean firstMessage = true;
         for (Iterator it=calculatedMembers.iterator(); it.hasNext(); ) {
           JGroupMember mbr = (JGroupMember)it.next();
           short version = mbr.getAddress().getVersionOrdinal();
-          if (!messages.contains(version)) {
+          if (!messages.containsKey(version)) {
             Message jmsg = createJGMessage(msg, local, version);
-            messages.justPut(version, jmsg);
+            messages.put(version, jmsg);
             if (firstMessage) {
               theStats.incSentBytes(jmsg.getLength());
               firstMessage = false;

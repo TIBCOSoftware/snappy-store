@@ -93,17 +93,13 @@ public final class TXRemoteCommitMessage extends TXMessage {
     // if there are events to be published, then send separate member-wise
     // split messages as per hosted data to avoid sending full maps to all
     if (finishRecipients.eventsToBePublished != null) {
-      finishRecipients.members.forEachEntry(new TObjectObjectProcedure() {
-        @Override
-        public final boolean execute(Object mbr, Object data) {
-          THashMap memberEvents = (THashMap)((ArrayList<?>)data).get(0);
-          final TXRemoteCommitMessage msg = new TXRemoteCommitMessage(tx,
-              response, callbackArg, commitTime, memberEvents,
-              finishRecipients.regionDiskVersionSources);
-          msg.setRecipient((InternalDistributedMember)mbr);
-          dm.putOutgoing(msg);
-          return true;
-        }
+      finishRecipients.members.forEachKeyValue((mbr, data) -> {
+        THashMap memberEvents = (THashMap)data.get(0);
+        final TXRemoteCommitMessage msg = new TXRemoteCommitMessage(tx,
+            response, callbackArg, commitTime, memberEvents,
+            finishRecipients.regionDiskVersionSources);
+        msg.setRecipient(mbr);
+        dm.putOutgoing(msg);
       });
     }
     else {

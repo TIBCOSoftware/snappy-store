@@ -41,9 +41,10 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
 import com.gemstone.gnu.trove.THashMap;
-import com.gemstone.gnu.trove.THashSet;
 import com.gemstone.gnu.trove.TIntArrayList;
-import com.gemstone.gnu.trove.TObjectProcedure;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 /**
  * TXRegionState is the entity that tracks all the changes a transaction has
@@ -69,16 +70,13 @@ import com.gemstone.gnu.trove.TObjectProcedure;
 public final class TXRegionState extends ReentrantLock {
 
   // A map of Objects (entry keys) -> TXEntryState
-  private final THashMapWithCreate entryMods;
+  private final UnifiedMap<Object, Object> entryMods;
 
   // uncommitted/commit list for snapshot isolation
   private ArrayDeque<RegionEntry> unCommittedEntryReference;
   private ArrayDeque<Object> committedEntryReference;
 
   TObjectLongHashMapDSFID tailKeysForParallelWAN;
-
-  // A map of Objects (entry keys) -> TXEntryUserAttrState
-  //private HashMap uaMods;
 
   private transient final StoppableReentrantReadWriteLock.StoppableReadLock
       expiryReadLock;
@@ -151,7 +149,7 @@ public final class TXRegionState extends ReentrantLock {
     this.region = r;
     this.isPersistent = r.getDataPolicy().withPersistence();
     this.txState = tx;
-    this.entryMods = new THashMapWithCreate(4);
+    this.entryMods = new UnifiedMap<>(4);
     this.expiryReadLock = r.getTxEntryExpirationReadLock();
     this.isValid = true;
 
@@ -179,16 +177,12 @@ public final class TXRegionState extends ReentrantLock {
    */
   @SuppressWarnings("unchecked")
   public final Set<Object> getEntryKeys() {
-    final THashSet keys = new THashSet(this.entryMods.size());
-    this.entryMods.forEachKey(new TObjectProcedure() {
-      public final boolean execute(final Object obj) {
-        if (obj instanceof RegionEntry) {
-          keys.add(((RegionEntry)obj).getKeyCopy());
-        }
-        else {
-          keys.add(obj);
-        }
-        return true;
+    final UnifiedSet<Object> keys = new UnifiedSet<>(this.entryMods.size());
+    this.entryMods.forEachKey(obj -> {
+      if (obj instanceof RegionEntry) {
+        keys.add(((RegionEntry)obj).getKeyCopy());
+      } else {
+        keys.add(obj);
       }
     });
     return keys;
@@ -197,7 +191,7 @@ public final class TXRegionState extends ReentrantLock {
   /**
    * Get the key to {@link TXEntryState} map.
    */
-  final THashMapWithCreate getEntryMap() {
+  final UnifiedMap<Object, Object> getEntryMap() {
     if (this.isValid) {
       return this.entryMods;
     }
@@ -212,7 +206,7 @@ public final class TXRegionState extends ReentrantLock {
    * Gets raw handle to the map returned by {@link #getEntryMap()}. Do not use
    * unless sure that it is being used for read-only.
    */
-  final THashMapWithCreate getInternalEntryMap() {
+  final UnifiedMap<Object, Object> getInternalEntryMap() {
     return this.entryMods;
   }
 
@@ -225,15 +219,12 @@ public final class TXRegionState extends ReentrantLock {
   
   @SuppressWarnings("unchecked")
   public final Set<Object> getCreatedEntryKeys() {
-    final THashSet keys = new THashSet(this.entryMods.size());
-    this.entryMods.forEachValue(new TObjectProcedure() {
-      public final boolean execute(final Object obj) {
-        if(obj instanceof TXEntryState) {
-          if(((TXEntryState)obj).wasCreatedByTX()) {
-            keys.add(((TXEntryState)obj).getUnderlyingRegionEntry());
-          }
+    final UnifiedSet<Object> keys = new UnifiedSet<>(this.entryMods.size());
+    this.entryMods.forEachValue(obj -> {
+      if (obj instanceof TXEntryState) {
+        if (((TXEntryState)obj).wasCreatedByTX()) {
+          keys.add(((TXEntryState)obj).getUnderlyingRegionEntry());
         }
-        return true;
       }
     });
     return keys;
@@ -266,7 +257,7 @@ public final class TXRegionState extends ReentrantLock {
   public final Object readEntry(final Object entryKey,
       final boolean checkValid) {
     if (!checkValid || this.isValid) {
-      final THashMapWithCreate entryMap = this.entryMods;
+      final UnifiedMap<Object, Object> entryMap = this.entryMods;
       final Object txEntry = entryMap.size() > 0 ? entryMap.get(entryKey)
           : null;
       if (TXStateProxy.LOG_FINEST) {
@@ -333,50 +324,6 @@ public final class TXRegionState extends ReentrantLock {
     return this.txState;
   }
 
-  /*
-  public void rmEntry(Object entryKey, TXState txState, LocalRegion r) {
-    rmEntryUserAttr(entryKey);
-    TXEntryState e = (TXEntryState)this.entryMods.remove(entryKey);
-    if (e != null) {
-      e.cleanup(r);
-    }
-    if (this.uaMods == null && this.entryMods.size() == 0) {
-      txState.rmRegion(r);
-    }
-  }
-
-  public TXEntryUserAttrState readEntryUserAttr(Object entryKey) {
-    TXEntryUserAttrState result = null;
-    if (this.uaMods != null) {
-      result = (TXEntryUserAttrState)this.uaMods.get(entryKey);
-    }
-    return result;
-  }
-
-  public TXEntryUserAttrState writeEntryUserAttr(Object entryKey, LocalRegion r) {
-    if (this.uaMods == null) {
-      this.uaMods = new HashMap();
-    }
-    TXEntryUserAttrState result = (TXEntryUserAttrState)this.uaMods
-        .get(entryKey);
-    if (result == null) {
-      result = new TXEntryUserAttrState(r.basicGetEntryUserAttribute(entryKey));
-      this.uaMods.put(entryKey, result);
-    }
-    return result;
-  }
-
-  public void rmEntryUserAttr(Object entryKey) {
-    if (this.uaMods != null) {
-      if (this.uaMods.remove(entryKey) != null) {
-        if (this.uaMods.size() == 0) {
-          this.uaMods = null;
-        }
-      }
-    }
-  }
-  */
-
   /**
    * Returns the total number of modifications made by this transaction to this
    * region's entry count. The result will have a 1 for every create, a 0 for
@@ -384,12 +331,9 @@ public final class TXRegionState extends ReentrantLock {
    */
   final int entryCountMod() {
     this.tmpEntryCount = 0;
-    this.entryMods.forEachValue(new TObjectProcedure() {
-      public final boolean execute(final Object txes) {
-        if (txes instanceof TXEntryState) {
-          tmpEntryCount += ((TXEntryState)txes).entryCountMod();
-        }
-        return true;
+    this.entryMods.forEachValue(txes -> {
+      if (txes instanceof TXEntryState) {
+        tmpEntryCount += ((TXEntryState)txes).entryCountMod();
       }
     });
     return this.tmpEntryCount;
@@ -690,21 +634,6 @@ public final class TXRegionState extends ReentrantLock {
 
   final void applyChangesEnd(LocalRegion r, boolean commit) {
     try {
-      /*
-      try {
-        if (this.uaMods != null) {
-          Iterator it = this.uaMods.entrySet().iterator();
-          while (it.hasNext()) {
-            Map.Entry me = (Map.Entry)it.next();
-            Object eKey = me.getKey();
-            TXEntryUserAttrState txes = (TXEntryUserAttrState)me.getValue();
-            txes.applyChanges(r, eKey);
-          }
-        }
-      } finally {
-        r.txLRUEnd();
-      }
-      */
       r.txLRUEnd(commit);
     } catch (RegionDestroyedException ex) {
       // Region was destroyed out from under us. So act as if the region
@@ -766,8 +695,9 @@ public final class TXRegionState extends ReentrantLock {
       final TXId txId = tx.txId;
       final LockMode readMode = lockPolicy.getReadLockMode();
       this.numChanges = 0;
-      this.entryMods.forEachValue(new TObjectProcedure() {
-        public final boolean execute(final Object obj) {
+      this.entryMods.forEachValue(new Procedure<Object>() {
+        @Override
+        public final void value(final Object obj) {
           if (obj instanceof TXEntryState) {
             final TXEntryState txes = (TXEntryState)obj;
             try {
@@ -797,13 +727,11 @@ public final class TXRegionState extends ReentrantLock {
               }
               tmpEx = TXState.processCleanupException(t, tmpEx);
             }
-            return true;
           }
           else {
             // case of read locked entry
             lockPolicy.releaseLock((AbstractRegionEntry)obj, readMode, txId,
                 false, rgn);
-            return true;
           }
         }
       });
@@ -830,13 +758,9 @@ public final class TXRegionState extends ReentrantLock {
 
   int getChanges() {
     this.tmpEntryCount = 0;
-    this.entryMods.forEachValue(new TObjectProcedure() {
-      @Override
-      public final boolean execute(final Object txes) {
-        if (txes instanceof TXEntryState && ((TXEntryState)txes).isDirty()) {
-          tmpEntryCount++;
-        }
-        return true;
+    this.entryMods.forEachValue(txes -> {
+      if (txes instanceof TXEntryState && ((TXEntryState)txes).isDirty()) {
+        tmpEntryCount++;
       }
     });
     /*

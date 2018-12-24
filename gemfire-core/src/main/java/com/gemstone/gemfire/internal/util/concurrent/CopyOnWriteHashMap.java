@@ -22,7 +22,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
-import io.snappydata.collection.ObjectObjectHashMap;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
 
 /**
  * A copy on write hash map.
@@ -54,7 +54,7 @@ public class CopyOnWriteHashMap<K,V> extends AbstractMap<K, V> {
 
   @Override
   public synchronized V put(K key, V value) {
-    ObjectObjectHashMap<K, V> tmp = ObjectObjectHashMap.from(map);
+    UnifiedMap<K, V> tmp = new UnifiedMap<K, V>(map);
     V result = tmp.put(key, value);
     map = Collections.unmodifiableMap(tmp);
     return result;
@@ -64,14 +64,14 @@ public class CopyOnWriteHashMap<K,V> extends AbstractMap<K, V> {
 
   @Override
   public synchronized void putAll(Map<? extends K, ? extends V> m) {
-    ObjectObjectHashMap<K, V> tmp = ObjectObjectHashMap.from(map);
+    UnifiedMap<K, V> tmp = new UnifiedMap<>(map);
     tmp.putAll(m);
     map = Collections.unmodifiableMap(tmp);
   }
 
   @Override
   public synchronized V remove(Object key) {
-    ObjectObjectHashMap<K, V> tmp = ObjectObjectHashMap.from(map);
+    UnifiedMap<K, V> tmp = new UnifiedMap<>(map);
     V result = tmp.remove(key);
     map = Collections.unmodifiableMap(tmp);
     return result;

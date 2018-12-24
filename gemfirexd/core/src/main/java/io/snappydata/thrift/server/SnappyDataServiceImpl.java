@@ -60,10 +60,10 @@ import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.TObjectProcedure;
 import com.pivotal.gemfirexd.Attribute;
+import com.pivotal.gemfirexd.internal.catalog.ExternalCatalog;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.GfxdSystemProcedures;
-import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
@@ -1619,8 +1619,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
       if (source.isSetRetainBucketIds() && !target.isSetRetainBucketIds()) {
         target.setRetainBucketIds(source.isRetainBucketIds());
       }
-      if (source.isSetMetadataVersion() && !target.isSetMetadataVersion()) {
-        target.setMetadataVersion(source.getMetadataVersion());
+      if (source.isSetCatalogVersion() && !target.isSetCatalogVersion()) {
+        target.setCatalogVersion(source.getCatalogVersion());
       }
       if (source.isSetSnapshotTransactionId() && !target.isSetSnapshotTransactionId()) {
         target.setSnapshotTransactionId(source.getSnapshotTransactionId());
@@ -1647,14 +1647,14 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
             target.getBucketIdsTable(), target.getBucketIds(),
             target.isRetainBucketIds(), conn.getLanguageConnectionContext());
       }
-      if (target.isSetMetadataVersion()) {
-        final GfxdDistributionAdvisor.GfxdProfile profile = GemFireXDUtils.
-            getGfxdProfile(Misc.getMyId());
-        final int actualVersion = profile.getRelationDestroyVersion();
-        final int metadataVersion = target.getMetadataVersion();
-        if (metadataVersion != -1 && actualVersion != metadataVersion) {
+      if (target.isSetCatalogVersion()) {
+        final ExternalCatalog catalog = Misc.getMemStore().getExistingExternalCatalog();
+        final long actualVersion = catalog.getCatalogSchemaVersion();
+        final long catalogVersion = target.getCatalogVersion();
+        if (catalogVersion != -1 && actualVersion != catalogVersion) {
           throw Util.generateCsSQLException(
-              SQLState.SNAPPY_RELATION_DESTROY_VERSION_MISMATCH);
+              SQLState.SNAPPY_CATALOG_SCHEMA_VERSION_MISMATCH,
+              actualVersion, catalogVersion);
         }
       }
       if (target.isSetSnapshotTransactionId()) {

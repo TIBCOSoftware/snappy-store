@@ -31,6 +31,7 @@ import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultColumnDescriptor;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSetMetaData;
+import com.pivotal.gemfirexd.internal.impl.sql.catalog.GfxdDataDictionary;
 import com.pivotal.gemfirexd.internal.shared.common.reference.Limits;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,10 +56,10 @@ public class SysPoliciesVTI extends GfxdVTITemplate
   public boolean next() {
     if (this.policyDatas == null) {
       final ExternalCatalog hiveCatalog;
-      if (!Boolean.TRUE.equals(HiveTablesVTI.SKIP_HIVE_TABLE_CALLS.get()) &&
+      if (!GfxdDataDictionary.SKIP_CATALOG_OPS.get().skipHiveCatalogCalls &&
           (hiveCatalog = Misc.getMemStore().getExternalCatalog()) != null) {
         try {
-          this.policyDatas = hiveCatalog.getPolicies(true).iterator();
+          this.policyDatas = hiveCatalog.getPolicies().iterator();
         } catch (Exception e) {
           // log and move on
           logger.warn("ERROR in retrieving Policies : " + e.toString());
@@ -78,7 +79,7 @@ public class SysPoliciesVTI extends GfxdVTITemplate
   }
 
   @Override
-  protected Object getObjectForColumn(int columnNumber) throws SQLException {
+  protected Object getObjectForColumn(int columnNumber) {
     switch (columnNumber) {
       case 1: // Policy Name
         return this.currentPolicyMeta.policyName;

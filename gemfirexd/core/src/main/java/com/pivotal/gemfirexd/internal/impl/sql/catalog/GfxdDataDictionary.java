@@ -38,6 +38,7 @@ package com.pivotal.gemfirexd.internal.impl.sql.catalog;
 import java.sql.ResultSetMetaData;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -236,24 +237,35 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
       { SYSFUN_MODE, SYSFUN_MODE }, { SYSFUN_MODE, SYSFUN_MODE, SYSFUN_MODE },
       { SYSFUN_MODE, SYSFUN_MODE, SYSFUN_MODE, SYSFUN_MODE } };
 
+  public static final class SkipCatalogOperations {
+    /**
+     * Skip calls to inbuilt hive catalog (for cases that can lead
+     * to recursive calls from within hive catalog query threads).
+     */
+    public boolean skipHiveCatalogCalls;
+    /**
+     * Skip DataDictionary locks to avoid deadlocks in some cases.
+     */
+    public boolean skipDDLocks;
+
+    SkipCatalogOperations(boolean skipHiveCatalogCalls, boolean skipDDLocks) {
+      this.skipHiveCatalogCalls = skipHiveCatalogCalls;
+      this.skipDDLocks = skipDDLocks;
+    }
+  }
+
   /**
    * This allows a thread to skip acquiring read lock on GfxdDataDictionary
    * and/or GemFireContainer. Used at the time of checking if a table is
    * columnar or not while setting its tabletype.
    */
-  public static final ThreadLocal<Boolean> SKIP_LOCKS = new ThreadLocal<Boolean>() {
-    public Boolean initialValue() {
-      return Boolean.FALSE;
-    }
-  };
+  public static final ThreadLocal<SkipCatalogOperations> SKIP_CATALOG_OPS =
+      ThreadLocal.withInitial(() -> new SkipCatalogOperations(false, false));
 
-  /** static block */
   static {
     // populate the set of system schemas
-    sysSchemaSet = new HashSet<String>(systemSchemaNames.length * 2);
-    for (String sysSchema : systemSchemaNames) {
-      sysSchemaSet.add(sysSchema);
-    }
+    sysSchemaSet = new HashSet<>(systemSchemaNames.length * 2);
+    Collections.addAll(sysSchemaSet, systemSchemaNames);
   }
 
   @Override
@@ -419,8 +431,8 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
   public final boolean lockForReadingNoThrow(TransactionController tc,
       long maxWaitMillis) {
     try {
-      return SKIP_LOCKS.get() || GemFireXDUtils.lockObjectNoThrow(ddLockObject, null, false, false,
-          tc, maxWaitMillis) != GfxdLockSet.LOCK_FAIL;
+      return SKIP_CATALOG_OPS.get().skipDDLocks || GemFireXDUtils.lockObjectNoThrow(
+          ddLockObject, null, false, false, tc, maxWaitMillis) != GfxdLockSet.LOCK_FAIL;
     } catch (StandardException se) {
       // unexpected
       throw GemFireXDRuntimeException.newRuntimeException(
@@ -476,7 +488,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
    */
   @Override
   public final boolean unlockAfterReading(TransactionController tc) {
-    if (!SKIP_LOCKS.get()) {
+    if (!SKIP_CATALOG_OPS.get().skipDDLocks) {
       return GemFireXDUtils.unlockObject(ddLockObject, null, false, false, tc);
     } else {
       return false;
@@ -617,8 +629,8 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
   @Override
   public final boolean lockForWriting(TransactionController tc,
       boolean localOnly) throws StandardException {
-    return SKIP_LOCKS.get() || GemFireXDUtils.lockObject(ddLockObject, null, true, localOnly, tc,
-        GfxdLockSet.MAX_LOCKWAIT_VAL);
+    return SKIP_CATALOG_OPS.get().skipDDLocks || GemFireXDUtils.lockObject(
+        ddLockObject, null, true, localOnly, tc, GfxdLockSet.MAX_LOCKWAIT_VAL);
   }
 
   /**
@@ -649,7 +661,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
   @Override
   public final void unlockAfterWriting(TransactionController tc,
       boolean localOnly) {
-    if (!SKIP_LOCKS.get()) {
+    if (!SKIP_CATALOG_OPS.get().skipDDLocks) {
       GemFireXDUtils.unlockObject(ddLockObject, null, true, localOnly, tc);
     }
   }
@@ -1630,12 +1642,11 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
     
     {
         // void SET_BUCKETS_FOR_LOCAL_EXECUTION(TableName, buckets)
-        String[] argNames = new String[] { "TABLE_NAME", "BUCKETS",
-        "RELATION_DESTROY_VERSIONS"};
+        String[] argNames = new String[] { "TABLE_NAME", "BUCKETS", "CATALOG_VERSION"};
         TypeDescriptor[] argTypes = new TypeDescriptor[] {
             DataTypeDescriptor.getCatalogType(Types.VARCHAR),
             DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-            DataTypeDescriptor.getCatalogType(Types.INTEGER)
+            DataTypeDescriptor.getCatalogType(Types.BIGINT)
             };
         super.createSystemProcedureOrFunction("SET_BUCKETS_FOR_LOCAL_EXECUTION", sysUUID, argNames,
             argTypes, 0, 0, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines,
@@ -1662,6 +1673,20 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
       super.createSystemProcedureOrFunction("REPLACE_JAR_BYTES", sqlJUUID,
           argNames, argTypes, 0, 0, RoutineAliasInfo.MODIFIES_SQL_DATA, null,
           newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, true);
+    }
+
+    {
+      // CREATE_OR_DROP_RESERVOIR_REGION(String reservoirRegionName,
+      //   String resolvedBaseName, Boolean isDrop)
+      String[] arg_names = new String[] { "RESERVOIR_REGION_NAME",
+          "RESOLVED_BASE_NAME", "IS_DROP" };
+      TypeDescriptor[] arg_types = new TypeDescriptor[] {
+          DataTypeDescriptor.getCatalogType(Types.LONGVARCHAR),
+          DataTypeDescriptor.getCatalogType(Types.LONGVARCHAR),
+          DataTypeDescriptor.getCatalogType(Types.BOOLEAN) };
+      super.createSystemProcedureOrFunction("CREATE_OR_DROP_RESERVOIR_REGION",
+          sysUUID, arg_names, arg_types, 0, 0, RoutineAliasInfo.NO_SQL, null,
+          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
     }
 
     {
@@ -1725,7 +1750,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
         TypeDescriptor[] argTypes = new TypeDescriptor[] {
             DataTypeDescriptor.getBuiltInDataTypeDescriptor(
                 Types.BOOLEAN, false).getCatalogType() };
-        super.createSystemProcedureOrFunction("GET_SNAPSHOT_TXID", sysUUID,
+        super.createSystemProcedureOrFunction("GET_SNAPSHOT_TXID_AND_HOSTURL", sysUUID,
             argNames, argTypes, 0, 0, RoutineAliasInfo.READS_SQL_DATA,
             DataTypeDescriptor.getCatalogType(Types.VARCHAR), newlyCreatedRoutines,
             tc, GFXD_SYS_PROC_CLASSNAME, false);
@@ -1733,128 +1758,27 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
     }
 
     {
-      // GET_TABLE_METADATA
-      String[] arg_names = new String[] { "TABLE_NAME",
-          "TABLE_OBJECT", "BUCKET_COUNT", "PARTITIONING_COLUMNS",
-          "INDEX_COLUMNS", "BUCKET_TO_SERVER_MAPPING",
-          "RELATION_DESTROY_VERSION", "PK_COLUMNS" };
-      TypeDescriptor[] arg_types = new TypeDescriptor[] { DataTypeDescriptor
-          .getCatalogType(Types.VARCHAR),
-          DataTypeDescriptor.getCatalogType(Types.BLOB),
+      // GET_CATALOG_METADATA
+      String[] arg_names = new String[] { "OPERATION", "ARGS", "RESULT" };
+      TypeDescriptor[] arg_types = new TypeDescriptor[] {
           DataTypeDescriptor.getCatalogType(Types.INTEGER),
-          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-          DataTypeDescriptor.getCatalogType(Types.CLOB),
-          DataTypeDescriptor.getCatalogType(Types.INTEGER),
-          DataTypeDescriptor.getCatalogType(Types.VARCHAR)};
-      super.createSystemProcedureOrFunction("GET_TABLE_METADATA",
-          sysUUID, arg_names, arg_types, 7, 0, RoutineAliasInfo.READS_SQL_DATA, null,
-          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
-    }
-
-    {
-      // CREATE_SNAPPY_TABLE
-      String[] arg_names = new String[] { "TABLE_IDENT",
-          "PROVIDER", "USER_SCHEMA", "SCHEMA_DDL", "MODE",
-          "OPTIONS", "IS_BUILTIN"};
-      TypeDescriptor[] arg_types = new TypeDescriptor[] {
-          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
           DataTypeDescriptor.getCatalogType(Types.BLOB),
-          DataTypeDescriptor.getCatalogType(Types.BLOB),
-          DataTypeDescriptor.getCatalogType(Types.BOOLEAN)};
-      super.createSystemProcedureOrFunction("CREATE_SNAPPY_TABLE",
-          sysUUID, arg_names, arg_types, 0, 0, RoutineAliasInfo.READS_SQL_DATA, null,
-          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
-    }
-
-    {
-      // DROP_SNAPPY_TABLE
-      String[] arg_names = new String[] { "TABLE_IDENT", "IF_EXISTS", "IS_EXTERNAL" };
-      TypeDescriptor[] arg_types = new TypeDescriptor[] {
-          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-          DataTypeDescriptor.getCatalogType(Types.BOOLEAN),
-          DataTypeDescriptor.getCatalogType(Types.BOOLEAN) };
-      super.createSystemProcedureOrFunction("DROP_SNAPPY_TABLE",
-          sysUUID, arg_names, arg_types, 0, 0, RoutineAliasInfo.READS_SQL_DATA, null,
-          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
-    }
-
-    {
-      // CREATE_SNAPPY_INDEX
-      String[] arg_names = new String[] { "INDEX_IDENT",
-          "TABLE_IDENT", "INDEX_COLUMNS", "OPTIONS"};
-      TypeDescriptor[] arg_types = new TypeDescriptor[] {
-          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-          DataTypeDescriptor.getCatalogType(Types.BLOB),
-          DataTypeDescriptor.getCatalogType(Types.BLOB)};
-      super.createSystemProcedureOrFunction("CREATE_SNAPPY_INDEX",
-          sysUUID, arg_names, arg_types, 0, 0, RoutineAliasInfo.READS_SQL_DATA, null,
-          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
-    }
-
-    {
-      // DROP_SNAPPY_INDEX
-      String[] arg_names = new String[] { "INDEX_IDENT", "IF_EXISTS"};
-      TypeDescriptor[] arg_types = new TypeDescriptor[] {
-          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-          DataTypeDescriptor.getCatalogType(Types.BOOLEAN)};
-      super.createSystemProcedureOrFunction("DROP_SNAPPY_INDEX",
-          sysUUID, arg_names, arg_types, 0, 0, RoutineAliasInfo.READS_SQL_DATA, null,
-          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
-    }
-
-    {
-      // CREATE_SNAPPY_UDF
-      String[] arg_names = new String[] { "DB", "FUNCTION_NAME", "CLASS_NAME", "JAR_URI"};
-      TypeDescriptor[] arg_types = new TypeDescriptor[] {
-          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-          DataTypeDescriptor.getCatalogType(Types.VARCHAR)};
-      super.createSystemProcedureOrFunction("CREATE_SNAPPY_UDF",
-          sysUUID, arg_names, arg_types, 0, 0, RoutineAliasInfo.READS_SQL_DATA, null,
-          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
-    }
-
-    {
-      // DROP_SNAPPY_UDF
-      String[] arg_names = new String[] { "DB", "FUNCTION_NAME"};
-      TypeDescriptor[] arg_types = new TypeDescriptor[] {
-          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-          DataTypeDescriptor.getCatalogType(Types.VARCHAR)};
-      super.createSystemProcedureOrFunction("DROP_SNAPPY_UDF",
-          sysUUID, arg_names, arg_types, 0, 0, RoutineAliasInfo.READS_SQL_DATA, null,
-          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
-    }
-
-    {
-      // ALTER_SNAPPY_TABLE
-      String[] arg_names = new String[] { "TABLE_IDENT", "IS_ADD_COL", "COL_NAME", "COL_DATATYPE", "COL_IS_NULLABLE"};
-      TypeDescriptor[] arg_types = new TypeDescriptor[] {
-              DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-              DataTypeDescriptor.getCatalogType(Types.BOOLEAN),
-              DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-              DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-              DataTypeDescriptor.getCatalogType(Types.BOOLEAN)};
-      super.createSystemProcedureOrFunction("ALTER_SNAPPY_TABLE",
-              sysUUID, arg_names, arg_types, 0, 0, RoutineAliasInfo.READS_SQL_DATA, null,
-              newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
-    }
-
-    {
-      // GET_SNAPPY_TABLE_STATS
-      String[] arg_names = new String[] { "STATS_OBJECT"};
-      TypeDescriptor[] arg_types = new TypeDescriptor[] {
-          DataTypeDescriptor.getCatalogType(Types.BLOB)};
-      super.createSystemProcedureOrFunction("GET_SNAPPY_TABLE_STATS",
+          DataTypeDescriptor.getCatalogType(Types.BLOB) };
+      super.createSystemProcedureOrFunction("GET_CATALOG_METADATA",
           sysUUID, arg_names, arg_types, 1, 0, RoutineAliasInfo.READS_SQL_DATA, null,
           newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
     }
 
+    {
+      // UPDATE_CATALOG_METADATA
+      String[] arg_names = new String[] { "OPERATION", "ARGS" };
+      TypeDescriptor[] arg_types = new TypeDescriptor[] {
+          DataTypeDescriptor.getCatalogType(Types.INTEGER),
+          DataTypeDescriptor.getCatalogType(Types.BLOB) };
+      super.createSystemProcedureOrFunction("UPDATE_CATALOG_METADATA",
+          sysUUID, arg_names, arg_types, 0, 0, RoutineAliasInfo.MODIFIES_SQL_DATA, null,
+          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
+    }
 
     {
       // GET_JARS -- Smart Connectors will pull all the jars

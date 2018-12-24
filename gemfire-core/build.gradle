@@ -80,11 +80,13 @@ dependencies {
   compileOnly "com.esotericsoftware:kryo-shaded:${kryoVersion}"
 
   compile "io.netty:netty-all:${nettyAllVersion}"
-  compile 'javax.ws.rs:javax.ws.rs-api:2.0.1'
+  compile 'javax.ws.rs:javax.ws.rs-api:2.1'
   compile 'org.apache.htrace:htrace-core:3.2.0-incubating'
   compile "org.codehaus.jackson:jackson-core-asl:${jackson1Version}"
   compile "org.codehaus.jackson:jackson-mapper-asl:${jackson1Version}"
 
+  compile "org.eclipse.collections:eclipse-collections-api:${eclipseCollectionsVersion}"
+  compile "org.eclipse.collections:eclipse-collections:${eclipseCollectionsVersion}"
   compile 'org.apache.commons:commons-pool2:2.4.2'
   compile "com.google.guava:guava:${guavaVersion}"
   compile 'xml-apis:xml-apis:1.4.01'
@@ -127,7 +129,6 @@ dependencies {
   compile project(subprojectBase + 'gemfire-util')
   compile project(subprojectBase + 'gemfire-shared')
   compile project(subprojectBase + 'gemfire-trove')
-  compile project(subprojectBase + 'snappydata-util')
 
   jcaCompile sourceSets.main.output
 }

@@ -27,13 +27,12 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.function.Supplier;
 
-import junit.framework.TestCase;
-
 import com.gemstone.gemfire.cache.Cache;
 import com.gemstone.gemfire.cache.CacheFactory;
 import com.gemstone.gemfire.internal.cache.DistributedPutAllOperation.EntryVersionsList;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.org.jgroups.util.VersionedStreamable;
+import junit.framework.TestCase;
 
 /**
  * Test the DSFID serialization framework added for rolling upgrades in 7.1
@@ -191,12 +190,11 @@ public class BackwardCompatibilitySerializationJUnitTest extends TestCase {
     
     // some msgs require distributed system
     Cache c = new CacheFactory().create();
-    DSFIDFactory.getDsfidmap2().forEachWhile((id, cons) -> {
+    DSFIDFactory.getDsfidmap2().forEachValue(cons -> {
       if (cons != null) {
         DataSerializableFixedID ds = (DataSerializableFixedID)cons.get();
         checkSupportForRollingUpgrade(ds);
       }
-      return true;
     });
     c.close();
   }

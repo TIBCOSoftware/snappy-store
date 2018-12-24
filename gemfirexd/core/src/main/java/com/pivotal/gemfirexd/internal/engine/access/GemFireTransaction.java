@@ -123,7 +123,7 @@ import com.pivotal.gemfirexd.internal.impl.store.raw.xact.TransactionTable;
 import com.pivotal.gemfirexd.internal.impl.store.raw.xact.XactId;
 import com.pivotal.gemfirexd.internal.shared.common.error.ExceptionSeverity;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
-import io.snappydata.collection.LongObjectHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.LongObjectHashMap;
 
 import static com.gemstone.gemfire.internal.offheap.annotations.OffHeapIdentifier.GEMFIRE_TRANSACTION_BYTE_SOURCE;
 
@@ -975,9 +975,9 @@ public final class GemFireTransaction extends RawTransaction implements
     if ((temporaryFlag & TransactionController.IS_TEMPORARY)
         == TransactionController.IS_TEMPORARY) {
       if (this.tempCongloms == null) {
-        this.tempCongloms = LongObjectHashMap.withExpectedSize(8);
+        this.tempCongloms = new LongObjectHashMap<>(8);
       }
-      this.tempCongloms.justPut(conglomId, conglom);
+      this.tempCongloms.put(conglomId, conglom);
     }
     final GemFireContainer container = conglom.getGemFireContainer();
     if (container != null) {
@@ -1089,9 +1089,8 @@ public final class GemFireTransaction extends RawTransaction implements
         }
       }
       if (this.tempCongloms != null) {
-        this.tempCongloms.forEachWhile((key, val) -> {
+        this.tempCongloms.forEachKeyValue((key, val) -> {
           sb.append("temp conglomerate id = ").append(key).append(": ").append(val);
-          return true;
         });
       }
     }
@@ -1134,7 +1133,7 @@ public final class GemFireTransaction extends RawTransaction implements
 
     if (conglomId < 0) {
       if (this.tempCongloms != null) {
-        this.tempCongloms.remove(conglomId);
+        this.tempCongloms.removeKey(conglomId);
       }
       if (GemFireXDUtils.TraceConglom) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_CONGLOM,
@@ -3711,7 +3710,12 @@ public final class GemFireTransaction extends RawTransaction implements
           else if (tx != TXStateProxy.TX_NOT_SET
               && tx != (context = TXManagerImpl.getOrCreateTXContext())
                   .getTXState()) {
-            if (tx != null) {
+            // for snapshot TX, never set into thread-context from GemFireTransaction
+            // but always the other way
+            if (context.getSnapshotTXState() != null) {
+              tran.setTXState(context.getSnapshotTXState());
+            }
+            else if (tx != null) {
               context.setTXState(tx);
             }
             else {
@@ -3757,7 +3761,12 @@ public final class GemFireTransaction extends RawTransaction implements
       else if (tx != TXStateProxy.TX_NOT_SET
           && tx != (context = TXManagerImpl.getOrCreateTXContext())
               .getTXState()) {
-        if (tx != null) {
+        // for snapshot TX, never set into thread-context from GemFireTransaction
+        // but always the other way
+        if (context.getSnapshotTXState() != null) {
+          tran.setTXState(context.getSnapshotTXState());
+        }
+        else if (tx != null) {
           context.setTXState(tx);
         }
         else {
@@ -3811,9 +3820,9 @@ public final class GemFireTransaction extends RawTransaction implements
     final long conglomId = getNextTempConglomId();
 
     if (this.tempCongloms == null) {
-      this.tempCongloms = LongObjectHashMap.withExpectedSize(8);
+      this.tempCongloms = new LongObjectHashMap<>(8);
     }
-    this.tempCongloms.justPut(conglomId, new FileStreamInputOutput(conglomId, this,
+    this.tempCongloms.put(conglomId, new FileStreamInputOutput(conglomId, this,
         rowSource, rwBuffer));
 
     return conglomId;
@@ -3991,7 +4000,7 @@ public final class GemFireTransaction extends RawTransaction implements
     }
 
     final FileStreamInputOutput container = (FileStreamInputOutput)this.tempCongloms
-        .remove(containerId);
+        .removeKey(containerId);
 
     if (SanityManager.DEBUG) {
       SanityManager.ASSERT(container != null,

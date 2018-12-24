@@ -1117,9 +1117,9 @@ public abstract class RegionReliabilityTestCase extends ReliabilityTestCase {
     
     try {
       ctm.commit();
-      fail("Should have thrown CommitDistributionException");
+      fail("Should have thrown ConflictException");
     }
-    catch (CommitDistributionException e) {
+    catch (ConflictException e) {
       // pass
     }
     finally {

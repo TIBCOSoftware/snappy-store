@@ -89,7 +89,7 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.iapi.util.ReuseFactory;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.xplain.XPLAINUtil;
-import io.snappydata.collection.IntObjectHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.IntObjectHashMap;
 
 
 /**
@@ -315,7 +315,7 @@ public final class UpdateResultSet extends DMLWriteResultSet implements OffHeapR
         .getGemFireContainer();
     if (!this.container.isTemporaryContainer()) {
       IntObjectHashMap<TIntHashSet> tempRefColUpdtd2DependentCols =
-          IntObjectHashMap.withExpectedSize(4);
+          new IntObjectHashMap<>(4);
       
       Map<Integer, Boolean> refColsImpactedMap =
           this.getReferencedUpdateCols(tempRefColUpdtd2DependentCols);
@@ -386,7 +386,7 @@ public final class UpdateResultSet extends DMLWriteResultSet implements OffHeapR
           if (refKeyColID == modColID) {
             // onlyRefUpadtedCols.add(refKeyColID);
             TIntHashSet dependentCols = new TIntHashSet(refKeyCols.length);
-            tempRefColUpdtd2DependentCols.justPut(refKeyColID, dependentCols);
+            tempRefColUpdtd2DependentCols.put(refKeyColID, dependentCols);
             referencedImpactedColsMap.put(refKeyColID, Boolean.TRUE);
             addCompanionRefColsToMap(refKeyColID, referencedImpactedColsMap,
                 dependentCols);

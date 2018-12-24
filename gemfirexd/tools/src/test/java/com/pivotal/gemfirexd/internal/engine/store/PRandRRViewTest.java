@@ -436,7 +436,13 @@ public class PRandRRViewTest extends JdbcTestBase
       } finally {
         System.out.println("num rows found=" + cnt);
       }
-      assertFalse(itr.hasNext());
+      while (itr.hasNext()) {
+        RowLocation rl = (RowLocation)itr.next();
+        // locked entries appear as rows with removed token so skip those
+        if (!rl.getRegionEntry().isRemoved()) {
+          fail("Unexpected entry in iteration: " + rl);
+        }
+      }
       assertTrue(committedKeys.isEmpty());
 
       // Test tx only data

@@ -33,6 +33,7 @@ import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.DistributionStats;
 import com.gemstone.gemfire.distributed.internal.ReplyException;
+import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.GFToSlf4jBridge;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.NanoTimer;
@@ -41,6 +42,7 @@ import com.gemstone.gemfire.internal.cache.Conflatable;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
+import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
@@ -1536,6 +1538,68 @@ public final class GfxdSystemProcedureMessage extends
       }
     },
 
+    createOrDropReservoirRegion {
+      @Override
+      public void processMessage(Object[] params, DistributedMember sender) {
+        String reservoirRegionName = (String)params[0];
+        String resolvedBaseName = (String)params[1];
+        Boolean isDrop = (Boolean)params[2];
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
+            "GfxdSystemProcedureMessage:CREATE_OR_DROP_RESERVOIR_REGION " +
+                "reservoirRegionName=" + reservoirRegionName +
+                " resolvedBaseName=" + resolvedBaseName + " isDrop=" + isDrop);
+        if (isDrop) {
+          PartitionedRegion region = Misc.getReservoirRegionForSampleTable(
+              reservoirRegionName);
+          Misc.dropReservoirRegionForSampleTable(region);
+        } else {
+          PartitionedRegion region = Misc.createReservoirRegionForSampleTable(
+              reservoirRegionName, resolvedBaseName);
+          if (Misc.initialDDLReplayDone()) {
+            Assert.assertTrue(region != null);
+          }
+        }
+      }
+
+      @Override
+      public Object[] readParams(DataInput in, short flags) throws IOException {
+        Object[] inParams = new Object[3];
+        inParams[0] = in.readUTF();
+        inParams[1] = in.readUTF();
+        inParams[2] = in.readBoolean();
+        return inParams;
+      }
+
+      @Override
+      public void writeParams(Object[] params, DataOutput out)
+          throws IOException {
+        out.writeUTF((String)params[0]);
+        out.writeUTF((String)params[1]);
+        out.writeBoolean((Boolean)params[2]);
+      }
+
+      @Override
+      boolean shouldBeConflated(Object[] params) {
+        return (Boolean)params[2];
+      }
+
+      @Override
+      String getRegionToConflate(Object[] params) {
+        return "SYS.__SNAPPY_INTERNAL_RESERVOIR";
+      }
+
+      @Override
+      Object getKeyToConflate(Object[] params) {
+        return params[0];
+      }
+
+      @Override
+      String getSQLStatement(Object[] params) {
+        return "CALL SYS.CREATE_OR_DROP_RESERVOIR_REGION('" + params[0] +
+            "','" + params[1] + "'," + params[2] + ')';
+      }
+    },
+
     checkTableEx {
 
       @Override
@@ -1883,7 +1947,7 @@ public final class GfxdSystemProcedureMessage extends
      * if it is a {@link VMKind#LOCATOR}, for example.
      */
     boolean allowExecution(Object[] params) throws StandardException {
-      return GemFireXDUtils.getMyVMKind().isAccessorOrStore();
+      return Misc.getMemStoreBooting().getMyVMKind().isAccessorOrStore();
     }
 
     public abstract void processMessage(Object[] params,

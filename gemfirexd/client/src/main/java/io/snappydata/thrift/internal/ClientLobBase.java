@@ -99,8 +99,11 @@ abstract class ClientLobBase {
     final int len = this.length;
     if (len >= 0) {
       return len;
-    } else {
+    } else if (this.streamedInput) {
       return (this.length = streamLength(forceMaterialize));
+    } else {
+      // LOB has been freed
+      return 0;
     }
   }
 

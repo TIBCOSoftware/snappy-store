@@ -38,32 +38,11 @@ import java.io.IOException;
  * @version $Id: SerializationProcedure.java,v 1.3 2002/07/08 23:54:13 ericdf Exp $
  */
 
-class SerializationProcedure implements TDoubleDoubleProcedure,
-    TDoubleFloatProcedure,
-    TDoubleIntProcedure,
-    TDoubleLongProcedure,
-    TDoubleObjectProcedure,
-    TDoubleProcedure,
-    TFloatDoubleProcedure,
-    TFloatFloatProcedure,
-    TFloatIntProcedure,
-    TFloatLongProcedure,
-    TFloatObjectProcedure,
-    TFloatProcedure,
-    TIntDoubleProcedure,
-    TIntFloatProcedure,
+class SerializationProcedure implements
     TIntIntProcedure,
-    TIntLongProcedure,
     TIntObjectProcedure,
     TIntProcedure,
-    TLongDoubleProcedure,
-    TLongFloatProcedure,
-    TLongIntProcedure,
-    TLongLongProcedure,
-    TLongObjectProcedure,
     TLongProcedure,
-    TObjectDoubleProcedure,
-    TObjectFloatProcedure,
     TObjectIntProcedure,
     TObjectLongProcedure,
     TObjectObjectProcedure,
@@ -86,29 +65,9 @@ class SerializationProcedure implements TDoubleDoubleProcedure,
         return true;
     }
 
-    public boolean execute(double val) {
-        try {
-            stream.writeDouble(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
     public boolean execute(long val) {
         try {
             stream.writeLong(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(float val) {
-        try {
-            stream.writeFloat(val);
         } catch (IOException e) {
             this.exception = e;
             return false;
@@ -159,28 +118,6 @@ class SerializationProcedure implements TDoubleDoubleProcedure,
         return true;
     }
 
-    public boolean execute(Object key, double val) {
-        try {
-            stream.writeObject(key);
-            stream.writeDouble(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(Object key, float val) {
-        try {
-            stream.writeObject(key);
-            stream.writeFloat(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
     public boolean execute(int key, Object val) {
         try {
             stream.writeInt(key);
@@ -196,204 +133,6 @@ class SerializationProcedure implements TDoubleDoubleProcedure,
         try {
             stream.writeInt(key);
             stream.writeInt(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(int key, long val) {
-        try {
-            stream.writeInt(key);
-            stream.writeLong(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(int key, double val) {
-        try {
-            stream.writeInt(key);
-            stream.writeDouble(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(int key, float val) {
-        try {
-            stream.writeInt(key);
-            stream.writeFloat(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(long key, Object val) {
-        try {
-            stream.writeLong(key);
-            stream.writeObject(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(long key, int val) {
-        try {
-            stream.writeLong(key);
-            stream.writeInt(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(long key, long val) {
-        try {
-            stream.writeLong(key);
-            stream.writeLong(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(long key, double val) {
-        try {
-            stream.writeLong(key);
-            stream.writeDouble(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(long key, float val) {
-        try {
-            stream.writeLong(key);
-            stream.writeFloat(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(double key, Object val) {
-        try {
-            stream.writeDouble(key);
-            stream.writeObject(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(double key, int val) {
-        try {
-            stream.writeDouble(key);
-            stream.writeInt(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(double key, long val) {
-        try {
-            stream.writeDouble(key);
-            stream.writeLong(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(double key, double val) {
-        try {
-            stream.writeDouble(key);
-            stream.writeDouble(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(double key, float val) {
-        try {
-            stream.writeDouble(key);
-            stream.writeFloat(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(float key, Object val) {
-        try {
-            stream.writeFloat(key);
-            stream.writeObject(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(float key, int val) {
-        try {
-            stream.writeFloat(key);
-            stream.writeInt(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(float key, long val) {
-        try {
-            stream.writeFloat(key);
-            stream.writeLong(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(float key, double val) {
-        try {
-            stream.writeFloat(key);
-            stream.writeDouble(val);
-        } catch (IOException e) {
-            this.exception = e;
-            return false;
-        }
-        return true;
-    }
-
-    public boolean execute(float key, float val) {
-        try {
-            stream.writeFloat(key);
-            stream.writeFloat(val);
         } catch (IOException e) {
             this.exception = e;
             return false;

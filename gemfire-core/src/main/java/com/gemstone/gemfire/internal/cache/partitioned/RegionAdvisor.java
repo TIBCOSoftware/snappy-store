@@ -38,29 +38,17 @@ import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedM
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
-import com.gemstone.gemfire.internal.cache.BucketAdvisor;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.BucketAdvisor.BucketProfile;
 import com.gemstone.gemfire.internal.cache.BucketAdvisor.ServerBucketProfile;
-import com.gemstone.gemfire.internal.cache.BucketPersistenceAdvisor;
-import com.gemstone.gemfire.internal.cache.BucketRegion;
-import com.gemstone.gemfire.internal.cache.BucketServerLocation66;
-import com.gemstone.gemfire.internal.cache.CacheDistributionAdvisor;
-import com.gemstone.gemfire.internal.cache.EntryEventImpl;
-import com.gemstone.gemfire.internal.cache.FixedPartitionAttributesImpl;
-import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.cache.InternalRegionArguments;
-import com.gemstone.gemfire.internal.cache.Node;
 import com.gemstone.gemfire.internal.cache.PRHARedundancyProvider.DataStoreBuckets;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegionStats;
-import com.gemstone.gemfire.internal.cache.ProxyBucketRegion;
 import com.gemstone.gemfire.internal.cache.control.MemoryThresholds;
 import com.gemstone.gemfire.internal.cache.control.ResourceAdvisor;
 import com.gemstone.gemfire.internal.cache.persistence.PersistenceAdvisor;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentStateListener;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gnu.trove.THashSet;
-import io.snappydata.collection.ObjectLongHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.ObjectLongHashMap;
 
 public final class RegionAdvisor extends CacheDistributionAdvisor {
 
@@ -1547,30 +1535,29 @@ public final class RegionAdvisor extends CacheDistributionAdvisor {
   public ArrayList<DataStoreBuckets> adviseFilteredDataStores(final Set<InternalDistributedMember> memberFilter)
   {
     final ObjectLongHashMap<InternalDistributedMember> memberToPrimaryCount =
-        ObjectLongHashMap.withExpectedSize(16);
+        new ObjectLongHashMap<>(16);
     for (ProxyBucketRegion pbr : this.buckets) {
       // quick dirty check
-      InternalDistributedMember p=pbr.getBucketAdvisor().basicGetPrimaryMember(); 
-      if (p!=null) {
-        memberToPrimaryCount.put(p, memberToPrimaryCount.getLong(p) + 1);
+      InternalDistributedMember p = pbr.getBucketAdvisor().basicGetPrimaryMember();
+      if (p != null) {
+        memberToPrimaryCount.addToValue(p, 1);
       }
     }
-    
+
     final ArrayList<DataStoreBuckets> ds = new ArrayList<DataStoreBuckets>(memberFilter.size());
     adviseFilter(new Filter() {
       public boolean include(Profile profile) {
         if (profile instanceof PartitionProfile) {
           PartitionProfile p = (PartitionProfile)profile;
           if(memberFilter.contains(p.getDistributedMember())) {
-            int primaryCount = (int)memberToPrimaryCount.getLong(p.getDistributedMember());
+            int primaryCount = (int)memberToPrimaryCount.get(p.getDistributedMember());
             ds.add(new DataStoreBuckets(p.getDistributedMember(), p.numBuckets, primaryCount, p.localMaxMemory));
           }
         }
         return false;
       }
     });
-    
-    
+
     return ds;
   }
 

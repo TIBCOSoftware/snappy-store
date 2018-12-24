@@ -18,17 +18,8 @@
 package com.gemstone.gemfire.internal.cache;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import com.gemstone.gemfire.cache.EntryDestroyedException;
 import com.gemstone.gemfire.cache.Region;
@@ -42,7 +33,7 @@ import com.gemstone.gemfire.internal.cache.execute.InternalRegionFunctionContext
 import com.gemstone.gemfire.internal.cache.partitioned.PRLocallyDestroyedException;
 import com.gemstone.gemfire.internal.cache.persistence.PRPersistentConfig;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-import io.snappydata.collection.OpenHashSet;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 /**
  * An utility class to retrieve colocated regions in a colocation hierarchy in
@@ -169,7 +160,7 @@ public class ColocationHelper {
    * be in the advisor.
    */
   public static boolean checkMembersColocation(PartitionedRegion partitionedRegion, InternalDistributedMember member) {
-    OpenHashSet<PartitionRegionConfig> colocatedRegions = new OpenHashSet<>();
+    UnifiedSet<PartitionRegionConfig> colocatedRegions = new UnifiedSet<>();
     List<PartitionRegionConfig> tempcolocatedRegions = new ArrayList<PartitionRegionConfig>();
     Region prRoot = PartitionedRegionHelper.getPRRoot(partitionedRegion
         .getCache());

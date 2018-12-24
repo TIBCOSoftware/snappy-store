@@ -3864,6 +3864,12 @@ Guide.
                 <text>Exception occurred in creating row encoder for '{0}'.</text>
                 <arg>name</arg>
             </msg>
+            <msg>
+                <name>X0Z39</name>
+                <text>Table schema changed due to DROP/CREATE/ALTER operation (current version = {0}, passed = {1}. Please retry the operation.</text>
+                <arg>clusterVersion</arg>
+                <arg>connectorVersion</arg>
+            </msg>
 <!-- GemStone changes END -->
         </family>
 
@@ -4556,10 +4562,6 @@ ln=lower-case two-letter ISO-639 language code, CO=upper-case two-letter ISO-316
             <msg>
                 <name>XCL56.T</name>
                 <text>The statement has been cancelled due to a user request.</text>
-            </msg>
-            <msg>
-                <name>XCL57</name>
-                <text>Table schema changed(due to DROP/CREATE/ALTER operation). Please retry the query</text>
             </msg>
 <!--  GemStone changes END -->
 

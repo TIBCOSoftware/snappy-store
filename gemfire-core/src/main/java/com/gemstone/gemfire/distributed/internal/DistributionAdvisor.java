@@ -46,9 +46,9 @@ import com.gemstone.gemfire.internal.cache.UpdateAttributesProcessor;
 import com.gemstone.gemfire.internal.cache.persistence.PersistentMemberID;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-import io.snappydata.collection.OpenHashSet;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 /**
  * Provides advice on sending distribution messages. For a given operation,
@@ -1395,7 +1395,7 @@ public class DistributionAdvisor  {
       getLogWriter().fine("Intelligent Messaging Disabled");
       return getDefaultDistributionMembers();
     }
-    OpenHashSet<InternalDistributedMember> recipients = new OpenHashSet<>(4);
+    UnifiedSet<InternalDistributedMember> recipients = new UnifiedSet<>(4);
     Profile[] locProfiles = this.profiles; // grab current profiles
 //    getLogWriter().fine("adviseFilter: " + locProfiles.length + " to consider, f=" + f);
     for (int i = 0; i < locProfiles.length; i++) {

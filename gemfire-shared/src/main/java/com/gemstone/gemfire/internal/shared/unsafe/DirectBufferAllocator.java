@@ -105,10 +105,10 @@ public class DirectBufferAllocator extends BufferAllocator {
   }
 
   @Override
-  public void clearPostAllocate(ByteBuffer buffer) {
+  public void clearPostAllocate(ByteBuffer buffer, int position) {
     // clear till the capacity and not limit since former will be a factor
     // of 8 and hence more efficient in Unsafe.setMemory
-    fill(buffer, (byte)0, 0, buffer.capacity());
+    fill(buffer, (byte)0, position, buffer.capacity() - position);
   }
 
   @Override

@@ -92,6 +92,7 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
     return incrementReference();
   }
 
+  @GuardedBy("this")
   protected final boolean incrementReference() {
     if (this.refCount > 0) {
       this.refCount++;
@@ -116,6 +117,7 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
     decrementReference();
   }
 
+  @GuardedBy("this")
   protected final boolean decrementReference() {
     if (this.refCount > 0) {
       if (--this.refCount == 0) {
@@ -146,6 +148,7 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
     return retain() ? this : null;
   }
 
+  @GuardedBy("this")
   protected abstract void releaseBuffer();
 
   /**

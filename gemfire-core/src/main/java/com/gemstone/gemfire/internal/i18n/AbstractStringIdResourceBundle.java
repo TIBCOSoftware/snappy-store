@@ -17,17 +17,17 @@
 
 package com.gemstone.gemfire.internal.i18n;
 
-import com.gemstone.gemfire.InternalGemFireException;
-import com.gemstone.gemfire.i18n.StringIdImpl;
-import com.gemstone.gemfire.internal.ClassPathLoader;
-import com.gemstone.org.jgroups.util.StringId;
-import io.snappydata.collection.IntObjectHashMap;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Locale;
+
+import com.gemstone.gemfire.InternalGemFireException;
+import com.gemstone.gemfire.i18n.StringIdImpl;
+import com.gemstone.gemfire.internal.ClassPathLoader;
+import com.gemstone.org.jgroups.util.StringId;
+import org.eclipse.collections.impl.map.mutable.primitive.IntObjectHashMap;
 
 
 /**
@@ -48,7 +48,7 @@ public class AbstractStringIdResourceBundle {
   
   /**
    * Init method to populate the IntObjectHashMap for Non-english locales
-   * <code>data = IntObjectHashMap.withExpectedSize(...);</code>
+   * <code>data = new IntObjectHashMap(...);</code>
    *
    * The default bundle, English, will be
    * <code>data = null</code>
@@ -77,7 +77,7 @@ public class AbstractStringIdResourceBundle {
   }
 	
   private IntObjectHashMap<String> readDataFile(InputStream is) {
-    IntObjectHashMap<String> map = IntObjectHashMap.withExpectedSize(128);
+    IntObjectHashMap<String> map = new IntObjectHashMap<>(128);
     boolean complete = false;
     BufferedReader input = null;
     try {
@@ -90,7 +90,7 @@ public class AbstractStringIdResourceBundle {
          String message = line.substring(equalSign+2).replaceAll("\\\\n", "\n");
          try {
            int id = Integer.parseInt(idAsString);
-           map.justPut(id, message);
+           map.put(id, message);
          } catch(NumberFormatException nfe) {
            //unit tests should prevent this from happening in a customer situation
            throw new InternalGemFireException(nfe);

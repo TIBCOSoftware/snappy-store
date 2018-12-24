@@ -28,14 +28,7 @@ import com.gemstone.gemfire.GemFireException;
 import com.gemstone.gemfire.InternalGemFireError;
 import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.SystemFailure;
-import com.gemstone.gemfire.cache.DataPolicy;
-import com.gemstone.gemfire.cache.DiskAccessException;
-import com.gemstone.gemfire.cache.EntryExistsException;
-import com.gemstone.gemfire.cache.EntryNotFoundException;
-import com.gemstone.gemfire.cache.Operation;
-import com.gemstone.gemfire.cache.PartitionAttributes;
-import com.gemstone.gemfire.cache.RegionDestroyedException;
-import com.gemstone.gemfire.cache.TimeoutException;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.execute.EmptyRegionFunctionException;
 import com.gemstone.gemfire.cache.query.internal.IndexUpdater;
 import com.gemstone.gemfire.distributed.LockNotHeldException;
@@ -89,16 +82,7 @@ import com.pivotal.gemfirexd.internal.engine.locks.GfxdLockable;
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdReadWriteLock;
 import com.pivotal.gemfirexd.internal.engine.locks.impl.GfxdReentrantReadWriteLock;
 import com.pivotal.gemfirexd.internal.engine.sql.catalog.ExtraTableInfo;
-import com.pivotal.gemfirexd.internal.engine.store.AbstractCompactExecRow;
-import com.pivotal.gemfirexd.internal.engine.store.CompactCompositeIndexKey;
-import com.pivotal.gemfirexd.internal.engine.store.CompactCompositeRegionKey;
-import com.pivotal.gemfirexd.internal.engine.store.CompositeRegionKey;
-import com.pivotal.gemfirexd.internal.engine.store.ExtractingIndexKey;
-import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
-import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
-import com.pivotal.gemfirexd.internal.engine.store.RegionEntryUtils;
-import com.pivotal.gemfirexd.internal.engine.store.RowFormatter;
-import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
+import com.pivotal.gemfirexd.internal.engine.store.*;
 import com.pivotal.gemfirexd.internal.engine.store.entry.GfxdTXEntryState;
 import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapByteSource;
 import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapDelta;
@@ -118,15 +102,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.depend.DependencyManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.depend.Dependent;
 import com.pivotal.gemfirexd.internal.iapi.sql.depend.Provider;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ConglomerateDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ConstraintDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ConstraintDescriptorList;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.DataDictionary;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ForeignKeyConstraintDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.IndexRowGenerator;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ReferencedKeyConstraintDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TriggerDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.*;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
 import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
 import com.pivotal.gemfirexd.internal.iapi.store.raw.ContainerHandle;
@@ -209,13 +185,12 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
 
   private MembershipManager membershipManager;
 
-
-  public enum Index{
+  public enum Index {
     LOCAL,
     GLOBAL,
     BOTH
   }
-  
+
   protected GfxdIndexManager(DataDictionary dd, TableDescriptor td,
       Database db, GemFireContainer gfc, boolean hasFk) {
     this.dd = (GfxdDataDictionary)dd;
@@ -802,7 +777,8 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           execRow = getExecRow(this.td, tmpOldValue, null, 0, false, null);
           try {
             deleteFromIndexes(null, null, owner, event, skipDistribution,
-                entry, indexes, execRow, null, true, isPutDML, true);
+                entry, indexes, execRow, null, true,
+                isPutDML, skipConstraintChecks, true);
           } finally {
             newRow = getExecRow(this.td,
                 event.getNewValueAsOffHeapDeserializedOrRaw(), null, 0, false,
@@ -810,7 +786,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
 
             insertIntoIndexes(tc, tx, owner, event, diskRecovery,
                 skipDistribution, rl, newRow, null, null, bucketId, indexes,
-                null, isPutDML, Index.BOTH, isGIIEvent);
+                null, isPutDML, skipConstraintChecks, Index.BOTH, isGIIEvent);
           }
           return;
         }
@@ -884,7 +860,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
         eventContext = new EntryEventContext(conn, lcc, tc,
             skipDistribution, execRow, newRow, changedColumns, undoList,
             lockedForGII, bucketId, origSkipLocks, origIsRemote, restoreFlags,
-            lccPosDupSet, isGIIEvent, isPutDML, routingObject);
+            lccPosDupSet, isGIIEvent, isPutDML, skipConstraintChecks, routingObject);
         event.setContextObject(eventContext);
         contextSet = true;
         if (op.isUpdate() && event.isLoadedFromHDFS()) {
@@ -897,7 +873,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
         eventContext = new EntryEventContext(conn, lcc, tc,
             skipDistribution, execRow, newRow, changedColumns, null,
             lockedForGII, bucketId, origSkipLocks, origIsRemote, restoreFlags,
-            lccPosDupSet, isGIIEvent, isPutDML, routingObject);
+            lccPosDupSet, isGIIEvent, isPutDML, skipConstraintChecks, routingObject);
         event.setContextObject(eventContext);
         contextSet = true;
         if (op.isUpdate() && event.isLoadedFromHDFS()) {
@@ -1125,6 +1101,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
     final LanguageConnectionContext lcc = ctx.lcc;
     final GemFireTransaction tc = ctx.tc;
     final boolean isPutDML = ctx.isPutDML;
+    final boolean skipConstraintChecks = ctx.skipConstraintChecks;
     final boolean skipDistribution = ctx.skipDistribution
         // recheck flag in event; set for TX abort explicitly to skip ops
         || event.getSkipDistributionOps();
@@ -1181,24 +1158,26 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       if (success) {
         execRow = ctx.execRow;
         if (isPutDML) {
-          if (execRow != null ) {
-            if(op.isUpdate()) { 
-            if ((undoList = ctx.undoList) != null && !undoList.isEmpty()) {
-              deleteFromIndexes(tc, tx, owner, event, skipDistribution, entry,
-                  ctx.undoList, execRow, null, true, isPutDML, success);
-            }
-            else {
-              if(ctx.changedColumns != null) {
+          if (execRow != null) {
+            if (op.isUpdate()) {
+              if ((undoList = ctx.undoList) != null && !undoList.isEmpty()) {
                 deleteFromIndexes(tc, tx, owner, event, skipDistribution, entry,
-                    indexes, execRow, ctx.changedColumns, true, isPutDML, success);
-              }else {
-                this.refreshIndexKeyForContainers(indexes, null,
-                  event, entry, execRow, null, success);
+                    ctx.undoList, execRow, null, true,
+                    isPutDML, skipConstraintChecks, success);
+              } else {
+                if (ctx.changedColumns != null) {
+                  deleteFromIndexes(tc, tx, owner, event, skipDistribution, entry,
+                      indexes, execRow, ctx.changedColumns, true,
+                      isPutDML, skipConstraintChecks, success);
+                } else {
+                  this.refreshIndexKeyForContainers(indexes, null,
+                      event, entry, execRow, null, success);
+                }
               }
-            }
-            }else if(op.isDestroy()) {
+            } else if (op.isDestroy()) {
               deleteFromIndexes(tc, tx, owner, event, skipDistribution, entry,
-                  indexes, execRow, null, false, isPutDML, success);
+                  indexes, execRow, null, false,
+                  isPutDML, skipConstraintChecks, success);
             }
           }
         }
@@ -1215,11 +1194,13 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
               // indexes and we do not need to pass the changedColumns
               if ((undoList = ctx.undoList) != null && !undoList.isEmpty()) {
                 deleteFromIndexes(tc, tx, owner, event, skipDistribution, entry,
-                    undoList, ctx.triggerExecRow, null, true, isPutDML, success);
+                    undoList, ctx.triggerExecRow, null, true,
+                    isPutDML, skipConstraintChecks, success);
               }
               else {
                 deleteFromIndexes(tc, tx, owner, event, skipDistribution, entry,
-                    indexes, ctx.triggerExecRow, changedColumns, true, isPutDML, success);
+                    indexes, ctx.triggerExecRow, changedColumns, true,
+                    isPutDML, skipConstraintChecks, success);
               }
               if (SanityManager.DEBUG) {
                 checkIndexListChange(indexes, "update");
@@ -1238,11 +1219,13 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
               // indexes and we do not need to pass the changedColumns
               if ((undoList = ctx.undoList) != null && !undoList.isEmpty()) {
                 deleteFromIndexes(tc, tx, owner, event, skipDistribution, entry,
-                    undoList, execRow, null, true, isPutDML, success);
+                    undoList, execRow, null, true,
+                    isPutDML, skipConstraintChecks, success);
               }
               else {
                 deleteFromIndexes(tc, tx, owner, event, skipDistribution, entry,
-                    indexes, execRow, changedColumns, true, isPutDML, success);
+                    indexes, execRow, changedColumns, true,
+                    isPutDML, skipConstraintChecks, success);
               }
               if (SanityManager.DEBUG) {
                 checkIndexListChange(indexes, "update");
@@ -1262,7 +1245,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           // is a ListOfDeltas in which case ignore the destroy (bug #41529)
           if (execRow != null) {
             doDelete(tc, tx, owner, event, skipDistribution, entry, execRow,
-                indexes, isPutDML, success);
+                indexes, isPutDML, skipConstraintChecks, success);
           }
         }
 
@@ -1284,14 +1267,16 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
         if (event.isGFXDCreate(true) || isPutDML) {
           execRow = ctx.execRow;
           deleteFromIndexes(tc, tx, owner, event, skipDistribution, entry,
-              undoList, execRow, null, false, isPutDML, success /* case false*/);
+              undoList, execRow, null, false,
+              isPutDML, skipConstraintChecks, success /* case false*/);
         }
         else if (op.isUpdate()) {
           newRow = getExecRow(this.td,
               event.getNewValueAsOffHeapDeserializedOrRaw(), null, 0, false,
               getTableInfo(entry));
           deleteFromIndexes(tc, tx, owner, event, skipDistribution, entry,
-              undoList, newRow, null, false, isPutDML, success /* case false*/);
+              undoList, newRow, null, false,
+              isPutDML, skipConstraintChecks, success /* case false*/);
         }
       }
     } catch (Throwable t) {
@@ -1904,7 +1889,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
     }
     insertIntoIndexes(tc, tx, owner, event, diskRecovery, skipDistribution, rl,
         execRow, null, null, bucketId, localIndexContainers, undoList,
-        isPutDML, Index.BOTH, isGIIEvent);
+        isPutDML, skipConstraintChecks, Index.BOTH, isGIIEvent);
   }
 
   private void logKeyValue(String op, Object key, @Unretained Object value) {
@@ -1929,7 +1914,8 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       ExecRow newRow, ExecRow oldRow, FormatableBitSet changedColumns,
       int bucketId, List<GemFireContainer> localIndexContainers,
       ArrayList<GemFireContainer> undoList, boolean isPutDML,
-      Index indexToUpdate, boolean isGIIEvent) throws StandardException {
+      boolean skipConstraintChecks, Index indexToUpdate,
+      boolean isGIIEvent) throws StandardException {
     final int numContainers = localIndexContainers.size();
     for (int index = 0; index < numContainers; index++) {
       if (SanityManager.DEBUG) {
@@ -1937,8 +1923,8 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       }
       insertIntoIndex(tran, tx, owner, event, diskRecovery, skipDistribution,
           rl, newRow, oldRow, changedColumns, bucketId,
-          localIndexContainers.get(index), undoList, isPutDML, indexToUpdate,
-          isGIIEvent);
+          localIndexContainers.get(index), undoList, isPutDML,
+          skipConstraintChecks, indexToUpdate, isGIIEvent);
     }
   }
 
@@ -1947,8 +1933,8 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       boolean diskRecovery, boolean skipDistribution, RowLocation rl,
       ExecRow newRow, ExecRow oldRow, FormatableBitSet changedColumns,
       int bucketId, final GemFireContainer indexContainer,
-      ArrayList<GemFireContainer> undoList, boolean isPutDML, 
-      Index indexToUpdate, boolean isGIIEvent)
+      ArrayList<GemFireContainer> undoList, boolean isPutDML,
+      boolean skipConstraintChecks, Index indexToUpdate, boolean isGIIEvent)
       throws StandardException {
 
     if (GemFireXDUtils.TraceIndex) {
@@ -2046,7 +2032,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
         
         result = SortedMap2IndexInsertOperation.doMe(tran, tx, indexContainer,
             insertedIndexKey, rowLocation, unique,
-            null, isPutDML);
+            null, isPutDML, skipConstraintChecks);
 
         if (tx != null) {
           ((GfxdTXEntryState)rowLocation).updateIndexInfos(indexContainer,
@@ -2101,7 +2087,8 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
                   WrapperRowLocationForTxn wrl = new WrapperRowLocationForTxn(
                       stxe, insertedIndexKey, !event.getOperation().isDestroy());
                   SortedMap2IndexInsertOperation.doMe(tran, tx, indexContainer,
-                      insertedIndexKey, rowLocation, isUnique, wrl, isPutDML);
+                      insertedIndexKey, rowLocation, isUnique, wrl, isPutDML,
+                      skipConstraintChecks);
                   if (GemFireXDUtils.TraceIndex) {
                     traceIndex("GfxdIndexManager#insertIntoIndexes: wrapper "
                         + "%s for container (%s) with indexes %s for key[%s] "
@@ -2235,14 +2222,14 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       // Local insert
       insertIntoIndexes(tc, tx, owner, event, diskRecovery, skipDistribution,
           rl, oldRow, null, null, bucketId, localIndexContainers,
-          undoList, isPutDML, Index.LOCAL, false);
+          undoList, isPutDML, skipConstraintChecks, Index.LOCAL, false);
       
       //Global update
       // We update the global index as global index gets evicted and not deleted
       // when a row is evicted.
       insertIntoIndexes(tc, tx, owner, event, diskRecovery, skipDistribution,
           rl, triggerNewRow, triggerExecRow, changedColumns, bucketId, localIndexContainers,
-          undoList, isPutDML, Index.GLOBAL, false);
+          undoList, isPutDML, skipConstraintChecks, Index.GLOBAL, false);
 
     }
   }
@@ -2289,7 +2276,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       // is required to not clash with an existing entry.
       insertIntoIndexes(tc, tx, owner, event, diskRecovery, skipDistribution,
           rl, newRow, oldRow, changedColumns, bucketId, localIndexContainers,
-          undoList, isPutDML, Index.BOTH, isGIIEvent);
+          undoList, isPutDML, skipConstraintChecks, Index.BOTH, isGIIEvent);
     }
   }
 
@@ -2298,7 +2285,8 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       boolean skipDistribution, RegionEntry entry,
       List<GemFireContainer> containers, ExecRow execRow,
       FormatableBitSet changedColumns, boolean refreshIndexKey,
-      boolean isPutDML, boolean isSuccess) throws StandardException {
+      boolean isPutDML, boolean skipConstraintChecks,
+      boolean isSuccess) throws StandardException {
 //    if (event.isLoadedFromHDFS()) {
 //      if (GemFireXDUtils.TraceIndex) {
 //        traceIndex("GfxdIndexManager#deleteFromIndexes: "
@@ -2408,7 +2396,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           txEntry = (GfxdTXEntryState)rowLocation;
           // for rollback, just remove the inserted GfxdTXEntryState (#51553)
           if (isSuccess) {
-            wrapper = txEntry.wrapperForRollback(indexContainer, indexKey);
+            wrapper = txEntry.wrapperForRollback(indexContainer, indexKey, event);
           }
         }
         try {
@@ -2500,7 +2488,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
           if (event.getOperation().isDestroy()) {
             if(tx == null) {
               this.undoDeleteIndexesForUnsuccessfulDestroy(entry, owner, event,
-                isPutDML, containers, i - 1, tran, execRow);
+                isPutDML, skipConstraintChecks, containers, i - 1, tran, execRow);
             }
             break;
           }
@@ -2528,8 +2516,8 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
   
   private void undoDeleteIndexesForUnsuccessfulDestroy(RegionEntry entry,
       LocalRegion owner, EntryEventImpl event, boolean isPutDML,
-      List<GemFireContainer> containers, final int undoIndex,
-      GemFireTransaction tran, final ExecRow rowToInsert) {
+      boolean skipConstraintChecks, List<GemFireContainer> containers,
+      final int undoIndex, GemFireTransaction tran, final ExecRow rowToInsert) {
     final RowLocation rl = entry instanceof RowLocation ? (RowLocation) entry
         : null;
     int bucketId;
@@ -2554,7 +2542,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
         try {
           this.insertIntoIndex(tran, null, owner, event, false, false, rl,
               rowToInsert, null, null, bucketId, containerToInsert, null,
-              isPutDML, Index.BOTH, false);
+              isPutDML, skipConstraintChecks, Index.BOTH, false);
         } catch (Exception e) {
           LogWriter logger = Misc.getCacheLogWriterNoThrow();
           if(logger != null) {
@@ -2784,15 +2772,16 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
   private void doDelete(GemFireTransaction tran, final TXStateInterface tx,
       LocalRegion owner, EntryEventImpl event, boolean skipDistribution,
       RegionEntry entry, ExecRow execRow,
-      List<GemFireContainer> localIndexContainers, boolean isPutDML,
-      boolean success)
+      List<GemFireContainer> localIndexContainers,
+      boolean isPutDML, boolean skipConstraintChecks, boolean success)
       throws StandardException {
     if (GemFireXDUtils.TraceIndex) {
       traceIndex("GfxdIndexManager#doDelete: invoked for container %s for "
           + "entry %s", this.container, entry);
     }
     deleteFromIndexes(tran, tx, owner, event, skipDistribution, entry,
-        localIndexContainers, execRow, null, false, isPutDML, success);
+        localIndexContainers, execRow, null, false,
+        isPutDML, skipConstraintChecks, success);
     if (SanityManager.DEBUG) {
       checkIndexListChange(localIndexContainers, "delete");
     }
@@ -4499,7 +4488,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
                                                           * do not touch
                                                           * global indexes
                                                           */, entry,
-                  oldRow, indexes, false, true);
+                  oldRow, indexes, false, false, true);
             } catch (Throwable t) {
               Error err;
               if (t instanceof Error && SystemFailure.isJVMFailureError(
@@ -4841,6 +4830,8 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
 
     final boolean isPutDML;
 
+    final boolean skipConstraintChecks;
+
     final int bucketId;
 
     final boolean origSkipLocks;
@@ -4859,7 +4850,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
         ArrayList<GemFireContainer> undoList, boolean isGIILocked,
         int bucketId, boolean skipLocks, boolean isRemote,
         boolean restoreFlags, boolean lccPosDupSet, boolean isGIIEvent,
-        boolean isPutDML, Object routingObject) {
+        boolean isPutDML, boolean skipConstraintChecks, Object routingObject) {
       this.conn = conn;
       this.lcc = lcc;
       this.tc = tc;
@@ -4876,6 +4867,7 @@ public final class GfxdIndexManager implements Dependent, IndexUpdater,
       this.lccPosDupSet = lccPosDupSet;
       this.isGIIEvent = isGIIEvent;
       this.isPutDML = isPutDML;
+      this.skipConstraintChecks = skipConstraintChecks;
       this.routingObject = routingObject;
     }
 

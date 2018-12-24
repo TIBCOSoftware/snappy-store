@@ -18,15 +18,7 @@
 package com.gemstone.gemfire.internal.cache;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -84,7 +76,7 @@ import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWrite
 import com.gemstone.gnu.trove.THashSet;
 import com.gemstone.gnu.trove.TIntArrayList;
 import com.gemstone.org.jgroups.util.StringId;
-import io.snappydata.collection.OpenHashSet;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 /**
  * Implementation of DataStore (DS) for a PartitionedRegion (PR). This will be
@@ -3094,11 +3086,11 @@ public final class PartitionedRegionDataStore implements HasCachePerfStats
    * @return a snapshot of the current set of BucketRegions
    */
   public Set<BucketRegion> getAllLocalBucketRegions() {
-    return new OpenHashSet<>(localBucket2RegionMap.values());
+    return new UnifiedSet<>(localBucket2RegionMap.values());
   }
 
   public Set<BucketRegion> getAllLocalPrimaryBucketRegions() {
-    OpenHashSet<BucketRegion> retVal = new OpenHashSet<>();
+    UnifiedSet<BucketRegion> retVal = new UnifiedSet<>();
     for (BucketRegion br : localBucket2RegionMap.values()) {
       if (br.getBucketAdvisor().isPrimary()) {
         retVal.add(br);
@@ -3108,7 +3100,7 @@ public final class PartitionedRegionDataStore implements HasCachePerfStats
   }
 
   public Set<Integer> getAllLocalPrimaryBucketIds() {
-    OpenHashSet<Integer> bucketIds = new OpenHashSet<>();
+    UnifiedSet<Integer> bucketIds = new UnifiedSet<>();
     for (BucketRegion bucket : localBucket2RegionMap.values()) {
       if (bucket.getBucketAdvisor().isPrimary()) {
         bucketIds.add(Integer.valueOf(bucket.getId()));

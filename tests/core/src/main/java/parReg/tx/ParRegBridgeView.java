@@ -17,19 +17,26 @@
    
 package parReg.tx;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
 
-import com.gemstone.gemfire.distributed.DistributedMember;
-import com.gemstone.gemfire.distributed.internal.ServerLocation;
-import com.gemstone.gemfire.cache.*;
+import com.gemstone.gemfire.cache.ConflictException;
+import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.client.PoolManager;
 import com.gemstone.gemfire.cache.client.internal.PoolImpl;
 import com.gemstone.gemfire.cache.server.CacheServer;
-
+import com.gemstone.gemfire.distributed.DistributedMember;
+import com.gemstone.gemfire.distributed.internal.ServerLocation;
 import hydra.*;
-
-import tx.*;
-import util.*;
+import tx.CollectionsTest;
+import tx.OpList;
+import tx.TxBB;
+import tx.TxPrms;
+import tx.ViewTest;
+import util.CacheUtil;
+import util.TestException;
+import util.TestHelper;
+import util.TxHelper;
 
 /**
  * A test to validate what different threads/VMs see in terms of
@@ -126,8 +133,8 @@ protected void verifyResourcesReleased() {
 
     try {
       TxHelper.commit();
-    } catch (CommitConflictException e) {
-      throw new TestException("Unexpected CommitConflictException " + TestHelper.getStackTrace(e));
+    } catch (ConflictException e) {
+      throw new TestException("Unexpected ConflictException " + TestHelper.getStackTrace(e));
     }
 
   }

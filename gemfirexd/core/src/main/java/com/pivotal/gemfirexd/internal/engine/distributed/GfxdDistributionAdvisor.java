@@ -45,7 +45,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.DataSerializer;
@@ -72,7 +72,6 @@ import com.gemstone.gemfire.internal.cache.UpdateAttributesProcessor;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
-import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.THashSet;
 import com.gemstone.gnu.trove.TObjectProcedure;
 import com.pivotal.gemfirexd.FabricService;
@@ -268,8 +267,11 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
   @Override
   protected final GfxdProfile instantiateProfile(
       InternalDistributedMember memberId, int version) {
-    return new GfxdProfile(memberId, version,
-        CallbackFactoryProvider.getClusterCallbacks().getDriverURL());
+    final GfxdProfile currentProfile = this.myProfile;
+    long catalogVersion = currentProfile != null
+        ? currentProfile.getCatalogSchemaVersion() : 0;
+    return new GfxdProfile(memberId, version, CallbackFactoryProvider
+        .getClusterCallbacks().getDriverURL(), catalogVersion);
   }
 
   /**
@@ -308,6 +310,11 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
         else {
           removeMemberGroups(m);
           addMemberGroups(m, profile.getServerGroups(), profile.getVMKind());
+        }
+        // update own catalog version
+        final GfxdProfile myProfile = this.myProfile;
+        if (myProfile != null) {
+          myProfile.updateCatalogSchemaVersion(profile.getCatalogSchemaVersion());
         }
       }
       else if (p instanceof BridgeServerProfile) {
@@ -633,51 +640,11 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     return adviseSingleVMOfKind(groups, VMKindToken.SERVER, preferSelf);
   }
 
-  /**
-   * Return a single member that has a server locator running, including those
-   * with pure GFE locators when the "skipNonGfxd" parameter is false.
-   * 
-   * @param preferSelf
-   *          prefer this VM if it has a server locator running
-   * @param skipNonGfxd
-   *          when true then skip non GemFireXD locators else include pure GFE
-   *          locators too in the search
-   */
-  public final DistributedMember adviseServerLocator(boolean preferSelf,
-      boolean skipNonGfxd) {
-    this.mapLock.readLock().lock();
-    try {
-      InternalDistributedMember member;
-      if (preferSelf) {
-        member = this.myProfile.getDistributedMember();
-        if (this.locatorMap.get(member) != null) {
-          return member;
-        }
-      }
-      Map<InternalDistributedMember, VMKind> gfxdMembers = null;
-      if (skipNonGfxd) {
-        gfxdMembers = this.serverGroupMap.get(DEFAULT_GROUP);
-      }
-      for (Map.Entry<InternalDistributedMember, String> entry : locatorMap
-          .entrySet()) {
-        if (entry.getValue() != null) {
-          member = entry.getKey();
-          if (gfxdMembers == null || gfxdMembers.containsKey(member)) {
-            return member;
-          }
-        }
-      }
-    } finally {
-      this.mapLock.readLock().unlock();
-    }
-    return null;
-  }
-
   /** Get the {@link Profile} for the given member including self. */
   public GfxdProfile getProfile(InternalDistributedMember member) {
     Profile profile = super.getProfile(member);
-    if (profile != null
-        || (profile = getMyProfile()).getDistributedMember().equals(member)) {
+    if (profile != null || ((profile = getMyProfile()) != null &&
+        profile.getDistributedMember().equals(member))) {
       return (GfxdProfile)profile;
     }
     return null;
@@ -696,7 +663,8 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       }
     }
     GfxdProfile profile = getMyProfile();
-    if (profile.getDistributedMember().canonicalString().equals(memberStr)) {
+    if (profile != null &&
+        profile.getDistributedMember().canonicalString().equals(memberStr)) {
       return profile;
     } else {
       return null;
@@ -890,43 +858,6 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
   }
 
   /**
-   * Get all the thrift servers in the distributed system. Returns a map from
-   * the {@link InternalDistributedMember} for the member to the set of
-   * {@link HostAddress}es of the thrift servers active on that member.
-   */
-  public final Map<InternalDistributedMember, Set<HostAddress>>
-      getAllThriftServers() {
-    @SuppressWarnings("unchecked")
-    Map<InternalDistributedMember, Set<HostAddress>> servers = new THashMap();
-    this.mapLock.readLock().lock();
-    try {
-      // first add for self
-      final FabricService service = FabricServiceManager
-          .currentFabricServiceInstance();
-      if (service != null) {
-        ServerType serverType;
-        Collection<NetworkInterface> ifaces = service.getAllNetworkServers();
-        @SuppressWarnings("unchecked")
-        Set<HostAddress> thriftServers = new THashSet(ifaces.size());
-        for (NetworkInterface ni : ifaces) {
-          serverType = ni.getServerType();
-          if (!serverType.isThrift()) {
-            continue;
-          }
-          thriftServers.add(ThriftUtils.getHostAddress(ni.getHostName(),
-              ni.getPort()).setServerType(serverType));
-        }
-        servers.put(this.myProfile.getDistributedMember(), thriftServers);
-      }
-      // then for all the other members of the DS
-      servers.putAll(this.thriftServers);
-    } finally {
-      this.mapLock.readLock().unlock();
-    }
-    return servers;
-  }
-
-  /**
    * Get all the Thrift servers running on the given member as a comma-separated
    * host[port] list.
    */
@@ -1034,6 +965,43 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
   }
 
   /**
+   * Get the network servers hosted on this server, if any.
+   */
+  public final String getOwnNetServers() {
+    this.mapLock.readLock().lock();
+    try {
+      return getSelfNetServers(ClientSharedUtils.isThriftDefault());
+    } finally {
+      this.mapLock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get the network servers hosted on this server, if any.
+   * Should be invoked under mapLock.readLock().
+   */
+  private String getSelfNetServers(boolean useThrift) {
+    StringBuilder serverSB = new StringBuilder();
+    VMKind kind = this.myProfile.getVMKind();
+    // first add for self
+    final FabricService service = FabricServiceManager
+        .currentFabricServiceInstance();
+    if (service != null) {
+      for (NetworkInterface ni : service.getAllNetworkServers()) {
+        if (useThrift) {
+          if (!ni.getServerType().isThrift()) continue;
+        } else if (!ni.getServerType().isDRDA()) continue;
+        if (serverSB.length() > 0) {
+          serverSB.append(',');
+        }
+        serverSB.append(ni.asString()).append(MEMBER_KIND_BEGIN)
+            .append(kind.toString()).append(MEMBER_KIND_END);
+      }
+    }
+    return serverSB.toString();
+  }
+
+  /**
    * Get the mapping of InternalDistributedMember to corresponding DRDA/Thrift servers
    * they have in the entire system. The format of the network server string is:
    * <p>
@@ -1050,33 +1018,22 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
   public final Map<InternalDistributedMember, String> getAllNetServersWithMembers() {
     HashMap<InternalDistributedMember, String> mbrToNetworkServerMap =
       new HashMap<InternalDistributedMember, String>();
-    StringBuilder serverSB = new StringBuilder();
     final boolean useThrift = ClientSharedUtils.isThriftDefault();
     this.mapLock.readLock().lock();
     try {
-      VMKind kind = this.myProfile.getVMKind();
       // first add for self
-      final FabricService service = FabricServiceManager
-          .currentFabricServiceInstance();
-      if (service != null) {
-        for (NetworkInterface ni : service.getAllNetworkServers()) {
-          if (useThrift) {
-            if (!ni.getServerType().isThrift()) continue;
-          } else if (!ni.getServerType().isDRDA()) continue;
-          if (serverSB.length() > 0) {
-            serverSB.append(',');
-          }
-          serverSB.append(ni.asString()).append(MEMBER_KIND_BEGIN)
-              .append(kind.toString()).append(MEMBER_KIND_END);
-        }
+      String selfNetServers = getSelfNetServers(useThrift);
+      if (selfNetServers.length() > 0) {
         mbrToNetworkServerMap.put(this.myProfile.getDistributedMember(),
-            serverSB.toString());
+            selfNetServers);
       }
       // then for all the other members of the DS
       final Map<InternalDistributedMember, VMKind> gfxdMembers =
         this.serverGroupMap.get(DEFAULT_GROUP);
       Set<?> servers;
       Map<?, ?> serverMap = useThrift ? thriftServers : drdaServerMap;
+      StringBuilder serverSB;
+      VMKind kind;
       for (Map.Entry<?, ?> entry : serverMap.entrySet()) {
         InternalDistributedMember m = (InternalDistributedMember)entry.getKey();
         servers = (Set<?>)entry.getValue();
@@ -1096,8 +1053,8 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
             serverSB.append(MEMBER_KIND_BEGIN).append(kind.toString())
                 .append(MEMBER_KIND_END);
           }
+          mbrToNetworkServerMap.put(m, serverSB.toString());
         }
-        mbrToNetworkServerMap.put(m, serverSB.toString());
       }
     } finally {
       this.mapLock.readLock().unlock();
@@ -1339,6 +1296,8 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     private static final byte F_HAS_SPARK_DRIVERURL = 0x4;
 
     private static final byte F_HAS_PROCESSOR_COUNT = 0x8;
+
+    private static final byte F_HAS_LONG_CATALOG_VERSION = 0x10;
     // end bitmasks
 
     /** OR of various bitmasks above */
@@ -1365,7 +1324,12 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
      */
     private String sparkDriverUrl;
 
-    private AtomicInteger relationDestroyVersion;
+    /**
+     * The schema version of ExternalCatalog implementation (SnappyHiveExternalCatalog)
+     * is tracked in the profile because it needs to be exchanged with other nodes
+     * to make sure that it is consistent on all the nodes.
+     */
+    private AtomicLong catalogSchemaVersion;
 
     /** for deserialization */
     public GfxdProfile() {
@@ -1373,20 +1337,22 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     }
 
     /** construct a new instance for given member and with given version */
-    public GfxdProfile(InternalDistributedMember memberId, int version, String sparkUrl) {
+    public GfxdProfile(InternalDistributedMember memberId, int version,
+        String sparkUrl, long catalogVersion) {
       super(memberId, version);
       this.initialized = true;
       this.numProcessors = Runtime.getRuntime().availableProcessors();
       this.sparkDriverUrl = sparkUrl;
       boolean hasURL = sparkDriverUrl != null && !sparkDriverUrl.equals("");
+      this.catalogSchemaVersion = new AtomicLong(catalogVersion);
       setHasSparkURL(hasURL);
       initFlags();
-      relationDestroyVersion = new AtomicInteger(0);
     }
 
     private void initFlags() {
       this.flags |= F_HASLOCALE;
       this.flags |= F_HAS_PROCESSOR_COUNT;
+      this.flags |= F_HAS_LONG_CATALOG_VERSION;
     }
 
     public final VMKind getVMKind() {
@@ -1435,9 +1401,25 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       return (this.flags & F_HAS_SPARK_DRIVERURL) != 0;
     }
 
-    public final void setRelationDestroyVersion(int value){ relationDestroyVersion.set(value); }
+    public final long getCatalogSchemaVersion() {
+      return catalogSchemaVersion.get();
+    }
 
-    public final int getRelationDestroyVersion() { return relationDestroyVersion.get(); }
+    public final void updateCatalogSchemaVersion(long version) {
+      // update the catalog version only if it is higher than the one already present
+      while (true) {
+        long currentVersion = catalogSchemaVersion.get();
+        if (version > currentVersion) {
+          if (catalogSchemaVersion.compareAndSet(currentVersion, version)) {
+            return;
+          }
+        } else return;
+      }
+    }
+
+    public final void incrementCatalogSchemaVersion() {
+      this.catalogSchemaVersion.incrementAndGet();
+    }
 
     public final void setInitialized(boolean initialized) {
       this.initialized = initialized;
@@ -1539,7 +1521,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       if (hasSparkURL()) {
         DataSerializer.writeString(sparkDriverUrl, out);
       }
-      DataSerializer.writeInteger(relationDestroyVersion.get(), out);
+      out.writeLong(this.catalogSchemaVersion.get());
     }
 
     @Override
@@ -1571,7 +1553,12 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       if (hasSparkURL()) {
         this.sparkDriverUrl = DataSerializer.readString(in);
       }
-      relationDestroyVersion = new AtomicInteger(DataSerializer.readInteger(in));
+      // older version nodes have integer catalog version while new ones use long
+      if ((this.flags & F_HAS_LONG_CATALOG_VERSION) != 0) {
+        this.catalogSchemaVersion = new AtomicLong(in.readLong());
+      } else {
+        this.catalogSchemaVersion = new AtomicLong(in.readInt());
+      }
     }
 
     @Override
@@ -1589,6 +1576,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       sb.append("; initialized=").append(this.initialized);
       sb.append("; dbLocaleStr=").append(this.dbLocaleStr);
       sb.append("; numProcessors=").append(this.numProcessors);
+      sb.append("; catalogVersion=").append(this.catalogSchemaVersion.get());
     }
   }
 

@@ -45,13 +45,13 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
-import com.pivotal.gemfirexd.internal.engine.access.index.SortedMap2Index;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
+import com.pivotal.gemfirexd.internal.engine.access.index.SortedMap2Index;
 import com.pivotal.gemfirexd.internal.engine.access.operations.SortedMap2IndexDeleteOperation.UpdateReplacementValue;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.store.CompactCompositeIndexKey;
@@ -93,13 +93,13 @@ public final class SortedMap2IndexInsertOperation extends MemIndexOperation {
   public void doMe(Transaction tran, LogInstant instant, LimitObjectInput in)
       throws StandardException, IOException {
     this.result = doMe(null, null, this.memcontainer, this.key, this.row,
-        this.isUnique, null, false /*isPutDML*/);
+        this.isUnique, null, false /* isPutDML */, false);
   }
 
   public static boolean doMe(GemFireTransaction tran, TXStateInterface tx,
       GemFireContainer container, Object key, RowLocation value,
       boolean isUnique, WrapperRowLocationForTxn wrapperToReplaceUniqEntry,
-      boolean isPutDML) throws StandardException {
+      boolean isPutDML, boolean skipConstraintChecks) throws StandardException {
     if (tran != null && tran.needLogging()) {
       SortedMap2IndexInsertOperation op = new SortedMap2IndexInsertOperation(
           container, key, value, isUnique);
@@ -108,14 +108,15 @@ public final class SortedMap2IndexInsertOperation extends MemIndexOperation {
     }
 
     return insertIntoSkipListMap(tx, container, key, value, isUnique,
-        wrapperToReplaceUniqEntry, isPutDML);
+        wrapperToReplaceUniqEntry, isPutDML, skipConstraintChecks);
   }
 
   private static boolean insertIntoSkipListMap(final TXStateInterface tx,
       final GemFireContainer container, Object key, final RowLocation value,
       final boolean isUnique,
       final WrapperRowLocationForTxn wrapperToReplaceUniqEntry,
-      boolean isPutDML) throws StandardException {
+      boolean isPutDML, boolean skipConstraintChecks) throws StandardException {
+    isPutDML |= skipConstraintChecks;
     final ConcurrentSkipListMap<Object, Object> skipListMap = container
         .getSkipListMap();
     long lockTimeout = -1L;
@@ -167,7 +168,7 @@ public final class SortedMap2IndexInsertOperation extends MemIndexOperation {
               container, null);
         } catch (IndexMaintenanceException ime) {
           if (isPutDML) {
-            // indicate to higher layer that don't try the delete portion
+            // indicate to higher layer to not try the delete portion if applicable
             return false;
           }
           // this always wraps a StandardException
@@ -333,7 +334,10 @@ public final class SortedMap2IndexInsertOperation extends MemIndexOperation {
             }
           }
         }
-
+        if (skipConstraintChecks) {
+          // indicate to higher layer to not try the delete portion if applicable
+          return false;
+        }
         throw GemFireXDUtils.newDuplicateKeyViolation("unique constraint",
             container.getQualifiedTableName(), "key=" + key.toString()
                 + ", row=" + value, oldValue, null, null);
@@ -417,7 +421,7 @@ public final class SortedMap2IndexInsertOperation extends MemIndexOperation {
       }
     } catch (IndexMaintenanceException ime) {
       if (isPutDML) {
-        // indicate to higher layer that don't try the delete portion
+        // indicate to higher layer to not try the delete portion if applicable
         return false;
       }
       // this always wraps a StandardException

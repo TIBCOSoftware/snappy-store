@@ -67,7 +67,7 @@ import com.gemstone.gnu.trove.THash;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.TObjectHashingStrategy;
 import com.gemstone.gnu.trove.TObjectProcedure;
-import io.snappydata.collection.OpenHashSet;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
 
 /**
  * TXState is the entity that tracks the transaction state on a per thread
@@ -2491,8 +2491,8 @@ public final class TXState implements TXStateInterface {
     }
     txr.lock();
     try {
-      final THashMapWithCreate entryMap = checkForTXFinish.booleanValue() ? txr
-          .getEntryMap() : txr.getInternalEntryMap();
+      final UnifiedMap<Object, Object> entryMap = checkForTXFinish
+          ? txr.getEntryMap() : txr.getInternalEntryMap();
       if (entryMap.putIfAbsent(key, entry) != null) {
         // entry exists and must be at least read locked, so release this lock
         this.lockPolicy.releaseLock(entry, this.lockPolicy.getReadLockMode(),

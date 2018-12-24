@@ -62,9 +62,7 @@ public interface StoreCallbacks {
       int[] projection, byte[] serializedFilters,
       Set<Integer> bucketIds) throws SQLException;
 
-  void registerRelationDestroyForHiveStore();
-
-  void performConnectorOp(Object ctx);
+  void registerCatalogSchemaChange();
 
   Object getSnappyTableStats();
 
@@ -147,4 +145,9 @@ public interface StoreCallbacks {
    * @param ldapGroup
    */
   void refreshPolicies(String ldapGroup);
+
+  /**
+   * Check permission for current user on given schema.
+   */
+  String checkSchemaPermission(String schema, String currentUser);
 }

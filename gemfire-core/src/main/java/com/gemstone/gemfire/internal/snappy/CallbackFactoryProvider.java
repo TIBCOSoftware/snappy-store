@@ -91,11 +91,7 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
-    public void registerRelationDestroyForHiveStore() {
-    }
-
-    @Override
-    public void performConnectorOp(Object ctx) {
+    public void registerCatalogSchemaChange() {
     }
 
     @Override
@@ -196,6 +192,11 @@ public abstract class CallbackFactoryProvider {
 
     @Override
     public void refreshPolicies(String ldapGroup) {
+    }
+
+    @Override
+    public String checkSchemaPermission(String schema, String currentUser) {
+      return null;
     }
   };
 

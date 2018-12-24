@@ -41,13 +41,13 @@ import com.pivotal.gemfirexd.internal.engine.distributed.GfxdListResultCollector
 import com.pivotal.gemfirexd.internal.engine.distributed.message.RegionExecutorMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.locks.GfxdDRWLockService;
-import io.snappydata.collection.IntObjectHashMap;
 import io.snappydata.test.dunit.AsyncInvocation;
 import io.snappydata.test.dunit.SerializableCallable;
 import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.dunit.VM;
 import io.snappydata.test.dunit.standalone.DUnitBB;
 import io.snappydata.test.util.TestException;
+import org.eclipse.collections.impl.map.mutable.primitive.IntObjectHashMap;
 
 /**
  * Tests different scenarios for distributed read-write locks including testing
@@ -488,8 +488,7 @@ public class DistributedLockDUnit extends DistributedSQLTestBase {
     int[][] arrays5 = (int[][])async4.getResult();
 
     System.gc();
-    IntObjectHashMap<Object> allKeys = IntObjectHashMap.withExpectedSize(
-        numKeysPerVM * 5);
+    IntObjectHashMap<Object> allKeys = new IntObjectHashMap<>(numKeysPerVM * 5);
     checkUniqueKeys(allKeys, arrays1, "currentVM");
     checkUniqueKeys(allKeys, arrays2, getServerVM(1));
     checkUniqueKeys(allKeys, arrays3, getServerVM(2));
@@ -613,7 +612,7 @@ public class DistributedLockDUnit extends DistributedSQLTestBase {
         if (currentKey > lastKey) {
           oldVM = allKeys.get(key);
           if (oldVM == null) {
-            allKeys.justPut(key, vm);
+            allKeys.put(key, vm);
             lastKey = currentKey;
           }
           else {

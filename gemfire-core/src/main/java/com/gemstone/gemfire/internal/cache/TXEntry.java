@@ -162,48 +162,12 @@ public final class TXEntry implements Region.Entry<Object, Object>, TXEntryId {
   public Object getUserAttribute() {
     throw new UnsupportedOperationException(
         LocalizedStrings.TXEntry_UA_NOT_SUPPORTED.toLocalizedString());
-    /*
-    checkTX();
-    throwIfUAOperationForPR();
-    TXEntryUserAttrState tx = txReadUA(this.keyInfo);
-    if (tx != null) {
-      return tx.getPendingValue();
-    }
-    else {
-      checkEntryDestroyed();
-      return this.localRegion.basicGetEntryUserAttribute(this.keyInfo.getKey());
-    }
-    */
   }
 
   public Object setUserAttribute(Object value) {
     throw new UnsupportedOperationException(
         LocalizedStrings.TXEntry_UA_NOT_SUPPORTED.toLocalizedString());
-    /*
-    checkTX();
-    throwIfUAOperationForPR();
-    TXEntryUserAttrState tx = txWriteUA(this.keyInfo);
-    if (tx != null) {
-      return tx.setPendingValue(value);
-    }
-    else {
-      checkEntryDestroyed();
-      if (this.localRegion.entryUserAttributes == null) {
-        this.localRegion.entryUserAttributes = new Hashtable();
-      }
-      return this.localRegion.entryUserAttributes.put(keyInfo, value);
-    }
-    */
   }
-
-  /*
-  private void throwIfUAOperationForPR() {
-    if (this.localRegion instanceof PartitionedRegion) {
-      throw new UnsupportedOperationException(LocalizedStrings.
-          TXEntry_UA_NOT_SUPPORTED_FOR_PR.toLocalizedString());
-    }
-  }
-  */
 
   @Override
   public boolean equals(Object obj) {
@@ -236,29 +200,6 @@ public final class TXEntry implements Region.Entry<Object, Object>, TXEntryId {
       throw new EntryDestroyedException(this.key.toString());
     }
   }
-
-  /*
-  private final TXEntryUserAttrState txReadUA(KeyInfo ki) {
-    TXRegionState txr = this.myTX.readRegion(this.localRegion);
-    if (txr != null) {
-      return txr.readEntryUserAttr(ki.getKey());
-    }
-    else {
-      return null;
-    }
-  }
-
-  protected final TXEntryUserAttrState txWriteUA(KeyInfo ki) {
-    final LocalRegion dataReg = this.localRegion.getDataRegionForWrite(ki);
-    final TXRegionState txr = this.myTX.writeRegion(dataReg);
-    if (txr != null) {
-      return txr.writeEntryUserAttr(ki.getKey(), this.localRegion);
-    }
-    else {
-      return null;
-    }
-  }
-  */
 
   /**
    * @since 5.0

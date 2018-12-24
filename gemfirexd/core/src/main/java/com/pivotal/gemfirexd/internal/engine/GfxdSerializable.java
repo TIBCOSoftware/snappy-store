@@ -207,7 +207,7 @@ public interface GfxdSerializable extends GfxdDSFID {
 
   byte LEAD_NODE_EXN_MSG = 56;
 
-  byte LEAD_NODE_CONN_OP_MSG = 57;
+  // 57 is unused -- use for the next new message ID
 
   byte LEAD_NODE_GET_STATS = 58;
 
@@ -324,7 +324,7 @@ public interface GfxdSerializable extends GfxdDSFID {
 
   byte SNAPPY_REGION_STATS_RESULT = 111;
 
-  byte LEAD_NODE_CONN_OP_CTX = 112;
+  // 112 is unused -- use for new IDs
 
   byte COLUMN_FORMAT_KEY = 113;
 

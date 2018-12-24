@@ -378,6 +378,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
   
   private final IndexPersistenceStats indexPersistenceStats;
 
+  private final long createTime;
+
   /**
    * Not keeping as volatile as the expectation is that this field
    * should be set as soon as the first embedded connection is created
@@ -417,6 +419,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     this.indexLoadSync = new Object();
     this.indexLoadBegin = false;
     this.indexPersistenceStats = new IndexPersistenceStats();
+    this.createTime = System.currentTimeMillis();
   }
 
   /**
@@ -426,6 +429,10 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
    *              standard Derby error policy
    */
   public void createFinished() throws StandardException {
+  }
+
+  public long getCreateTime() {
+    return this.createTime;
   }
 
   /**
@@ -1538,7 +1545,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       // set then that can be used for overflow/gateway
 
       String serverGroup = this.getBootProperty("server-groups");
-      Boolean isLeadMember = serverGroup != null ? serverGroup.contains("IMPLICIT_LEADER_SERVERGROUP") : false;
+      boolean isLeadMember = serverGroup != null &&
+          serverGroup.contains(ServerGroupUtils.LEADER_SERVERGROUP);
 
       if (this.persistingDD || this.persistenceDir != null || isLeadMember) {
         try {
@@ -2424,7 +2432,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
           // Instantiate using reflection
           try {
             this.externalCatalog = (ExternalCatalog)ClassPathLoader
-                .getLatest().forName("io.snappydata.impl.SnappyHiveCatalog")
+                .getLatest().forName("io.snappydata.sql.catalog.impl.StoreHiveCatalog")
                 .newInstance();
           } catch (InstantiationException | IllegalAccessException
               | ClassNotFoundException e) {

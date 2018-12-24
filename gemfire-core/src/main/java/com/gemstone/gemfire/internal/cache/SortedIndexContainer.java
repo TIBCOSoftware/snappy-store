@@ -45,35 +45,16 @@ public interface SortedIndexContainer {
   public boolean isUniqueIndex();
 
   /**
-   * Get an index key object that can be inserted into this index (by calling
-   * {@link #insertIntoIndex}) given the serialized index key bytes and
-   * reference to disk entry.
+   * Get an index key object that can be inserted into this index given the
+   * serialized index key bytes and reference to disk entry.
    */
   public SortedIndexKey getIndexKey(byte[] indexKeyBytes, RegionEntry entry);
 
   /**
-   * Get an index key object that can be inserted into this index (by calling
-   * {@link #insertIntoIndex}) given the full value extracted from a
-   * RegionEntry, and reference to the RegionEntry.
+   * Get an index key object that can be inserted into this index given the
+   * full value extracted from a RegionEntry, and reference to the RegionEntry.
    */
   public SortedIndexKey getIndexKey(Object val, RegionEntry entry);
-
-  /**
-   * Insert a given entry into an index for given index key object during
-   * recovery. Unlike onEvent/postEvent, this is a one-step insert that is not
-   * designed to be rolled back for any case though explicit deletes may be done
-   * later (e.g. when recovered bucket is ignored later during bucket
-   * initialization/rebalance).
-   * 
-   * @param indexKey
-   *          an index key object like that returned by {@link #getIndexKey}
-   * @param entry
-   *          the map entry being inserted
-   * @param isPutDML
-   *          treat like a PUT DML ignoring constraint violations
-   */
-  public void insertIntoIndex(SortedIndexKey indexKey, RegionEntry entry,
-      boolean isPutDML);
 
   /**
    * Initialize the index with given set of sorted entries. The will fail if

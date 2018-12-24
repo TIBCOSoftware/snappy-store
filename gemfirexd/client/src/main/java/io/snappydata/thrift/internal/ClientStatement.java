@@ -137,8 +137,8 @@ public class ClientStatement extends ClientFetchColumnValue implements
         .setRetainBucketIds(retain);
   }
 
-  public final void setMetadataVersion(int version) {
-    this.attrs.setMetadataVersion(version);
+  public final void setCatalogVersion(long version) {
+    this.attrs.setCatalogVersion(version);
   }
 
   public final void setSnapshotTransactionId(String txId) {

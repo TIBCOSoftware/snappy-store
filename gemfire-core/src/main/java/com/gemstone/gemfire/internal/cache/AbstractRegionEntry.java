@@ -1434,14 +1434,21 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
     Object rawOldVal = null;
     if (!isOffHeap) {
       rawOldVal = getValueField();
-      if (rawOldVal != val && rawOldVal instanceof SerializedDiskBuffer) {
-        // sync block ensures that region stats and reference count update are
-        // atomic so any concurrent readers changing internal buffer from
-        // compressed to decompressed or vice-versa also update stats atomically
+      if (rawOldVal == val) return;
+      // sync blocks below ensure that region stats and reference count update are
+      // atomic so any concurrent readers changing internal buffer from
+      // compressed to decompressed or vice-versa also update stats atomically
+      if (rawOldVal instanceof SerializedDiskBuffer) {
         synchronized (rawOldVal) {
           setValueField(val);
           if (context != null) context.updateMemoryStats(rawOldVal, val);
           ((SerializedDiskBuffer)rawOldVal).release();
+        }
+        return;
+      } else if (val instanceof SerializedDiskBuffer) {
+        synchronized (val) {
+          setValueField(val);
+          if (context != null) context.updateMemoryStats(rawOldVal, val);
         }
         return;
       }

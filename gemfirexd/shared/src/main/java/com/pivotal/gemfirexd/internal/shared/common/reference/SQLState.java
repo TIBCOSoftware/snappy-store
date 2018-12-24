@@ -1442,6 +1442,7 @@ public interface SQLState {
     String UNEXPECTED_EXCEPTION_FOR_PARTITION_RESOLVER = "X0Z36.S";
     String UNEXPECTED_EXCEPTION_FOR_ROW_ENCODER = "X0Z37.S";
     String ROW_LEVEL_SECURITY_ENABLED = "X0Z38.S";
+    String SNAPPY_CATALOG_SCHEMA_VERSION_MISMATCH = "X0Z39";
 // GemStone changes END
 
 	// TEMPORARY EXECUTION RESTRICTIONS
@@ -1516,7 +1517,6 @@ public interface SQLState {
 // GemStone changes BEGIN
     String LANG_STATEMENT_CANCELLED_ON_LOW_MEMORY                         = "XCL54.T";
     String LANG_STATEMENT_CANCELLED_ON_USER_REQUEST                       = "XCL56.T";
-    String SNAPPY_RELATION_DESTROY_VERSION_MISMATCH                       = "XCL57";
 
 // GemStone changes END
     /*

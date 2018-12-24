@@ -36,7 +36,6 @@ import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.shared.Version;
-import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.DVDIOUtil;
 import com.pivotal.gemfirexd.internal.engine.distributed.FunctionExecutionException;
@@ -51,10 +50,10 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.SQLDecimal;
 import com.pivotal.gemfirexd.internal.impl.sql.GenericParameterValueSet;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
-import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
 import com.pivotal.gemfirexd.internal.snappy.LeadNodeExecutionContext;
 import com.pivotal.gemfirexd.internal.snappy.SparkSQLExecute;
+import org.apache.log4j.Logger;
 
 /**
  * Route query to Snappy Spark Lead node.
@@ -137,11 +136,12 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
       if (isPreparedStatement() && !isPreparedPhase()) {
         getParams();
       }
+      Logger logger = null;
       if (GemFireXDUtils.TraceQuery) {
+        logger = Logger.getLogger(getClass());
         StringBuilder str = new StringBuilder();
         appendFields(str);
-        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
-            "LeadNodeExecutorMsg.execute: Got sql = " + str.toString());
+        logger.info("LeadNodeExecutorMsg.execute: Got sql = " + str.toString());
       }
       InternalDistributedMember m = this.getSenderForReply();
       final Version v = m.getVersionObject();
@@ -153,11 +153,14 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
       this.lastResultSent = true;
       this.endMessage();
       if (GemFireXDUtils.TraceQuery) {
-        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
-                "LeadNodeExecutorMsg.execute: Sent Last result ");
+        assert logger != null;
+        logger.info("LeadNodeExecutorMsg.execute: Sent Last result ");
       }
     } catch (Exception ex) {
-      throw getExceptionToSendToServer(ex);
+      Exception serverException = getExceptionToSendToServer(ex);
+      Logger.getLogger(getClass()).warn(
+          "LeadNodeExecutorMsg.execute: failed with exception: " + ex);
+      throw serverException;
     } finally {
       Thread.currentThread().setContextClassLoader(origLoader);
     }
@@ -167,7 +170,8 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
     private static final long serialVersionUID = -4668836542769295434L;
 
     public SparkExceptionWrapper(Throwable ex) {
-      super(ex.getClass().getName() + ": " + ex.getMessage(), ex.getCause());
+      super(ex.getClass().getName() + ": " + ex.getMessage(),
+          ex.getCause() != null ? new SparkExceptionWrapper(ex.getCause()) : null);
       this.setStackTrace(ex.getStackTrace());
     }
   }
@@ -175,7 +179,10 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   public static Exception getExceptionToSendToServer(Exception ex) {
     // Catch all exceptions and convert so can be caught at XD side
     // Check if the exception can be serialized or not
-    boolean wrapException = false;
+    // Now always wrapping exception because some exception classes may be deployed
+    // only on lead and may not be available on server esp. in system class loader
+    boolean wrapException = true;
+    /*
     HeapDataOutputStream hdos = null;
     try {
       hdos = new HeapDataOutputStream();
@@ -187,6 +194,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
         hdos.close();
       }
     }
+    */
 
     Throwable cause = ex;
     Throwable sparkEx = null;

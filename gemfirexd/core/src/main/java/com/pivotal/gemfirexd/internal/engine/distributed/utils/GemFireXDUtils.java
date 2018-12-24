@@ -46,6 +46,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.annotation.Nonnull;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.spec.SecretKeySpec;
@@ -165,6 +166,11 @@ import com.pivotal.gemfirexd.internal.shared.common.sanity.AssertFailure;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.unsafe.hash.Murmur3_x86_32;
+import org.apache.thrift.TBase;
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.transport.AutoExpandingBufferWriteTransport;
+import org.apache.thrift.transport.TMemoryInputTransport;
 
 /**
  * Various static utility methods used by GemFireXD.
@@ -180,7 +186,7 @@ public final class GemFireXDUtils {
       .getBoolean("gemfirexd.optimizer.trace");
 
   private static final ConcurrentHashMap<Object, GfxdLockable> lockableMap =
-    new ConcurrentHashMap<Object, GfxdLockable>();
+      new ConcurrentHashMap<>();
 
   private static long defaultRecoveryDelay =
     PartitionAttributesFactory.RECOVERY_DELAY_DEFAULT;
@@ -221,8 +227,7 @@ public final class GemFireXDUtils {
    */
   public static final Object MAX_KEY = new Object();
 
-  private final static ThreadLocal<EmbedConnection> tssConn =
-      new ThreadLocal<EmbedConnection>();
+  private final static ThreadLocal<EmbedConnection> tssConn = new ThreadLocal<>();
 
   private GemFireXDUtils() {
     // cannot be constructed
@@ -717,6 +722,17 @@ public final class GemFireXDUtils {
   public static VMKind getMyVMKind() {
     final GemFireStore store = GemFireStore.getBootingInstance();
     return store != null ? store.getMyVMKind() : null;
+  }
+
+  public static GfxdDistributionAdvisor.GfxdProfile getMyProfile(boolean throwIfAbsent) {
+    final GemFireStore store = GemFireStore.getBootingInstance();
+    GfxdDistributionAdvisor.GfxdProfile profile = store != null
+        ? store.getDistributionAdvisor().getMyProfile() : null;
+    if (profile == null && throwIfAbsent) {
+      throw new CacheClosedException("GemFireXDUtils.getMyProfile: no store found."
+          + " GemFireXD not booted or closed down.");
+    }
+    return profile;
   }
 
   /**
@@ -2671,6 +2687,22 @@ public final class GemFireXDUtils {
     }
   };
 
+  public static byte[] writeThriftObject(@Nonnull TBase<?, ?> obj) throws TException {
+    AutoExpandingBufferWriteTransport transport =
+        new AutoExpandingBufferWriteTransport(128, 1.5);
+    obj.write(new TCompactProtocol(transport));
+    byte[] bytes = transport.getBuf().array();
+    int size = transport.getPos();
+    return (size == bytes.length) ? bytes : Arrays.copyOf(bytes, size);
+  }
+
+  public static int readThriftObject(@Nonnull TBase<?, ?> obj,
+      byte[] bytes) throws TException {
+    TMemoryInputTransport transport = new TMemoryInputTransport(bytes);
+    obj.read(new TCompactProtocol(transport));
+    return transport.getBytesRemainingInBuffer();
+  }
+
   @SuppressWarnings("unchecked")
   public static ServerLocation getPreferredServer(
       Collection<String> serverGroups, Collection<String> intersectGroups,
@@ -3400,7 +3432,8 @@ public final class GemFireXDUtils {
     TraceSysProcedures = SanityManager
         .TRACE_ON(GfxdConstants.TRACE_SYS_PROCEDURES) ||
         (TraceExecution && !SanityManager.TRACE_OFF(
-            GfxdConstants.TRACE_SYS_PROCEDURES));
+            GfxdConstants.TRACE_SYS_PROCEDURES)) ||
+        GfxdSystemProcedures.logger.isDebugEnabled();
   }
 
   private static void setTraceExecution(boolean force) {

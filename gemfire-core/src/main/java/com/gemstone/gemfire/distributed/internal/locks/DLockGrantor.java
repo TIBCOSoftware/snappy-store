@@ -543,7 +543,7 @@ public class DLockGrantor {
 //           request.respondWithTryLockFailed(name);
 //         }
       }
-      catch (CommitConflictException ex) {
+      catch (ConflictException ex) {
         request.respondWithTryLockFailed(ex.getMessage());
       }
       finally {

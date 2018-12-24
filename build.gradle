@@ -64,8 +64,7 @@ allprojects {
     nettyAllVersion = '4.0.51.Final'
     jlineVersion = '2.14.6'
     jackson1Version = '1.9.13'
-    kolobokeVersion = '1.0.0'
-    kolobokeCompileVersion = '0.5.1'
+    eclipseCollectionsVersion = '9.2.0'
     snappyDunitVersion = '1.0.3.6'
 
     // product and release properties
@@ -701,7 +700,6 @@ if (!rootProject.hasProperty('store')) {
 task generateSources {
   dependsOn subprojectBase + 'gemfire-jgroups:jgMagic'
   dependsOn subprojectBase + 'gemfire-core:createVersionPropertiesFile'
-  dependsOn subprojectBase + 'snappydata-util:compileJava'
   dependsOn subprojectBase + 'snappydata-store-core:compileJavacc'
   dependsOn subprojectBase + 'snappydata-store-core:generatePropertiesFiles'
   dependsOn subprojectBase + 'gemfire-core:createVersionPropertiesFile'

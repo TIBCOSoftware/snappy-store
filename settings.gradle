@@ -25,7 +25,6 @@ include 'gemfire-core'
 include 'gemfire-junit'
 // include 'gemfire-web'
 include 'gemfire-examples'
-include ':snappydata-util'
 include ':snappydata-store-shared'
 include ':snappydata-store-prebuild'
 include ':snappydata-store-core'
@@ -38,7 +37,6 @@ include ':snappydata-native'
 
 project(':gemfire-jgroups').projectDir = "$rootDir/lgpl/gemfire-jgroups" as File
 project(':gemfire-trove').projectDir = "$rootDir/lgpl/gemfire-trove" as File
-project(':snappydata-util').projectDir = "$rootDir/snappy-util" as File
 project(':snappydata-store-shared').projectDir = "$rootDir/gemfirexd/shared" as File
 project(':snappydata-store-prebuild').projectDir = "$rootDir/gemfirexd/prebuild" as File
 project(':snappydata-store-core').projectDir = "$rootDir/gemfirexd/core" as File

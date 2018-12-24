@@ -149,11 +149,10 @@ import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.HeapBufferAllocator;
 import com.gemstone.gemfire.internal.shared.LauncherBase;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
-import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
-import io.snappydata.collection.OpenHashSet;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.shared.unsafe.DirectBufferAllocator;
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.gemstone.gemfire.internal.snappy.memory.MemoryManagerStats;
@@ -176,7 +175,8 @@ import com.gemstone.gemfire.pdx.internal.PdxInstanceFactoryImpl;
 import com.gemstone.gemfire.pdx.internal.PdxInstanceImpl;
 import com.gemstone.gemfire.pdx.internal.TypeRegistry;
 import com.gemstone.gnu.trove.THashSet;
-import io.snappydata.collection.ObjectObjectHashMap;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 // @todo somebody Come up with more reasonable values for {@link #DEFAULT_LOCK_TIMEOUT}, etc.
 /**
@@ -841,41 +841,6 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     public void run() {
       try {
         if (!oldEntryMap.isEmpty()) {
-          // Can't do map.clear as have to account for memory for each oldEntry
-          if (getTxManager().getHostedTransactionsInProgress().size() == 0) {
-            acquireWriteLockOnSnapshotRvv();
-            try {
-              if (getTxManager().getHostedTransactionsInProgress().size() == 0) {
-                if (getLoggerI18n().fineEnabled()) {
-                  getLoggerI18n().info(LocalizedStrings.DEBUG, "Clearing the Map");
-                }
-                for (Entry<String, Map<Object, BlockingQueue<RegionEntry>>> entry : oldEntryMap.entrySet()) {
-                  Map<Object, BlockingQueue<RegionEntry>> regionEntryMap = entry.getValue();
-                  LocalRegion region = (LocalRegion)getRegion(entry.getKey());
-                  for (Entry<Object, BlockingQueue<RegionEntry>> oldEntry : regionEntryMap.entrySet()) {
-                    for (RegionEntry re : oldEntry.getValue()) {
-                      if (GemFireCacheImpl.hasNewOffHeap()) {
-                        // also remove reference to region buffer, if any
-                        Object value = re._getValue();
-                        if (value instanceof SerializedDiskBuffer) {
-                          ((SerializedDiskBuffer)value).release();
-                        }
-                      }
-                      // free the allocated memory
-                      if (!region.reservedTable() && region.needAccounting()) {
-                        NonLocalRegionEntry nre = (NonLocalRegionEntry)re;
-                        region.freePoolMemory(nre.getValueSize(), nre.isForDelete());
-                      }
-                    }
-                  }
-                }
-                return;
-              }
-            } finally {
-              releaseWriteLockOnSnapshotRvv();
-            }
-          }
-
           for (Entry<String,Map<Object, BlockingQueue<RegionEntry>>> entry : oldEntryMap.entrySet()) {
             Map<Object, BlockingQueue<RegionEntry>> regionEntryMap = entry.getValue();
             LocalRegion region = (LocalRegion)getRegion(entry.getKey());
@@ -950,7 +915,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
         LocalRegion region, RegionEntry re) {
       //getLoggerI18n().info(LocalizedStrings.DEBUG,"OldEntriesCleanerThread: Getting called for re " + re);
       int myVersion = re.getVersionStamp().getEntryVersion();
-      Set<TXId> txIds = new OpenHashSet<TXId>(4);
+      Set<TXId> txIds = new UnifiedSet<TXId>(4);
       for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
         TXState txState = txProxy.getLocalTXState();
         if ((txState != null && !txState.isClosed() && TXState.checkEntryInSnapshot
@@ -964,7 +929,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
           continue;
         }
 
-        Set<TXId> othersTxIds = new OpenHashSet<TXId>(4);
+        Set<TXId> othersTxIds = new UnifiedSet<TXId>(4);
         for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
           TXState txState = txProxy.getLocalTXState();
           if ((txState != null && !txState.isClosed() && TXState.checkEntryInSnapshot
@@ -989,7 +954,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
         entryInRegion = new NonLocalRegionEntry(re.getKey(), Token.TOMBSTONE, region, versionTag);
       }
 
-      Set<TXId> othersTxIds = new OpenHashSet<TXId>(4);
+      Set<TXId> othersTxIds = new UnifiedSet<TXId>(4);
       for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
         TXState txState = txProxy.getLocalTXState();
         if ((txState != null && !txState.isClosed() && TXState.checkEntryInSnapshot
@@ -1787,8 +1752,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     lockForSnapshotRvv.readLock().lock();
     try {
       // Wait for all the regions to get initialized before taking snapshot.
-      final ObjectObjectHashMap<String, Map> snapshot =
-          ObjectObjectHashMap.withExpectedSize(this.pathToRegion.size());
+      final UnifiedMap<String, Map> snapshot =
+          new UnifiedMap<>(this.pathToRegion.size());
       this.pathToRegion.values().forEach(region -> {
         if (region.isInternalRegion() || (region instanceof HARegion)) return;
         PartitionedRegion pr;
@@ -3753,7 +3718,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   }
 
   public final Set<LocalRegion> getApplicationRegions() {
-    OpenHashSet<LocalRegion> result = new OpenHashSet<>();
+    UnifiedSet<LocalRegion> result = new UnifiedSet<>();
     synchronized (this.rootRegions) {
       for (Object r : this.rootRegions.values()) {
         LocalRegion rgn = (LocalRegion) r;

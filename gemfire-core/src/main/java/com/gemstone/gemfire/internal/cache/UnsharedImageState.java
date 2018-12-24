@@ -17,26 +17,27 @@
 
 package com.gemstone.gemfire.internal.cache;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
-import com.gemstone.gemfire.internal.util.concurrent.StoppableNonReentrantLock;
-import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
 import com.gemstone.gemfire.internal.cache.locks.NonReentrantReadWriteLock;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.util.concurrent.StoppableNonReentrantLock;
+import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
 import com.gemstone.gnu.trove.TObjectIntHashMap;
 import com.gemstone.org.jgroups.util.StringId;
-
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
 
 /**
  * Used on distributed replicated regions to track GII and various state.
@@ -74,7 +75,7 @@ public class UnsharedImageState implements ImageState {
    * the set of pending TXRegionStates that have pending ops coming in before
    * GII is complete
    */
-  private volatile THashMapWithCreate pendingTXRegionStates;
+  private volatile UnifiedMap<TXId, TXRegionState> pendingTXRegionStates;
   private final NonReentrantReadWriteLock pendingTXRegionStatesLock;
   private volatile Thread pendingTXRegionStatesLockOwner;
   private final AtomicInteger pendingTXOrder;
@@ -99,7 +100,7 @@ public class UnsharedImageState implements ImageState {
     // we don't actually require much concurrency since putter will be only
     // the GII thread, but for multiple getters this is a concurrent set
     this.failedEvents = new ConcurrentTHashSet<EventID>(2);
-    this.pendingTXRegionStates = isLocal ? null : new THashMapWithCreate();
+    this.pendingTXRegionStates = isLocal ? null : new UnifiedMap<>();
     this.pendingTXRegionStatesLock = isLocal ? null
         : new NonReentrantReadWriteLock(stopper);
     this.pendingTXOrder = new AtomicInteger(0);
@@ -356,8 +357,8 @@ public class UnsharedImageState implements ImageState {
       final LocalRegion region = txrs.region;
       if (region.isProfileExchanged()) {
         Object old;
-        if ((old = this.pendingTXRegionStates.putIfAbsent(txrs.getTXState()
-            .getTransactionId(), txrs)) != null) {
+        if ((old = this.pendingTXRegionStates.getIfAbsentPut(txrs.getTXState()
+            .getTransactionId(), txrs)) != txrs) {
           Assert.fail("ImageState#addPendingTXRegionState: failed to add "
               + txrs + ", existing=" + old);
         }
@@ -410,7 +411,7 @@ public class UnsharedImageState implements ImageState {
     }
     try {
       if (this.pendingTXRegionStates != null) {
-        txrs = (TXRegionState)this.pendingTXRegionStates.get(txId);
+        txrs = this.pendingTXRegionStates.get(txId);
         if (TXStateProxy.LOG_FINE) {
           if (txrs != null) {
             final LogWriterI18n logger = txrs.region.getLogWriterI18n();
@@ -561,7 +562,7 @@ public class UnsharedImageState implements ImageState {
   @Override
   public void mergeFinishedTXOrders(final LocalRegion region,
       final Collection<TXId> txIds) {
-    final THashMapWithCreate pendingTXRS = this.pendingTXRegionStates;
+    final UnifiedMap<TXId, TXRegionState> pendingTXRS = this.pendingTXRegionStates;
     if (pendingTXRS != null) {
       this.pendingTXRegionStatesLock.attemptWriteLock(-1);
       try {
@@ -609,7 +610,7 @@ public class UnsharedImageState implements ImageState {
   public void clearPendingTXRegionStates(boolean reset) {
     if (reset) {
       // in this case only reset the list else null it out
-      final THashMapWithCreate txrs = this.pendingTXRegionStates;
+      final UnifiedMap<TXId, TXRegionState> txrs = this.pendingTXRegionStates;
       if (txrs != null) {
         txrs.clear();
       }

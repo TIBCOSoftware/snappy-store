@@ -513,6 +513,7 @@ public class InternalManagementService {
   }
 
   private void handleEmbedConnectionInit(final EmbedConnection connection, boolean checkStore) {
+    if (connection == null) return;
     final InternalDistributedSystem system = Misc.getDistributedSystem();
     GemFireStore store = GemFireStore.getBootingInstance();
     if (checkStore && (store == null || !store.initialDDLReplayDone())) {
@@ -534,19 +535,21 @@ public class InternalManagementService {
             Misc.checkIfCacheClosing(ie);
           }
         }
-        long timeout = Math.max(end - current, 1000L);
+        long timeout = Math.max(end - current, 5000L);
         GemFireXDUtils.waitForNodeInitialization(timeout, true, false);
         // try to proceed in any case even if node has not initialized yet
         handleEmbedConnectionInit(connection, false);
       });
       return;
     }
+    final LanguageConnectionContext lcc = connection.getLanguageConnectionContext();
+    if (lcc == null) return;
     GfxdConnectionHolder holder = GfxdConnectionHolder.getHolder();
     GfxdConnectionWrapper connectionWrapper = null;
     try {
       Properties props = new Properties();      
-      props.setProperty(Attribute.QUERY_HDFS, Boolean.toString(connection.getLanguageConnectionContext().getQueryHDFS()));
-      props.setProperty(Attribute.ROUTE_QUERY, Boolean.toString(connection.getLanguageConnectionContext().isQueryRoutingFlagTrue()));
+      props.setProperty(Attribute.QUERY_HDFS, Boolean.toString(lcc.getQueryHDFS()));
+      props.setProperty(Attribute.ROUTE_QUERY, Boolean.toString(lcc.isQueryRoutingFlagTrue()));
       connectionWrapper = holder.createWrapper(connection.getSchema(), GemFireXDUtils.newUUID(), false, props);
     } catch (SQLException e) {
       logInfo("Error creating EmbedConnection for Management. Reason: " + e.getMessage());

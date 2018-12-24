@@ -16,68 +16,14 @@
  */
 package delta;
 
-import hydra.BridgeHelper;
-import hydra.BridgePrms;
-import hydra.CacheHelper;
-import hydra.DistributedSystemHelper;
-import hydra.GemFirePrms;
-import hydra.GsRandom;
-import hydra.HydraThreadLocal;
-import hydra.Log;
-import hydra.MasterController;
-import hydra.ProcessMgr;
-import hydra.RegionHelper;
-import hydra.RegionPrms;
-import hydra.RemoteTestModule;
-import hydra.StopSchedulingOrder;
-import hydra.StopSchedulingTaskOnClientOrder;
-import hydra.TestConfig;
-
 import java.io.EOFException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Vector;
-
-import parReg.ParRegUtil;
-import util.BaseValueHolder;
-import util.MethodCoordinator;
-import util.NameFactory;
-import util.SilenceListener;
-import util.StopStartPrms;
-import util.StopStartVMs;
-import util.TestException;
-import util.TestHelper;
-import util.TestHelperPrms;
-import util.TxHelper;
-import util.ValueHolder;
+import java.util.*;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.Delta;
 import com.gemstone.gemfire.DeltaSerializationException;
-import com.gemstone.gemfire.cache.AttributesFactory;
-import com.gemstone.gemfire.cache.CacheLoaderException;
-import com.gemstone.gemfire.cache.ClientHelper;
-import com.gemstone.gemfire.cache.CommitConflictException;
-import com.gemstone.gemfire.cache.EntryExistsException;
-import com.gemstone.gemfire.cache.EntryNotFoundException;
-import com.gemstone.gemfire.cache.InterestResultPolicy;
-import com.gemstone.gemfire.cache.PartitionAttributes;
-import com.gemstone.gemfire.cache.PartitionAttributesFactory;
-import com.gemstone.gemfire.cache.Region;
-import com.gemstone.gemfire.cache.RegionAttributes;
-import com.gemstone.gemfire.cache.TimeoutException;
-import com.gemstone.gemfire.cache.TransactionDataNodeHasDepartedException;
-import com.gemstone.gemfire.cache.TransactionDataRebalancedException;
-import com.gemstone.gemfire.cache.TransactionException;
-import com.gemstone.gemfire.cache.TransactionInDoubtException;
+import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.client.ServerConnectivityException;
 import com.gemstone.gemfire.cache.client.ServerOperationException;
 import com.gemstone.gemfire.cache.partition.PartitionRegionHelper;
@@ -88,8 +34,10 @@ import com.gemstone.gemfire.internal.cache.CachedDeserializableFactory;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.Token;
-
 import diskReg.DiskRegUtil;
+import hydra.*;
+import parReg.ParRegUtil;
+import util.*;
 
 public class DeltaTest {
     
@@ -1018,9 +966,9 @@ protected void doEntryOperations(Region aReg)  {
           Log.getLogWriter().info("Caught Exception " + e + ".  Expected with concurrent execution, continuing test.");
         } catch (TransactionInDoubtException e) {
           Log.getLogWriter().info("Caught TransactionInDoubtException.  Expected with concurrent execution, continuing test.");
-        } catch (CommitConflictException e) {
+        } catch (ConflictException e) {
           // can occur with concurrent execution
-          Log.getLogWriter().info("Caught CommitConflictException. Expected with concurrent execution, continuing test.");
+          Log.getLogWriter().info("Caught ConflictException. Expected with concurrent execution, continuing test.");
         }
       }
 
@@ -1121,7 +1069,7 @@ protected void recordLoadToBB()  {
 
 /** Add a new entry to the given region.
  *
- *  @param aRegion The region to use for adding a new entry.
+ *  @param aReg The region to use for adding a new entry.
  *
  *  @returns The key that was added.
  */
@@ -1158,7 +1106,7 @@ protected Object addEntry(Region aReg)  {
     
 /** Invalidate an entry in the given region.
  *
- *  @param aRegion The region to use for invalidating an entry.
+ *  @param aReg The region to use for invalidating an entry.
  *  @param isLocalInvalidate True if the invalidate should be local, false otherwise.
  */
 protected void invalidateEntry(Region aReg, boolean isLocalInvalidate) {
@@ -1215,7 +1163,7 @@ protected void invalidateEntry(Region aReg, boolean isLocalInvalidate) {
     
 /** Destroy an entry in the given region.
  *
- *  @param aRegion The region to use for destroying an entry.
+ *  @param aReg The region to use for destroying an entry.
  *  @param isLocalDestroy True if the destroy should be local, false otherwise.
  */
 protected void destroyEntry(Region aReg, boolean isLocalDestroy) {
@@ -1269,7 +1217,7 @@ protected void destroyEntry(Region aReg, boolean isLocalDestroy) {
 /** Update an existing entry in the given region. If there are
  *  no available keys in the region, then this is a noop.
  *
- *  @param aRegion The region to use for updating an entry.
+ *  @param aReg The region to use for updating an entry.
  */
 protected void updateEntry(Region aReg)  {
    Object key = getExistingKey(aReg, uniqueKeys, numThreadsInClients);
@@ -1312,7 +1260,7 @@ protected void updateEntry(Region aReg)  {
 /** Get an existing key in the given region if one is available,
  *  otherwise get a new key. 
  *
- *  @param aRegion The region to use for getting an entry.
+ *  @param aReg The region to use for getting an entry.
  */
 protected void getKey(Region aReg)  {
    Object key = getExistingKey(aReg, uniqueKeys, numThreadsInClients);
@@ -1355,7 +1303,7 @@ protected void getKey(Region aReg)  {
     
 /** Get a new key int the given region.
  *
- *  @param aRegion The region to use for getting an entry.
+ *  @param aReg The region to use for getting an entry.
  */
 protected void getNewKey(Region aReg)  {
    Object key = getNewKey();

@@ -35,6 +35,7 @@ import java.util.Calendar;
 import com.gemstone.gemfire.cache.CacheWriterException;
 import com.gemstone.gemfire.cache.EntryEvent;
 import com.gemstone.gemfire.cache.EntryNotFoundException;
+import com.gemstone.gemfire.cache.IllegalTransactionStateException;
 import com.gemstone.gemfire.cache.Operation;
 import com.gemstone.gemfire.cache.TimeoutException;
 import com.gemstone.gemfire.cache.query.internal.IndexUpdater;
@@ -690,23 +691,23 @@ public final class GfxdTXEntryState extends TXEntryState implements
   }
 
   public WrapperRowLocationForTxn wrapperForRollback(
-      GemFireContainer indexContainer, Object oldKey) {
+      GemFireContainer indexContainer, Object oldKey, EntryEventImpl event) {
     // in case of op = INSERT/CREATE we need not reinstate the old index
     // during rollback.
     if (wasCreatedByTX()) {
       return null;
     }
+    final boolean isOpPut = isOpPut() || event.isPutDML();
+    final boolean isOpDestroy = isOpDestroy();
     // in case of op = destroy or op = update/put of an existing entry
     // we need to reinstate the old index during rollback
-    if (!isOpPut() && !isOpDestroy()) {
-      if (GemFireXDUtils.TraceTran | GemFireXDUtils.TraceQuery) {
-        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN, "op is: " + this.op
-            + " and opToString returns: " + this.opToString());
-      }
+    if (!isOpPut && !isOpDestroy) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN, "ERROR: Unexpected op = " +
+          this.op + ", opToString returns: " + this.opToString() + " for " + toString() +
+          ", event: " + event);
+      throw new IllegalTransactionStateException("TXEntryState.wrapperForRollback: unexpected " +
+          "operation " + opToString() + " for event: " + event + ", on entry: " + toString());
     }
-    boolean isOpDestroy = isOpDestroy();
-
-    assert isOpPut() || isOpDestroy;
 
     final TXRegionState txrs = this.txRegionState;
     txrs.lock();

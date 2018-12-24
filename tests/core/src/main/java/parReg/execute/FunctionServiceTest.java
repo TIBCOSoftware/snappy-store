@@ -16,72 +16,22 @@
  */
 package parReg.execute;
 
-import getInitialImage.InitImageBB;
-import hydra.BridgeHelper;
-import hydra.BridgePrms;
-import hydra.CacheHelper;
-import hydra.DistributedSystemHelper;
-import hydra.Log;
-import hydra.PoolHelper;
-import hydra.RegionDescription;
-import hydra.RegionHelper;
-import hydra.RemoteTestModule;
-import hydra.StopSchedulingTaskOnClientOrder;
-import hydra.TestConfig;
-import hydra.BridgeHelper.Endpoint;
-
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.Vector;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 
-import parReg.ParRegBB;
-import parReg.ParRegUtil;
-import parReg.colocation.Month;
-import parReg.colocation.ParRegColocation;
-import pdx.PdxTest;
-import perffmwk.PerfStatMgr;
-import perffmwk.PerfStatValue;
-import perffmwk.StatSpecTokens;
-import util.KeyIntervals;
-import util.NameFactory;
-import util.PRObserver;
-import util.RandomValues;
-import util.SilenceListener;
-import util.TestException;
-import util.TestHelper;
-import util.TestHelperPrms;
-import util.TxHelper;
-import util.BaseValueHolder;
-import util.ValueHolder;
-
 import com.gemstone.gemfire.cache.Cache;
+import com.gemstone.gemfire.cache.ConflictException;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.TransactionDataNodeHasDepartedException;
 import com.gemstone.gemfire.cache.TransactionDataRebalancedException;
 import com.gemstone.gemfire.cache.TransactionException;
 import com.gemstone.gemfire.cache.TransactionInDoubtException;
-import com.gemstone.gemfire.cache.CommitConflictException;
 import com.gemstone.gemfire.cache.client.Pool;
 import com.gemstone.gemfire.cache.client.internal.ClientMetadataService;
 import com.gemstone.gemfire.cache.client.internal.ClientPartitionAdvisor;
 import com.gemstone.gemfire.cache.client.internal.PoolImpl;
-import com.gemstone.gemfire.cache.execute.Execution;
-import com.gemstone.gemfire.cache.execute.Function;
-import com.gemstone.gemfire.cache.execute.FunctionAdapter;
-import com.gemstone.gemfire.cache.execute.FunctionContext;
-import com.gemstone.gemfire.cache.execute.FunctionException;
-import com.gemstone.gemfire.cache.execute.FunctionService;
-import com.gemstone.gemfire.cache.execute.RegionFunctionContext;
-import com.gemstone.gemfire.cache.execute.ResultCollector;
+import com.gemstone.gemfire.cache.execute.*;
 import com.gemstone.gemfire.cache.server.CacheServer;
 import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
@@ -94,6 +44,18 @@ import com.gemstone.gemfire.internal.cache.execute.InternalFunctionService;
 import com.gemstone.gemfire.internal.cache.execute.PartitionedRegionFunctionExecutor;
 import com.gemstone.gemfire.internal.cache.execute.ServerRegionFunctionExecutor;
 import com.gemstone.gemfire.pdx.PdxInstance;
+import getInitialImage.InitImageBB;
+import hydra.*;
+import hydra.BridgeHelper.Endpoint;
+import parReg.ParRegBB;
+import parReg.ParRegUtil;
+import parReg.colocation.Month;
+import parReg.colocation.ParRegColocation;
+import pdx.PdxTest;
+import perffmwk.PerfStatMgr;
+import perffmwk.PerfStatValue;
+import perffmwk.StatSpecTokens;
+import util.*;
 
 public class FunctionServiceTest extends ParRegColocation {
 
@@ -3588,9 +3550,9 @@ public class FunctionServiceTest extends ParRegColocation {
         } catch (TransactionInDoubtException e) {
           Log.getLogWriter().info("Caught Exception " + e + ".  Expected with concurrent execution, continuing test.");
           recordFailedOps(ParRegBB.INDOUBT_TXOPS);
-        } catch (CommitConflictException e) {
+        } catch (ConflictException e) {
           // can occur with concurrent execution
-          Log.getLogWriter().info("Caught CommitConflictException. Expected with concurrent execution, continuing test.");
+          Log.getLogWriter().info("Caught ConflictException. Expected with concurrent execution, continuing test.");
         }
       }
 
