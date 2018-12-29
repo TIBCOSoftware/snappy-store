@@ -18,7 +18,7 @@
 dependencies {
   compileOnly "org.apache.thrift:libthrift:${thriftVersion}"
   compile "net.java.dev.jna:jna:${jnaVersion}"
-  compile 'commons-io:commons-io:2.5'
+  compile "commons-io:commons-io:${commonsIoVersion}"
 
   compile project(subprojectBase + 'gemfire-shared')
   compile project(subprojectBase + 'gemfire-trove')
@@ -30,7 +30,7 @@ ext {
 
 // Creates the version properties file and writes it to the resources dir
 task createVersionPropertiesFile(dependsOn: 'processResources') {
-  def propertiesDir = file("${buildDir}/classes/main/com/pivotal/gemfirexd/internal")
+  def propertiesDir = file("${sourceSets.main.java.outputDir}/com/pivotal/gemfirexd/internal")
   outputs.file "${propertiesDir}/GemFireXDVersion.properties"
   inputs.file "${rootProject.projectDir}/build.gradle"
   if (rootProject.hasProperty('snappydata.enterprise')) {

@@ -37,7 +37,7 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
   private void checkExpiration(Statement st1) throws Exception {
     st1.execute("truncate table t1");
     st1.execute("insert into t1 values (1, 1, 1)");
-    Thread.sleep(14000);
+    Thread.sleep(5000);
     st1.execute("select col1 from t1");
     ResultSet rs1 = st1.getResultSet();
     assertFalse(rs1.next());
@@ -48,11 +48,11 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
   private void checkNonPKBasedSelect(Statement st1) throws Exception {
     st1.execute("truncate table t1");
     st1.execute("insert into t1 values (1, 1, 1)");
-    Thread.sleep(2000);
+    Thread.sleep(1000);
     st1.execute("select col1 from t1");
     ResultSet rs1 = st1.getResultSet();
     assertTrue(rs1.next());
-    Thread.sleep(10000);
+    Thread.sleep(4000);
     st1.execute("select col1 from t1");
     rs1 = st1.getResultSet();
     assertFalse(rs1.next());
@@ -62,18 +62,18 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
   private void checkPKBasedSelect(Statement st1) throws Exception {
     st1.execute("truncate table t1");
     st1.execute("insert into t1 values (1, 1, 1)");
-    Thread.sleep(2000);
+    Thread.sleep(1000);
     long then = System.currentTimeMillis();
     st1.execute("select col1 from t1 where col1 = 1");
     ResultSet rs1 = st1.getResultSet();
     assertTrue(rs1.next());
     assertEquals(1, rs1.getInt(1));
-    Thread.sleep(8000);
+    Thread.sleep(2500);
     st1.execute("select col1 from t1 where col1 = 1");
     rs1 = st1.getResultSet();
     boolean result = rs1.next();
     long delta = System.currentTimeMillis() - then;
-    if (delta < 9000) {
+    if (delta < 3000) {
       assertTrue(result);
       assertEquals(1, rs1.getInt(1));
       assertFalse(rs1.next());
@@ -86,16 +86,16 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
   private void checkNonPKBasedUpdate(Statement st1) throws Exception {
     st1.execute("truncate table t1");
     st1.execute("insert into t1 values (1, 1, 1)");
-    Thread.sleep(2000);
+    Thread.sleep(1000);
     long then = System.currentTimeMillis();
     st1.execute("update t1 set col2 = 2");
-    Thread.sleep(8000);
+    Thread.sleep(2500);
     // after parallel run this can cause issue..3 seconds of wait and row is gone.
     st1.execute("select col1 from t1");
     ResultSet rs1 = st1.getResultSet();
     boolean result = rs1.next();
     long delta = System.currentTimeMillis() - then;
-    if (delta < 9000) {
+    if (delta < 3000) {
       assertTrue(result);
     } else {
       rs1.close();
@@ -106,15 +106,15 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
   private void checkPKBasedUpdate(Statement st1) throws Exception {
     st1.execute("truncate table t1");
     st1.execute("insert into t1 values (1, 1, 1)");
-    Thread.sleep(2000);
+    Thread.sleep(1000);
     long then = System.currentTimeMillis();
     st1.execute("update t1 set col2 = 2 where col1 = 1");
-    Thread.sleep(8000);
+    Thread.sleep(2500);
     st1.execute("select col1 from t1 where col1 = 1");
     ResultSet rs1 = st1.getResultSet();
     boolean result = rs1.next();
     long delta = System.currentTimeMillis() - then;
-    if (delta < 9000) {
+    if (delta < 3000) {
       assertTrue(result);
       assertEquals(1, rs1.getInt(1));
       assertFalse(rs1.next());
@@ -134,8 +134,8 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
         "idletime " : "timetolive ";
     
     String createTableStr = "create table t1 (col1 int constraint " +
-    		"pk1 primary key, col2 int, col3 int) " + distributionPolicy + 
-    		"expire entry with " + expiryPolicy + "10 action destroy" ;
+        "pk1 primary key, col2 int, col3 int) " + distributionPolicy +
+        "expire entry with " + expiryPolicy + "3 action destroy" ;
     
     if (persistent) {
       createTableStr = createTableStr + " persistent";
@@ -221,15 +221,15 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
     clientSQLExecute(1, "create table EMP.TESTTABLE_ONE (ID int not null, "
         + " DESCRIPTION varchar(1024) not null, primary key (ID))"
         + "REPLICATE PERSISTENT 'teststore' "
-        + "EXPIRE ENTRY WITH TIMETOLIVE 10 ACTION DESTROY ");
+        + "EXPIRE ENTRY WITH TIMETOLIVE 3 ACTION DESTROY ");
 
     clientSQLExecute(1, "create table EMP.TESTTABLE_TWO (ID int not null, "
         + " DESCRIPTION varchar(1024) not null, primary key (ID))"
         + "PARTITION BY COLUMN (ID) PERSISTENT 'teststore' "
-        + "EXPIRE ENTRY WITH TIMETOLIVE 10 ACTION DESTROY ");
+        + "EXPIRE ENTRY WITH TIMETOLIVE 3 ACTION DESTROY ");
     clientSQLExecute(1, "insert into EMP.TESTTABLE_ONE values (1, 'hello')");
     clientSQLExecute(1, "insert into EMP.TESTTABLE_TWO values (1, 'hello')");
-    Thread.sleep(5000);
+    Thread.sleep(1500);
     clientSQLExecute(1, "insert into EMP.TESTTABLE_ONE values (2, 'goodbye')");
     clientSQLExecute(1, "insert into EMP.TESTTABLE_TWO values (2, 'goodbye')");
     long start = System.currentTimeMillis();
@@ -241,15 +241,15 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
 
     // some slow systems may already have exceeded the time in restart
     long elapsed = System.currentTimeMillis() - start;
-    if (elapsed < 6000) {
-      Thread.sleep(6000 - elapsed);
-    } else if (elapsed > 10000) {
+    if (elapsed < 2000) {
+      Thread.sleep(2000 - elapsed);
+    } else if (elapsed > 3000) {
       expected = null;
     }
 
     validateResults("EMP.TESTTABLE_ONE", expected);
     validateResults("EMP.TESTTABLE_TWO", expected);
-    Thread.sleep(5000);
+    Thread.sleep(1500);
     validateResults("EMP.TESTTABLE_ONE", null);
     validateResults("EMP.TESTTABLE_TWO", null);
 
@@ -275,14 +275,14 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
     clientSQLExecute(1, "create table EMP.TESTTABLE (ID int not null, "
         + " DESCRIPTION varchar(1024) not null, primary key (ID))"
         + "REPLICATE PERSISTENT 'teststore' "
-        + "EXPIRE ENTRY WITH TIMETOLIVE 10 ACTION DESTROY ");
+        + "EXPIRE ENTRY WITH TIMETOLIVE 3 ACTION DESTROY ");
 
     clientSQLExecute(1, "insert into EMP.TESTTABLE values (1, 'hello')");
     clientSQLExecute(1, "insert into EMP.TESTTABLE values (2, 'goodbye')");
 
     //alter table set expire entry timetolive
     clientSQLExecute(1, "ALTER TABLE EMP.TESTTABLE "
-        + "set EXPIRE ENTRY WITH TIMETOLIVE 20 ACTION DESTROY");
+        + "set EXPIRE ENTRY WITH TIMETOLIVE 6 ACTION DESTROY");
 
     clientSQLExecute(1, "insert into EMP.TESTTABLE values (3, 'hello1')");
     clientSQLExecute(1, "insert into EMP.TESTTABLE values (4, 'goodbye1')");
@@ -294,10 +294,10 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
     expected.add(3);
     expected.add(4);
 
-    Thread.sleep(11000);
+    Thread.sleep(4000);
     validateResults("EMP.TESTTABLE", expected);
 
-    Thread.sleep(10000);
+    Thread.sleep(3000);
     validateResults("EMP.TESTTABLE", null);
 
     clientSQLExecute(1, "drop table EMP.TESTTABLE");
@@ -326,16 +326,16 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
     clientSQLExecute(1, "create table EMP.TESTTABLE_ONE (ID int not null, "
         + " DESCRIPTION varchar(1024) not null, primary key (ID))"
         + "REPLICATE PERSISTENT 'teststore' "
-        + "EXPIRE ENTRY WITH IDLETIME 10 ACTION DESTROY ");
+        + "EXPIRE ENTRY WITH IDLETIME 3 ACTION DESTROY ");
 
     clientSQLExecute(1, "create table EMP.TESTTABLE_TWO (ID int not null, "
         + " DESCRIPTION varchar(1024) not null, primary key (ID))"
         + "PARTITION BY COLUMN (ID) PERSISTENT 'teststore' "
-        + "EXPIRE ENTRY WITH IDLETIME 10 ACTION DESTROY ");
+        + "EXPIRE ENTRY WITH IDLETIME 3 ACTION DESTROY ");
     clientSQLExecute(1, "insert into EMP.TESTTABLE_ONE values (1, 'hello')");
     clientSQLExecute(1, "insert into EMP.TESTTABLE_TWO values (1, 'hello')");
     clientSQLExecute(1, "insert into EMP.TESTTABLE_TWO values (3, 'hello')");
-    Thread.sleep(5000);
+    Thread.sleep(1500);
     long start = System.currentTimeMillis();
     clientSQLExecute(1, "insert into EMP.TESTTABLE_ONE values (2, 'goodbye')");
     clientSQLExecute(1, "insert into EMP.TESTTABLE_TWO values (2, 'goodbye')");
@@ -350,9 +350,9 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
 
     // some slow systems may already have exceeded the time in restart
     long elapsed = System.currentTimeMillis() - start;
-    if (elapsed < 6000) {
-      Thread.sleep(6000 - elapsed);
-    } else if (elapsed > 10000) {
+    if (elapsed < 2000) {
+      Thread.sleep(2000 - elapsed);
+    } else if (elapsed > 3000) {
       expected = null;
     }
 
@@ -361,7 +361,7 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
       expected.add(3);
     }
     validateResults("EMP.TESTTABLE_TWO", expected);
-    Thread.sleep(5000);
+    Thread.sleep(1500);
     validateResults("EMP.TESTTABLE_ONE", null);
     validateResults("EMP.TESTTABLE_TWO", null);
 

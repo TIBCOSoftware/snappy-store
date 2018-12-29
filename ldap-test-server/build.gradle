@@ -16,7 +16,7 @@
  */
 
 plugins {
-  id 'com.github.johnrengelman.shadow' version '2.0.4'
+  id 'com.github.johnrengelman.shadow' version '4.0.3'
 }
 
 apply plugin: 'java'
@@ -32,7 +32,7 @@ repositories {
 }
 
 dependencies {
-  compile 'commons-io:commons-io:2.5'
+  compile 'commons-io:commons-io:2.6'
   compile group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.5.10'
   compile (group: 'org.apache.directory.server', name: 'apacheds-server-jndi', version: '1.5.7') {
     exclude(group: 'org.apache.directory.shared', module: 'shared-ldap-schema')

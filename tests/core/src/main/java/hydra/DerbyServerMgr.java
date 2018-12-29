@@ -31,11 +31,13 @@ public class DerbyServerMgr
     HostDescription hd = TestConfig.getInstance().getMasterDescription()
             .getVmDescription().getHostDescription();
     if (HostHelper.getLocalHostOS() == OSType.windows) {
-      defaultDerbyNetJarPath = hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
+      defaultDerbyNetJarPath = hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." +
+          hd.getFileSep() + ".." + hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
               ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar";
       cpSep = ";";
     } else {
-      defaultDerbyNetJarPath = hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." + hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
+      defaultDerbyNetJarPath = hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." +
+          hd.getFileSep() + ".." + hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
               ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar";
       cpSep = ":";
     }

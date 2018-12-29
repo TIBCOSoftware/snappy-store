@@ -28,11 +28,11 @@ runtest() {
   export SNAPPYDATADIR=$1
   export GEMFIRE=$SNAPPYDATADIR/build-artifacts/scala-2.11/store
   export LD_LIBRARY_PATH=$GEMFIRE/lib
-  export JTESTS=$SNAPPYDATADIR/store/tests/sql/build-artifacts/linux/classes/main
-  export EXTRA_JTESTS=$SNAPPYDATADIR/store/tests/core/build-artifacts/linux/classes/main
+  export JTESTS=$SNAPPYDATADIR/store/tests/sql/build-artifacts/linux/classes/java/main
+  export EXTRA_JTESTS=$SNAPPYDATADIR/store/tests/core/build-artifacts/linux/classes/java/main
   
   ## find out the release version
-  list=`ls $JTESTS/../../libs/snappydata-store-hydra-tests-*`
+  list=`ls $JTESTS/../../../libs/snappydata-store-hydra-tests-*`
   filename=`tr "/" "\n" <<< $list | tail -1`
   export releaseVersion=`echo "${filename%*.*}"| cut -d'-' -f5-6`
 
@@ -42,7 +42,7 @@ runtest() {
   export snappyTestsJarVersion=`echo "${snappyTestsJarFilename%*.*}"| cut -d'-' -f5-6`
   
   ##set classpath
-  CLASSPATH=$JTESTS:$EXTRA_JTESTS:$JTESTS/../../libs/snappydata-store-hydra-tests-${releaseVersion}-all.jar:$SNAPPYDATADIR/dtests/build-artifacts/scala-2.11/libs/snappydata-store-scala-tests-${snappyTestsJarVersion}-tests.jar
+  CLASSPATH=$JTESTS:$EXTRA_JTESTS:$JTESTS/../../../libs/snappydata-store-hydra-tests-${releaseVersion}-all.jar:$SNAPPYDATADIR/dtests/build-artifacts/scala-2.11/libs/snappydata-store-scala-tests-${snappyTestsJarVersion}-tests.jar
   LIB=$SNAPPYDATADIR/build-artifacts/scala-2.11/snappy/jars
   for i in $LIB/*.jar; do CLASSPATH=$CLASSPATH:$i; done
   export CLASSPATH=$CLASSPATH

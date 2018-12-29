@@ -150,7 +150,7 @@ implements Serializable {
 
       //Needed to run hydra tests on multiple hosts
       classPath.add(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." +
-          hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
+          hd.getFileSep() + ".." + hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
           ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar");
 
       classPath.add(VmDescription.getSnappyJarPath(hd.getGemFireHome() +

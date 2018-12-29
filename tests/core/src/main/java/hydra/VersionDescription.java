@@ -194,7 +194,7 @@ implements Serializable {
 
     // test jars
     classpath.add(hd.getTestDir() + hd.getFileSep() + ".." + hd.getFileSep() + ".." +
-        hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
+        hd.getFileSep() + ".." + hd.getFileSep() + "libs" + hd.getFileSep() + "snappydata-store-hydra-tests-" +
         ProductVersionHelper.getInfo().getProperty(ProductVersionHelper.SNAPPYRELEASEVERSION) + "-all.jar");
 
     classpath.add(VmDescription.getSnappyJarPath(hd.getGemFireHome() +

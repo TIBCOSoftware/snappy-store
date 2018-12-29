@@ -1,6 +1,6 @@
 dependencies {
   compileOnly project(subprojectBase + 'snappydata-store-core')
-  compileOnly 'org.hibernate:hibernate-core:4.3.11.Final'
+  compileOnly "org.hibernate:hibernate-core:${hibernateVersion}"
 }
 
 if (rootProject.hasProperty('enablePublish')) {

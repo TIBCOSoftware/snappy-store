@@ -1,7 +1,7 @@
 task jgMagic (type: JavaExec, dependsOn: classes) {
   description 'Creates the JGroups configuration file jg-magic-map.txt'
   def magicXml = file 'src/main/resources/com/gemstone/org/jgroups/conf/jg-magic-map.xml'
-  def magicTxt = file "$buildDir/classes/main/com/gemstone/org/jgroups/conf/jg-magic-map.txt"
+  def magicTxt = file("${sourceSets.main.java.outputDir}/com/gemstone/org/jgroups/conf/jg-magic-map.txt")
   inputs.file magicXml
   outputs.file magicTxt
   

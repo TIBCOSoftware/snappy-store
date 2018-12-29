@@ -15,11 +15,8 @@
  * LICENSE file.
  */
 
-plugins {
-  id 'de.undercouch.download' version '3.4.3'
-}
-
 apply plugin: 'wrapper'
+apply plugin: 'de.undercouch.download'
 
 if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative'))
     || rootProject.hasProperty('native')) {

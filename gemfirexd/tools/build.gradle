@@ -15,10 +15,7 @@
  * LICENSE file.
  */
 
-plugins {
-  id 'ca.coglinc.javacc' version '2.4.0'
-  id 'com.github.johnrengelman.shadow' version '2.0.4'
-}
+apply plugin: 'ca.coglinc2.javacc'
 
 artifacts {
   archives packageTests
@@ -29,11 +26,11 @@ dependencies {
   compile project(subprojectBase + 'snappydata-store-hibernate')
 
   // ddlutils dependencies
-  compile 'commons-beanutils:commons-beanutils:1.9.3'
-  compile 'commons-codec:commons-codec:1.10'
-  compile 'commons-configuration:commons-configuration:1.10'
-  compile 'commons-pool:commons-pool:1.6'
-  compile 'commons-dbcp:commons-dbcp:1.4'
+  compile "commons-beanutils:commons-beanutils:${commonsBeanutilsVersion}"
+  compile "commons-codec:commons-codec:${commonsCodecVersion}"
+  compile "commons-configuration:commons-configuration:${commonsConfigVersion}"
+  compile "commons-pool:commons-pool:${commonsPoolVersion}"
+  compile "commons-dbcp:commons-dbcp:${commonsDbcpVersion}"
   compile "jline:jline:${jlineVersion}"
   compile("org.apache.thrift:libthrift:${thriftVersion}") {
     exclude(group: 'org.slf4j', module: 'slf4j-api')
@@ -51,8 +48,8 @@ dependencies {
   testCompile project(subprojectBase + 'gemfire-junit')
 
   compileOnly files("${System.getProperty('java.home')}/../lib/tools.jar")
-  compileOnly 'xalan:xalan:2.7.2'
-  compileOnly 'xalan:serializer:2.7.2'
+  compileOnly "xalan:xalan:${xalanVersion}"
+  compileOnly "xalan:serializer:${xalanVersion}"
   compileOnly "com.pivotal:pxf-api:${pxfVersion}"
 
   compileOnly "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
@@ -82,7 +79,8 @@ dependencies {
   testCompile "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
   testCompile "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
   testCompile "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
-  testCompile 'org.cloudera.htrace:htrace-core:2.05'
+  testCompile "org.mortbay.jetty:jetty-sslengine:${hadoopJettyVersion}"
+  testCompile "org.cloudera.htrace:htrace-core:${clouderaHtraceVersion}"
   testCompile "org.apache.hadoop:hadoop-common:${hadoopVersion}:tests"
   testCompile "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}:tests"
 
@@ -92,10 +90,10 @@ dependencies {
   testCompile "org.apache.derby:derbynet:${derbyVersion}"
   testRuntime "org.apache.derby:derbytools:${derbyVersion}"
   testRuntime "org.apache.derby:derbyclient:${derbyVersion}"
-  testCompile 'oro:oro:2.0.8'
-  testCompile 'dom4j:dom4j:1.6.1'
+  testCompile "oro:oro:${oroVersion}"
+  testCompile "dom4j:dom4j:${dom4jVersion}"
   // Embedded Apache Directory Server for LDAP tests
-  testCompile(group: 'org.apache.directory.server', name: 'apacheds-all', version: '1.5.7') {
+  testCompile(group: 'org.apache.directory.server', name: 'apacheds-all', version: apacheDsVersion) {
     exclude(group: 'org.apache.directory.shared', module: 'shared-ldap-schema')
   }
 
@@ -118,7 +116,7 @@ sourceSets.main.java.srcDirs = [ 'src/main/java', javaccOut, 'src/ddlutils/java'
 sourceSets.test.java.srcDirs = [ 'src/test/java', 'src/dunit/java', 'src/demo/java' ]
 
 task generatePropertiesFiles(dependsOn: 'processResources') {
-  def infoDir = file("${buildDir}/classes/main/com/pivotal/gemfirexd/internal/info")
+  def infoDir = file("${sourceSets.main.java.outputDir}/com/pivotal/gemfirexd/internal/info")
   outputs.file "${infoDir}/tools.properties"
   inputs.dir "${projectDir}/../core/src/main/resources/com/pivotal/gemfirexd/internal/info"
 

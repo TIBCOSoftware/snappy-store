@@ -26,7 +26,7 @@ fi
 SNAPPYDATADIR=$1
 shift
 
-export JTESTS=$SNAPPYDATADIR/store/tests/sql/build-artifacts/linux/classes/main
+export JTESTS=$SNAPPYDATADIR/store/tests/sql/build-artifacts/linux/classes/java/main
 export PATH=$JAVA_HOME:$PATH:$JTESTS
 export GEMFIRE=$SNAPPYDATADIR/build-artifacts/scala-2.11/store
 export OUTPUT_DIR=$resultDir
@@ -78,7 +78,7 @@ processArgs() {
 processArgs $*
 
 #list=`ls $GEMFIRE/lib/gemfirexd-client-*`
-list=`ls $JTESTS/../../libs/snappydata-store-hydra-tests-*`
+list=`ls $JTESTS/../../../libs/snappydata-store-hydra-tests-*`
 filename=`tr "/" "\n" <<< $list | tail -1`
 
 export releaseVersion=`echo "${filename%*.*}"| cut -d'-' -f5-6`
@@ -87,12 +87,12 @@ snappyTestsJarName=`ls $SNAPPYDATADIR/dtests/build-artifacts/scala-2.11/libs/sna
 snappyTestsJarFilename=`tr "/" "\n" <<< $snappyTestsJarName | tail -1`
 export snappyTestsJarVersion=`echo "${snappyTestsJarFilename%*.*}"| cut -d'-' -f5-6`
 
-CLASSPATH=$JTESTS:$EXTRA_JTESTS:$JTESTS/../../libs/snappydata-store-hydra-tests-${releaseVersion}-all.jar:$SNAPPYDATADIR/dtests/build-artifacts/scala-2.11/libs/snappydata-store-scala-tests-${snappyTestsJarVersion}-tests.jar
+CLASSPATH=$JTESTS:$EXTRA_JTESTS:$JTESTS/../../../libs/snappydata-store-hydra-tests-${releaseVersion}-all.jar:$SNAPPYDATADIR/dtests/build-artifacts/scala-2.11/libs/snappydata-store-scala-tests-${snappyTestsJarVersion}-tests.jar
 LIB=$SNAPPYDATADIR/build-artifacts/scala-2.11/snappy/jars
 for i in $LIB/*.jar; do CLASSPATH=$CLASSPATH:$i; done
 
 export CLASSPATH=$CLASSPATH
-export EXTRA_JTESTS=$SNAPPYDATADIR/store/tests/core/build-artifacts/linux/classes/main
+export EXTRA_JTESTS=$SNAPPYDATADIR/store/tests/core/build-artifacts/linux/classes/java/main
 #export JTESTS_RESOURCES=$SNAPPYDATADIR/store/tests/core/src/main/java
 
 # This is the command to run the test, make sure the correct release version of jar used or change the jar path to use correctly. Also change the jar name in sql/snappy.local.conf if incorrect

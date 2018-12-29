@@ -20,15 +20,7 @@ package com.pivotal.gemfirexd.tools;
 import java.io.Console;
 import java.io.File;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DM;
@@ -195,6 +187,16 @@ public class GfxdSystemAdmin extends SystemAdmin {
     this.defaultLogFileName = null;
     try {
       super.invoke(args);
+      // close the cache if present
+      GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+      if (cache != null) {
+        cache.close();
+      }
+      // disconnect connection to cluster if present
+      InternalDistributedSystem ds = InternalDistributedSystem.getConnectedInstance();
+      if (ds != null) {
+        ds.disconnect();
+      }
     } finally {
       // remove zero-sized log-file
       if (this.defaultLogFileName != null) {

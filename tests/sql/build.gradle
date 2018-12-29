@@ -15,10 +15,6 @@
  * LICENSE file.
  */
 
-plugins {
-  id 'com.github.johnrengelman.shadow' version '2.0.4'
-}
-
 sourceSets.main.java {
   // requires WebLogic jars
   exclude 'sql/ecotests/wls/**'
@@ -77,14 +73,15 @@ dependencies {
   compile "com.sun.jersey:jersey-servlet:${sunJerseyVersion}"
   compile "org.mortbay.jetty:jetty:${hadoopJettyVersion}"
   compile "org.mortbay.jetty:jetty-util:${hadoopJettyVersion}"
-  compile 'org.cloudera.htrace:htrace-core:2.05'
+  compile "org.mortbay.jetty:jetty-sslengine:${hadoopJettyVersion}"
+  compile "org.cloudera.htrace:htrace-core:${clouderaHtraceVersion}"
 
-  compile 'com.googlecode.json-simple:json-simple:1.1.1'
-  compile 'org.hibernate.javax.persistence:hibernate-jpa-2.0-api:1.0.1.Final'
-  compile 'javax.ejb:javax.ejb-api:3.2'
-  compile 'org.apache.tomcat:tomcat-juli:8.5.23'
-  compile 'org.apache.tomcat:tomcat-jdbc:8.5.23'
-  compile 'com.mchange:c3p0:0.9.5.2'
+  compile "com.googlecode.json-simple:json-simple:${jsonSimpleVersion}"
+  compile "org.hibernate.javax.persistence:hibernate-jpa-2.1-api:${hibernateJpaVersion}"
+  compile "javax.ejb:javax.ejb-api:${ejbVersion}"
+  compile "org.apache.tomcat:tomcat-juli:${tomcatJdbcVersion}"
+  compile "org.apache.tomcat:tomcat-jdbc:${tomcatJdbcVersion}"
+  compile "com.mchange:c3p0:${c3p0Version}"
   compile "org.apache.derby:derbytools:${derbyVersion}"
   runtime "org.apache.derby:derby:${derbyVersion}"
   runtime "org.apache.derby:derbynet:${derbyVersion}"

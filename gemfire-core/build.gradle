@@ -29,23 +29,22 @@ configurations {
 
 dependencies {
   compileOnly files("${System.getProperty('java.home')}/../lib/tools.jar")
-  compileOnly 'antlr:antlr:2.7.7'
+  compileOnly "antlr:antlr:${antlr2Version}"
   compile "net.java.dev.jna:jna:${jnaVersion}"
-  compile 'commons-collections:commons-collections:3.2.2'
-  compile 'commons-io:commons-io:2.5'
-  compile 'commons-logging:commons-logging:1.2'
-  compile 'commons-lang:commons-lang:2.6'
-  compile('commons-modeler:commons-modeler:2.0.1') {
+  compile "commons-collections:commons-collections:${commonsCollectionsVersion}"
+  compile "commons-io:commons-io:${commonsIoVersion}"
+  compile "commons-logging:commons-logging:${commonsLoggingVersion}"
+  compile "commons-lang:commons-lang:${commonsLangVersion}"
+  compile("commons-modeler:commons-modeler:${commonsModelerVersion}") {
     exclude(group: 'xml-apis', module: 'xml-apis')
   }
-  compile 'commons-cli:commons-cli:1.4'
-  compile 'javax.mail:javax.mail-api:1.6.0'
-  compile 'javax.resource:javax.resource-api:1.7'
-  compile 'javax.transaction:javax.transaction-api:1.2'
-  compile 'mx4j:mx4j:3.0.2'
-  compile 'mx4j:mx4j-remote:3.0.2'
-  compile 'mx4j:mx4j-tools:3.0.1'
-  compileOnly 'net.sourceforge.jline:jline:1.0.S2-B'
+  compile "commons-cli:commons-cli:${commonsCliVersion}"
+  compile "javax.resource:javax.resource-api:${javaxResourceVersion}"
+  compile "javax.transaction:javax.transaction-api:${javaxTransactionVersion}"
+  compile "mx4j:mx4j:${mx4jVersion}"
+  compile "mx4j:mx4j-remote:${mx4jVersion}"
+  compile "mx4j:mx4j-tools:${mx4jToolsVersion}"
+  compileOnly "net.sourceforge.jline:jline:${jlineSfVersion}"
   compileOnly "org.eclipse.jetty:jetty-http:${jettyVersion}"
   compileOnly "org.eclipse.jetty:jetty-io:${jettyVersion}"
   compileOnly "org.eclipse.jetty:jetty-security:${jettyVersion}"
@@ -63,12 +62,12 @@ dependencies {
   compileOnly "org.springframework:spring-web:${springVersion}"
   compileOnly "org.springframework:spring-webmvc:${springVersion}"
   compileOnly "org.springframework:spring-tx:${springVersion}"
-  compileOnly 'org.springframework.shell:spring-shell:1.0.0.RELEASE'
-  compile 'org.xerial.snappy:snappy-java:1.1.4'
+  compileOnly "org.springframework.shell:spring-shell:${springShellVersion}"
+  compile "org.xerial.snappy:snappy-java:${snappyJavaVersion}"
 
   compileOnly "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
-  compileOnly "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
-  compileOnly "org.apache.hadoop:hadoop-common:${hadoopVersion}"
+  compileOnly("org.apache.hadoop:hadoop-auth:${hadoopVersion}")
+  compileOnly("org.apache.hadoop:hadoop-common:${hadoopVersion}")
   compileOnly "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
   compileOnly "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
   compileOnly "com.google.protobuf:protobuf-java:${protobufVersion}"
@@ -80,17 +79,17 @@ dependencies {
   compileOnly "com.esotericsoftware:kryo-shaded:${kryoVersion}"
 
   compile "io.netty:netty-all:${nettyAllVersion}"
-  compile 'javax.ws.rs:javax.ws.rs-api:2.1'
-  compile 'org.apache.htrace:htrace-core:3.2.0-incubating'
+  compile "javax.ws.rs:javax.ws.rs-api:${rsApiVersion}"
+  compile "org.apache.htrace:htrace-core:${htraceVersion}"
   compile "org.codehaus.jackson:jackson-core-asl:${jackson1Version}"
   compile "org.codehaus.jackson:jackson-mapper-asl:${jackson1Version}"
 
   compile "org.eclipse.collections:eclipse-collections-api:${eclipseCollectionsVersion}"
   compile "org.eclipse.collections:eclipse-collections:${eclipseCollectionsVersion}"
-  compile 'org.apache.commons:commons-pool2:2.4.2'
+  compile "org.apache.commons:commons-pool2:${commonsPool2Version}"
   compile "com.google.guava:guava:${guavaVersion}"
-  compile 'xml-apis:xml-apis:1.4.01'
-  compile('com.io7m.xom:xom:1.2.10') {
+  compile "xml-apis:xml-apis:${xmlApisVersion}"
+  compile("com.io7m.xom:xom:${xomVersion}") {
     exclude(group: 'xalan', module: 'xalan')
     exclude(group: 'xerces', module: 'xercesImpl')
     exclude(group: 'xml-apis', module: 'xml-apis')
@@ -122,7 +121,7 @@ dependencies {
     exclude(group: 'com.sun.jersey', module: 'jersey-json')
     exclude(group: 'commons-io', module: 'commons-io')
   }
-  compileOnly 'com.jcraft:jsch:0.1.53'
+  compileOnly "com.jcraft:jsch:${jschVersion}"
   compileOnly "org.apache.ant:ant:${antVersion}"
 
   compile project(subprojectBase + 'gemfire-jgroups')
@@ -135,7 +134,7 @@ dependencies {
 
 // Creates the version properties file and writes it to the classes dir
 task createVersionPropertiesFile(dependsOn: 'processResources') {
-  def propertiesDir = file("${buildDir}/classes/main/com/gemstone/gemfire/internal")
+  def propertiesDir = file("${sourceSets.main.java.outputDir}/com/pivotal/gemfirexd/internal")
   outputs.file "${propertiesDir}/GemFireVersion.properties"
   inputs.file "${rootProject.projectDir}/build.gradle"
 
@@ -173,16 +172,9 @@ jar {
     }
     copy {
       from "${projectDir}/lib"
-      into sourceSets.main.output.classesDir
+      into sourceSets.main.java.outputDir
     }
   }
-}
-
-task webJar (type: Jar, dependsOn: classes) {
-  description 'Assembles the jar archive containing the gemfire management web classes.'
-  from sourceSets.main.output
-  baseName 'gemfire-web'
-  include 'com/gemstone/gemfire/management/internal/web/**'
 }
 
 task raJar (type: Jar, dependsOn: classes) {

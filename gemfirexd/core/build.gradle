@@ -15,10 +15,7 @@
  * LICENSE file.
  */
 
-plugins {
-  id 'ca.coglinc.javacc' version '2.4.0'
-  id 'com.github.johnrengelman.shadow' version '2.0.4'
-}
+apply plugin: 'ca.coglinc2.javacc'
 
 dependencies {
   compile project(subprojectBase + 'gemfire-core')
@@ -27,8 +24,8 @@ dependencies {
   compileOnly project(subprojectBase + 'snappydata-store-prebuild')
 
   compileOnly files("${System.getProperty('java.home')}/../lib/tools.jar")
-  compileOnly 'xalan:xalan:2.7.2'
-  compileOnly 'xalan:serializer:2.7.2'
+  compileOnly "xalan:xalan:${xalanVersion}"
+  compileOnly "xalan:serializer:${xalanVersion}"
   compileOnly "com.pivotal:pxf-api:${pxfVersion}"
   compile "org.osgi:org.osgi.core:${osgiVersion}"
   compile "org.apache.ant:ant:${antVersion}"
@@ -83,7 +80,7 @@ task deleteGenerated(type: Delete) {
 clean.dependsOn deleteGenerated
 
 task generatePropertiesFiles(dependsOn: 'processResources') {
-  def infoDir = file("${buildDir}/classes/main/com/pivotal/gemfirexd/internal/info")
+  def infoDir = file("${sourceSets.main.java.outputDir}/com/pivotal/gemfirexd/internal/info")
   outputs.files "${infoDir}/DBMS.properties", "${infoDir}/net.properties"
   inputs.dir "${projectDir}/src/main/resources/com/pivotal/gemfirexd/internal/info"
 
@@ -99,7 +96,7 @@ task generatePropertiesFiles(dependsOn: 'processResources') {
 }
 
 def msgDir = "${projectDir}/src/main/resources/${locDir}"
-def msgEnDir = "${buildDir}/classes/main/${locDir}"
+def msgEnDir = "${sourceSets.main.java.outputDir}/${locDir}"
 
 task buildMessages {
   dependsOn subprojectBase + 'snappydata-store-prebuild:jar', 'processResources', subprojectBase + 'snappydata-store-client:processResources'
@@ -117,7 +114,7 @@ task buildMessages {
 
     ant.taskdef(name: 'buildMessages',
         classname: 'org.apache.derbyBuild.MessageBuilder',
-        classpath: project(subprojectBase + 'snappydata-store-prebuild').sourceSets.main.output.classesDir)
+        classpath: project(subprojectBase + 'snappydata-store-prebuild').sourceSets.main.java.outputDir)
 
     ant.buildMessages(xmlSourceFile: msgXml, propertiesTargetFile: msgEn,
         ditaTargetFile: "${projectDir}/doc/rrefexcept71493.dita")
@@ -138,7 +135,7 @@ def splitMessages(def msgFile, def msgDir) {
 // create the client messages files for various languages
 task doSplit(dependsOn: buildMessages) {
   def msgXml = "${msgDir}/messages.xml"
-  def clientResourceDir = "${project(subprojectBase + 'snappydata-store-client').buildDir}/classes/main/${locDir}"
+  def clientResourceDir = "${project(subprojectBase + 'snappydata-store-client').sourceSets.main.java.outputDir}/${locDir}"
 
   inputs.file msgXml
   outputs.files "${msgEnDir}/m0_en.properties", "${clientResourceDir}/clientmessages_en.properties"
@@ -169,7 +166,7 @@ task doSplit(dependsOn: buildMessages) {
     // copy the remaining properties files to their place in engine jar
     copy {
       from clientMsgOutDir
-      into "${buildDir}/classes/main/${locDir}"
+      into msgEnDir
       include 'm*.properties'
     }
   }
@@ -177,7 +174,7 @@ task doSplit(dependsOn: buildMessages) {
 
 task odbcMeta {
   dependsOn "${subprojectBase}snappydata-store-prebuild:processResources", 'processResources', "${subprojectBase}snappydata-store-prebuild:jar"
-  def metaDir = file("${buildDir}/classes/main/com/pivotal/gemfirexd/internal/impl/jdbc")
+  def metaDir = file("${sourceSets.main.java.outputDir}/com/pivotal/gemfirexd/internal/impl/jdbc")
   outputs.file "${metaDir}/metadata.properties"
   inputs.dir "${projectDir}/../prebuild/src/main/resources/com/pivotal/gemfirexd/internal/impl/jdbc"
   inputs.dir "${projectDir}/../prebuild/src/main/java/org/apache/derbyBuild"
@@ -202,7 +199,7 @@ task odbcMeta {
 /*
 task createClassSizeCatalog {
   def internalDir = 'com/pivotal/gemfirexd/internal'
-  def internalOut = "${sourceSets.main.output.classesDir}/${internalDir}"
+  def internalOut = "${sourceSets.main.java.outputDir}/${internalDir}"
 
   // need to re-generate class size catalog if any of the classes below change
   inputs.files [ "${internalOut}/iapi/types/DataValueDescriptor.class",
@@ -268,7 +265,7 @@ jar {
       }
       copy {
         from "${projectDir}/lib"
-        into gemfireCoreProject.sourceSets.main.output.classesDir
+        into gemfireCoreProject.sourceSets.main.java.outputDir
       }
     }
   }

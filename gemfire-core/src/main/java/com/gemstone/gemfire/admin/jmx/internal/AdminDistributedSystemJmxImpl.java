@@ -173,7 +173,8 @@ public class AdminDistributedSystemJmxImpl
     this.objectName = MBeanUtil.createMBean(this);
     isEmailNotificationEnabled = config.isEmailNotificationEnabled();
     if (isEmailNotificationEnabled) {
-      initMailProps(config);
+      throw new UnsupportedOperationException("email notifications not supported");
+      // initMailProps(config);
     }
     // Init file name for StatAlertDefns
     initStateSaveFile(config);
@@ -182,6 +183,7 @@ public class AdminDistributedSystemJmxImpl
     cacheRegionListener = new CacheAndRegionListenerImpl(this);
   }
 
+  /*
   private void initMailProps(AgentConfig config) {
     mailProps = new Properties();
     mailProps.put(MailManager.PROPERTY_MAIL_FROM, 
@@ -191,6 +193,7 @@ public class AdminDistributedSystemJmxImpl
     mailProps.put(MailManager.PROPERTY_MAIL_TO_LIST, 
                     config.getEmailNotificationToList());
   }
+  */
 
   private void initStateSaveFile(AgentConfig agentConfig) {
     // Init file name for StatAlertDefns
@@ -429,6 +432,7 @@ public class AdminDistributedSystemJmxImpl
 
 //      String mess = "Gemfire AlertNotification: System Member Joined, System member Id: " + joined.getId().toString();
 //      sendEmail("Gemfire AlertNotification: Member Joined, ID: " + joined.getId().toString(), mess);
+        /*
         if (isEmailNotificationEnabled) {
           String mess = LocalizedStrings.AdminDistributedSystemJmxImpl_MEMBER_JOINED_THE_DISTRIBUTED_SYSTEM_MEMBER_ID_0.toLocalizedString(new Object[] {joined.getId().toString()} );
         	sendEmail(
@@ -436,6 +440,7 @@ public class AdminDistributedSystemJmxImpl
         	    + LocalizedStrings.AdminDistributedSystemJmxImpl_MEMBER_JOINED.toLocalizedString() +">", 
         	    mess);
         }
+        */
       } catch (javax.management.MBeanException e) {
         logger.warning(e);
       }
@@ -487,6 +492,7 @@ public class AdminDistributedSystemJmxImpl
 
 //        String mess = "Gemfire AlertNotification: System Member Left the system, System member Id: " + left.getId().toString();
 //        sendEmail("Gemfire AlertNotification: Member Left, ID: " + left.getId().toString(), mess);
+        /*
         if (isEmailNotificationEnabled) {
           String mess = LocalizedStrings.AdminDistributedSystemJmxImpl_MEMBER_LEFT_THE_DISTRIBUTED_SYSTEM_MEMBER_ID_0.toLocalizedString(new Object[] {left.getId().toString()} );
         	sendEmail( 
@@ -494,6 +500,7 @@ public class AdminDistributedSystemJmxImpl
         	    + LocalizedStrings.AdminDistributedSystemJmxImpl_MEMBER_LEFT.toLocalizedString() +">", 
         	    mess);
         }
+        */
       } catch (javax.management.MBeanException e) { 
         logger.warning(e);
       }
@@ -552,6 +559,7 @@ public class AdminDistributedSystemJmxImpl
         
 //        String mess = "Gemfire AlertNotification: System Member Crashed, System member Id: " + crashed.getId().toString();
 //        sendEmail("Gemfire AlertNotification: Member Crashed, ID: " + crashed.getId().toString(), mess);
+        /*
         if (isEmailNotificationEnabled) {
           String mess = LocalizedStrings.AdminDistributedSystemJmxImpl_MEMBER_CRASHED_IN_THE_DISTRIBUTED_SYSTEM_MEMBER_ID_0.toLocalizedString(new Object[] {crashed.getId().toString()} );
         	sendEmail(
@@ -559,6 +567,7 @@ public class AdminDistributedSystemJmxImpl
         	    + LocalizedStrings.AdminDistributedSystemJmxImpl_MEMBER_CRASHED.toLocalizedString() +">", 
         	    mess);
         }
+        */
       } catch (javax.management.MBeanException e) {
         logger.warning(e);
       }
@@ -613,10 +622,12 @@ public class AdminDistributedSystemJmxImpl
         
 //        String mess = "Gemfire AlertNotification: System Alert :" + alert.toString();
 //        sendEmail("Gemfire AlertNotification: System Alert", mess);
+        /*
         if (isEmailNotificationEnabled) {
           String mess = LocalizedStrings.AdminDistributedSystemJmxImpl_SYSTEM_ALERT_FROM_DISTRIBUTED_SYSTEM_0.toLocalizedString(strAlert);
         	sendEmail( EML_SUBJ_PRFX_GFE_ALERT + EML_SUBJ_ITEM_GFE_DS + getName() + " <System Alert>", mess);
         }
+        */
       } catch (javax.management.MBeanException e) {
         logger.warning(e);
       }
@@ -1491,7 +1502,7 @@ public class AdminDistributedSystemJmxImpl
   //TODO: yet to set the timer task
 //  private SystemTimer systemwideAlertNotificationScheduler = new SystemTimer();
   
-  private MailManager mailManager = null;
+  // private MailManager mailManager = null;
   private final boolean isEmailNotificationEnabled;
   
   /**
@@ -2198,6 +2209,7 @@ public class AdminDistributedSystemJmxImpl
         buf.append(not.toString(getAlertDefinition(not.getDefinitionId())));
       }
 //      sendEmail("Gemfire AlertNotification on Member:" + objName, buf.toString());
+      /*
       if (isEmailNotificationEnabled) {
         String mess = LocalizedStrings.AdminDistributedSystemJmxImpl_STATISTICS_ALERT_FROM_DISTRIBUTED_SYSTEM_MEMBER_0_STATISTICS_1.toLocalizedString(new Object[] {objName.getCanonicalName(), buf.toString()} );
         sendEmail(
@@ -2205,6 +2217,7 @@ public class AdminDistributedSystemJmxImpl
             + " <"+LocalizedStrings.AdminDistributedSystemJmxImpl_STATISTICS_ALERT_FOR_MEMBER.toLocalizedString()+">", 
             mess);
       }
+      */
     } catch (javax.management.MBeanException e) {
       logger.error(e);
     } catch (RuntimeException e) {
@@ -2227,7 +2240,8 @@ public class AdminDistributedSystemJmxImpl
       throw e;
     }
   }
-  
+
+  /*
   /**
    * Sends an email to the configured recipients using configured email server.
    * The given message will be the email body. NOTE: the check whether email
@@ -2238,13 +2252,14 @@ public class AdminDistributedSystemJmxImpl
    *          subject of the email
    * @param message
    *          message body of the email
-   */
+   *
   private void sendEmail(String subject, String message) {
 	  if (mailManager == null) {
 	    mailManager = new MailManager(mailProps);
 	  }
     this.mailManager.sendEmail(subject, message);
   }
+  */
 
   public void processSystemwideNotifications() {
   }

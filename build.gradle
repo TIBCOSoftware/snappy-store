@@ -17,6 +17,17 @@
 
 apply plugin: 'wrapper'
 
+buildscript {
+  repositories {
+    maven { url 'https://plugins.gradle.org/m2' }
+  }
+  dependencies {
+    classpath 'gradle.plugin.ca.coglinc2:javacc-gradle-plugin:3.0.0'
+    classpath 'com.github.jengelman.gradle.plugins:shadow:4.0.3'
+    classpath 'de.undercouch:gradle-download-task:3.4.3'
+  }
+}
+
 allprojects {
   // We want to see all test results.  This is equivalent to setting --continue
   // on the command line.
@@ -29,42 +40,81 @@ allprojects {
     maven { url 'https://app.camunda.com/nexus/content/repositories/public' }
   }
 
-  gradle.taskGraph.whenReady( { graph ->
-    tasks.withType(Tar).each { tar ->
-      tar.compression = Compression.GZIP
-      tar.extension = 'tar.gz'
-    }
-  })
-
   ext {
     scalaBinaryVersion = '2.11'
     sparkVersion = '2.1.1'
-    springVersion = '3.2.17.RELEASE'
+    springVersion = '3.2.18.RELEASE'
+    springShellVersion = '1.0.0.RELEASE'
     log4jVersion = '1.2.17'
     slf4jVersion = '1.7.25'
     junitVersion = '4.12'
-    antVersion = '1.9.7'
+    hamcrestVersion = '1.3'
+    jmockVersion = '2.9.0'
+    multiThreadedTCVersion = '1.01'
+    cglibVersion = '3.2.10'
+    bcelVersion = '6.2'
+    memcachedVersion = '2.12.3'
+    antVersion = '1.9.13'
+    antlr2Version = '2.7.7'
     pxfVersion = '2.5.1.0'
     osgiVersion = '6.0.0'
-    jettyVersion = '9.2.22.v20170606'
-    hadoopVersion = '2.7.3'
+    jettyVersion = '9.2.26.v20180806'
+    hadoopVersion = '2.7.7'
     protobufVersion = '2.6.1'
-    kryoVersion = '4.0.1'
+    kryoVersion = '4.0.2'
     thriftVersion = '0.9.3'
-    jnaVersion = '4.5.0'
-    jerseyVersion = '2.26'
+    jnaVersion = '4.5.2'
+    jerseyVersion = '2.27'
     jsr305Version = '3.0.2'
-    servletAPIVersion = '3.1.0'
-    derbyVersion = '10.12.1.1'
-    // hbaseVersion = '0.98.17-hadoop2'
+    servletAPIVersion = '4.0.1'
+    derbyVersion = '10.14.2.0'
+    hibernateVersion = '4.3.11.Final'
+    hibernateJpaVersion = '1.0.2.Final'
+    commonsBeanutilsVersion = '1.9.3'
+    commonsCliVersion = '1.4'
+    commonsCodecVersion = '1.11'
+    commonsConfigVersion = '1.10'
+    commonsCollectionsVersion = '3.2.2'
+    commonsDbcpVersion = '1.4'
+    commonsIoVersion = '2.6'
+    commonsLangVersion = '2.6'
+    commonsLoggingVersion = '1.2'
+    commonsModelerVersion = '2.0.1'
+    commonsPoolVersion = '1.6'
+    commonsPool2Version = '2.6.0'
+    javaxResourceVersion = '1.7.1'
+    javaxTransactionVersion = '1.3'
+    mx4jVersion = '3.0.2'
+    mx4jToolsVersion = '3.0.1'
+    xalanVersion = '2.7.2'
+    oroVersion = '2.0.8'
+    dom4jVersion = '1.6.1'
+    apacheDsVersion = '1.5.7'
     hbaseVersion = '0.98.24-hadoop2'
     hadoopJettyVersion = '6.1.26'
     sunJerseyVersion = '1.19.4'
     guavaVersion = '14.0.1'
-    nettyAllVersion = '4.0.51.Final'
+    nettyAllVersion = '4.0.56.Final'
     jlineVersion = '2.14.6'
+    jlineSfVersion = '1.0.S2-B'
     jackson1Version = '1.9.13'
     eclipseCollectionsVersion = '9.2.0'
+    snappyJavaVersion = '1.1.7.2'
+    rsApiVersion = '2.1.1'
+    htraceVersion = '3.2.0-incubating'
+    clouderaHtraceVersion = '2.05'
+    xmlApisVersion = '1.4.01'
+    xomVersion = '1.2.10'
+    jschVersion = '0.1.55'
+    objenesisVersion = '3.0.1'
+    tomcatJdbcVersion = '8.5.37'
+    vijavaVersion = '5.1'
+    jdomVersion = '1.1.3'
+    ojdbc6Version = '11.2.0.1.0'
+    bshVersion = '2.0b5'
+    jsonSimpleVersion = '1.1.1'
+    ejbVersion = '3.2.2'
+    c3p0Version = '0.9.5.2'
     snappyDunitVersion = '1.0.3.6'
 
     // product and release properties
@@ -151,8 +201,8 @@ allprojects {
   // force same output directory for IDEA and gradle
   idea {
     module {
-      outputDir file("${project.buildDir}/classes/main")
-      testOutputDir file("${project.buildDir}/classes/test")
+      outputDir file(project.sourceSets.main.java.outputDir)
+      testOutputDir file(project.sourceSets.test.java.outputDir)
     }
   }
 
@@ -160,6 +210,7 @@ allprojects {
   version = PRODUCT_VERSION
 
   apply plugin: 'java'
+  apply plugin: 'com.github.johnrengelman.shadow'
   apply plugin: 'maven'
   apply plugin: 'idea'
 }
@@ -324,13 +375,13 @@ subprojects {
     compile "org.slf4j:slf4j-log4j12:${slf4jVersion}"
 
     testCompile "junit:junit:${junitVersion}"
-    testCompile 'org.hamcrest:hamcrest-core:1.3'
-    testCompile 'org.hamcrest:hamcrest-library:1.3'
-    testCompile 'org.jmock:jmock:2.5.1'
-    testCompile 'org.jmock:jmock-legacy:2.5.1'
-    testCompile 'edu.umd.cs.mtc:multithreadedtc:1.01'
-    testRuntime 'cglib:cglib-nodep:2.1_3'
-    testRuntime 'org.objenesis:objenesis:2.6'
+    testCompile "org.hamcrest:hamcrest-core:${hamcrestVersion}"
+    testCompile "org.hamcrest:hamcrest-library:${hamcrestVersion}"
+    testCompile "org.jmock:jmock:${jmockVersion}"
+    testCompile "org.jmock:jmock-legacy:${jmockVersion}"
+    testCompile "edu.umd.cs.mtc:multithreadedtc:${multiThreadedTCVersion}"
+    testRuntime "cglib:cglib-nodep:${cglibVersion}"
+    testRuntime "org.objenesis:objenesis:${objenesisVersion}"
   }
 
   test {
@@ -369,49 +420,11 @@ subprojects {
     reports.junitXml.destination = file(workingDir)
   }
 
-  task dunitTest(type:Test, overwrite: true) {
+  tasks.getByName("dunitTest") { it.configure {
     dependsOn "${subprojectBase}storeProduct"
     maxParallelForks = Math.max((int)Math.sqrt(Runtime.getRuntime().availableProcessors() + 1) + 1, 2)
     minHeapSize = '2g'
     maxHeapSize = '2g'
-
-    includes.clear()
-
-    def single = System.getProperty('dunit.single')
-    if (single == null || single.length() == 0) {
-      single = rootProject.hasProperty('dunit.single') ?
-          rootProject.property('dunit.single') : null
-    }
-    if (single == null || single.length() == 0) {
-      def dunitTests = fileTree(dir: testClassesDir,
-          includes: ['**/*DUnit.class'],
-          excludes: ['**/NCJ*DUnit.class', '**/BackwardCompatabilityPart*DUnit.class',
-                     '**/*Perf*DUnit.class', '**/ListAggDUnit.class', '**/SingleHop*TransactionDUnit.class',
-                     '**/*Parallel*AsyncEvent*DUnit.class', '**/pivotal/gemfirexd/wan/**/*DUnit.class'])
-      FileTree includeTestFiles = dunitTests
-      int dunitFrom = rootProject.hasProperty('dunit.from') ?
-          getLast(includeTestFiles, rootProject.property('dunit.from')) : 0
-      int dunitTo = rootProject.hasProperty('dunit.to') ?
-          getLast(includeTestFiles, rootProject.property('dunit.to')) : includeTestFiles.size()
-
-      int begin = dunitFrom != -1 ? dunitFrom : 0
-      int end = dunitTo != -1 ? dunitTo : includeTestFiles.size()
-      def filteredSet = includeTestFiles.drop(begin).take(end-begin+1).collect {f -> "**/" + f.name}
-      if (begin != 0 || end != includeTestFiles.size()) {
-        println("Picking tests :")
-        filteredSet.each { a -> println(a) }
-      }
-      include filteredSet
-    } else {
-      include single
-    }
-    exclude '**/*NCJ*DUnit.class'
-    exclude '**/BackwardCompatabilityPart*DUnit.class'
-    exclude '**/*Perf*DUnit.class'
-    exclude '**/ListAggDUnit.class'
-    exclude '**/SingleHop*TransactionDUnit.class'
-    exclude '**/*Parallel*AsyncEvent*DUnit.class'
-    exclude '**/pivotal/gemfirexd/wan/**/*DUnit.class'
 
     workingDir = "${testResultsBase}/dunit"
 
@@ -421,7 +434,7 @@ subprojects {
 
     // try to avoid long "tail" in parallel runs where some workers finish early
     forkEvery 10
-  }
+  } }
 
   task wanTest(type:Test) {
     dependsOn "${subprojectBase}storeProduct"
@@ -466,7 +479,7 @@ subprojects {
       includeCategories 'com.gemstone.junit.IntegrationTest'
       excludeCategories 'com.gemstone.junit.UnitTest'
       excludeCategories 'com.gemstone.junit.DistributedTest'
-    }    
+    }
 
     workingDir = "${testResultsBase}/integration"
 
@@ -475,9 +488,103 @@ subprojects {
     reports.junitXml.destination = file(workingDir)
   }
 
-  // apply common test configuration
-  gradle.taskGraph.whenReady({ graph ->
-    tasks.withType(Test).each { test ->
+
+  test.dependsOn subprojectBase + 'cleanTestOutput'
+  dunitTest.dependsOn subprojectBase + 'cleanDUnitOutput'
+  wanTest.dependsOn subprojectBase + 'cleanWanOutput'
+  integrationTest.dependsOn subprojectBase + 'cleanIntegrationOutput'
+  check.dependsOn.clear()
+  check.dependsOn test, dunitTest, wanTest
+}
+
+// maven publish tasks
+subprojects {
+
+  if (rootProject.name == 'snappy-store') {
+    task packageSources(type: Jar, dependsOn: classes) {
+      classifier = 'sources'
+      from sourceSets.main.allSource
+    }
+    task packageDocs(type: Jar, dependsOn: javadoc) {
+      classifier = 'javadoc'
+      from javadoc
+    }
+    task packageTests(type: Jar, dependsOn: testClasses) {
+      description 'Assembles a jar archive of test classes.'
+      from sourceSets.test.output.classesDirs
+      classifier = 'tests'
+    }
+    artifacts {
+      testOutput packageTests
+    }
+  }
+  if (rootProject.hasProperty('enablePublish')) {
+    artifacts {
+      archives packageDocs, packageSources
+    }
+
+    uploadArchives {
+      repositories {
+        mavenDeployer {
+          beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+          repository(url: 'https://oss.sonatype.org/service/local/staging/deploy/maven2/') {
+            authentication(userName: ossrhUsername, password: ossrhPassword)
+          }
+          snapshotRepository(url: 'https://oss.sonatype.org/content/repositories/snapshots/') {
+            authentication(userName: ossrhUsername, password: ossrhPassword)
+          }
+
+          pom.project {
+            name PRODUCT_NAME
+            packaging 'jar'
+            // optionally artifactId can be defined here
+            description 'SnappyData store based off Pivotal GemFireXD'
+            url 'http://www.snappydata.io'
+
+            scm {
+              connection 'scm:git:https://github.com/SnappyDataInc/snappy-store.git'
+              developerConnection 'scm:git:https://github.com/SnappyDataInc/snappy-store.git'
+              url 'https://github.com/SnappyDataInc/snappy-store'
+            }
+
+            licenses {
+              license {
+                name 'The Apache License, Version 2.0'
+                url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+              }
+            }
+
+            developers {
+              developer {
+                id 'smenon'
+                name 'Sudhir Menon'
+                email 'smenon@snappydata.io'
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+int getLast(includeTestFiles, pattern) {
+  includeTestFiles.findLastIndexOf {
+    File f -> f.name.indexOf(pattern) >= 0
+  }
+}
+
+// apply common test and misc configuration
+gradle.taskGraph.whenReady { graph ->
+  def allTasks = subprojects.collect { it.tasks }.flatten()
+  allTasks.each { task ->
+    if (task instanceof Tar) {
+      def tar = (Tar)task
+      tar.compression = Compression.GZIP
+      tar.extension = 'tar.gz'
+    } else if (task instanceof Test) {
+      def test = (Test)task
       test.configure {
 
         jvmArgs = ['-XX:+HeapDumpOnOutOfMemoryError',
@@ -491,7 +598,7 @@ subprojects {
                          'gemfire.disallowMcastDefaults'  : 'true',
                          'java.net.preferIPv4Stack'       : 'true',
                          'jline.terminal'                 : 'scala.tools.jline.UnsupportedTerminal',
-                         'store.test.resourceDir'         : "${projectDir}/src/test/resources",
+                         'store.test.resourceDir'         : "${project.projectDir}/src/test/resources",
                          'GEMFIREXD'                      : productDir.getAbsolutePath()
 
         def logLevel = System.getProperty('logLevel')
@@ -506,7 +613,7 @@ subprojects {
         }
 
         environment 'GEMFIREXD'                           : productDir.getAbsolutePath(),
-                    'JUNIT_JAR'                           : sourceSets.test.output.classesDir
+                    'JUNIT_JAR'                           : project.sourceSets.test.java.outputDir
 
         int numTestClasses = 0
         def testCount = new java.util.concurrent.atomic.AtomicInteger(0)
@@ -575,91 +682,6 @@ subprojects {
         }
       }
     }
-  })
-
-  test.dependsOn subprojectBase + 'cleanTestOutput'
-  dunitTest.dependsOn subprojectBase + 'cleanDUnitOutput'
-  wanTest.dependsOn subprojectBase + 'cleanWanOutput'
-  integrationTest.dependsOn subprojectBase + 'cleanIntegrationOutput'
-  check.dependsOn.clear()
-  check.dependsOn test, dunitTest, wanTest
-}
-
-// maven publish tasks
-subprojects {
-
-  if (rootProject.name == 'snappy-store') {
-    task packageSources(type: Jar, dependsOn: classes) {
-      classifier = 'sources'
-      from sourceSets.main.allSource
-    }
-    task packageDocs(type: Jar, dependsOn: javadoc) {
-      classifier = 'javadoc'
-      from javadoc
-    }
-    task packageTests(type: Jar, dependsOn: testClasses) {
-      description 'Assembles a jar archive of test classes.'
-      from sourceSets.test.output.classesDir
-      classifier = 'tests'
-    }
-    artifacts {
-      testOutput packageTests
-    }
-  }
-  if (rootProject.hasProperty('enablePublish')) {
-    artifacts {
-      archives packageDocs, packageSources
-    }
-
-    uploadArchives {
-      repositories {
-        mavenDeployer {
-          beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
-
-          repository(url: 'https://oss.sonatype.org/service/local/staging/deploy/maven2/') {
-            authentication(userName: ossrhUsername, password: ossrhPassword)
-          }
-          snapshotRepository(url: 'https://oss.sonatype.org/content/repositories/snapshots/') {
-            authentication(userName: ossrhUsername, password: ossrhPassword)
-          }
-
-          pom.project {
-            name PRODUCT_NAME
-            packaging 'jar'
-            // optionally artifactId can be defined here
-            description 'SnappyData store based off Pivotal GemFireXD'
-            url 'http://www.snappydata.io'
-
-            scm {
-              connection 'scm:git:https://github.com/SnappyDataInc/snappy-store.git'
-              developerConnection 'scm:git:https://github.com/SnappyDataInc/snappy-store.git'
-              url 'https://github.com/SnappyDataInc/snappy-store'
-            }
-
-            licenses {
-              license {
-                name 'The Apache License, Version 2.0'
-                url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-              }
-            }
-
-            developers {
-              developer {
-                id 'smenon'
-                name 'Sudhir Menon'
-                email 'smenon@snappydata.io'
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-int getLast(includeTestFiles, pattern) {
-  includeTestFiles.findLastIndexOf {
-    File f -> f.name.indexOf(pattern) >= 0
   }
 }
 
@@ -683,9 +705,9 @@ task combineReports(type: TestReport) {
   mustRunAfter test, junit, dunit, wan, integrationTest
 }
 
-gradle.taskGraph.whenReady({ graph ->
+gradle.taskGraph.whenReady { graph ->
   tasks.getByName('combineReports').reportOn rootProject.subprojects.collect{ it.tasks.withType(Test) }.flatten()
-})
+}
 
 check.dependsOn.clear()
 check.dependsOn junit, dunit
@@ -852,7 +874,7 @@ task storeProduct(dependsOn: [ subprojectBase + 'snappydata-store-client:shadowJ
   }
 
   copy {
-    from (project(subprojectBase +  'gemfire-tests').projectDir.getAbsolutePath() + '/src/main/java') {
+    from (project(subprojectBase +  'gemfire-tests').sourceSets.main.java.srcDirs) {
       include '**/*.bt'
       include '**/*.conf'
       include '**/*.inc'
@@ -868,7 +890,7 @@ task storeProduct(dependsOn: [ subprojectBase + 'snappydata-store-client:shadowJ
       include 'hydratest/hydracheck/*.sh'
       include 'bin/scaleperf/*'
     }
-    from (project(subprojectBase +  'snappydata-store-tests').projectDir.getAbsolutePath() + '/src/main/java') {
+    from (project(subprojectBase +  'snappydata-store-tests').sourceSets.main.java.srcDirs) {
       include '**/*.bt'
       include '**/*.conf'
       include '**/*.inc'
@@ -881,7 +903,7 @@ task storeProduct(dependsOn: [ subprojectBase + 'snappydata-store-client:shadowJ
       include '**/*.ts'
       include '**/*.pl'
     }
-    into (project(subprojectBase + 'snappydata-store-tests').buildDir.getAbsolutePath() + '/classes/main')
+    into (project(subprojectBase + 'snappydata-store-tests').sourceSets.main.java.outputDir)
   }
 } }
 if (rootProject.hasProperty('docs')) {

@@ -60,6 +60,7 @@ import java.io.File;
 import java.util.Collections;
 import java.util.Properties;
 import java.util.List;
+import java.net.InetAddress;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.directory.server.constants.ServerDNConstants;
@@ -125,6 +126,9 @@ public class LdapTestServer {
       int port = new java.util.Random().nextInt(30000) + 10000;
       server.startServer("0.0.0.0", port);
     }
+    InetAddress myHost = InetAddress.getLocalHost();
+    String hostName = myHost.toString().split("/")[0];
+
     int serverPort = server.getServerPort();
     Properties bootProps = new Properties();
     bootProps.setProperty("auth-provider", "LDAP");
@@ -133,12 +137,11 @@ public class LdapTestServer {
     bootProps.setProperty("gemfirexd.group-ldap-search-base",
         "ou=ldapTesting,dc=pune,dc=gemstone,dc=com");
     bootProps.setProperty("gemfirexd.auth-ldap-server",
-        "ldap://localhost:" + serverPort);
-    bootProps.setProperty("security-log-level", "finest");
-    bootProps.setProperty("Dgemfirexd.debug.true",
-        "TraceAuthentication,TraceFabricServiceBoot");
-    bootProps.setProperty("user", "gemfire10");
-    bootProps.setProperty("password", "gemfire10");
+        "ldap://"+hostName+":" + serverPort);
+    //bootProps.setProperty("security-log-level", "finest");
+    //bootProps.setProperty("Dgemfirexd.debug.true","TraceAuthentication,TraceFabricServiceBoot");
+    bootProps.setProperty("user", "gemfire1");
+    bootProps.setProperty("password", "gemfire1");
     StringBuilder sb = new StringBuilder();
     for (java.util.Map.Entry<?, ?> e : bootProps.entrySet()) {
       sb.append(" -").append(e.getKey()).append('=').append(e.getValue());
