@@ -61,12 +61,7 @@ import javax.naming.directory.Attribute;
 import javax.naming.ldap.LdapName;
 import javax.naming.ldap.Rdn;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.AccessController;
@@ -947,21 +942,35 @@ implements CredentialInitializer
 			throw new NameNotFoundException();
 		List<String> groups = new LinkedList<String>();
 		SearchResult result = (SearchResult)results.next();
+		Set<String> ldapGroups = new HashSet();
 		Attribute memberOfAttr = result.getAttributes().get("memberOf");
-		List<String> ldapGroups = new LinkedList<>();
 		if (memberOfAttr != null) {
 			NamingEnumeration ne = memberOfAttr.getAll();
 			while (ne.hasMore()) {
 				String group = (String)ne.next();
-				if ((group = group.trim()).length() > 0) {
-					ldapGroups.add(StringUtil.SQLToUpperCase(group));
+				LdapName groupDn = new LdapName(group);
+				Iterator<Rdn> iter = groupDn.getRdns().iterator();
+
+				while (iter.hasNext()) {
+					Rdn rdn = iter.next();
+					if (rdn.getType().equalsIgnoreCase("cn")) {
+						String cn = (String)rdn.getValue();
+						if ((cn = cn.trim()).length() > 0) {
+							ldapGroups.add(StringUtil.SQLToUpperCase(cn));
+						}
+						if (!includeParentGroups) {
+							break;
+						}
+					} else if (includeParentGroups) {
+						if (rdn.getType().equalsIgnoreCase("ou")) {
+							String ou = (String)rdn.getValue();
+							if ((ou = ou.trim()).length() > 0) {
+								ldapGroups.add(StringUtil.SQLToUpperCase(ou));
+							}
+						}
+					}
 				}
 			}
-
-			if (includeParentGroups) {
-				throw new UnsupportedOperationException("Not implemented yet");
-			}
-
 		} else {
 			throw new UnsupportedOperationException("Not implemented yet");
 		}
