@@ -140,7 +140,11 @@ public class LdapGroupAuthTest extends JUnit4TestBase {
    * Basic test for the internal method that retrieves LDAP group members as
    * also recursive group retrieval for Active Directory kind of config.
    * The loaded sample is "authAD.ldif" similar to "auth.ldif" but using
-   * "sAMAccountName" instead of "uid".
+   * "givenName" instead of "uid". This does not use "sAMAccountName" like
+   * in MS AD since that is not supported in the default schemas in Apache DS
+   * but that difference will not matter in what is being tested here namely
+   * custom user search filter. This also has an entry for escape characters (a comma)
+   * in gemfire11 and corresponding group definition have the user in gemGroup8.
    */
   @Test
   public void ldapADGroupMembers() throws Exception {
@@ -153,20 +157,22 @@ public class LdapGroupAuthTest extends JUnit4TestBase {
         "(&(objectClass=inetOrgPerson)(givenName=%USERNAME%))");
     TestUtil.setupConnection(bootProperties, LdapGroupAuthTest.class);
 
-    Set<String> expectedGroup1Members = new HashSet<String>(
-        Arrays.asList(new String[] { "GEMFIRE1", "GEMFIRE2", "GEMFIRE3" }));
-    Set<String> expectedGroup2Members = new HashSet<String>(
-        Arrays.asList(new String[] { "GEMFIRE3", "GEMFIRE4", "GEMFIRE5" }));
-    Set<String> expectedGroup3Members = new HashSet<String>(
-        Arrays.asList(new String[] { "GEMFIRE6", "GEMFIRE7", "GEMFIRE8" }));
-    Set<String> expectedGroup4Members = new HashSet<String>(
-        Arrays.asList(new String[] { "GEMFIRE1", "GEMFIRE3", "GEMFIRE9" }));
-    Set<String> expectedGroup5Members = new HashSet<String>(Arrays.asList(
-        new String[] { "GEMFIRE4", "GEMFIRE6", "GEMFIRE7", "GEMFIRE8" }));
-    Set<String> expectedGroup6Members = new HashSet<String>(
-        Arrays.asList(new String[] { "GEMFIRE2", "GEMFIRE6", "GEMFIRE1",
-            "GEMFIRE3", "GEMFIRE9" }));
+    Set<String> expectedGroup1Members = new HashSet<>(
+        Arrays.asList("GEMFIRE1", "GEMFIRE2", "GEMFIRE3"));
+    Set<String> expectedGroup2Members = new HashSet<>(
+        Arrays.asList("GEMFIRE3", "GEMFIRE4", "GEMFIRE5"));
+    Set<String> expectedGroup3Members = new HashSet<>(
+        Arrays.asList("GEMFIRE6", "GEMFIRE7", "GEMFIRE8"));
+    Set<String> expectedGroup4Members = new HashSet<>(
+        Arrays.asList("GEMFIRE1", "GEMFIRE3", "GEMFIRE9"));
+    Set<String> expectedGroup5Members = new HashSet<>(Arrays.asList(
+        "GEMFIRE4", "GEMFIRE6", "GEMFIRE7", "GEMFIRE8"));
+    Set<String> expectedGroup6Members = new HashSet<>(
+        Arrays.asList("GEMFIRE2", "GEMFIRE6", "GEMFIRE1",
+            "GEMFIRE3", "GEMFIRE9"));
     Set<String> expectedGroup7Members = Collections.emptySet();
+    Set<String> expectedGroup8Members = new HashSet<>(
+        Arrays.asList("GEMFIRE6", "GEMFIRE11"));
 
     Set<String> group1Members = getLdapGroupMembers("gemGroup1");
     Assert.assertEquals(expectedGroup1Members, group1Members);
@@ -182,6 +188,8 @@ public class LdapGroupAuthTest extends JUnit4TestBase {
     Assert.assertEquals(expectedGroup6Members, group6Members);
     Set<String> group7Members = getLdapGroupMembers("gemgroup7");
     Assert.assertEquals(expectedGroup7Members, group7Members);
+    Set<String> group8Members = getLdapGroupMembers("gemgroup8");
+    Assert.assertEquals(expectedGroup8Members, group8Members);
 
     classTearDown();
     startServer();

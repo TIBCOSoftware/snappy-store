@@ -497,7 +497,7 @@ implements CredentialInitializer
 		} else {
 		  this.searchGroupFilter = "(&(|(objectClass=group)"
 		      + "(objectClass=groupOfNames)"
-                      + "(objectClass=groupOfMembers)"
+		      + "(objectClass=groupOfMembers)"
 		      + "(objectClass=groupOfUniqueNames))"
 		      + "(|(cn=" + Constants.LDAP_SEARCH_FILTER_GROUP
 		      + ")(name=" + Constants.LDAP_SEARCH_FILTER_GROUP
@@ -815,7 +815,7 @@ implements CredentialInitializer
                           searchFilter = "(objectClass=*)";
                           // add attributes for both groups and users
                           int nAttrs = searchAttributes.length;
-			  int nSearchAttrs = this.searchGroupUserAttributes.length;
+                          int nSearchAttrs = this.searchGroupUserAttributes.length;
                          searchAttributes = Arrays.copyOf(searchAttributes,
                               nAttrs + nSearchAttrs);
                           System.arraycopy(this.searchGroupUserAttributes, 0,
@@ -839,8 +839,8 @@ implements CredentialInitializer
                     member = StringUtil.SQLToUpperCase(member);
                     if (GemFireXDUtils.TraceAuthentication) {
                       SanityManager.DEBUG_PRINT(
-			  AuthenticationServiceBase.AuthenticationTrace,
-			  "Found member " + member + " in LDAP group = " + group);
+                          AuthenticationServiceBase.AuthenticationTrace,
+                          "Found member " + member + " in LDAP group = " + group);
                     }
                     groupMembers.add(member);
                   }

@@ -1250,7 +1250,7 @@ public class SecurityTestUtils extends DistributedSQLTestBase {
       int locatorPort, int mcastPort, String sysUser,
       String ldifFilePath) throws Exception {
     return startLdapServerAndGetBootProperties(locatorPort, mcastPort,
-        sysUser, null, false);
+        sysUser, ldifFilePath, false);
   }
 
   public static Properties startLdapServerAndGetBootProperties(

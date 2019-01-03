@@ -90,6 +90,16 @@ cn: GEMFIRE10
 displayName: GEMFIRE10
 userPassword:: e1NTSEF9N0twb05LcVZnY2NDWHIxZG5EM01yRXdrSkxQMUxtbU0=
 
+dn: cn=gemfire1 \, 1,ou=ldapTesting,dc=pune,dc=gemstone,dc=com
+objectClass: person
+objectClass: inetOrgPerson
+givenName: gemfire11
+sn: GEMFIRE11
+givenName: Gemfire11
+cn: gemfire1 , 1
+displayName: GEMFIRE11
+userPassword:: e1NTSEF9N0twb05LcVZnY2NDWHIxZG5EM01yRXdrSkxQMUxtbU0=
+
 # LDAP group entries
 
 dn: cn=gemGroup1,ou=ldapTesting,dc=pune,dc=gemstone,dc=com
@@ -149,3 +159,10 @@ cn: gemGroup7
 gidNumber: 1007
 member: 
 member:
+
+dn: cn=gemGroup8,ou=ldapTesting,dc=pune,dc=gemstone,dc=com
+objectClass: groupOfNames
+cn: gemGroup8
+gidNumber: 1008
+member: cn=gemfire1 \, 1,ou=ldapTesting,dc=pune,dc=gemstone,dc=com
+member: uid=gemfire6,ou=ldapTesting,dc=pune,dc=gemstone,dc=com
