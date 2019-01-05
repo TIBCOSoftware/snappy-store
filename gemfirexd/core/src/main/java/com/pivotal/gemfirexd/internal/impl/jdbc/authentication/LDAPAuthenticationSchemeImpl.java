@@ -117,7 +117,7 @@ implements CredentialInitializer
 	// we only want the user's full DN in return
 // GemStone changes BEGIN
 	private final FileOutputStream traceOut;
-	private static final String[] attrDN = {"dn", "distinguishedName"};
+	private static final String[] attrDN = {"dn", "distinguishedName", "memberOf"};
 	private String searchGroupBase;
 	private String searchGroupFilter;
 	private String[] searchGroupAttributes;
@@ -596,6 +596,7 @@ implements CredentialInitializer
 
 		// Just retrieve the DN
 		ctls.setReturningAttributes(attrDN);
+
 
 		String searchFilter =
 				this.leftSearchFilter + uid + this.rightSearchFilter;
