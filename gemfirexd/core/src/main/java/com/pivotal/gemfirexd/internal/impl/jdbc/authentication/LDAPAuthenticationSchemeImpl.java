@@ -805,10 +805,7 @@ implements CredentialInitializer
       }
     } else {
       String userDN = getDNFromSearchResult(ctx, result);
-
-      // Return all the unique members collected for the group
-      this.recurseGroups(null, ldapGroups, userDN);
-
+      this.recurseGroups("*", ldapGroups, userDN);
     }
     return new UnifiedSet<>(ldapGroups);
 
