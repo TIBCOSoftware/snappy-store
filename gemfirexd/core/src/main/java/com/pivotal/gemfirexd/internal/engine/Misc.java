@@ -395,19 +395,13 @@ public abstract class Misc {
 
   public static PartitionedRegion getReservoirRegionForSampleTable(String reservoirRegionName) {
     if (reservoirRegionName != null) {
-      GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+      GemFireCacheImpl cache = GemFireCacheImpl.getExisting();
       Region<?, ?> childRegion = cache.getRegion(reservoirRegionName);
       if (childRegion != null) {
-        return (PartitionedRegion) childRegion;
+        return (PartitionedRegion)childRegion;
       }
     }
     return null;
-  }
-
-  public static void dropReservoirRegionForSampleTable(PartitionedRegion reservoirRegion) {
-    if (reservoirRegion != null) {
-      reservoirRegion.destroyRegion(null);
-    }
   }
 
   public static PartitionedRegion.PRLocalScanIterator

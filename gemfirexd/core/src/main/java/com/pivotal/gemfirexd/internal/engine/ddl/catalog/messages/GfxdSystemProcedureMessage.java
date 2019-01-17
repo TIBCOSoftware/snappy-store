@@ -33,7 +33,6 @@ import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.DistributionStats;
 import com.gemstone.gemfire.distributed.internal.ReplyException;
-import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.GFToSlf4jBridge;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.NanoTimer;
@@ -42,7 +41,6 @@ import com.gemstone.gemfire.internal.cache.Conflatable;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
@@ -1548,17 +1546,8 @@ public final class GfxdSystemProcedureMessage extends
             "GfxdSystemProcedureMessage:CREATE_OR_DROP_RESERVOIR_REGION " +
                 "reservoirRegionName=" + reservoirRegionName +
                 " resolvedBaseName=" + resolvedBaseName + " isDrop=" + isDrop);
-        if (isDrop) {
-          PartitionedRegion region = Misc.getReservoirRegionForSampleTable(
-              reservoirRegionName);
-          Misc.dropReservoirRegionForSampleTable(region);
-        } else {
-          PartitionedRegion region = Misc.createReservoirRegionForSampleTable(
-              reservoirRegionName, resolvedBaseName);
-          if (Misc.initialDDLReplayDone()) {
-            Assert.assertTrue(region != null);
-          }
-        }
+        GfxdSystemProcedures.createOrDropReservoirRegion(reservoirRegionName,
+            resolvedBaseName, isDrop);
       }
 
       @Override

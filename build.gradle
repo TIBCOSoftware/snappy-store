@@ -587,8 +587,7 @@ gradle.taskGraph.whenReady { graph ->
       def test = (Test)task
       test.configure {
 
-        jvmArgs = ['-XX:+HeapDumpOnOutOfMemoryError',
-                   '-XX:+UseParNewGC', '-XX:+UseConcMarkSweepGC',
+        jvmArgs = ['-XX:+UseParNewGC', '-XX:+UseConcMarkSweepGC',
                    '-XX:CMSInitiatingOccupancyFraction=50',
                    '-XX:+CMSClassUnloadingEnabled', '-ea']
 

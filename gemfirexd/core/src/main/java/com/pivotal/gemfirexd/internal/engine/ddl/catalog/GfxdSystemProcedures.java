@@ -1568,19 +1568,42 @@ public class GfxdSystemProcedures extends SystemProcedures {
           schema, currentUser);
 
       // first create/drop locally
-      final Object[] args = new Object[] { reservoirRegionName,
-          resolvedBaseName, isDrop };
-      GfxdSystemProcedureMessage.SysProcMethod.createOrDropReservoirRegion
-          .processMessage(args, Misc.getMyId());
-
-      // send to other nodes
-      publishMessage(args, false,
-          GfxdSystemProcedureMessage.SysProcMethod.createOrDropReservoirRegion,
-          true, false);
+      if (createOrDropReservoirRegion(reservoirRegionName, resolvedBaseName, isDrop)) {
+        // don't send to other nodes or persist if local operation is unsuccessful
+        final Object[] args = new Object[] { reservoirRegionName,
+            resolvedBaseName, isDrop };
+        // send to other nodes
+        publishMessage(args, false,
+            GfxdSystemProcedureMessage.SysProcMethod.createOrDropReservoirRegion,
+            true, false);
+      }
     } catch (StandardException se) {
       throw PublicAPI.wrapStandardException(se);
     } catch (Throwable t) {
       throw TransactionResourceImpl.wrapInSQLException(t);
+    }
+  }
+
+  public static boolean createOrDropReservoirRegion(String reservoirRegionName,
+      String resolvedBaseName, boolean isDrop) {
+    PartitionedRegion existingRegion = Misc.getReservoirRegionForSampleTable(
+        reservoirRegionName);
+    if (isDrop) {
+      if (existingRegion != null) {
+        existingRegion.destroyRegion(null);
+        return true;
+      } else {
+        return false;
+      }
+    } else if (existingRegion == null) {
+      PartitionedRegion region = Misc.createReservoirRegionForSampleTable(
+          reservoirRegionName, resolvedBaseName);
+      if (Misc.initialDDLReplayDone()) {
+        Assert.assertTrue(region != null);
+      }
+      return true;
+    } else {
+      return false;
     }
   }
 
