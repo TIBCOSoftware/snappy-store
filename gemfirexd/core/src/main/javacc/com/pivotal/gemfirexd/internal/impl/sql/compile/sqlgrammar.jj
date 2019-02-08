@@ -1132,6 +1132,7 @@ public class SQLParser
 		  case DOUBLE:
 		  case BLOB:
 		  case CLOB:
+		  case TEXT:
 		  case CLOB_STRING:
 		  case JSON:
 		  case NCLOB:
@@ -2822,6 +2823,7 @@ TOKEN [IGNORE_CASE] :
   |	<C: "c">
   | <CALLED: "called">
 |	<CLOB: "clob">
+|	<TEXT: "text">
   |	<COBOL: "cobol">
 |	<COMMITTED: "committed">
 |   <CONCAT: "concat">
@@ -5256,6 +5258,11 @@ LOBType() throws StandardException :
 			type = TypeId.CLOB_NAME;
 		}
 	|
+	  <TEXT> [ length = lengthAndModifier() ]
+  		{
+  			type = TypeId.CLOB_NAME;
+  		}
+  |
         <CLOB_STRING> [ length = lengthAndModifier() ]
         {
     	    type = TypeId.CLOB_NAME;
@@ -17989,7 +17996,8 @@ nonReservedKeyword()  :
 	|	tok = <CALLED>
 	|	tok = <CLASS>
 	|	tok = <CLOB>
-|	tok = <COALESCE>
+	|	tok = <TEXT>
+  |	tok = <COALESCE>
 	|	tok = <COBOL>
 	|	tok = <COMMITTED>
 	|	tok = <COMPRESS>
@@ -18004,7 +18012,7 @@ nonReservedKeyword()  :
 	|	tok = <DATA>
 	|	tok = <DATE>
 	|	tok = <DAY>
-        |	tok = <DIRTY>
+  |	tok = <DIRTY>
 	|	tok = <DYNAMIC>
     |   tok = <DATABASE>
 	|	tok = <DB2SQL>
