@@ -76,7 +76,8 @@ public final class ClientService extends ReentrantLock implements LobService {
   private String currentDefaultSchema;
   final OpenConnectionArgs connArgs;
   final List<HostAddress> connHosts;
-  final boolean loadBalance;
+  private final boolean explicitLoadBalance;
+  private boolean loadBalance;
   final SocketParameters socketParams;
   final boolean framedTransport;
   final boolean useDirectBuffers;
@@ -328,9 +329,13 @@ public final class ClientService extends ReentrantLock implements LobService {
 
     Map<String, String> props = connArgs.getProperties();
     String propValue;
-    // default for load-balance is true
-    this.loadBalance = (props == null || !"false".equalsIgnoreCase(props
-        .remove(ClientAttribute.LOAD_BALANCE)));
+    boolean hasLoadBalance = props != null &&
+        props.containsKey(ClientAttribute.LOAD_BALANCE);
+    this.explicitLoadBalance = hasLoadBalance && "true".equalsIgnoreCase(
+        props.remove(ClientAttribute.LOAD_BALANCE));
+    // default for load-balance is true on locators and false on servers
+    // so tentatively set as true and adjust using the ControlConnection
+    this.loadBalance = this.explicitLoadBalance || !hasLoadBalance;
 
     // setup the original host list
     if (props != null && (propValue = props.remove(
@@ -440,11 +445,32 @@ public final class ClientService extends ReentrantLock implements LobService {
       try {
         this.currentHostAddress = hostAddr;
         if (this.loadBalance) {
-          ControlConnection controlService = ControlConnection
+          final ControlConnection controlService = ControlConnection
               .getOrCreateControlConnection(connHosts, this, failure);
-          // at this point query the control service for preferred server
-          this.currentHostAddress = hostAddr = controlService.getPreferredServer(
-              failedServers, this.serverGroups, false, failure);
+          // if connected to server then disable load-balance by default
+          if (!this.explicitLoadBalance) {
+            // check the actual host type of "locators"
+            Set<HostAddress> locators = controlService.getLocatorsCopy();
+            locators.retainAll(connHosts);
+            boolean hasLocator = false;
+            if (!locators.isEmpty()) {
+              for (HostAddress addr : locators) {
+                if (addr.getServerType().isThriftLocator()) {
+                  hasLocator = true;
+                  break;
+                }
+              }
+            }
+            if (!hasLocator) {
+              this.loadBalance = false;
+              controlService.close(true);
+            }
+          }
+          if (this.loadBalance) {
+            // at this point query the control service for preferred server
+            this.currentHostAddress = hostAddr = controlService.getPreferredServer(
+                failedServers, this.serverGroups, false, failure);
+          }
         }
 
         final TTransport currentTransport;

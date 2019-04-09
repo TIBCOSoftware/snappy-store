@@ -16304,7 +16304,7 @@ dropSchemaStatement() throws StandardException :
 }
 {
 	// GemStone changes BEGIN
-	<SCHEMA>
+	( <SCHEMA> | <DATABASE> )
 	{
 		CompilerContext cc = getCompilerContext();
 		cc.markAsDDLForSnappyUse(true);
