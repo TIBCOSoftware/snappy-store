@@ -107,6 +107,7 @@ public final class GfxdSystemProcedureMessage extends
   protected static final short INITIAL_DDL_REPLAY_IN_PROGRESS =
       (HAS_SERVER_GROUPS << 1);
 
+
   public enum SysProcMethod {
 
     setDatabaseProperty {
@@ -2056,6 +2057,7 @@ public final class GfxdSystemProcedureMessage extends
     this.procMethod = null;
     this.params = null;
     this.sender = null;
+    assert !(preprocess() && postprocess());
   }
 
   public GfxdSystemProcedureMessage(SysProcMethod procMethod, Object[] params,
@@ -2068,6 +2070,7 @@ public final class GfxdSystemProcedureMessage extends
     this.params = params;
     this.sender = sender;
     this.initialDDLReplayInProgress = Misc.initialDDLReplayInProgress();
+    assert !(preprocess() && postprocess());
   }
 
   @Override

@@ -94,6 +94,7 @@ public final class GfxdJarMessage extends AbstractGfxdReplayableMessage
     this.schemaName = ret[0];
     this.sqlName = ret[1];
     this.fullName = this.schemaName + '.' + this.sqlName;
+    assert !(preprocess() && postprocess());
   }
 
   public void setOldId(long oldId) {
