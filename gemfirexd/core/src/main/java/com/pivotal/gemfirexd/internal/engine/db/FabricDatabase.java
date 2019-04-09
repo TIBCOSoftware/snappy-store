@@ -440,11 +440,12 @@ public final class FabricDatabase implements ModuleControl,
       notifyRunning();
       return;
     }
+    final GemFireCacheImpl cache = GemFireCacheImpl.getExisting();
+    final LogWriter logger = cache.getLogger();
+    final EmbedConnection embedConn = (EmbedConnection)conn;
 
+    List<GfxdSystemProcedureMessage> postMssgs = null;
     try {
-      final EmbedConnection embedConn = (EmbedConnection)conn;
-      final GemFireCacheImpl cache = GemFireCacheImpl.getExisting();
-      final LogWriter logger = cache.getLogger();
       final LanguageConnectionContext lcc = embedConn.getLanguageConnection();
       final GemFireTransaction tc = (GemFireTransaction)lcc
           .getTransactionExecute();
@@ -488,7 +489,7 @@ public final class FabricDatabase implements ModuleControl,
         else {
           this.memStore.getDDLStmtQueue().initializeQueue(this.dd);
         }
-        postCreateDDLReplay(embedConn, bootProps, lcc, tc, logger);
+        postMssgs =  postCreateDDLReplay(embedConn, bootProps, lcc, tc, logger);
       } finally {
         if (ddReadLockAcquired) {
           this.dd.unlockAfterReading(null);
@@ -508,7 +509,7 @@ public final class FabricDatabase implements ModuleControl,
       initializeCatalog();
     } catch (Throwable t) {
       try {
-        LogWriter logger = Misc.getCacheLogWriter();
+
         if (logger != null) {
           logger.warning("got throwable: " + t.getMessage() + " calling shut down", t);
         }
@@ -538,6 +539,30 @@ public final class FabricDatabase implements ModuleControl,
       }
       throw StandardException.newException(SQLState.BOOT_DATABASE_FAILED, t,
           Attribute.GFXD_DBNAME);
+    }
+
+
+    for(GfxdSystemProcedureMessage msg: postMssgs) {
+      if (msg.getSysProcMethod().isOffHeapMethod()
+        && this.memStore.getGemFireCache().getOffHeapStore() == null) {
+        if (logger.severeEnabled()) {
+          logger.severe("FabricDatabase: aborted initial replay "
+            + "for message " + msg + " method "
+            + msg.getSysProcMethod().name());
+        }
+        continue;
+      }
+      try {
+        msg.execute();
+      } catch (Exception ex) {
+        if (logger.severeEnabled()) {
+          logger.severe("FabricDatabase: failed initial replay "
+            + "for message " + msg + " due to exception", ex);
+        }
+        throw StandardException.newException(SQLState.BOOT_DATABASE_FAILED, ex,
+          Attribute.GFXD_DBNAME);
+        //continue;
+      }
     }
   }
 
@@ -889,7 +914,7 @@ public final class FabricDatabase implements ModuleControl,
    * Replays the initial DDL received by GII from other nodes or recovered from
    * disc.
    */
-  private void postCreateDDLReplay(final EmbedConnection embedConn,
+  private List<GfxdSystemProcedureMessage> postCreateDDLReplay(final EmbedConnection embedConn,
       final Properties bootProps, final LanguageConnectionContext lcc,
       final GemFireTransaction tc, final LogWriter logger) throws Exception {
 
@@ -970,7 +995,7 @@ public final class FabricDatabase implements ModuleControl,
     final LinkedHashSet<GemFireContainer> uninitializedTables =
         new LinkedHashSet<GemFireContainer>();
     final Statement stmt = embedConn.createStatement();
-
+    List<GfxdSystemProcedureMessage> postMessages = new ArrayList<>();
     try {
       // commenting out for snap-585
       /*
@@ -1067,6 +1092,7 @@ public final class FabricDatabase implements ModuleControl,
             .getPreprocessedDDLQueue(currentQueue, skipRegionInit,
                 lastCurrentSchema, pre11TableSchemaVer, traceConflation);
 
+
         for (GfxdDDLQueueEntry entry : preprocessedQueue) {
           qEntry = entry;
           Object qVal = qEntry.getValue();
@@ -1083,6 +1109,10 @@ public final class FabricDatabase implements ModuleControl,
           if (qVal instanceof GfxdSystemProcedureMessage) {
             final GfxdSystemProcedureMessage msg =
                 (GfxdSystemProcedureMessage)qVal;
+            if (msg.postprocess()) {
+              postMessages.add(msg);
+              continue;
+            }
             if (msg.getSysProcMethod().isOffHeapMethod()
                 && this.memStore.getGemFireCache().getOffHeapStore() == null) {
               if (logger.severeEnabled()) {
@@ -1448,6 +1478,8 @@ public final class FabricDatabase implements ModuleControl,
         }
       }
 
+
+
       if (!lastCurrentSchema.equals(currentSchema)) {
         // restore the default schema
         FabricDatabase.setupDefaultSchema(dd, lcc, tc, currentSchema, true);
@@ -1462,6 +1494,8 @@ public final class FabricDatabase implements ModuleControl,
       synchronized (sync) {
         this.memStore.setInitialDDLReplayInProgress(false);
         this.memStore.setInitialDDLReplayDone(true);
+
+
         // notify any waiters
         sync.notifyAll();
       }
@@ -1500,12 +1534,15 @@ public final class FabricDatabase implements ModuleControl,
       stmt.close();
       // Setting this to false so that the waiting compactor thread finishes
       this.memStore.setInitialDDLReplayInProgress(false);
-    }
+      // restore the original schema if required
+      if (!ArrayUtils.objectEquals(initSchema, lcc.getCurrentSchemaName())) {
+        FabricDatabase.setupDefaultSchema(dd, lcc, tc, initSchema, true);
+      }
 
-    // restore the original schema if required
-    if (!ArrayUtils.objectEquals(initSchema, lcc.getCurrentSchemaName())) {
-      FabricDatabase.setupDefaultSchema(dd, lcc, tc, initSchema, true);
     }
+    return  postMessages;
+
+
   }
 
   private void checkRecoveredIndex(ArrayList<GemFireContainer> uninitializedContainers,
