@@ -59,6 +59,16 @@ public class LowMemoryException extends ResourceException {
   }
 
   /**
+   * Constructs an instance of <code>LowMemoryException</code> with the specified cause.
+   * @param cause
+   */
+  public LowMemoryException(Throwable cause) {
+    super(cause);
+    this.critMems = Collections.emptySet();
+    CallbackFactoryProvider.getStoreCallbacks().logMemoryStats();
+  }
+
+  /**
    * Get a read-only set of members in a critical state at the time this
    * exception was constructed.
    * @return the critical members
