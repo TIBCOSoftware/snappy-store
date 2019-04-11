@@ -75,6 +75,7 @@ public final class ClientService extends ReentrantLock implements LobService {
   private HostAddress currentHostAddress;
   private String currentDefaultSchema;
   final OpenConnectionArgs connArgs;
+  final Map<String, String> connectionProps;
   final List<HostAddress> connHosts;
   private final boolean explicitLoadBalance;
   private boolean loadBalance;
@@ -328,6 +329,8 @@ public final class ClientService extends ReentrantLock implements LobService {
     this.connArgs = connArgs;
 
     Map<String, String> props = connArgs.getProperties();
+    this.connectionProps = props != null ? new HashMap<>(props) : new HashMap<>();
+
     String propValue;
     boolean hasLoadBalance = props != null &&
         props.containsKey(ClientAttribute.LOAD_BALANCE);
@@ -472,6 +475,8 @@ public final class ClientService extends ReentrantLock implements LobService {
                 failedServers, this.serverGroups, false, failure);
           }
         }
+        this.connectionProps.put(ClientAttribute.LOAD_BALANCE,
+            Boolean.toString(this.loadBalance));
 
         final TTransport currentTransport;
         int readTimeout;

@@ -50,6 +50,7 @@ import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.ddl.resolver.GfxdPartitionByExpressionResolver;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
+import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.engine.store.ServerGroupUtils;
 import com.pivotal.gemfirexd.internal.iapi.error.PublicAPI;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
@@ -59,9 +60,11 @@ import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.SchemaDescriptor;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedStatement;
 import com.pivotal.gemfirexd.internal.impl.jdbc.authentication.AuthenticationServiceBase;
+import com.pivotal.gemfirexd.jdbc.ClientAttribute;
 import io.snappydata.app.TestThrift;
 import io.snappydata.test.dunit.Host;
 import io.snappydata.test.dunit.RMIException;
+import io.snappydata.test.dunit.SerializableCallable;
 import io.snappydata.test.dunit.SerializableRunnable;
 import io.snappydata.test.dunit.VM;
 import io.snappydata.test.util.TestException;
@@ -1829,6 +1832,38 @@ public class ClientServerDUnit extends ClientServerTestBase {
    * multiple servers using GFE's ServerLocator. Also check for the failover.
    */
   public void testNetworkClientLoadBalancing() throws Exception {
+    // always use thrift for this test
+    SerializableRunnable setThrift = new SerializableRunnable() {
+      @Override
+      public void run() {
+        System.setProperty("gemfirexd." +
+            ClientSharedUtils.USE_THRIFT_AS_DEFAULT_PROP, "true");
+        ClientSharedUtils.setThriftDefault(true);
+      }
+    };
+    setThrift.run();
+    for (int i = 0; i <= 3; i++) {
+      Host.getHost(0).getVM(i).invoke(setThrift);
+    }
+    try {
+      runTestNetworkClientLoadBalancing();
+    } finally {
+      SerializableRunnable resetThrift = new SerializableRunnable() {
+        @Override
+        public void run() {
+          System.setProperty("gemfirexd." +
+              ClientSharedUtils.USE_THRIFT_AS_DEFAULT_PROP, "false");
+          ClientSharedUtils.setThriftDefault(false);
+        }
+      };
+      resetThrift.run();
+      for (int i = 0; i <= 3; i++) {
+        Host.getHost(0).getVM(i).invoke(resetThrift);
+      }
+    }
+  }
+
+  private void runTestNetworkClientLoadBalancing() throws Exception {
     // start the GemFireXD locator
     final VM locator = Host.getHost(0).getVM(3);
     final int netPort = AvailablePort
@@ -1848,8 +1883,63 @@ public class ClientServerDUnit extends ClientServerTestBase {
     startVMs(0, 2, 0, null, props);
     // Start a couple of network servers
     final int netPort1 = startNetworkServer(1, null, null);
-    startNetworkServer(2, null, null);
+    final int netPort2 = startNetworkServer(2, null, null);
 
+    attachConnectionListener(1, connListener);
+    attachConnectionListener(2, connListener);
+    attachConnectionListener(locator, connListener);
+
+    // check that load-balance is false by default when connecting directly to servers
+    // and true when connecting to locator
+    for (int i = 0; i < 10; i++) {
+      Connection conn = TestUtil.getNetConnection(localHost.getCanonicalHostName(),
+          netPort, null, new Properties());
+      assertEquals("true",
+          ((ClientConnection)conn).getConnectionProperties().get(ClientAttribute.LOAD_BALANCE));
+      assertNumConnections(-1, 0, locator);
+      conn.close();
+    }
+    // reattach listener to clear the counts
+    attachConnectionListener(1, connListener);
+    attachConnectionListener(2, connListener);
+    attachConnectionListener(locator, connListener);
+    final SerializableCallable<Object> getDSID = new SerializableCallable<Object>() {
+      @Override
+      public Object call() throws Exception {
+        return GemFireStore.getMyId().getId();
+      }
+    };
+    String dsid1 = (String)serverExecute(1, getDSID);
+    String dsid2 = (String)serverExecute(2, getDSID);
+    for (int i = 0; i < 10; i++) {
+      Connection conn1 = TestUtil.getNetConnection(localHost.getCanonicalHostName(),
+          netPort1, null, new Properties());
+      Statement stmt1 = conn1.createStatement();
+      ResultSet rs1 = stmt1.executeQuery("values dsid()");
+      assertTrue(rs1.next());
+      assertEquals(dsid1, rs1.getString(1));
+      assertFalse(rs1.next());
+
+      Connection conn2 = TestUtil.getNetConnection(localHost.getCanonicalHostName(),
+          netPort2, null, new Properties());
+      Statement stmt2 = conn2.createStatement();
+      ResultSet rs2 = stmt2.executeQuery("values dsid()");
+      assertTrue(rs2.next());
+      assertEquals(dsid2, rs2.getString(1));
+      assertFalse(rs2.next());
+
+      assertEquals("false",
+          ((ClientConnection)conn1).getConnectionProperties().get(ClientAttribute.LOAD_BALANCE));
+      assertEquals("false",
+          ((ClientConnection)conn2).getConnectionProperties().get(ClientAttribute.LOAD_BALANCE));
+      assertNumConnections(0, 0, locator);
+      stmt1.close();
+      stmt2.close();
+      conn1.close();
+      conn2.close();
+      assertNumConnections(0, 0, locator);
+    }
+    // reattach listener to clear the counts
     attachConnectionListener(1, connListener);
     attachConnectionListener(2, connListener);
     attachConnectionListener(locator, connListener);
@@ -1859,7 +1949,7 @@ public class ClientServerDUnit extends ClientServerTestBase {
         netPort, null, new Properties());
 
     // check new connections opened on locator and servers
-    assertNumConnections(1, 0, locator);
+    assertNumConnections(-1, 0, locator);
     assertNumConnections(1, -1, 1, 2);
 
     // Create a table
@@ -1890,7 +1980,7 @@ public class ClientServerDUnit extends ClientServerTestBase {
     assertEquals(s, resultStr);
     assertFalse(rs.next());
 
-    assertNumConnections(1, 0, locator);
+    assertNumConnections(-1, 0, locator);
     assertNumConnections(1, -1, 1, 2);
 
     // now open another connection with server1 URL
@@ -1898,9 +1988,8 @@ public class ClientServerDUnit extends ClientServerTestBase {
         netPort1, null, new Properties());
 
     // check new connection opened on servers successfully load-balanced
-    assertNumConnections(1, 0, locator);
-    assertNumConnections(-2, -1, 1);
-    assertNumConnections(-2, -1, 2);
+    assertNumConnections(-1, 0, locator);
+    assertNumConnections(-3, -1, 1, 2);
 
     stmt = conn2.createStatement();
     rs = stmt.executeQuery("select * from TESTTABLE");
@@ -1916,15 +2005,14 @@ public class ClientServerDUnit extends ClientServerTestBase {
     assertEquals(s, resultStr);
     assertFalse(rs.next());
 
-    assertNumConnections(1, 0, locator);
-    assertNumConnections(-2, -1, 1);
-    assertNumConnections(-2, -1, 2);
+    assertNumConnections(-1, 0, locator);
+    assertNumConnections(-3, -1, 1, 2);
 
     // now a third connection
     Connection conn3 = TestUtil.getNetConnection(localHost.getCanonicalHostName(),
         netPort, null, new Properties());
 
-    assertNumConnections(1, 0, locator);
+    assertNumConnections(-1, 0, locator);
     assertNumConnections(-4, -1, 1, 2);
 
     // add expected exception for server connection failure
@@ -1933,20 +2021,29 @@ public class ClientServerDUnit extends ClientServerTestBase {
 
     // now stop the first server and check for successful failover to second
     stopVMNums(-1);
-    pstmt = conn2.prepareStatement("insert into TESTTABLE values(?,?)");
+    pstmt = conn.prepareStatement("insert into TESTTABLE values(?,?)");
 
     final String s2 = "test\u0906";
     pstmt.setInt(1, 2);
     pstmt.setString(2, s2);
     pstmt.execute();
 
-    // check failover for conn, conn3 too
-    conn.createStatement().execute("select count(*) from TESTTABLE");
+    // check failover for conn3 too
     conn3.createStatement().execute("select count(ID) from TESTTABLE");
 
+    // conn2 should be invalid now due to load-balance=false by default
+    try {
+      conn2.createStatement().execute("select count(ID) from TESTTABLE");
+      fail("excepted connection to fail without load balancing");
+    } catch (SQLException sqle) {
+      if (!"X0Z01".equals(sqle.getSQLState())) {
+        throw sqle;
+      }
+    }
+
     // check connections opened on second server
-    assertNumConnections(1, 0, locator);
-    assertNumConnections(-4, -1, 2);
+    assertNumConnections(-1, 0, locator);
+    assertNumConnections(-4, -2, 2);
 
     removeExpectedException(null, new Object[] {
         java.net.ConnectException.class, DisconnectException.class,
@@ -1981,30 +2078,31 @@ public class ClientServerDUnit extends ClientServerTestBase {
     assertFalse(rs.next());
 
     // check connection opened on second server
-    assertNumConnections(1, 0, locator);
-    assertNumConnections(-5, -1, 2);
+    assertNumConnections(-1, 0, locator);
+    assertNumConnections(-5, -2, 2);
 
     // now drop the table and close the connections
+    stmt = conn.createStatement();
     stmt.execute("drop table TESTTABLE");
     stmt.close();
     conn.close();
 
-    assertNumConnections(1, 0, locator);
-    assertNumConnections(-5, -2, 2);
+    assertNumConnections(-1, 0, locator);
+    assertNumConnections(-5, -3, 2);
 
     conn2.close();
 
-    assertNumConnections(1, 0, locator);
+    assertNumConnections(-1, 0, locator);
     assertNumConnections(-5, -3, 2);
 
     conn3.close();
 
-    assertNumConnections(1, 0, locator);
+    assertNumConnections(-1, 0, locator);
     assertNumConnections(-5, -4, 2);
 
     conn4.close();
 
-    assertNumConnections(1, 0, locator);
+    assertNumConnections(-1, 0, locator);
     assertNumConnections(-5, -5, 2);
   }
 

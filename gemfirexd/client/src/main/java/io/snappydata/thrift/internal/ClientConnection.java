@@ -110,6 +110,10 @@ public final class ClientConnection extends ReentrantLock implements Connection 
     return this.clientService;
   }
 
+  public final Map<String, String> getConnectionProperties() {
+    return this.clientService.connectionProps;
+  }
+
   final ClientPooledConnection getOwnerPooledConnection() {
     return this.clientServiceOwner;
   }
