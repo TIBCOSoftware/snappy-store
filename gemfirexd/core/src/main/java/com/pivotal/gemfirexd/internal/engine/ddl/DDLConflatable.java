@@ -278,7 +278,7 @@ public final class DDLConflatable extends GfxdDataSerializable implements
     || (this.isDropStatement && constantAction.isDropIfExists())
     || (this.fullTableName != null) : "Expected "
         + "a non-null schema/table name when conflation is requested";
-    assert !(preprocess() && postprocess());
+    // assert !(preprocess() && postprocess());
   }
   
   /**

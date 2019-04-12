@@ -2057,7 +2057,7 @@ public final class GfxdSystemProcedureMessage extends
     this.procMethod = null;
     this.params = null;
     this.sender = null;
-    assert !(preprocess() && postprocess());
+    //assert !(preprocess() && postprocess());
   }
 
   public GfxdSystemProcedureMessage(SysProcMethod procMethod, Object[] params,
@@ -2070,7 +2070,7 @@ public final class GfxdSystemProcedureMessage extends
     this.params = params;
     this.sender = sender;
     this.initialDDLReplayInProgress = Misc.initialDDLReplayInProgress();
-    assert !(preprocess() && postprocess());
+    assert !(procMethod.preprocess() && procMethod.postprocess());
   }
 
   @Override
