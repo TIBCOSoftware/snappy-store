@@ -542,7 +542,7 @@ public final class FabricDatabase implements ModuleControl,
     }
 
 
-    for(GfxdSystemProcedureMessage msg: postMssgs) {
+    for (GfxdSystemProcedureMessage msg : postMssgs) {
       if (msg.getSysProcMethod().isOffHeapMethod()
         && this.memStore.getGemFireCache().getOffHeapStore() == null) {
         if (logger.severeEnabled()) {
@@ -561,9 +561,9 @@ public final class FabricDatabase implements ModuleControl,
         }
         throw StandardException.newException(SQLState.BOOT_DATABASE_FAILED, ex,
           Attribute.GFXD_DBNAME);
-        //continue;
       }
     }
+
   }
 
   private Region createSnappySpecificGlobalCmdRegion(boolean isLead) throws IOException, ClassNotFoundException {
@@ -1478,8 +1478,6 @@ public final class FabricDatabase implements ModuleControl,
         }
       }
 
-
-
       if (!lastCurrentSchema.equals(currentSchema)) {
         // restore the default schema
         FabricDatabase.setupDefaultSchema(dd, lcc, tc, currentSchema, true);
@@ -1494,8 +1492,6 @@ public final class FabricDatabase implements ModuleControl,
       synchronized (sync) {
         this.memStore.setInitialDDLReplayInProgress(false);
         this.memStore.setInitialDDLReplayDone(true);
-
-
         // notify any waiters
         sync.notifyAll();
       }
@@ -1541,8 +1537,6 @@ public final class FabricDatabase implements ModuleControl,
 
     }
     return  postMessages;
-
-
   }
 
   private void checkRecoveredIndex(ArrayList<GemFireContainer> uninitializedContainers,
