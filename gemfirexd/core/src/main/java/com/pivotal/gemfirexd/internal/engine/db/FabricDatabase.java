@@ -444,7 +444,7 @@ public final class FabricDatabase implements ModuleControl,
     final LogWriter logger = cache.getLogger();
     final EmbedConnection embedConn = (EmbedConnection)conn;
 
-    List<GfxdSystemProcedureMessage> postMssgs = null;
+    List<GfxdSystemProcedureMessage> postMsgs = null;
     try {
       final LanguageConnectionContext lcc = embedConn.getLanguageConnection();
       final GemFireTransaction tc = (GemFireTransaction)lcc
@@ -489,7 +489,7 @@ public final class FabricDatabase implements ModuleControl,
         else {
           this.memStore.getDDLStmtQueue().initializeQueue(this.dd);
         }
-        postMssgs =  postCreateDDLReplay(embedConn, bootProps, lcc, tc, logger);
+        postMsgs =  postCreateDDLReplay(embedConn, bootProps, lcc, tc, logger);
       } finally {
         if (ddReadLockAcquired) {
           this.dd.unlockAfterReading(null);
@@ -542,7 +542,7 @@ public final class FabricDatabase implements ModuleControl,
     }
 
 
-    for (GfxdSystemProcedureMessage msg : postMssgs) {
+    for (GfxdSystemProcedureMessage msg : postMsgs) {
       if (msg.getSysProcMethod().isOffHeapMethod()
         && this.memStore.getGemFireCache().getOffHeapStore() == null) {
         if (logger.severeEnabled()) {
