@@ -313,6 +313,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     attr.setPartitionAttributes(prAttr);
     final Region r = GemFireCacheImpl.getInstance().createRegion("t1", attr.create());
 
+    final int NUMITR = 100;
 
     Map map = new HashMap();
     for (int i = 0; i < 500; i++) {
@@ -324,12 +325,12 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
 
     Object lock = new Object();
-    boolean[] signal = {true};
+    boolean[] signal = { true };
 
     Runnable run = new Runnable() {
       @Override
       public void run() {
-        for (int k = 0; k < 100; k++) {
+        for (int k = 0; k < NUMITR; k++) {
           Map map = new HashMap();
           for (int i = 0; i < 500; i++) {
             map.put(i, k);
@@ -367,7 +368,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
               Misc.getGemFireCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "the tombstone is " + re);
             }
           }
-          //System.out.println("The num is " + num + " and s is " + s);
+          // System.out.println("The num is " + num + " and s is " + s);
           assert (num == 500);
           if (s.size() > 1) {
             fail("FAIL The s is " + s);

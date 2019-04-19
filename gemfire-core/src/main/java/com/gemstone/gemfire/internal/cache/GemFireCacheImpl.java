@@ -581,7 +581,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
    * Time interval after which oldentries cleaner thread run
    */
   public static long OLD_ENTRIES_CLEANER_TIME_INTERVAL = Long.getLong("gemfire" +
-      ".snapshot-oldentries-cleaner-time-interval", 200);
+      ".snapshot-oldentries-cleaner-time-interval", 2000);
 
   /**
    * Test only method
@@ -630,6 +630,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     return OLD_ENTRIES_CLEANER_TIME_INTERVAL;
   }
   // For each entry this should be in sync
+
 
   public void addOldEntry(NonLocalRegionEntry oldRe, RegionEntry newEntry,
       LocalRegion region, EntryEventImpl event) {
@@ -942,8 +943,6 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
                 if (((BlockingQueue) entry.getValue()).isEmpty()) {
                   ((CustomEntryConcurrentHashMap)regionEntryMap).remove(entry.getKey(),
                       entry.getValue(), queueRemover , null, null);
-
-                  regionEntryMap.remove(entry.getKey());
                 }
                 if (getLoggerI18n().fineEnabled()) {
                   getLoggerI18n().fine(
@@ -1123,7 +1122,11 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     public Object removeValue(Object key, Object value, Object existingValue,
         Object context, Object removeParams) {
       if (value != null
-          && (value == NO_OBJECT_TOKEN || ((BlockingQueue)existingValue).size() == 0)) {
+          && (value == NO_OBJECT_TOKEN || ((existingValue == value)
+          && ((BlockingQueue)existingValue).size() == 0))) {
+        if (getInstance().getLoggerI18n().fineEnabled()) {
+          getInstance().getLoggerI18n().info(LocalizedStrings.DEBUG, "Removing queue for key " + key);
+        }
         return null;
       }
       else {
