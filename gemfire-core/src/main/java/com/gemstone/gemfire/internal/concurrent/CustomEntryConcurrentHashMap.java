@@ -1838,6 +1838,17 @@ RETRYLOOP:
         condition, context, removeParams, this.longSize);
   }
 
+
+  public final <C, P> V remove(final Object key, final Object value,
+      final MapCallback<K, V, C, P> condition, final C context,
+      final P removeParams) {
+    // throws NullPointerException if key null
+    final int hash = this.entryCreator.keyHashCode(key, this.compareValues);
+    return segmentFor(hash).remove(key, hash, value,
+        condition, context, removeParams, this.longSize);
+  }
+
+
 // End GemStone addition
 
   /**

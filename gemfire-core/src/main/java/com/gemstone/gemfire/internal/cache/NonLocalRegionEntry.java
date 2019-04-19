@@ -89,12 +89,17 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
         v = re.getValue(br);
         // do an additional retain to match the behaviour of
         // getValueInVMOrDiskWithoutFaultIn
-        if (GemFireCacheImpl.hasNewOffHeap() &&
-            (v instanceof SerializedDiskBuffer)) {
-          ((SerializedDiskBuffer)v).retain();
+        if (v instanceof SerializedDiskBuffer) {
+          ((SerializedDiskBuffer)v).setDiskEntry(null, br);
+          if (GemFireCacheImpl.hasNewOffHeap()) {
+            ((SerializedDiskBuffer)v).retain();
+          }
         }
       } else {
         v = re.getValueInVMOrDiskWithoutFaultIn(br);
+        if (v instanceof SerializedDiskBuffer ) {
+          ((SerializedDiskBuffer)v).setDiskEntry(null, br);
+        }
       }
       try {
         this.value = OffHeapHelper.getHeapForm(v);  // OFFHEAP: copy into heap cd
@@ -167,7 +172,7 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
 
   @Override
   public String toString() {
-    return "NonLocalRegionEntry("+this.key + "; value="  + this.value + "; version=" + this.versionTag;
+    return "NonLocalRegionEntry(Key="+this.key + "; value="  + this.value + "; version=" + this.versionTag;
   }
 
   public static NonLocalRegionEntry newEntry() {
