@@ -324,7 +324,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
 
     Object lock = new Object();
-    boolean[] signal = {false};
+    boolean[] signal = {true};
 
     Runnable run = new Runnable() {
       @Override
@@ -339,7 +339,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
           r.getCache().getCacheTransactionManager().commit();
         }
         synchronized (lock) {
-          signal[0] = true;
+          signal[0] = false;
         }
       }
     };
@@ -347,9 +347,9 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     t.start();
 
 
-    while (true) {
+    while (signal[0]) {
       synchronized (lock) {
-        if (!signal[0]) {
+        if (signal[0]) {
           r.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
           TXStateInterface txstate = TXManagerImpl.getCurrentTXState();
           Iterator txitr = txstate.getLocalEntriesIterator(null,
@@ -367,14 +367,12 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
               Misc.getGemFireCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "the tombstone is " + re);
             }
           }
-          System.out.println("The num is " + num + " and s is " + s);
+          //System.out.println("The num is " + num + " and s is " + s);
           assert (num == 500);
           if (s.size() > 1) {
             fail("FAIL The s is " + s);
           }
           r.getCache().getCacheTransactionManager().commit();
-        } else {
-          break;
         }
       }
       Thread.sleep(5);
