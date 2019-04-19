@@ -118,7 +118,7 @@ allprojects {
     snappyDunitVersion = '1.0.3.6'
 
     // product and release properties
-    PRODUCT_NAME = 'SnappyData RowStore'
+    PRODUCT_NAME = 'TIBCO ComputeDB RowStore'
 
     GEMFIRE_PRODUCT = 'Pivotal GemFire'
     GEMFIRE_VERSION = '7.5.Beta'
@@ -130,11 +130,11 @@ allprojects {
 
     PRODUCT_MAJOR = '1'
     PRODUCT_MINOR = '6'
-    PRODUCT_MAINT = '2'
-    PRODUCT_CLASSIFIER = '.1'
+    PRODUCT_MAINT = '3'
+    PRODUCT_CLASSIFIER = ''
     PRODUCT_RELEASE_STAGE = ''
     PRODUCT_VERSION = "${PRODUCT_MAJOR}.${PRODUCT_MINOR}.${PRODUCT_MAINT}${PRODUCT_CLASSIFIER}"
-    vendorName = 'SnappyData, Inc.'
+    vendorName = 'TIBCO, Inc.'
     PRODUCT_VENDOR = vendorName
     COPYRIGHT = "Copyright 2017, ${PRODUCT_VENDOR} All rights reserved."
 
@@ -539,7 +539,7 @@ subprojects {
             name PRODUCT_NAME
             packaging 'jar'
             // optionally artifactId can be defined here
-            description 'SnappyData store based off Pivotal GemFireXD'
+            description 'TIBCO ComputeDB store based off Pivotal GemFireXD'
             url 'http://www.snappydata.io'
 
             scm {
@@ -559,7 +559,7 @@ subprojects {
               developer {
                 id 'smenon'
                 name 'Sudhir Menon'
-                email 'smenon@snappydata.io'
+                email 'sumenon@tibco.com'
               }
             }
           }
