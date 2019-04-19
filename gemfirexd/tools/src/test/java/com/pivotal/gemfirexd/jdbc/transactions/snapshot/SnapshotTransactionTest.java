@@ -323,6 +323,9 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     r.getCache().getCacheTransactionManager().commit();
 
 
+    Object lock = new Object();
+    boolean[] signal = {false};
+
     Runnable run = new Runnable() {
       @Override
       public void run() {
@@ -335,38 +338,50 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
           r.putAll(map);
           r.getCache().getCacheTransactionManager().commit();
         }
+        synchronized (lock) {
+          signal[0] = true;
+        }
       }
     };
     Thread t = new Thread(run);
     t.start();
 
-    for(int i=0; i< 250; i++) {
-      r.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
-      TXStateInterface txstate = TXManagerImpl.getCurrentTXState();
-      Iterator txitr = txstate.getLocalEntriesIterator(null,
-          false, false, true, (LocalRegion)r);
 
-      int num = 0;
-      Set s = new HashSet();
-      while (txitr.hasNext()) {
-        RegionEntry re = (RegionEntry)txitr.next();
-        if (!re.isTombstone()) {
-          //Thread.sleep(10);
-          s.add(re.getValueInVM(null));
-          num++;
-        } else{
-          Misc.getGemFireCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "the tombstone is " + re);
+    while (true) {
+      synchronized (lock) {
+        if (!signal[0]) {
+          r.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+          TXStateInterface txstate = TXManagerImpl.getCurrentTXState();
+          Iterator txitr = txstate.getLocalEntriesIterator(null,
+              false, false, true, (LocalRegion)r);
+
+          int num = 0;
+          Set s = new HashSet();
+          while (txitr.hasNext()) {
+            RegionEntry re = (RegionEntry)txitr.next();
+            if (!re.isTombstone()) {
+              //Thread.sleep(10);
+              s.add(re.getValueInVM(null));
+              num++;
+            } else {
+              Misc.getGemFireCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "the tombstone is " + re);
+            }
+          }
+          System.out.println("The num is " + num + " and s is " + s);
+          assert (num == 500);
+          if (s.size() > 1) {
+            fail("FAIL The s is " + s);
+          }
+          r.getCache().getCacheTransactionManager().commit();
+        } else {
+          break;
         }
       }
-      System.out.println("The num is " + num + " and s is " + s);
-      assert(num == 500);
-      if (s.size() > 1) {
-        fail("FAIL The s is " + s);
-      }
-      r.getCache().getCacheTransactionManager().commit();
+      Thread.sleep(5);
     }
 
     t.join();
+
   }
 
   public void testSnapshotInsertTableAPI() throws Exception {
