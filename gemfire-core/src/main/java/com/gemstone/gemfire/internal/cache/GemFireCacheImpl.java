@@ -655,10 +655,15 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
     final String regionPath = region.getFullPath();
     // ask for pool memory before continuing
-    if (!region.reservedTable() && region.needAccounting()) {
-      region.calculateEntryOverhead(oldRe);
-      region.acquirePoolMemory(0, oldRe.getValueSize(), oldRe.isForDelete(), null, true);
+
+    // No need to do accounting in case of offheap buffer
+    if (!GemFireCacheImpl.hasNewOffHeap() || !(oldRe._getValue() instanceof SerializedDiskBuffer)) {
+      if (!region.reservedTable() && region.needAccounting()) {
+        region.calculateEntryOverhead(oldRe);
+        region.acquirePoolMemory(0, oldRe.getValueSize(), oldRe.isForDelete(), null, true);
+      }
     }
+
 
     if (SNAPSHOT_DEBUG || getLoggerI18n().fineEnabled()) {
       getLoggerI18n().info(LocalizedStrings.DEBUG, "For " + regionPath + " adding " +
@@ -967,15 +972,17 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
       if (removedVal == null) return;
 
+      boolean offHeapReleased = false;
       if (GemFireCacheImpl.hasNewOffHeap()) {
         // also remove reference to region buffer, if any
         Object value = re._getValue();
         if (value instanceof SerializedDiskBuffer) {
           ((SerializedDiskBuffer)value).release();
+          offHeapReleased = true;
         }
       }
       // free the allocated memory
-      if (!region.reservedTable() && region.needAccounting()) {
+      if (!offHeapReleased && !region.reservedTable() && region.needAccounting()) {
         NonLocalRegionEntry nre = (NonLocalRegionEntry)re;
         region.freePoolMemory(nre.getValueSize(), nre.isForDelete());
       }
@@ -1093,7 +1100,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       Set<TXId> othersTxIds = new UnifiedSet<TXId>(4);
       for (TXStateProxy txProxy : getTxManager().getHostedTransactionsInProgress()) {
         TXState txState = txProxy.getLocalTXState();
-        if ((txState != null && !txState.isClosed() && TXState.checkEntryInSnapshotWithoutMyChange
+        if ((txState != null && !txState.isClosed() && TXState.checkEntryInSnapshotWithoutOwnChange
             (txState, region, entryInRegion))) {
           othersTxIds.add(txState.getTransactionId());
         }

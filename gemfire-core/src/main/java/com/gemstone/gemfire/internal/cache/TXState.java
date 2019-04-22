@@ -4129,7 +4129,7 @@ public final class TXState implements TXStateInterface {
     return true;
   }
 
-  public static boolean checkEntryInSnapshotWithoutMyChange(TXStateInterface tx, Region region, RegionEntry entry) {
+  public static boolean checkEntryInSnapshotWithoutOwnChange(TXStateInterface tx, Region region, RegionEntry entry) {
     if (tx.isSnapshot() && ((LocalRegion)region).concurrencyChecksEnabled) {
       VersionStamp stamp = entry.getVersionStamp();
       VersionSource id = stamp.getMemberID();
