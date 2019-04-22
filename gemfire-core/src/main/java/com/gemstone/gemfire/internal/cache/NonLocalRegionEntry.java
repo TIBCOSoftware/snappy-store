@@ -93,12 +93,16 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
           if (GemFireCacheImpl.hasNewOffHeap()) {
             ((SerializedDiskBuffer)v).retain();
           } else {
+            // Setting diskEntry to null as we don't do reference count for on-heap objects
+            // In ColumnFormatValue, if reference count is 0, we read from DiskEntry.
             ((SerializedDiskBuffer)v).setDiskEntry(null, br);
           }
         }
       } else {
         v = re.getValueInVMOrDiskWithoutFaultIn(br);
         if (v instanceof SerializedDiskBuffer && !GemFireCacheImpl.hasNewOffHeap()) {
+          // Setting diskEntry to null as we don't do reference count for on-heap objects
+          // In ColumnFormatValue, if reference count is 0, we read from DiskEntry.
           ((SerializedDiskBuffer)v).setDiskEntry(null, br);
         }
       }

@@ -871,7 +871,6 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     // Keep each entry alive for at least 20 secs.
     Random r = new Random();
     MapCallback queueRemover = new QueueRemover();
-    MapCallback entryRemover = new MapCallbackAdapter();
 
     public void run() {
       try {
@@ -964,25 +963,23 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     }
 
     void removeEntry(Map regionEntryMap, RegionEntry re, LocalRegion region) {
-      Object removedVal = ((CustomEntryConcurrentHashMap)regionEntryMap).remove(re.getKey(),
-          re, entryRemover, null, null);
+      Object removedVal = ((CustomEntryConcurrentHashMap)regionEntryMap).remove(re.getKey(), re);
 
       if (removedVal == null) return;
 
-      if (removedVal == re) {
-        if (GemFireCacheImpl.hasNewOffHeap()) {
-          // also remove reference to region buffer, if any
-          Object value = re._getValue();
-          if (value instanceof SerializedDiskBuffer) {
-            ((SerializedDiskBuffer)value).release();
-          }
-        }
-        // free the allocated memory
-        if (!region.reservedTable() && region.needAccounting()) {
-          NonLocalRegionEntry nre = (NonLocalRegionEntry)re;
-          region.freePoolMemory(nre.getValueSize(), nre.isForDelete());
+      if (GemFireCacheImpl.hasNewOffHeap()) {
+        // also remove reference to region buffer, if any
+        Object value = re._getValue();
+        if (value instanceof SerializedDiskBuffer) {
+          ((SerializedDiskBuffer)value).release();
         }
       }
+      // free the allocated memory
+      if (!region.reservedTable() && region.needAccounting()) {
+        NonLocalRegionEntry nre = (NonLocalRegionEntry)re;
+        region.freePoolMemory(nre.getValueSize(), nre.isForDelete());
+      }
+
     }
 
     boolean notRequired(LocalRegion region, RegionEntry re, BlockingQueue queue) {
@@ -1125,7 +1122,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
         Object context, Object removeParams) {
       if (value != null
           && (value == NO_OBJECT_TOKEN || ((existingValue == value)
-          && ((BlockingQueue)existingValue).size() == 0))) {
+          && ((BlockingQueue)existingValue).isEmpty()))) {
         if (getInstance().getLoggerI18n().fineEnabled()) {
           getInstance().getLoggerI18n().info(LocalizedStrings.DEBUG, "Removing queue for key " + key);
         }
