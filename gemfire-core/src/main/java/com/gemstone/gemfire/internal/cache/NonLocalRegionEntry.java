@@ -90,14 +90,15 @@ public class NonLocalRegionEntry implements RegionEntry, VersionStamp {
         // do an additional retain to match the behaviour of
         // getValueInVMOrDiskWithoutFaultIn
         if (v instanceof SerializedDiskBuffer) {
-          ((SerializedDiskBuffer)v).setDiskEntry(null, br);
           if (GemFireCacheImpl.hasNewOffHeap()) {
             ((SerializedDiskBuffer)v).retain();
+          } else {
+            ((SerializedDiskBuffer)v).setDiskEntry(null, br);
           }
         }
       } else {
         v = re.getValueInVMOrDiskWithoutFaultIn(br);
-        if (v instanceof SerializedDiskBuffer ) {
+        if (v instanceof SerializedDiskBuffer && !GemFireCacheImpl.hasNewOffHeap()) {
           ((SerializedDiskBuffer)v).setDiskEntry(null, br);
         }
       }
