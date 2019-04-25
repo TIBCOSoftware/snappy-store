@@ -3985,8 +3985,12 @@ public final class TXState implements TXStateInterface {
     if (shouldGetOldEntry(dataRegion)) {
       synchronized (re) {
         if (checkEntryInSnapshot(this, dataRegion, re)) {
-          NonLocalRegionEntry nl = NonLocalRegionEntry.newEntryWithoutFaultIn(re, dataRegion, true);
-          return nl;
+          // TODO: SW: this is a major performance problem because it will always read value
+          // from disk in essentially random order and then do a faultin; higher level
+          // DiskBlockSorter etc will be completely ineffective
+          // Proper solution is to create a snapshot of the original RegionEntry with diskId
+          // if value has been evicted, and create NLRE only for in-memory entries.
+          return NonLocalRegionEntry.newEntry(re, dataRegion, true);
         }
       }
       return getOldVersionedEntry(this, dataRegion, re.getKey(), re);
