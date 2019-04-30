@@ -14,10 +14,6 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-//plugins{
-//id "de.undercouch.download" version "3.4.3"
-//}
-
 buildscript {
   repositories {
     maven { url 'https://plugins.gradle.org/m2' }
@@ -46,16 +42,16 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
 
   String distDir = "${rootProject.projectDir}/dist"
   String thriftVersion = '1.0.0-1'
-  String boostVersion = '1.59.0'
+  String newThriftVersion = '1.0.0-2'
+  String boostVersion = '1.69.0'
   String mpirVersion = '2.7.2'
   String opensslVersion = '1.0.2h'
   String unixodbcVersion = '2.3.4'
   String googletestVersion = '1.7.0'
-  String oldReleasesDir = "https://github.com/SnappyDataInc/thrift/releases/download/${thriftVersion}"
+  String oldReleasesDir = "https://github.com/SnappyDataInc/thrift/releases/download/${newThriftVersion}"
 
   String releasesDir = oldReleasesDir
 
-  String newThriftVersion = '1.0.0-2'
   String newBoostVersion = '1.65.1'
   String newUnixodbcVersion = '2.3.4'
   String newGoogletestVersion = '1.8.0'
@@ -142,8 +138,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
     dependsOn downloadDependencies
 
     inputs.files dependencies.collect { [ "${distDir}/${it}" ] }.flatten()
-   // outputs.files dependencies.collect { [ "${distDir}/${it.replaceAll('-[^-]*.tar.bz2', '')}" ] }.flatten()
-
+    //outputs.files dependencies.collect { [ "${distDir}/${it.replaceAll('-[^-]*.tar.bz2', '')}" ] }.flatten()
     doLast {
       outputs.files.each { d -> delete d }
       dependencies.each { tarball ->
@@ -281,15 +276,15 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
                         '-rdynamic', '-ldl', '-z', 'defs'
           } else if (toolChain in VisualCpp) {
             // explicitly include UCRT since its still not passed through by gradle
-            String VS_2015_INCLUDE_DIR = 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.10240.0/ucrt'
-            String VS_2015_LIB_DIR = 'C:/Program Files (x86)/Windows Kits/10/Lib/10.0.10240.0/ucrt'
-            String VS_2015_INCLUDE_DIR_UM = 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.10240.0/um'
-            String VS_2015_LIB_DIR_UM = 'C:/Program Files (x86)/Windows Kits/10/Lib/10.0.10240.0/um'
-            String VS_2015_INCLUDE_DIR_SHARED = 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.10240.0/shared'
+            String VS_2017_INCLUDE_DIR = 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.17763.0/ucrt'
+            String VS_2017_LIB_DIR = 'C:/Program Files (x86)/Windows Kits/10/Lib/10.0.17763.0/ucrt'
+            String VS_2017_INCLUDE_DIR_UM = 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.17763.0/um'
+            String VS_2017_LIB_DIR_UM = 'C:/Program Files (x86)/Windows Kits/10/Lib/10.0.17763.0/um'
+            String VS_2017_INCLUDE_DIR_SHARED = 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.17763.0/shared'
             cppCompiler.args '/W3', '/FS', '/Zc:inline', '/WX', '/EHsc',
                              '/Fdsnappyclient.pdb', '/errorReport:prompt',
-                             "/I${VS_2015_INCLUDE_DIR_UM}", "/I${VS_2015_INCLUDE_DIR_SHARED}",
-                             "/I${VS_2015_INCLUDE_DIR}"
+                             "/I${VS_2017_INCLUDE_DIR_UM}", "/I${VS_2017_INCLUDE_DIR_SHARED}",
++                             "/I${VS_2017_INCLUDE_DIR}"
             if (buildType == buildTypes.debug) {
               cppCompiler.define '_DEBUG'
               cppCompiler.args '/Od', '/Gm', '/ZI', '/RTC1', '/MDd'
@@ -298,9 +293,9 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
               cppCompiler.args '/O2', '/GL', '/Oi', '/Gm-', '/Zi', '/MD'
             }
             if (targetPlatform == platforms.x64) {
-              linker.args "/LIBPATH:${VS_2015_LIB_DIR}/x64:${VS_2015_LIB_DIR_UM}/x64"
+              linker.args "/LIBPATH:${VS_2017_LIB_DIR}/x64:${VS_2017_LIB_DIR_UM}/x64"
             } else {
-              linker.args "/LIBPATH:${VS_2015_LIB_DIR}/x86:${VS_2015_LIB_DIR_UM}/x86"
+              linker.args "/LIBPATH:${VS_2017_LIB_DIR}/x86:${VS_2017_LIB_DIR_UM}/x86"
             }
           }
         }

@@ -68,6 +68,11 @@ namespace io {
     namespace client {
       namespace impl {
 
+        enum class FailoverStatus :unsigned char{
+          NONE,         /** no failover to be done */
+          NEW_SERVER,   /** failover to a new server */
+          RETRY         /** retry to the same server */
+        };
         /**
          * Holds locator, server information to use for failover. Also provides
          * convenience methods to actually search for an appropriate host for
@@ -97,6 +102,12 @@ namespace io {
           /** Global lock for {@link allConnections} */
           static boost::mutex s_allConnsLock;
 
+          /** array of SQLState strings that denote failover should be done */
+           std::string failoverSQLStateArray[23] = { "08001",
+                  "08003", "08004", "08006", "X0J15", "X0Z32", "XN001", "XN014", "XN016",
+                  "58009", "58014", "58015", "58016", "58017", "57017", "58010", "30021",
+                  "XJ040", "XJ041", "XSDA3", "XSDA4", "XSDAJ", "XJ217" };
+          std::set<std::string> failoverSQLStateSet;
           /*********Member functions**************/
           ControlConnection():m_serverGroups(std::set<std::string>()){};
           ControlConnection(ClientService *const &service);
@@ -115,6 +126,7 @@ namespace io {
 
           void getPreferredServer(thrift::HostAddress& preferredServer,std::exception* failure,
               bool forFailover = false);
+          FailoverStatus getFailoverStatus(const std::string& sqlState,const int32_t& errorCode, const TException& snappyEx);
         public:
 
           static const boost::optional<ControlConnection&> getOrCreateControlConnection(

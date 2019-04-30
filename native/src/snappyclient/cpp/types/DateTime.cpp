@@ -116,8 +116,8 @@ DateTime DateTime::parseTime(const std::string& str,
     boost::posix_time::time_duration td =
         boost::posix_time::duration_from_string(str);
     boost::gregorian::date::ymd_type ymd = today.year_month_day();
-    return DateTime(ymd.year, ymd.month, ymd.day, td.hours(), td.minutes(),
-        td.seconds(), utc);
+    return DateTime(static_cast<uint16_t>( ymd.year), static_cast<uint16_t>(ymd.month), static_cast<uint16_t>( ymd.day), static_cast<uint16_t>(td.hours()), static_cast<uint16_t>(td.minutes()),
+		static_cast<uint16_t>(td.seconds()), utc);
   } catch (const std::exception& e) {
     std::string err(str);
     err.append(": ").append(e.what());
@@ -144,8 +144,8 @@ DateTime DateTime::parseDateTime(const std::string& str,
     // call parse_time_duration with remaining string
     boost::posix_time::time_duration td =
         boost::posix_time::duration_from_string(timeStr);
-    return DateTime(ymd.year, ymd.month, ymd.day, td.hours(), td.minutes(),
-        td.seconds(), utc);
+    return DateTime(static_cast<uint16_t>(ymd.year), static_cast<uint16_t>(ymd.month), static_cast<uint16_t>(ymd.day), static_cast<uint16_t>(td.hours()), static_cast<uint16_t>(td.minutes()),
+		static_cast<uint16_t>(td.seconds()), utc);
   } catch (const std::exception& e) {
     std::string err(str);
     err.append(": ").append(e.what());
@@ -286,7 +286,7 @@ void DateTime::toTime(std::string& str, const bool utc) const {
           InternalUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch);
       const auto td = dateTime.time_of_day();
 
-      bufp = toTimeString(td.hours(), td.minutes(), td.seconds(), bufp);
+      bufp = toTimeString(static_cast<uint16_t>(td.hours()), static_cast<uint16_t>(td.minutes()), static_cast<uint16_t>(td.seconds()), bufp);
       str.append(buf, bufp - &buf[0]);
     } else {
       boost::local_time::local_date_time localTime(
@@ -294,7 +294,7 @@ void DateTime::toTime(std::string& str, const bool utc) const {
           InternalUtils::s_localTimeZone);
       const auto td = localTime.time_of_day();
 
-      bufp = toTimeString(td.hours(), td.minutes(), td.seconds(), bufp);
+      bufp = toTimeString(static_cast<uint16_t>(td.hours()), static_cast<uint16_t>(td.minutes()), static_cast<uint16_t>(td.seconds()), bufp);
       str.append(buf, bufp - &buf[0]);
     }
   } catch (const std::exception&) {
@@ -311,8 +311,8 @@ void DateTime::toDateTime(std::string& str, const bool utc) const {
       auto ymd = dateTime.date().year_month_day();
       auto td = dateTime.time_of_day();
 
-      toString(uint16_t(ymd.year), ymd.month.as_number(), ymd.day.as_number(),
-          td.hours(), td.minutes(), td.seconds(), 0, str);
+      toString(static_cast<uint16_t>(ymd.year), static_cast<uint16_t>(ymd.month.as_number()), static_cast<uint16_t>(ymd.day.as_number()),
+		  static_cast<uint16_t>(td.hours()), static_cast<uint16_t>(td.minutes()), static_cast<uint16_t>(td.seconds()), 0, str);
     } else {
       boost::local_time::local_date_time localTime(
           InternalUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch),
@@ -320,8 +320,8 @@ void DateTime::toDateTime(std::string& str, const bool utc) const {
       auto ymd = localTime.date().year_month_day();
       auto td = localTime.time_of_day();
 
-      toString(uint16_t(ymd.year), ymd.month.as_number(), ymd.day.as_number(),
-          td.hours(), td.minutes(), td.seconds(), 0, str);
+      toString(static_cast<uint16_t>(ymd.year), ymd.month.as_number(), ymd.day.as_number(),
+		  static_cast<uint16_t>(td.hours()), static_cast<uint16_t>(td.minutes()), static_cast<uint16_t>(td.seconds()), 0, str);
     }
   } catch (const std::exception&) {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1,

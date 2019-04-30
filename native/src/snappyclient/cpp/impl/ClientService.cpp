@@ -239,14 +239,6 @@ void ClientService::handleTException(const char* op, const TException& te) {
 
   handleStdException(op, te);
 }
-/*
-void ClientService::handleException(const TException* te,
-    const std::set<thrift::HostAddress>& failedServers, bool tryFailover, bool ignoreFailOver,
-    bool createNewConnection, const std::string& op)
-{
-
-}*/
-
 void ClientService::throwSQLExceptionForNodeFailure(const char* op,
     const std::exception& se) {
   std::ostringstream hostAddrStr;
