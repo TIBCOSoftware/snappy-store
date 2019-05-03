@@ -2650,7 +2650,6 @@ TOKEN [IGNORE_CASE] :
 |	<DEC: "dec">
 |	<DECIMAL: "decimal">
 |	<DECLARE: "declare">
-|	<_DEFAULT: "default">
 |	<DEFERRABLE: "deferrable">
 |	<DEFERRED: "deferred">
 |	<DELETE: "delete">
@@ -2906,6 +2905,7 @@ TOKEN [IGNORE_CASE] :
 |	<YEAR: "year">
 |	<JSON: "json">
 |	<CLOB_STRING: "string">
+|	<_DEFAULT: "default">
 |	<USE: "use">
 // GemStone changes END
 }
@@ -17787,7 +17787,6 @@ reservedKeyword() :
 |	tok = <DEC>
 |	tok = <DECIMAL>
 |	tok = <DECLARE>
-|	tok = <_DEFAULT>
 |	tok = <DEFERRABLE>
 |	tok = <DEFERRED>
 |	tok = <DELETE>
@@ -18161,6 +18160,7 @@ nonReservedKeyword()  :
 	|   tok = <EXPIRE>
 	|   tok = <FREQUENCY>
 	|   tok = <DAYS>
+	|   tok = <_DEFAULT>
 	|   tok = <HOURS>
 	|   tok = <MINUTES>
 	|   tok = <SECONDS>
