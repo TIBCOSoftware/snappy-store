@@ -33,6 +33,7 @@ import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
+import com.pivotal.gemfirexd.internal.iapi.reference.Property;
 import com.pivotal.gemfirexd.tools.sizer.GemFireXDInstrumentation;
 import com.pivotal.gemfirexd.tools.sizer.ObjectSizer;
 import org.slf4j.Logger;
@@ -107,7 +108,11 @@ public class SnappyRegionStatsCollectorFunction implements Function, Declarable 
           StoreCallbacks callback = CallbackFactoryProvider.getStoreCallbacks();
           String columnBatchTableName = callback.columnBatchTableName(tableName);
           if (cachBatchStats.containsKey(columnBatchTableName)) {
-            String reservoirRegionName = Misc.getReservoirRegionNameForSampleTable("APP", tableName);
+            int dotIndex = tableName.indexOf('.');
+            String schemaName = dotIndex > 0 ? tableName.substring(0, dotIndex)
+                : Property.DEFAULT_USER_NAME;
+            String reservoirRegionName = Misc.getReservoirRegionNameForSampleTable(
+                schemaName, tableName);
             PartitionedRegion pr = Misc.getReservoirRegionForSampleTable(reservoirRegionName);
             if (managementService != null && pr != null) {
               RegionMXBean reservoirBean = managementService.getLocalRegionMBean(pr.getFullPath());
