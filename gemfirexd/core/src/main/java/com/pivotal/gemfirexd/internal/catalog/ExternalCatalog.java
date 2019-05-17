@@ -51,14 +51,6 @@ public interface ExternalCatalog {
   boolean isColumnTable(String schema, String tableName, boolean skipLocks);
 
   /**
-   * Will be used by the execution engine to execute query in snappy-store
-   * if table name is of a row table.
-   *
-   * @return true if the table is row table, false if column/external table
-   */
-  boolean isRowTable(CatalogTableObject catalogTable);
-
-  /**
    * Get the schema for a column table in Json format (as in Spark).
    */
   String getColumnTableSchemaAsJson(String schema, String tableName);
