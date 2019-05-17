@@ -51,8 +51,8 @@ public interface ExternalCatalog {
   boolean isColumnTable(String schema, String tableName, boolean skipLocks);
 
   /**
-   * Will be used by the execution engine to execute query in gemfirexd
-   * if tablename is of a row table.
+   * Will be used by the execution engine to execute query in snappy-store
+   * if table name is of a row table.
    *
    * @return true if the table is row table, false if column/external table
    */
@@ -64,10 +64,11 @@ public interface ExternalCatalog {
   String getColumnTableSchemaAsJson(String schema, String tableName);
 
   /**
-   * Retruns a map of DBs to list of store tables(those tables that
-   * are in store DD) in catalog
+   * Returns a map of DBs to list of store tables(those tables that
+   * are in store DD) in catalog. Both schema name and table names
+   * are returned in upper-case.
    */
-  Map<String, List<String>> getAllStoreTablesInCatalog();
+  Map<String, List<String>> getAllStoreTablesInCatalogUppercase();
 
   /**
    * Removes a table from the external catalog if it exists.
@@ -97,7 +98,7 @@ public interface ExternalCatalog {
   /**
    * Generic method to get metadata from catalog.
    *
-   * @param operation one of the get operation types with prefix CATALOG_ in snappydata.thrift
+   * @param operation one of the get operation types with prefix CATALOG_ in thrift IDL
    * @param request   parameters for <code>operation</code>
    * @param result    the result filled filled in with metadata
    *
@@ -110,7 +111,7 @@ public interface ExternalCatalog {
    * Generic method to update metadata of catalog. This will also perform
    * schema permission checks internally so callers don't need to do it.
    *
-   * @param operation one of the update operation types with prefix CATALOG_ in snappydata.thrift
+   * @param operation one of the update operation types with prefix CATALOG_ in thrift IDL
    * @param request   parameters for <code>operation</code>
    * @param user      current user executing the operation who will be checked for
    *                  required permissions

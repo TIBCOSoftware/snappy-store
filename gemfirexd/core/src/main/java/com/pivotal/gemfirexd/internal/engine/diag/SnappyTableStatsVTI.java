@@ -127,7 +127,7 @@ public class SnappyTableStatsVTI extends GfxdVTITemplate
    * Metadata
    */
 
-  private static final String TABLE = "TABLE";
+  private static final String TABLENAME = "TABLENAME";
 
   private static final String IS_COLUMN_TABLE = "IS_COLUMN_TABLE";
 
@@ -142,7 +142,7 @@ public class SnappyTableStatsVTI extends GfxdVTITemplate
   private static final String BUCKETS = "BUCKETS";
 
   private static final ResultColumnDescriptor[] columnInfo = {
-      EmbedResultSetMetaData.getResultColumnDescriptor(TABLE,
+      EmbedResultSetMetaData.getResultColumnDescriptor(TABLENAME,
           Types.VARCHAR, false, 512),
       EmbedResultSetMetaData.getResultColumnDescriptor(IS_COLUMN_TABLE,
           Types.BOOLEAN, false),
