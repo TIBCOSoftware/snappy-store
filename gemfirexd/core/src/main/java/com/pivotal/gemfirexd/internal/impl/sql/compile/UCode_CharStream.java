@@ -417,7 +417,8 @@ public class UCode_CharStream implements CharStream
     
     if (jjmatchedKind == SQLParserConstants.STRING
 // GemStone changes BEGIN -- also removed final from GetImage method
-        || jjmatchedKind == SQLParserConstants.DELIMITED_IDENTIFIER) {
+        || jjmatchedKind == SQLParserConstants.DELIMITED_IDENTIFIER
+        || jjmatchedKind == SQLParserConstants.BACKQUOTED_IDENTIFIER) {
 // GemStone changes END
       
       if (bufpos >= tokenBegin)
