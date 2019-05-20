@@ -678,8 +678,8 @@ public class LocalRegion extends AbstractRegion
     Assert.assertTrue(regionName != null, "regionName must not be null");
     this.sharedDataView = buildDataView();
     this.regionName = regionName;
-    this.isInternalColumnTable = regionName.toUpperCase().endsWith(
-        StoreCallbacks.SHADOW_TABLE_SUFFIX);
+    this.isInternalColumnTable = regionName.toUpperCase(Locale.ENGLISH)
+        .endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
     this.parentRegion = parentRegion;
     this.fullPath = calcFullPath(regionName, parentRegion);
     // cannot support patterns like "..._/..." due to ambiguity in encoding

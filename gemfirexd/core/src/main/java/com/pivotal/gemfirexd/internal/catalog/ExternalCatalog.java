@@ -25,7 +25,6 @@ import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PolicyTableData;
 import io.snappydata.thrift.CatalogMetadataDetails;
 import io.snappydata.thrift.CatalogMetadataRequest;
-import io.snappydata.thrift.CatalogTableObject;
 
 /**
  * Need to keep GemXD independent of any snappy/spark/hive related
