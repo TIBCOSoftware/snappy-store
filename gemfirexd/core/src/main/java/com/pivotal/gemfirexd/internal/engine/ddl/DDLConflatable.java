@@ -60,7 +60,7 @@ import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
  * @author swale
  */
 public final class DDLConflatable extends GfxdDataSerializable implements
-    ReplayableConflatable, GfxdDDLPreprocess {
+    ReplayableConflatable, GfxdDDLPreprocessOrPostProcess {
 
   private static final long serialVersionUID = -7222789225768258894L;
 
@@ -278,6 +278,7 @@ public final class DDLConflatable extends GfxdDataSerializable implements
     || (this.isDropStatement && constantAction.isDropIfExists())
     || (this.fullTableName != null) : "Expected "
         + "a non-null schema/table name when conflation is requested";
+    // assert !(preprocess() && postprocess());
   }
   
   /**
@@ -385,7 +386,7 @@ public final class DDLConflatable extends GfxdDataSerializable implements
   public boolean merge(Conflatable existing) {
     if (GemFireXDUtils.TraceConflation | DistributionManager.VERBOSE) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_CONFLATION, 
-          "DDLConflatable#merge called this=" + this + 
+          "DDLConflatable#merge called this=" + this +
           " existing conflatable=" + existing );
     }
     assert ((DDLConflatable) existing).isAlterTableDropFKConstraint();
@@ -538,6 +539,11 @@ public final class DDLConflatable extends GfxdDataSerializable implements
   public boolean preprocess() {
     // only "CREATE SCHEMA" is pre-processed
     return isCreateSchemaText();
+  }
+
+  public boolean postprocess() {
+    // only "CREATE SCHEMA" is pre-processed
+    return false;
   }
 
   @Override

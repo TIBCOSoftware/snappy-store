@@ -37,7 +37,7 @@ import com.gemstone.gemfire.internal.shared.Version;
 import com.pivotal.gemfirexd.internal.catalog.SystemProcedures;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
-import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLPreprocess;
+import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLPreprocessOrPostProcess;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.AbstractGfxdReplayableMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.FunctionExecutionException;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
@@ -52,7 +52,7 @@ import com.pivotal.gemfirexd.internal.io.StorageRandomAccessFile;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 
 public final class GfxdJarMessage extends AbstractGfxdReplayableMessage
-    implements StorageFile, GfxdDDLPreprocess {
+    implements StorageFile, GfxdDDLPreprocessOrPostProcess {
 
   private static final long serialVersionUID = 8648222850391801895L;
 
@@ -94,6 +94,7 @@ public final class GfxdJarMessage extends AbstractGfxdReplayableMessage
     this.schemaName = ret[0];
     this.sqlName = ret[1];
     this.fullName = this.schemaName + '.' + this.sqlName;
+    assert !(preprocess() && postprocess());
   }
 
   public void setOldId(long oldId) {
@@ -289,6 +290,10 @@ public final class GfxdJarMessage extends AbstractGfxdReplayableMessage
   @Override
   public boolean preprocess() {
     return true;
+  }
+
+  public boolean postprocess() {
+    return false;
   }
 
   /**

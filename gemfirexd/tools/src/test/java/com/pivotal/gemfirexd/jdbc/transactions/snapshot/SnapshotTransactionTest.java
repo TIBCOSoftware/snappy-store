@@ -5,8 +5,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 
 import com.gemstone.gemfire.cache.*;
@@ -15,6 +17,7 @@ import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
 import com.gemstone.gemfire.internal.cache.versions.DiskRegionVersionVector;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionHolder;
 import com.gemstone.gemfire.internal.cache.versions.VersionSource;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.iapi.types.SQLInteger;
@@ -297,6 +300,87 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     rs.close();
     st.close();
     conn.close();
+  }
+
+  public void testSnapshotBulkInsertTableAtomicity() throws Exception {
+
+    Connection conn = getConnection();
+
+    PartitionAttributesFactory paf = new PartitionAttributesFactory();
+    PartitionAttributes prAttr = paf.setTotalNumBuckets(1).create();
+    AttributesFactory attr = new AttributesFactory();
+    attr.setConcurrencyChecksEnabled(true);
+    attr.setPartitionAttributes(prAttr);
+    final Region r = GemFireCacheImpl.getInstance().createRegion("t1", attr.create());
+
+    final int NUMITR = 100;
+
+    Map map = new HashMap();
+    for (int i = 0; i < 500; i++) {
+      map.put(i, 0);
+    }
+    r.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    r.putAll(map);
+    r.getCache().getCacheTransactionManager().commit();
+
+
+    Object lock = new Object();
+    boolean[] signal = { true };
+
+    Runnable run = new Runnable() {
+      @Override
+      public void run() {
+        for (int k = 0; k < NUMITR; k++) {
+          Map map = new HashMap();
+          for (int i = 0; i < 500; i++) {
+            map.put(i, k);
+          }
+          r.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+          r.putAll(map);
+          r.getCache().getCacheTransactionManager().commit();
+        }
+        synchronized (lock) {
+          signal[0] = false;
+        }
+      }
+    };
+    Thread t = new Thread(run);
+    t.start();
+
+
+    while (signal[0]) {
+      synchronized (lock) {
+        if (signal[0]) {
+          r.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+          TXStateInterface txstate = TXManagerImpl.getCurrentTXState();
+          Iterator txitr = txstate.getLocalEntriesIterator(null,
+              false, false, true, (LocalRegion)r);
+
+          int num = 0;
+          Set s = new HashSet();
+          while (txitr.hasNext()) {
+            RegionEntry re = (RegionEntry)txitr.next();
+            if (!re.isTombstone()) {
+              //Thread.sleep(10);
+              s.add(re.getValueInVM(null));
+              num++;
+            } else {
+              Misc.getGemFireCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "the tombstone is " + re);
+            }
+          }
+          // System.out.println("The num is " + num + " and s is " + s);
+          assert (num == 500);
+          if (s.size() > 1) {
+            fail("FAIL The s is " + s);
+          }
+          r.getCache().getCacheTransactionManager().commit();
+        }
+      }
+      Thread.sleep(5);
+    }
+
+    t.join();
+
   }
 
   public void testSnapshotInsertTableAPI() throws Exception {

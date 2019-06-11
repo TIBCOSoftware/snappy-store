@@ -43,6 +43,7 @@ package com.pivotal.gemfirexd.internal.impl.tools.ij;
 
 import com.gemstone.gemfire.internal.GemFireVersion;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
+import com.pivotal.gemfirexd.internal.GemFireXDVersion;
 import com.pivotal.gemfirexd.internal.iapi.services.info.ProductGenusNames;
 import com.pivotal.gemfirexd.internal.iapi.tools.i18n.*;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
@@ -1077,7 +1078,9 @@ public class utilMain implements java.security.PrivilegedAction {
 
 	public static String convertGfxdMessageToSnappy(String message) {
 		if (basePrompt.contains("snappy")) {
-			return pattern.matcher(message).replaceAll("SnappyData");
+			GemFireVersion.getInstance(GemFireXDVersion.class, SharedUtils.GFXD_VERSION_PROPERTIES);
+			String productEditionType = GemFireVersion.isEnterpriseEdition() ? "TIBCO ComputeDB" : "SnappyData";
+			return pattern.matcher(message).replaceAll(productEditionType);
 		} else {
 			return message;
 		}

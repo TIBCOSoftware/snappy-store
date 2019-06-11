@@ -362,8 +362,9 @@ public abstract class Misc {
     };
   }
 
-  public static <K, V> String getReservoirRegionNameForSampleTable(String schema, String resolvedBaseName) {
-    Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, false);
+  public static <K, V> String getReservoirRegionNameForSampleTable(
+      String schema, String resolvedBaseName) {
+    Region<K, V> regionBase = Misc.getRegionForTable(resolvedBaseName, true);
     return schema + "_SAMPLE_INTERNAL_" + regionBase.getName();
   }
 

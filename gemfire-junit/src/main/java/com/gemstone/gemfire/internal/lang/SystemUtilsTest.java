@@ -50,7 +50,9 @@ public class SystemUtilsTest {
 
   @Test
   public void testIsHotSpotVM() {
-    final boolean expected = ManagementFactory.getRuntimeMXBean().getVmName().contains(SystemUtils.JAVA_HOTSPOT_JVM_NAME);
+    final String vmName = ManagementFactory.getRuntimeMXBean().getVmName();
+    final boolean expected = vmName.contains(SystemUtils.JAVA_HOTSPOT_JVM_NAME) ||
+        vmName.contains(SystemUtils.OPENJDK_JVM_NAME);
     assertEquals(expected, SystemUtils.isHotSpotVM());
   }
 

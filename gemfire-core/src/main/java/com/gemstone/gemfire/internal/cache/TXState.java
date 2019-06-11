@@ -393,7 +393,7 @@ public final class TXState implements TXStateInterface {
     // We don't know the semantics for RR, so ideally there shouldn't be snapshot for it.
     // Need to disable it.
     if (isSnapshot() && getCache().snapshotEnabled()) {
-      takeSnapshot();
+      takeSnapshot(this.txId);
     } else {
       this.snapshot = null;
     }
@@ -404,8 +404,8 @@ public final class TXState implements TXStateInterface {
     }
   }
 
-  public void takeSnapshot() {
-    this.snapshot = getCache().getSnapshotRVV();
+  public void takeSnapshot(TXId txId) {
+    this.snapshot = getCache().getSnapshotRVV(txId);
     if (TXStateProxy.LOG_FINE) {
       this.txManager.getLogger().info(LocalizedStrings.DEBUG,
           " The snapshot taken in txStats is " + this.snapshot);
@@ -3923,9 +3923,11 @@ public final class TXState implements TXStateInterface {
     final boolean checkTX = getLockingPolicy().lockedForWrite(re, null, null);
     if (TXStateProxy.LOG_FINE) {
       final LogWriterI18n logger = region.getLogWriterI18n();
-      logger.info(LocalizedStrings.DEBUG, "getLocalEntry: for region "
-          + region.getFullPath() + " RegionEntry(" + re + ") checkTX="
-          + checkTX);
+      if (re.getVersionStamp() != null) {
+        logger.info(LocalizedStrings.DEBUG, "getLocalEntry: for region "
+            + region.getFullPath() + " RegionEntry(" + re + ") checkTX="
+            + checkTX + "version " + re.getVersionStamp().asVersionTag());
+      }
     }
     if (checkTX) {
       final Object key = re.getKey();
@@ -3978,6 +3980,20 @@ public final class TXState implements TXStateInterface {
           return getOldVersionedEntry(this, dataRegion, key, re);
         }
       }
+    }
+
+    if (shouldGetOldEntry(dataRegion)) {
+      synchronized (re) {
+        if (checkEntryInSnapshot(this, dataRegion, re)) {
+          // TODO: SW: this is a major performance problem because it will always read value
+          // from disk in essentially random order and then do a faultin; higher level
+          // DiskBlockSorter etc will be completely ineffective
+          // Proper solution is to create a snapshot of the original RegionEntry with diskId
+          // if value has been evicted, and create NLRE only for in-memory entries.
+          return NonLocalRegionEntry.newEntry(re, dataRegion, true);
+        }
+      }
+      return getOldVersionedEntry(this, dataRegion, re.getKey(), re);
     }
     return re;
   }
@@ -4045,18 +4061,20 @@ public final class TXState implements TXStateInterface {
    * It should also include any changes done by this tx.
    * @return true if this vector has seen the given version
    */
-  private boolean isVersionInSnapshot(Region region, VersionSource id, long version) {
+  private boolean isVersionInSnapshot(Region region, VersionSource id, long version, boolean includeOwnChange) {
     // For snapshot we don't  need to check from the current version
     final LogWriterI18n logger = ((LocalRegion)region).getLogWriterI18n();
 
-    for (VersionInformation obj : this.queue) {
-      if (id == obj.member && (version == obj.version) &&
-          region == obj.region)
+    if (includeOwnChange) {
+      for (VersionInformation obj : this.queue) {
+        if (id == obj.member && (version == obj.version) &&
+            region == obj.region)
 
-        if (TXStateProxy.LOG_FINE) {
-          logger.info(LocalizedStrings.DEBUG, " The version found in the current tx : " + this);
-        }
+          if (TXStateProxy.LOG_FINE) {
+            logger.info(LocalizedStrings.DEBUG, " The version found in the current tx : " + this);
+          }
         return true;
+      }
     }
 
     Map<VersionSource, RegionVersionHolder> regionSnapshot;
@@ -4096,7 +4114,47 @@ public final class TXState implements TXStateInterface {
       // if rvv is not present then
       TXState state = tx.getLocalTXState();
       if (state.getCurrentRvvSnapShot() != null) {
-        if (state.isVersionInSnapshot(region, id, stamp.getRegionVersion())) {
+        if (state.isVersionInSnapshot(region, id, stamp.getRegionVersion(), true)) {
+          if (TXStateProxy.LOG_FINEST) {
+            logger.info(LocalizedStrings.DEBUG, "getLocalEntry: for region "
+                + region.getFullPath() + " RegionEntry(" + entry + ") with version " + stamp
+                .getRegionVersion() + " id: " + id + " , returning true.");
+          }
+          return true;
+        }
+      }
+      if (TXStateProxy.LOG_FINE) {
+        logger.info(LocalizedStrings.DEBUG, "getLocalEntry: for region "
+            + region.getFullPath() + " RegionEntry(" + entry + ") with version " + stamp
+            .getRegionVersion() + " id: " + id + " , returning false.");
+      }
+      return false;
+    }
+    return true;
+  }
+
+  public static boolean checkEntryInSnapshotWithoutOwnChange(TXStateInterface tx, Region region, RegionEntry entry) {
+    if (tx.isSnapshot() && ((LocalRegion)region).concurrencyChecksEnabled) {
+      VersionStamp stamp = entry.getVersionStamp();
+      VersionSource id = stamp.getMemberID();
+      final LogWriterI18n logger = ((LocalRegion)region).getLogWriterI18n();
+
+      if (id == null) {
+        if (((LocalRegion)region).getVersionVector().isDiskVersionVector()) {
+          id = ((LocalRegion)region).getDiskStore().getDiskStoreID();
+        } else {
+          id = InternalDistributedSystem.getAnyInstance().getDistributedMember();
+        }
+        if (TXStateProxy.LOG_FINEST) {
+          logger.info(LocalizedStrings.DEBUG, "checkEntryInSnapshot: for region "
+              + region.getFullPath() + " RegionEntry(" + entry + ")" + " id not set in Entry, setting id to: " +
+              id);
+        }
+      }
+      // if rvv is not present then
+      TXState state = tx.getLocalTXState();
+      if (state.getCurrentRvvSnapShot() != null) {
+        if (state.isVersionInSnapshot(region, id, stamp.getRegionVersion(), false)) {
           if (TXStateProxy.LOG_FINEST) {
             logger.info(LocalizedStrings.DEBUG, "getLocalEntry: for region "
                 + region.getFullPath() + " RegionEntry(" + entry + ") with version " + stamp

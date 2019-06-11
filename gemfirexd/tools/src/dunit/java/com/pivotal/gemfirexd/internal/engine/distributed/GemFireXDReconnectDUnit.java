@@ -69,6 +69,7 @@ public class GemFireXDReconnectDUnit extends DistributedSQLTestBase {
     // set a reconnect-wait that's long enough for failure-detection to clean the view
     // when the server is crashed
     props.put(DistributionConfig.MAX_WAIT_TIME_FOR_RECONNECT_NAME, "15000");
+    props.put(DistributionConfig.DISABLE_AUTO_RECONNECT_NAME, "false");
     startVMs(1, 2, 0, null, props); // #clients, #servers, mcast-port, server-groups, connect props
     clientSQLExecute(1, "create table Account ("
         + " id int primary key, name varchar(100), type int )"
@@ -133,6 +134,7 @@ public class GemFireXDReconnectDUnit extends DistributedSQLTestBase {
         + locPort2 + "]";
 
     Properties props = new Properties();
+    props.put(DistributionConfig.DISABLE_AUTO_RECONNECT_NAME, "false");
     props.setProperty(DistributionConfig.LOCATORS_NAME, locators);
     props.setProperty(DistributionConfig.MCAST_PORT_NAME, "0");
     props.put(DistributionConfig.MAX_WAIT_TIME_FOR_RECONNECT_NAME, "15000");
@@ -175,6 +177,7 @@ public class GemFireXDReconnectDUnit extends DistributedSQLTestBase {
     props.setProperty(DistributionConfig.LOCATORS_NAME, locators);
     props.setProperty(DistributionConfig.MCAST_PORT_NAME, "0");
     props.put(DistributionConfig.MAX_WAIT_TIME_FOR_RECONNECT_NAME, "15000");
+    props.put(DistributionConfig.DISABLE_AUTO_RECONNECT_NAME, "false");
     props.setProperty("auth-provider", "BUILTIN");
     props.setProperty("gemfirexd.user.sd", "pwd"); // system user
     props.setProperty("user", "sd");

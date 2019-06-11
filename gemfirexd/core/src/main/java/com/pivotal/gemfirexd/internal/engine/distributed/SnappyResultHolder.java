@@ -59,11 +59,11 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
   private Iterator<ValueRow> execRows;
   private DataTypeDescriptor[] dtds;
   private boolean hasMetadata;
-  private boolean isUpdateOrDelete;
+  private boolean isUpdateOrDeleteOrPut;
 
-  public SnappyResultHolder(SparkSQLExecute exec, Boolean isUpdateOrDelete) {
+  public SnappyResultHolder(SparkSQLExecute exec, Boolean isUpdateOrDeleteOrPut) {
     this.exec = exec;
-    this.isUpdateOrDelete = isUpdateOrDelete;
+    this.isUpdateOrDeleteOrPut = isUpdateOrDeleteOrPut;
   }
 
   /** for deserialization */
@@ -160,7 +160,7 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
   }
 
   private void makeTemplateDVDArr() {
-    if (this.isUpdateOrDelete) {
+    if (this.isUpdateOrDeleteOrPut) {
       DataValueDescriptor[] dvds = new DataValueDescriptor[1];
       dvds[0] = new SQLInteger();
       dtds = new DataTypeDescriptor[1];

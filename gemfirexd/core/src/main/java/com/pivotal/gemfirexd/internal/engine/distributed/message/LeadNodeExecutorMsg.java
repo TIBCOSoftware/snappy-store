@@ -74,14 +74,14 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   // possible values for leadNodeFlags
   private static final byte IS_PREPARED_STATEMENT = 0x1;
   private static final byte IS_PREPARED_PHASE = 0x2;
-  private static final byte IS_UPDATE_OR_DELETE = 0x4;
+  private static final byte IS_UPDATE_OR_DELETE_OR_PUT = 0x4;
 
   private static final Pattern PARSE_EXCEPTION = Pattern.compile(
       "(Pars[a-zA-Z]*Exception)|(Pars[a-zA-Z]*Error)");
 
   public LeadNodeExecutorMsg(String sql, String schema, LeadNodeExecutionContext ctx,
       GfxdResultCollector<Object> rc, ParameterValueSet inpvs, boolean isPreparedStatement,
-      boolean isPreparedPhase, Boolean isUpdateOrDelete) {
+      boolean isPreparedPhase, Boolean isUpdateOrDeleteOrPut) {
     super(rc, null, false, true);
     this.schema = schema;
     this.sql = sql;
@@ -89,7 +89,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
     this.pvs = inpvs;
     if (isPreparedStatement) leadNodeFlags |= IS_PREPARED_STATEMENT;
     if (isPreparedPhase) leadNodeFlags |= IS_PREPARED_PHASE;
-    if (isUpdateOrDelete) leadNodeFlags |= IS_UPDATE_OR_DELETE;
+    if (isUpdateOrDeleteOrPut) leadNodeFlags |= IS_UPDATE_OR_DELETE_OR_PUT;
   }
 
   /**
@@ -107,7 +107,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
     return (leadNodeFlags & IS_PREPARED_PHASE) != 0;
   }
 
-  public boolean isUpdateOrDelete() { return (leadNodeFlags & IS_UPDATE_OR_DELETE) != 0; }
+  public boolean isUpdateOrDeleteOrPut() { return (leadNodeFlags & IS_UPDATE_OR_DELETE_OR_PUT) != 0; }
 
   @Override
   public Set<DistributedMember> getMembers() {
@@ -147,7 +147,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
       final Version v = m.getVersionObject();
       exec = CallbackFactoryProvider.getClusterCallbacks().getSQLExecute(
           sql, schema, ctx, v, this.isPreparedStatement(), this.isPreparedPhase(), this.pvs);
-      SnappyResultHolder srh = new SnappyResultHolder(exec, isUpdateOrDelete());
+      SnappyResultHolder srh = new SnappyResultHolder(exec, isUpdateOrDeleteOrPut());
 
       srh.prepareSend(this);
       this.lastResultSent = true;
@@ -296,7 +296,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   protected LeadNodeExecutorMsg clone() {
     final LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(this.sql, this.schema, this.ctx,
         (GfxdResultCollector<Object>)this.userCollector, this.pvs, this.isPreparedStatement(),
-        this.isPreparedPhase(), this.isUpdateOrDelete());
+        this.isPreparedPhase(), this.isUpdateOrDeleteOrPut());
     msg.exec = this.exec;
     return msg;
   }
@@ -377,7 +377,7 @@ public final class LeadNodeExecutorMsg extends MemberExecutorMessage<Object> {
   public void appendFields(final StringBuilder sb) {
     sb.append("sql: " + sql);
     sb.append(" ;schema: " + schema);
-    sb.append(" ;isUpdateOrDelete=").append(this.isUpdateOrDelete());
+    sb.append(" ;isUpdateOrDelete=").append(this.isUpdateOrDeleteOrPut());
     sb.append(" ;isPreparedStatement=").append(this.isPreparedStatement());
     sb.append(" ;isPreparedPhase=").append(this.isPreparedPhase());
     sb.append(" ;pvs=").append(this.pvs);

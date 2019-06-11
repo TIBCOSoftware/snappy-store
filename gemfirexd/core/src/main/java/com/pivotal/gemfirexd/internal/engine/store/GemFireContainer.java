@@ -2521,7 +2521,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       try {
         final RowLocation rl = (RowLocation)itr.next();
         Assert.assertTrue(rl != null, "unexpected null encountered");
-        if (rl.isUpdateInProgress()) {
+        if (rl.isUpdateInProgress() || rl.isDestroyedOrRemoved()) {
           continue;
         }
         // #43228

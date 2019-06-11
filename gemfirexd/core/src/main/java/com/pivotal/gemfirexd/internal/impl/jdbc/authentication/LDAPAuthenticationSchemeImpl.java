@@ -61,11 +61,7 @@ import javax.naming.directory.Attribute;
 import javax.naming.ldap.LdapName;
 import javax.naming.ldap.Rdn;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.AccessController;
@@ -122,6 +118,7 @@ implements CredentialInitializer
 // GemStone changes BEGIN
 	private final FileOutputStream traceOut;
 	private static final String[] attrDN = {"dn", "distinguishedName"};
+	private static final String memberOfAttr = "memberOf";
 	private String searchGroupBase;
 	private String searchGroupFilter;
 	private String[] searchGroupAttributes;
@@ -585,7 +582,38 @@ implements CredentialInitializer
 
 	
 	
-	
+	private NamingEnumeration getUserInformation(String uid,
+                                               DirContext ctx, String[] attributes) throws Exception {
+		// We bind to the LDAP server here
+		// Note that this bind might be anonymous (if anonymous searches
+		// are allowed in the LDAP server, or authenticated if we were
+		// told/configured to.
+		//
+
+
+		// Construct Search Filter
+		SearchControls ctls = new SearchControls();
+		// Set-up a LDAP subtree search scope
+		ctls.setSearchScope(SearchControls.SUBTREE_SCOPE);
+
+		// Just retrieve the DN
+		ctls.setReturningAttributes(attributes);
+
+
+		String searchFilter =
+				this.leftSearchFilter + uid + this.rightSearchFilter;
+// GemStone changes BEGIN
+		if (GemFireXDUtils.TraceAuthentication) {
+			SanityManager.DEBUG_PRINT(AuthenticationServiceBase
+					.AuthenticationTrace, "Searching for DN for uid="
+					+ uid + ", baseDN=" + searchBaseDN
+					+ ", searchFilter=" + searchFilter);
+		}
+// GemStone changes END
+		NamingEnumeration results =
+				ctx.search(searchBaseDN, searchFilter, ctls);
+		return results;
+	}
 
 	/**
 	 * Search for the full user's DN in the LDAP server.
@@ -600,52 +628,9 @@ implements CredentialInitializer
 	private String getDNFromUID(String uid)
 		throws Exception
 	{
-		//
-		// We bind to the LDAP server here
-		// Note that this bind might be anonymous (if anonymous searches
-		// are allowed in the LDAP server, or authenticated if we were
-		// told/configured to.
-		//
-		Properties env = null;
-		if (this.searchAuthDN != (String) null) {
-			env = (Properties) initDirContextEnv.clone();
-			env.put(Context.SECURITY_PRINCIPAL, this.searchAuthDN);
-			env.put(Context.SECURITY_CREDENTIALS, getSearchAuthPwd());
-		}
-		else
-			env = initDirContextEnv;
+		DirContext ctx = getDirContext(uid);
 
-// GemStone changes BEGIN
-		if (GemFireXDUtils.TraceAuthentication) {
-		  GemFireXDUtils.dumpProperties(env, "Initializing DN for uid="
-		      + uid + " with ",
-		      AuthenticationServiceBase.AuthenticationTrace,
-		      GemFireXDUtils.TraceAuthentication, null);
-		}
-// GemStone changes END
-		DirContext ctx = privInitialDirContext(env);
-
-		// Construct Search Filter
-		SearchControls ctls = new SearchControls();
-		// Set-up a LDAP subtree search scope
-		ctls.setSearchScope(SearchControls.SUBTREE_SCOPE);
-
-		// Just retrieve the DN
-		ctls.setReturningAttributes(attrDN);
-
-		String searchFilter =
-						this.leftSearchFilter + uid + this.rightSearchFilter; 
-// GemStone changes BEGIN
-		if (GemFireXDUtils.TraceAuthentication) {
-		  SanityManager.DEBUG_PRINT(AuthenticationServiceBase
-		      .AuthenticationTrace, "Searching for DN for uid="
-		          + uid + ", baseDN=" + searchBaseDN
-		          + ", searchFilter=" + searchFilter);
-		}
-// GemStone changes END
-		NamingEnumeration results =
-						ctx.search(searchBaseDN, searchFilter, ctls);
-			
+		NamingEnumeration results = getUserInformation(uid, ctx, attrDN);
 		// If we did not find anything then login failed
 		if (results == null || !results.hasMore())
 			throw new NameNotFoundException();
@@ -678,7 +663,8 @@ implements CredentialInitializer
 			{
 				if (SanityManager.DEBUG_ON(
 						AuthenticationServiceBase.AuthenticationTrace)) {
-
+					String searchFilter =
+							this.leftSearchFilter + uid + this.rightSearchFilter;
 					java.io.PrintWriter iDbgStream =
 						SanityManager.GET_DEBUG_STREAM();
 
@@ -691,18 +677,46 @@ implements CredentialInitializer
 			}
 			throw new NameNotFoundException();
 		}
+    return getDNFromSearchResult(ctx, result);
 
-		NameParser parser = ctx.getNameParser(searchBaseDN);
-		Name userDN = parser.parse(searchBaseDN);
+	}
 
-		if (userDN == (Name) null)
-			// This should not happen in theory
-			throw new NameNotFoundException();
+	private String getDNFromSearchResult(DirContext ctx, SearchResult result) throws Exception{
+    NameParser parser = ctx.getNameParser(searchBaseDN);
+    Name userDN = parser.parse(searchBaseDN);
+
+    if (userDN == (Name) null)
+      // This should not happen in theory
+      throw new NameNotFoundException();
+    else
+      userDN.addAll(parser.parse(result.getName()));
+
+    // Return the full user's DN
+    return userDN.toString();
+  }
+
+
+
+	private DirContext getDirContext(String uid) throws Exception {
+		//
+		Properties env = null;
+		if (this.searchAuthDN != (String) null) {
+			env = (Properties) initDirContextEnv.clone();
+			env.put(Context.SECURITY_PRINCIPAL, this.searchAuthDN);
+			env.put(Context.SECURITY_CREDENTIALS, getSearchAuthPwd());
+		}
 		else
-			userDN.addAll(parser.parse(result.getName()));
-		
-		// Return the full user's DN
-		return userDN.toString();
+			env = initDirContextEnv;
+
+// GemStone changes BEGIN
+		if (GemFireXDUtils.TraceAuthentication) {
+			GemFireXDUtils.dumpProperties(env, "Initializing DN for uid="
+							+ uid + " with ",
+					AuthenticationServiceBase.AuthenticationTrace,
+					GemFireXDUtils.TraceAuthentication, null);
+		}
+// GemStone changes END
+		return privInitialDirContext(env);
 	}
 
 	private String getEncrypted(String pwd) {
@@ -724,198 +738,343 @@ implements CredentialInitializer
 	}
 // GemStone changes BEGIN
 
-        /**
-         * Search for the given DN for any LDAP group members. The DN can
-         * correspond to a user's UID entry or another LDAP group itself.
-         * LDAP server bind may or not be anonymous.
-         *
-         * @exception NamingException
-         *              on failure to retrieve the given DN
-         */
-        private void resolveDNForGroup(DirContext ctx, String baseDN,
-            String searchFilter, String[] searchAttributes, boolean topLevel,
-            String group, List<String> groupMembers) throws NamingException {
 
-          NamingEnumeration<SearchResult> results;
-          // Construct Search Filter
-          SearchControls ctls = new SearchControls();
-          if (topLevel) {
-            // Setup an LDAP subtree search scope
-            ctls.setSearchScope(SearchControls.SUBTREE_SCOPE);
-          } else {
-            // Setup an LDAP single object search scope
-            ctls.setSearchScope(SearchControls.OBJECT_SCOPE);
-          }
-          // Retrieve the specified (or default) member attributes
-          ctls.setReturningAttributes(searchAttributes);
+  /**
+   * Search for the LDAP group's DN in the LDAP server. LDAP server bind
+   * may or not be anonymous.
+   * <p>
+   * If the admin does not want us to do anonymous bind/search, then we
+   * must have been given principal/credentials in order to successfully
+   * bind to perform the user's DN search.
+   *
+   * @throws NamingException on failure to retrieve the LDAP group's base DN
+   */
+  public Set<String> getLDAPGroupMembers(String ldapGroup)
+    throws Exception {
+    ArrayList<String> groupMembers = new ArrayList<String>();
+    // Return all the unique members collected for the group
+    this.recurseGroups(ldapGroup, groupMembers, null);
+    return new UnifiedSet<>(groupMembers);
+  }
 
-          results = ctx.search(baseDN, searchFilter, ctls);
 
-          // If we did not find anything then login failed
-          if (results == null || !results.hasMore()) {
-            throw new NameNotFoundException("Lookup for LDAP group = " +
-                group + " failed. Filter=" + searchFilter + " DN: " + baseDN);
-          }
 
-          // loop through all matches
-          while (true) {
-            SearchResult result = results.next();
-            Attributes attrs = result.getAttributes();
-            // loop through all matching attributes
-            if (attrs != null) {
-              NamingEnumeration<? extends Attribute> allAttrs = attrs.getAll();
-              while (true) {
-                try {
-                  if (!allAttrs.hasMore()) {
-                    break;
-                  }
-                } catch (NamingException ne) {
-                  // ignore; can happen with Active Directory
-                  break;
-                }
-                Attribute attr = allAttrs.next();
-                NamingEnumeration<?> attrVals = attr.getAll();
-                while (true) {
-                  try {
-                    if (!attrVals.hasMore()) {
-                      break;
-                    }
-                  } catch (NamingException ne) {
-                    // ignore; can happen with Active Directory
-                    break;
-                  }
-                  String member = (String)attrVals.next();
-                  if (member == null) {
-                    continue;
-                  }
-                  if (member.indexOf('=') >= 0) {
-                    // the result here is a fully qualified name so parse
-                    LdapName memberDN = new LdapName(member);
-                    // the member object can be a user or a group itself
-                    // if it has a uid= then its a member and can be
-                    // added directly else lookup the DN again to get
-                    // the members (or it can be a cn= of a member
-                    // itself but still needs to be looked up)
-                    if (!memberDN.isEmpty()) {
-                      Rdn id = memberDN.getRdn(memberDN.size() - 1);
-                      if (attributeExists(id.getType(),
-                          this.searchGroupUserAttributes)) {
-                        member = id.getValue().toString();
-                      } else {
-                        // need to do a full search again
-                        if (topLevel) {
-                          // match any objectClass for recursive searches
-                          // since the DN expressed in member attribute
-                          // should be fully qualified to match a single entry
-                          searchFilter = "(objectClass=*)";
-                          // add attributes for both groups and users
-                          int nAttrs = searchAttributes.length;
-                          int nSearchAttrs = this.searchGroupUserAttributes.length;
-                         searchAttributes = Arrays.copyOf(searchAttributes,
-                              nAttrs + nSearchAttrs);
-                          System.arraycopy(this.searchGroupUserAttributes, 0,
-                              searchAttributes, nAttrs, nSearchAttrs);
-                        }
-                        if (GemFireXDUtils.TraceAuthentication) {
-                          SanityManager.DEBUG_PRINT(
-                              AuthenticationServiceBase.AuthenticationTrace,
-                              "Searching DN " + member + " in LDAP group = "
-                                  + group + " filter = " + searchFilter
-                                  + " attributes = " + Arrays.toString(
-                                      searchAttributes));
-                        }
-                        resolveDNForGroup(ctx, member, searchFilter,
-                            searchAttributes, false, group, groupMembers);
-                        continue;
-                      }
-                    }
-                  }
-                  if ((member = member.trim()).length() > 0) {
-                    member = StringUtil.SQLToUpperCase(member);
-                    if (GemFireXDUtils.TraceAuthentication) {
-                      SanityManager.DEBUG_PRINT(
-                          AuthenticationServiceBase.AuthenticationTrace,
-                          "Found member " + member + " in LDAP group = " + group);
-                    }
-                    groupMembers.add(member);
-                  }
-                }
-              }
+
+
+  /**
+   * Search for the all the Groups the user is member of, the LDAP server. LDAP server bind
+   * may or not be anonymous.
+   * <p>
+   * If the admin does not want us to do anonymous bind/search, then we
+   * must have been given principal/credentials in order to successfully
+   * bind to perform the user's DN search.
+   *
+   * @throws NamingException on failure to retrieve the LDAP group's base DN
+   */
+  public Set<String> getLdapGroupsOfUser(String uid)
+    throws Exception {
+
+    DirContext ctx = getDirContext(uid);
+    String attributesNeeded[] = Arrays.copyOf(attrDN, attrDN.length + 1);
+    attributesNeeded[attributesNeeded.length - 1] = memberOfAttr;
+    NamingEnumeration results = getUserInformation(uid, ctx, attributesNeeded);
+    // If we did not find anything then login failed
+    if (results == null || !results.hasMore())
+      throw new NameNotFoundException();
+
+    SearchResult result = (SearchResult) results.next();
+    ArrayList<String> ldapGroups = new ArrayList<String>();
+    Attribute memberOfAttr = result.getAttributes().get("memberOf");
+    if (memberOfAttr != null) {
+      NamingEnumeration ne = memberOfAttr.getAll();
+      while (ne.hasMore()) {
+        String group = (String) ne.next();
+        LdapName groupDn = new LdapName(group);
+        Iterator<Rdn> iter = groupDn.getRdns().iterator();
+
+        while (iter.hasNext()) {
+          Rdn rdn = iter.next();
+          if (rdn.getType().equalsIgnoreCase("cn")) {
+            String cn = rdn.getValue().toString();
+            if ((cn = cn.trim()).length() > 0) {
+              ldapGroups.add(StringUtil.SQLToUpperCase(cn));
             }
+            break;
+          }
+        }
+      }
+    } else {
+      String userDN = getDNFromSearchResult(ctx, result);
+      this.recurseGroups("*", ldapGroups, userDN);
+    }
+    return new UnifiedSet<>(ldapGroups);
 
+  }
+
+  private void recurseGroups(String ldapGroup, List<String> storage,
+                             String userDN)
+    throws Exception {
+
+    // We bind to the LDAP server here
+    // Note that this bind might be anonymous (if anonymous searches
+    // are allowed in the LDAP server, or authenticated if we were
+    // told/configured to.
+    Properties env = null;
+    if (this.searchAuthDN != null) {
+      env = (Properties) initDirContextEnv.clone();
+      env.put(Context.SECURITY_PRINCIPAL, this.searchAuthDN);
+      env.put(Context.SECURITY_CREDENTIALS, getSearchAuthPwd());
+    } else {
+      env = initDirContextEnv;
+    }
+
+    if (GemFireXDUtils.TraceAuthentication) {
+      SanityManager.DEBUG_PRINT(AuthenticationServiceBase.AuthenticationTrace,
+        "Initializing search for LDAP group =" + ldapGroup != null ? ldapGroup : userDN);
+    }
+    DirContext ctx = privInitialDirContext(env);
+
+    // Construct Search Filter
+    String searchFilter = null;
+    if (ldapGroup != null) {
+      searchFilter = groupPattern.matcher(this.searchGroupFilter)
+        .replaceAll(ldapGroup);
+    } else {
+      searchFilter = groupPattern.matcher(this.searchGroupFilter)
+        .replaceAll("*");
+    }
+
+    // Call the resolve method that will walk through the group members
+    // recursively, if required
+    if (GemFireXDUtils.TraceAuthentication) {
+      SanityManager.DEBUG_PRINT(AuthenticationServiceBase.AuthenticationTrace,
+        "Searching for LDAP group=" + ldapGroup + ", groupBase="
+          + this.searchGroupBase + ", searchFilter=" + searchFilter);
+    }
+
+    resolveDNForGroup(ctx, this.searchGroupBase, searchFilter,
+      this.searchGroupAttributes, true, ldapGroup,
+      storage, userDN);
+    ctx.close();
+
+  }
+
+  /**
+   * Search for the given DN for any LDAP group members. The DN can
+   * correspond to a user's UID entry or another LDAP group itself.
+   * LDAP server bind may or not be anonymous.
+   *
+   * @throws NamingException on failure to retrieve the given DN
+   */
+  private void resolveDNForGroup(DirContext ctx, String baseDN,
+                                 String searchFilter, String[] searchAttributes, boolean topLevel,
+                                 String group, List<String> storage,
+                                 String userDN) throws Exception {
+
+    NamingEnumeration<SearchResult> results;
+    // Construct Search Filter
+    SearchControls ctls = new SearchControls();
+    if (topLevel) {
+      // Setup an LDAP subtree search scope
+      ctls.setSearchScope(SearchControls.SUBTREE_SCOPE);
+    } else {
+      // Setup an LDAP single object search scope
+      ctls.setSearchScope(SearchControls.OBJECT_SCOPE);
+    }
+    // Retrieve the specified (or default) member attributes
+    ctls.setReturningAttributes(searchAttributes);
+
+    results = ctx.search(baseDN, searchFilter, ctls);
+
+    // If we did not find anything then login failed
+    if (results == null || !results.hasMore()) {
+      throw new NameNotFoundException("Lookup for LDAP group = " +
+        group + " failed. Filter=" + searchFilter + " DN: " + baseDN);
+    }
+
+    // loop through all matches
+    while (true) {
+      SearchResult result = results.next();
+      Attributes attrs = result.getAttributes();
+      // loop through all matching attributes
+      if (attrs != null) {
+        NamingEnumeration<? extends Attribute> allAttrs = attrs.getAll();
+        while (true) {
+          try {
+            if (!allAttrs.hasMore()) {
+              break;
+            }
+          } catch (NamingException ne) {
+            // ignore; can happen with Active Directory
+            break;
+          }
+          Attribute attr = allAttrs.next();
+          NamingEnumeration<?> attrVals = attr.getAll();
+          while (true) {
             try {
-              if (!results.hasMore()) {
+              if (!attrVals.hasMore()) {
                 break;
               }
             } catch (NamingException ne) {
               // ignore; can happen with Active Directory
               break;
             }
-          }
-        }
-
-        private boolean attributeExists(String attr, String[] attrs) {
-          for (String a : attrs) {
-          if (attr.equalsIgnoreCase(a)) {
-              return true;
+            String member = (String) attrVals.next();
+            if (member == null) {
+              continue;
+            }
+            if (userDN == null) {
+              collectGroupMembers(ctx, member, group, storage, topLevel, searchFilter,
+                searchAttributes);
+            } else {
+              collectGroups(ctx, member, userDN, storage, searchFilter,
+                searchAttributes, result);
             }
           }
-          return false;
         }
+      }
 
-	/**
-         * Search for the LDAP group's DN in the LDAP server. LDAP server bind
-         * may or not be anonymous.
-         *
-         * If the admin does not want us to do anonymous bind/search, then we
-         * must have been given principal/credentials in order to successfully
-         * bind to perform the user's DN search.
-         *
-         * @exception NamingException
-         *              on failure to retrieve the LDAP group's base DN
-         */
-        public Set<String> getLDAPGroupMembers(String ldapGroup)
-            throws Exception {
+      try {
+        if (!results.hasMore()) {
+          break;
+        }
+      } catch (NamingException ne) {
+        // ignore; can happen with Active Directory
+        break;
+      }
+    }
+  }
 
-          // We bind to the LDAP server here
-          // Note that this bind might be anonymous (if anonymous searches
-          // are allowed in the LDAP server, or authenticated if we were
-          // told/configured to.
-          Properties env = null;
-          if (this.searchAuthDN != null) {
-            env = (Properties)initDirContextEnv.clone();
-            env.put(Context.SECURITY_PRINCIPAL, this.searchAuthDN);
-            env.put(Context.SECURITY_CREDENTIALS, getSearchAuthPwd());
+
+  private void collectGroupMembers(DirContext ctx, String member, String group,
+                                   List<String> groupMembers, boolean topLevel,
+                                   String searchFilter, String[] searchAttributes) throws Exception {
+    if (member.indexOf('=') >= 0) {
+      // the result here is a fully qualified name so parse
+      LdapName memberDN = new LdapName(member);
+      // the member object can be a user or a group itself
+      // if it has a uid= then its a member and can be
+      // added directly else lookup the DN again to get
+      // the members (or it can be a cn= of a member
+      // itself but still needs to be looked up)
+      if (!memberDN.isEmpty()) {
+        Rdn id = memberDN.getRdn(memberDN.size() - 1);
+        if (attributeExists(id.getType(),
+          this.searchGroupUserAttributes)) {
+          member = id.getValue().toString();
+        } else {
+          // need to do a full search again
+          if (topLevel) {
+            // match any objectClass for recursive searches
+            // since the DN expressed in member attribute
+            // should be fully qualified to match a single entry
+            searchFilter = "(objectClass=*)";
+            // add attributes for both groups and users
+            int nAttrs = searchAttributes.length;
+            int nSearchAttrs = this.searchGroupUserAttributes.length;
+            searchAttributes = Arrays.copyOf(searchAttributes,
+              nAttrs + nSearchAttrs);
+            System.arraycopy(this.searchGroupUserAttributes, 0,
+              searchAttributes, nAttrs, nSearchAttrs);
+          }
+          if (GemFireXDUtils.TraceAuthentication) {
+            SanityManager.DEBUG_PRINT(
+              AuthenticationServiceBase.AuthenticationTrace,
+              "Searching DN " + member + " in LDAP group = "
+                + group + " filter = " + searchFilter
+                + " attributes = " + Arrays.toString(
+                searchAttributes));
+          }
+          resolveDNForGroup(ctx, member, searchFilter,
+            searchAttributes, false, group,
+            groupMembers, null);
+          return;
+        }
+      }
+    }
+    if ((member = member.trim()).length() > 0) {
+      member = StringUtil.SQLToUpperCase(member);
+      if (GemFireXDUtils.TraceAuthentication) {
+        SanityManager.DEBUG_PRINT(
+          AuthenticationServiceBase.AuthenticationTrace,
+          "Found member " + member + " in LDAP group = " + group);
+      }
+      groupMembers.add(member);
+    }
+  }
+
+
+  private void collectGroups(DirContext ctx, String member, String userDN,
+                             List<String> groupsOfUser,
+                             String searchFilter, String[] searchAttributes,
+                             SearchResult result) throws Exception {
+    int currentSize = groupsOfUser.size();
+    if (member.indexOf('=') >= 0) {
+      // the result here is a fully qualified name so parse
+      LdapName memberDN = new LdapName(member);
+
+      if (!memberDN.isEmpty()) {
+        Rdn id = memberDN.getRdn(memberDN.size() - 1);
+        if (attributeExists(id.getType(),
+          this.searchGroupUserAttributes)) {
+          member = id.getValue().toString();
+          String dnOfMember = getDNFromUID(member);
+          if (dnOfMember.equals(userDN)) {
+            LdapName groupDn = new LdapName(getDNFromSearchResult(ctx, result));
+            groupsOfUser.add(StringUtil.SQLToUpperCase(groupDn.getRdn(groupDn.size() - 1).
+              getValue().toString()));
+          }
+        } else {
+          // if not uid , then it must be dn?
+          if (userDN.equals(member)) {
+            LdapName groupDn = new LdapName(getDNFromSearchResult(ctx, result));
+            groupsOfUser.add(StringUtil.SQLToUpperCase(groupDn.getRdn(groupDn.size() - 1).
+              getValue().toString()));
           } else {
-            env = initDirContextEnv;
+             if (GemFireXDUtils.TraceAuthentication) {
+              SanityManager.DEBUG_PRINT(
+                AuthenticationServiceBase.AuthenticationTrace,
+                "Searching DN " + member + " in LDAP userDN = "
+                  + userDN + " filter = " + searchFilter
+                  + " attributes = " + Arrays.toString(
+                  searchAttributes));
+            }
+            LdapName dnOfMember = new LdapName(member);
+            String cn = dnOfMember.getRdn(dnOfMember.size() - 1).getValue().toString();
+            dnOfMember.remove(dnOfMember.size() - 1);
+            String baseDn = dnOfMember.toString();
+            searchFilter = groupPattern.matcher(this.searchGroupFilter)
+              .replaceAll(cn);
+            resolveDNForGroup(ctx, baseDn, searchFilter,
+              searchAttributes, true, null,
+              groupsOfUser, userDN);
+            if (currentSize < groupsOfUser.size()) {
+              // add parent group , as child group has been found to be a match
+              LdapName groupDn = new LdapName(getDNFromSearchResult(ctx, result));
+              groupsOfUser.add(StringUtil.SQLToUpperCase(groupDn.getRdn(groupDn.size() - 1).
+                getValue().toString()));
+            }
+            return;
           }
-
-          if (GemFireXDUtils.TraceAuthentication) {
-            SanityManager.DEBUG_PRINT(AuthenticationServiceBase.AuthenticationTrace,
-                "Initializing search for LDAP group=" + ldapGroup);
-          }
-          DirContext ctx = privInitialDirContext(env);
-
-          // Construct Search Filter
-          String searchFilter = groupPattern.matcher(this.searchGroupFilter)
-              .replaceAll(ldapGroup);
-
-          // Call the resolve method that will walk through the group members
-          // recursively, if required
-          if (GemFireXDUtils.TraceAuthentication) {
-            SanityManager.DEBUG_PRINT(AuthenticationServiceBase.AuthenticationTrace,
-                "Searching for LDAP group=" + ldapGroup + ", groupBase="
-                    + this.searchGroupBase + ", searchFilter=" + searchFilter);
-          }
-          ArrayList<String> groupMembers = new ArrayList<String>();
-          resolveDNForGroup(ctx, this.searchGroupBase, searchFilter,
-              this.searchGroupAttributes, true, ldapGroup, groupMembers);
-          ctx.close();
-          // Return all the unique members collected for the group
-          return new UnifiedSet<>(groupMembers);
         }
+      }
+    }
 
-        @Override
+  }
+
+
+  private boolean attributeExists(String attr, String[] attrs) {
+    for (String a : attrs) {
+      if (attr.equalsIgnoreCase(a)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+
+
+	@Override
         public String toString() {
           return Constants.AUTHENTICATION_PROVIDER_LDAP;
         }

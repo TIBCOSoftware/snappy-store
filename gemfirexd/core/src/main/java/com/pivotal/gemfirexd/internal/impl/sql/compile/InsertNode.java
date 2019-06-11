@@ -985,7 +985,7 @@ public final class InsertNode extends DMLModStatementNode
     try {
       {
         SelectQueryInfo sInfo = (SelectQueryInfo)computeSubSelectQueryInfo(qic);
-        InsertQueryInfo insInfo = new InsertQueryInfo(qic, sInfo);
+        InsertQueryInfo insInfo = new InsertQueryInfo(qic, sInfo, isPutDML);
         qic.setRootQueryInfo(insInfo);
         this.accept(insInfo);
         insInfo.init();

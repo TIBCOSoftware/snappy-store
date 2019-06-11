@@ -36,15 +36,22 @@ public class InsertQueryInfo extends DMLQueryInfo {
    */
   private static final long serialVersionUID = 1L;
   private final SelectQueryInfo subSelectInfo;
+  private boolean isPutDml = false;
 
-  public InsertQueryInfo(QueryInfoContext qic, SelectQueryInfo selectInfo) throws StandardException {
+
+  public InsertQueryInfo(QueryInfoContext qic, SelectQueryInfo selectInfo, Boolean isPutDml) throws StandardException {
     super(qic);
     this.subSelectInfo = selectInfo;
+    this.isPutDml = isPutDml;
   }
   
   @Override
   public boolean isInsert() {
     return true;
+  }
+
+  public boolean isPutDML() {
+    return isPutDml;
   }
 
   @Override

@@ -25,13 +25,15 @@ package com.pivotal.gemfirexd.internal.engine.ddl;
  * @author swale
  * @since 7.5
  */
-public interface GfxdDDLPreprocess {
+public interface GfxdDDLPreprocessOrPostProcess {
 
   /**
    * @return if this message/object should be pre-processed in the DDL queue
    *         before any other messages/objects
    */
   public boolean preprocess();
+
+  public boolean postprocess();
 
   /** Get a string representation of this message/object */
   public void appendFields(StringBuilder sb);

@@ -213,10 +213,11 @@ public class HostPrms extends BasePrms {
       } else if (vendor.contains("Hitachi")) {
         vendor = HITACHI;
       } else if (vendor.contains("Apple")) {
-	vendor = APPLE;
+        vendor = APPLE;
       } else if (vendor.contains("Oracle") && vmname.contains("JRockit")) {
         vendor = JROCKIT;
-      } else if (vendor.contains("Oracle") && vmname.contains("HotSpot")) {
+      } else if (vendor.contains("Oracle") &&
+          (vmname.contains("HotSpot") || vmname.contains("OpenJDK"))) {
         vendor = SUN;
       } else {
         String s = "Unable to classify JVM with vendor: " + vendor

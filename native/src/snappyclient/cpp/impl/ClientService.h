@@ -135,7 +135,7 @@ namespace impl {
         boost::shared_ptr<ClientTransport>& returnTransport);
 
     void updateFailedServersForCurrent(std::set<thrift::HostAddress>& failedServers,
-        bool checkAllFailed,std::exception* failure);
+        bool checkAllFailed, std::exception* failure);
 
   protected:
     virtual void checkConnection(const char* op);

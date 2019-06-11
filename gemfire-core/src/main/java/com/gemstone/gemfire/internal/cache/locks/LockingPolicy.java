@@ -501,7 +501,7 @@ public enum LockingPolicy {
         LockTimeoutException {
       // TODO: Suranjan Ideally no request should come in this mode.
       // put an assert here!
-      acquireLockFailFast(lockObj, mode, flags, lockOwner, context, msg);
+      // acquireLockFailFast(lockObj, mode, flags, lockOwner, context, msg);
     }
 
     @Override
@@ -527,6 +527,12 @@ public enum LockingPolicy {
         boolean allowTombstones, ReadEntryUnderLock reader) {
       // TODO: Suranjan try to see if we can add versioning information here and read
       return reader.readEntry(lockObj, context, iContext, allowTombstones);
+    }
+
+    @Override
+    public void releaseLock(ExclusiveSharedLockObject lockObj,
+        LockMode mode, Object lockOwner, boolean releaseAll, Object context) {
+      // no-op
     }
   },
   ;
@@ -665,7 +671,7 @@ public enum LockingPolicy {
    *          {@link ExclusiveSharedLockObject#releaseLock} method that can be
    *          used by the particular locking implementation
    */
-  public final void releaseLock(ExclusiveSharedLockObject lockObj,
+  public void releaseLock(ExclusiveSharedLockObject lockObj,
       LockMode mode, Object lockOwner, boolean releaseAll, Object context)
       throws IllegalMonitorStateException {
     if (mode != null) {

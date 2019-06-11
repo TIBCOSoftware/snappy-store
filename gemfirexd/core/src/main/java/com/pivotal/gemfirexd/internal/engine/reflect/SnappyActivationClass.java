@@ -29,15 +29,15 @@ public class SnappyActivationClass implements GeneratedClass {
   private final boolean returnRows;
   private final int classLoaderVersion;
   boolean isPrepStmt;
-  boolean isUpdateOrDelete;
+  boolean isUpdateOrDeleteOrPut;
 
   public SnappyActivationClass(LanguageConnectionContext lcc, boolean returnRows,
-      boolean isPrepStmt, boolean isUpdateOrDelete) {
+      boolean isPrepStmt, boolean isUpdateOrDeleteOrPut) {
     this.returnRows = returnRows;
     this.classLoaderVersion = lcc.getLanguageConnectionFactory()
         .getClassFactory().getClassLoaderVersion();
     this.isPrepStmt = isPrepStmt;
-    this.isUpdateOrDelete = isUpdateOrDelete;
+    this.isUpdateOrDeleteOrPut = isUpdateOrDeleteOrPut;
   }
 
   public int getClassLoaderVersion() {
@@ -55,7 +55,7 @@ public class SnappyActivationClass implements GeneratedClass {
   public final Object newInstance(final LanguageConnectionContext lcc, final boolean addToLCC,
       final ExecPreparedStatement eps) throws StandardException {
     SnappyActivation sa = new SnappyActivation(lcc, eps, this.returnRows, this.isPrepStmt,
-        this.isUpdateOrDelete);
+        this.isUpdateOrDeleteOrPut);
     if (isPrepStmt) {
       sa.initialize_pvs();
     }

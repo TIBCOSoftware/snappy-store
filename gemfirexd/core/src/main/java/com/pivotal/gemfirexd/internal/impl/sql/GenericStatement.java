@@ -49,6 +49,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gnu.trove.THashMap;
@@ -148,7 +149,7 @@ public class GenericStatement
             "(STREAMING|DEPLOY|UNDEPLOY|CACHE|UNCACHE|REFRESH|RESET)";
         private static final String TABLE_DML_SELECT_PATTERN =
             "((((INSERT|PUT)\\s+INTO)|(DELETE\\s+FROM))\\s+(TABLE)?.*\\s+SELECT)";
-	      private static final String CREATE_OR_DROP_PATTERN = "(FUNCTION|POLICY)";
+	      private static final String CREATE_OR_DROP_PATTERN = "(FUNCTION|POLICY|SCHEMA)";
 	      private static final String ALTER_TABLE_PREFIX = "ALTER\\s+(TABLE)?\\s+.*\\s+";
 	      private static final String ALTER_TABLE_COMMANDS = "(ADD|DROP|ENABLE|DISABLE)";
 
@@ -238,10 +239,10 @@ public class GenericStatement
 	// GemStone changes BEGIN
 	private GenericPreparedStatement getPreparedStatementForSnappy(boolean commitNestedTransaction,
 			StatementContext statementContext, LanguageConnectionContext lcc, boolean isDDL,
-			boolean checkCancellation, boolean isUpdateOrDelete, Throwable cause) throws StandardException {
+			boolean checkCancellation, boolean isUpdateOrDeleteOrPut, Throwable cause) throws StandardException {
       GenericPreparedStatement gps = preparedStmt;
       GeneratedClass ac = new SnappyActivationClass(lcc, !isDDL, isPreparedStatement() && !isDDL,
-          isUpdateOrDelete);
+          isUpdateOrDeleteOrPut);
       gps.setActivationClass(ac);
       gps.incrementVersionCounter();
       gps.makeValid();
@@ -255,11 +256,11 @@ public class GenericStatement
      if (GemFireXDUtils.TraceQuery) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
           "GenericStatement.getPreparedStatementForSnappy: Created SnappyActivation for sql: " +
-              this.getSource() + " ,isDDL=" + isDDL + " ,isUpdateOrDelete=" + isUpdateOrDelete);
+              this.getSource() + " ,isDDL=" + isDDL + " ,isUpdateOrDeleteOrPut=" + isUpdateOrDeleteOrPut);
      }
      if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("GenericStatement.getPreparedStatementForSnappy: routing sql: " +
-            this.getSource() + " ,isDDL=" + isDDL + " ,isUpdateOrDelete=" + isUpdateOrDelete, cause);
+            this.getSource() + " ,isDDL=" + isDDL + " ,isUpdateOrDeleteOrPut=" + isUpdateOrDeleteOrPut, cause);
      }
      if (checkCancellation) {
        Misc.checkMemory(thresholdListener, statementText, -1);
@@ -848,6 +849,19 @@ public class GenericStatement
                                                     statementContext, lcc, false,
                                                     checkCancellation, isUpdateOrDelete, null);
                                               }
+                                            }
+                                          }
+
+                                          if (routeQuery && qinfo != null && qinfo.isDML() && qinfo.isInsert() && ((InsertQueryInfo)qinfo).isPutDML()) {
+                                            InsertNode in = qt instanceof InsertNode ? ((InsertNode)qt) : null;
+                                            TableDescriptor ttd = in != null ? in.targetTableDescriptor : null;
+                                            String table = ttd.getQualifiedName();
+                                            Region region = Misc.getRegionForTable(table.replaceAll("\"", ""), true);
+                                            GemFireContainer container = (GemFireContainer)region.getUserAttribute();
+                                            boolean isColumnTable = container.isRowBuffer();
+                                            if (isColumnTable) {
+                                              return getPreparedStatementForSnappy(true, statementContext, lcc,
+                                                  false, checkCancellation, true, null);
                                             }
                                           }
 

@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
+import com.pivotal.gemfirexd.Attribute;
 import com.sun.xml.internal.fastinfoset.stax.events.Util;
 import org.apache.tomcat.jdbc.pool.DataSource;
 import org.apache.tomcat.jdbc.pool.PoolProperties;
@@ -51,12 +52,12 @@ public class TomcatConnectionPool {
 
     DRIVER_NAME("pool.driverClassName", ClientDriver.class.getName()),
     URL("pool.url", null), // Compulsory field user must provide
-    USER("pool.user", "APP"),
-    PASSWORD("pool.password", "APP"),
-    INIT_SIZE("pool.initialSize", "10"),
+    USER(Attribute.USERNAME_ATTR, "APP"),
+    PASSWORD(Attribute.PASSWORD_ATTR, "APP"),
+    INIT_SIZE("pool.initialSize", "4"),
     MAX_ACTIVE("pool.maxActive", MAX_POOL_SIZE.toString()),
     MAX_IDLE("pool.maxIdle", MAX_POOL_SIZE.toString()),
-    MIN_IDLE("pool.minIdle", "1"),
+    MIN_IDLE("pool.minIdle", "4"),
     MAX_WAIT("pool.maxWait", "30"),
     REMOVE_ABANDONED("pool.removeAbandoned", "true"),
     REMOVE_ABANDONED_TIMEOUT("pool.removeAbandonedTimeout", "60"),
@@ -184,7 +185,7 @@ public class TomcatConnectionPool {
 
     String minIdle = prop.getProperty(PoolProps.MIN_IDLE.key,
         PoolProps.MIN_IDLE.defValue);
-    poolProperties.setMaxIdle(Integer.parseInt(minIdle));
+    poolProperties.setMinIdle(Integer.parseInt(minIdle));
 
     String waitTime = prop.getProperty(PoolProps.MAX_WAIT.key,
         PoolProps.MAX_WAIT.defValue);
@@ -218,7 +219,7 @@ public class TomcatConnectionPool {
     String testOnReturn =
         prop.getProperty(PoolProps.TEST_ON_RETURN.key,
             PoolProps.TEST_ON_RETURN.defValue);
-    poolProperties.setTestOnBorrow(Boolean.parseBoolean(testOnReturn));
+    poolProperties.setTestOnReturn(Boolean.parseBoolean(testOnReturn));
 
     String validationInterval =
         prop.getProperty(PoolProps.VALIDATION_INTERVAL.key,

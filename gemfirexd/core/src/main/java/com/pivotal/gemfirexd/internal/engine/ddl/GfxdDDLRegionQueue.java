@@ -796,7 +796,7 @@ public final class GfxdDDLRegionQueue implements RegionQueue {
     final ArrayList<GfxdDDLQueueEntry> preprocessedQueue =
         new ArrayList<GfxdDDLQueueEntry>();
     ListIterator<GfxdDDLQueueEntry> iter = currentQueue.listIterator();
-    GfxdDDLPreprocess preprocessMsg;
+    GfxdDDLPreprocessOrPostProcess preprocessMsg;
     if (currentSchema == null) {
       currentSchema = SchemaDescriptor.STD_DEFAULT_SCHEMA_NAME;
     }
@@ -812,8 +812,8 @@ public final class GfxdDDLRegionQueue implements RegionQueue {
         }
       }
       // system/jar procedures should be executed at the start
-      if (qVal instanceof GfxdDDLPreprocess
-          && (preprocessMsg = (GfxdDDLPreprocess)qVal).preprocess()) {
+      if (qVal instanceof GfxdDDLPreprocessOrPostProcess
+          && (preprocessMsg = (GfxdDDLPreprocessOrPostProcess)qVal).preprocess()) {
         if (pre11TableSchemaVer != null
             && preprocessMsg instanceof GfxdSystemProcedureMessage) {
           GfxdSystemProcedureMessage m = (GfxdSystemProcedureMessage)qVal;
