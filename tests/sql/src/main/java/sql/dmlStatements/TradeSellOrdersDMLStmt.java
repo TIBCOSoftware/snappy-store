@@ -1061,16 +1061,21 @@ public class TradeSellOrdersDMLStmt extends AbstractDMLStmt {
       if (rs == null) {
           return false; //already did retry in getQuery
       }
-      
+      String str_sid = "SID";
+      String str_cid = "CID";
+      if(SQLPrms.isSnappyMode()) {
+        str_cid = str_cid.toLowerCase();
+        str_sid = str_sid.toLowerCase();
+      }
       int i=0;
       int temp = 0;
       while (rs.next() && i<size) {
         if (temp ==0 ) {
-          cid[i] = rs.getInt("CID");
-          sid[i] = rs.getInt("SID");
+          cid[i] = rs.getInt(str_cid);
+          sid[i] = rs.getInt(str_sid);
         } else if (n<=temp) {
-          cid[i] = rs.getInt("CID");
-          sid[i] = rs.getInt("SID");
+          cid[i] = rs.getInt(str_cid);
+          sid[i] = rs.getInt(str_sid);
           i++;
         }
         temp++;             

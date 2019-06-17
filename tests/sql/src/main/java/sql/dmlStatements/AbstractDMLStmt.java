@@ -790,8 +790,11 @@ public abstract class AbstractDMLStmt implements DMLStmtIF {
         rs = conn.createStatement().executeQuery(s);
         Log.getLogWriter().info("executed " + s + " from " + database);
         int temp=0;
+        String str_sec_id = "SEC_ID";
+        if(SQLPrms.isSnappyMode())
+          str_sec_id = str_sec_id.toLowerCase();
         while (rs.next()) {
-          if (temp == 0 && rand.nextInt(1000) != 1) sid = rs.getInt("SEC_ID"); 
+          if (temp == 0 && rand.nextInt(1000) != 1) sid = rs.getInt(str_sec_id);
           
           if (n==temp) {
             sid = rs.getInt("SEC_ID");
