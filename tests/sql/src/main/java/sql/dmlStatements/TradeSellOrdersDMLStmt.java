@@ -83,7 +83,9 @@ public class TradeSellOrdersDMLStmt extends AbstractDMLStmt {
   protected static String putWithGeneratedDefaultId = "put into trade.sellorders values (default,?,?,?,?,?,?,?)";
   protected static String putWithGeneratedDefaultIdAndDefaultValue = "put into trade.sellorders (default, cid, sid, qty, ask, order_time, tid)" +
   " values (?,?,?,?,?,?,?)";
-  
+  public static String str_sid = SQLPrms.isSnappyMode()?"SID".toLowerCase():"SID";
+  public static String str_cid = SQLPrms.isSnappyMode()?"CID".toLowerCase():"CID";
+
   protected static String[] update = { 
     //uniq
     "update trade.sellorders set status = 'filled'  where sid = ? and ask<? and status = 'open' and tid = ? ",  //for trigger test it could be a batch update
@@ -1061,12 +1063,7 @@ public class TradeSellOrdersDMLStmt extends AbstractDMLStmt {
       if (rs == null) {
           return false; //already did retry in getQuery
       }
-      String str_sid = "SID";
-      String str_cid = "CID";
-      if(SQLPrms.isSnappyMode()) {
-        str_cid = str_cid.toLowerCase();
-        str_sid = str_sid.toLowerCase();
-      }
+
       int i=0;
       int temp = 0;
       while (rs.next() && i<size) {

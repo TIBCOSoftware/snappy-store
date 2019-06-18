@@ -359,6 +359,7 @@ public class IndexDDLStmt implements DDLStmtIF {
     
     try {
       Statement stmt = conn.createStatement();
+      stmt.execute("set schema trade");
       Log.getLogWriter().info("creating index statement is " + createIndexStmt);
       stmt.executeUpdate(createIndexStmt);
       SQLWarning warning = stmt.getWarnings(); //test to see there is a warning
