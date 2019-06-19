@@ -4765,6 +4765,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     return false;
   }
 
+  public final GfxdLockable getContainerLockingObject() {
+    return this.locking != null ? this.locking.containerLockObject : null;
+  }
+
   /**
    * Close the container at TX end releasing any held locks on the container.
    */

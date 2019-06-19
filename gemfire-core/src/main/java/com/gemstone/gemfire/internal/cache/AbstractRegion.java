@@ -95,6 +95,7 @@ import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.cache.lru.LRUAlgorithm;
 import com.gemstone.gemfire.internal.cache.snapshot.RegionSnapshotServiceImpl;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gemfire.pdx.internal.PeerTypeRegistration;
 import com.google.common.util.concurrent.Service.State;
@@ -1888,6 +1889,13 @@ public abstract class AbstractRegion implements Region, RegionAttributes,
     }
     
     this.compressor = attrs.getCompressor();
+    if (this.compressor != null && !RegionEntryContext.COMPRESSION_ENABLED) {
+      throw new IllegalStateException("Compressor set on region " +
+          getFullPath() + " with global compression disabled. " +
+          "First enable compression with '" +
+          SystemProperties.getServerInstance().getSystemPropertyNamePrefix() +
+          "compression.enable=true'.");
+    }
     // enable concurrency checks for persistent regions
     if(!attrs.getConcurrencyChecksEnabled() 
         && attrs.getDataPolicy().withPersistence()

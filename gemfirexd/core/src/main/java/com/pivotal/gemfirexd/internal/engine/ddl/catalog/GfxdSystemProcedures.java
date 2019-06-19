@@ -73,6 +73,7 @@ import com.pivotal.gemfirexd.internal.engine.distributed.message.GetLeadNodeInfo
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.SecurityUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
+import com.pivotal.gemfirexd.internal.engine.sql.execute.FunctionUtils;
 import com.pivotal.gemfirexd.internal.engine.store.CustomRowsResultSet;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
@@ -96,6 +97,7 @@ import com.pivotal.gemfirexd.internal.iapi.types.HarmonySerialBlob;
 import com.pivotal.gemfirexd.internal.iapi.types.HarmonySerialClob;
 import com.pivotal.gemfirexd.internal.iapi.types.TypeId;
 import com.pivotal.gemfirexd.internal.iapi.util.IdUtil;
+import com.pivotal.gemfirexd.internal.iapi.util.ReuseFactory;
 import com.pivotal.gemfirexd.internal.iapi.util.StringUtil;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSetMetaData;
@@ -112,6 +114,8 @@ import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.load.Import;
+import io.snappydata.execute.AcquireBucketMaintLock;
+import io.snappydata.execute.ReleaseBucketMaintLocks;
 import io.snappydata.thrift.BucketOwners;
 import io.snappydata.thrift.CatalogMetadataDetails;
 import io.snappydata.thrift.CatalogMetadataRequest;
@@ -2365,9 +2369,13 @@ public class GfxdSystemProcedures extends SystemProcedures {
    * This procedure sets the local execution mode for a particular bucket.
    */
   public static void setBucketsForLocalExecution(String tableName,
-      Set<Integer> bucketSet, boolean retain,
+      Set<Integer> bucketSet, boolean retain, String lockOwner,
       @Nonnull LanguageConnectionContext lcc) {
-    Region region = Misc.getRegionForTable(tableName, true);
+    Region<?, ?> region = Misc.getRegionForTable(tableName, true);
+    if ((region instanceof PartitionedRegion) && lockOwner != null) {
+      PartitionedRegion pr = (PartitionedRegion)region;
+      lockPrimaryForMaintenance(false, lockOwner, pr, bucketSet);
+    }
     lcc.setExecuteLocally(bucketSet, region, false, null);
     lcc.setBucketRetentionForLocalExecution(retain);
   }
@@ -2379,6 +2387,19 @@ public class GfxdSystemProcedures extends SystemProcedures {
    */
   public static void SET_BUCKETS_FOR_LOCAL_EXECUTION(String tableName,
       String buckets, long catalogSchemaVersion)
+      throws SQLException, StandardException {
+    SET_BUCKETS_FOR_LOCAL_EXECUTION_EX(tableName, buckets,
+        catalogSchemaVersion, null);
+  }
+
+  /**
+   * This procedure sets the local execution mode for a particular bucket.
+   * To prevent clearing of lcc in case of thin client connections a flag
+   * BUCKET_RENTION_FOR_LOCAL_EXECUTION is set. It also acquires bucket
+   * maintenance locks for an update operation.
+   */
+  public static void SET_BUCKETS_FOR_LOCAL_EXECUTION_EX(String tableName,
+      String buckets, long catalogSchemaVersion, String lockOwner)
       throws SQLException, StandardException {
     if (tableName == null) {
       throw Util.generateCsSQLException(SQLState.ENTITY_NAME_MISSING);
@@ -2397,12 +2418,48 @@ public class GfxdSystemProcedures extends SystemProcedures {
     LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
     Set<Integer> bucketSet = new UnifiedSet<>();
     StringTokenizer st = new StringTokenizer(buckets,",");
-    while(st.hasMoreTokens()){
+    while (st.hasMoreTokens()) {
       bucketSet.add(Integer.parseInt(st.nextToken()));
     }
-    setBucketsForLocalExecution(tableName, bucketSet, true, lcc);
+    setBucketsForLocalExecution(tableName, bucketSet, true, lockOwner, lcc);
   }
 
+  public static void releaseBucketMaintenanceLocks(String tableName,
+      boolean forWrite, String lockOwner, Set<Integer> bucketIds) {
+    Set<DistributedMember> allStores = GfxdMessage.getAllDataStores();
+    if (allStores != null && !allStores.isEmpty()) {
+      FunctionService.onMembers(allStores)
+          .withArgs(new Object[] { tableName, forWrite, lockOwner, bucketIds })
+          .execute(ReleaseBucketMaintLocks.ID);
+    }
+  }
+
+  public static void lockPrimaryForMaintenance(boolean forWrite,
+      Object owner, PartitionedRegion pr, Set<Integer> bucketIds) {
+    PartitionedRegionDataStore ds = pr.getDataStore();
+    // lock regions, if required, before acquiring the snapshot
+    for (Integer bucketId : bucketIds) {
+      BucketRegion br = ds != null ? ds.getLocalBucketById(bucketId) : null;
+      // if bucket is present and primary, then lock locally else send to primary
+      if (br != null && br.getBucketAdvisor().isPrimary()) {
+        br.lockForMaintenance(forWrite, Long.MAX_VALUE, owner);
+        // primary check for bucket after acquiring the lock
+        if (br.getBucketAdvisor().isPrimary()) {
+          continue;
+        } else {
+          br.unlockAfterMaintenance(forWrite, owner);
+        }
+      }
+      try {
+        FunctionUtils.executeFunctionOnMembers(pr.getSystem(),
+            new AcquireBucketMaintLock.GetPrimaryMember(pr, bucketId),
+            new Object[] { pr.getFullPath(), forWrite, owner, bucketId },
+            AcquireBucketMaintLock.ID, null, false, false, true, false);
+      } catch (StandardException se) {
+        throw new GemFireXDRuntimeException(se);
+      }
+    }
+  }
 
   /**
    * This procedure sets the Nanotimer type. NanoTimer are used extensively while
@@ -2432,11 +2489,12 @@ public class GfxdSystemProcedures extends SystemProcedures {
   // register the call backs with the JDBCSource so that
   // bucket region can insert into the column table
   public static void flushLocalBuckets(String resolvedName, boolean forceFlush) {
-    PartitionedRegion pr = (PartitionedRegion)Misc.getRegionForTable(
+    LocalRegion region = (LocalRegion)Misc.getRegionForTable(
         resolvedName, false);
     PartitionedRegionDataStore ds;
-    if (pr != null && (ds = pr.getDataStore()) != null) {
-      TXStateInterface tx = pr.getTXState();
+    if ((region instanceof PartitionedRegion)
+        && (ds = ((PartitionedRegion)region).getDataStore()) != null) {
+      TXStateInterface tx = region.getTXState();
       for (BucketRegion bucketRegion : ds.getAllLocalPrimaryBucketRegions()) {
         if (forceFlush || bucketRegion.checkForColumnBatchCreation(null)) {
           bucketRegion.createAndInsertColumnBatch(tx, forceFlush);
@@ -2733,6 +2791,20 @@ public class GfxdSystemProcedures extends SystemProcedures {
       FabricDatabase.checkSnappyCatalogConsistency(conn, removeInconsistentEntries, removeTablesWithData);
       CallbackFactoryProvider.getStoreCallbacks().registerCatalogSchemaChange();
     }
+  }
+
+  public static void PURGE_CODEGEN_CACHES() throws SQLException, StandardException {
+    if (GemFireXDUtils.TraceExecution) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
+          "in procedure PURGE_CODEGEN_CACHES()");
+    }
+    Object[] emptyParams = ReuseFactory.getZeroLenObjectArray();
+    GfxdSystemProcedureMessage.SysProcMethod.purgeCodegenCaches
+        .processMessage(emptyParams, Misc.getMyId());
+    // then publish to other members excluding locators
+    publishMessage(emptyParams, false,
+        GfxdSystemProcedureMessage.SysProcMethod.purgeCodegenCaches, false,
+        false);
   }
 
   /**

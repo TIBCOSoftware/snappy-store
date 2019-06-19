@@ -2709,8 +2709,9 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   }
 
   static boolean isCompressible(RegionEntryContext context, Object value) {
-    return (context != null && context.getCompressor() != null &&
-        value != null && !Token.isInvalidOrRemoved(value));
+    return (RegionEntryContext.COMPRESSION_ENABLED && context != null &&
+        context.getCompressor() != null && value != null &&
+        !Token.isInvalidOrRemoved(value));
   }
 
   /* subclasses supporting versions must override this */

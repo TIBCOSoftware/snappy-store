@@ -755,8 +755,7 @@ public class ObjectSizer {
           if (value != null) {
             if (!isValueTypeEvaluated) {
               if (isColumnTable) {
-                numColumnsInColumnTable = batchKey.getNumColumnsInTable(
-                    c.getQualifiedTableName());
+                numColumnsInColumnTable = batchKey.getNumColumnsInTable(c);
               } else if (value instanceof DataValueDescriptor[]) {
                 dvdArraySize = SIZE_OF_UTIL.sizeof(value);
               } else if (value instanceof GatewaySenderEventImpl) {
@@ -768,8 +767,10 @@ public class ObjectSizer {
             }
             if (isColumnTable) {
               int valueSize = ((Sizeable)value).getSizeInBytes();
-              columnRowCount += batchKey.getColumnBatchRowCount(prEntryIter.getHostedBucketRegion(),
-                  re, numColumnsInColumnTable);
+              if (!re.isDestroyedOrRemoved()) {
+                columnRowCount += batchKey.getColumnBatchRowCount(prEntryIter
+                    .getHostedBucketRegion(), re, numColumnsInColumnTable);
+              }
               valInMemoryCount++;
               valInMemorySize += valueSize;
               if (valueSize > maxSize) {

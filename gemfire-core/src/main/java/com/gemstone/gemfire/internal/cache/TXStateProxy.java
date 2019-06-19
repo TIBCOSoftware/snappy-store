@@ -30,15 +30,9 @@ import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.cache.execute.ResultCollector;
 import com.gemstone.gemfire.cache.query.internal.IndexUpdater;
-import com.gemstone.gemfire.distributed.internal.DM;
-import com.gemstone.gemfire.distributed.internal.DirectReplyProcessor;
-import com.gemstone.gemfire.distributed.internal.DistributionAdvisor;
+import com.gemstone.gemfire.distributed.internal.*;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisor.Profile;
 import com.gemstone.gemfire.distributed.internal.DistributionAdvisor.ProfileVisitor;
-import com.gemstone.gemfire.distributed.internal.DistributionManager;
-import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
-import com.gemstone.gemfire.distributed.internal.ReplyException;
-import com.gemstone.gemfire.distributed.internal.ReplyProcessor21;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.distributed.internal.membership.MembershipManager;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
@@ -66,6 +60,7 @@ import com.gemstone.gemfire.internal.cache.partitioned.PutMessage;
 import com.gemstone.gemfire.internal.cache.partitioned.RegionAdvisor.PartitionProfile;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.tier.sockets.VersionedObjectList;
+import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.gemstone.gemfire.internal.concurrent.MapCallback;
 import com.gemstone.gemfire.internal.concurrent.MapCallbackAdapter;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
@@ -73,11 +68,12 @@ import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
 import com.gemstone.gnu.trove.THash;
 import com.gemstone.gnu.trove.THashMap;
-import com.gemstone.gnu.trove.THashSet;
-import com.gemstone.gnu.trove.TObjectLongProcedure;
 import org.eclipse.collections.api.block.function.Function;
 import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectLongProcedure;
 import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.map.mutable.primitive.ObjectLongHashMap;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 /**
  * TXStateProxy lives on the source node when we are remoting a transaction. It
@@ -326,7 +322,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       assert profile instanceof BucketProfile;
       BucketProfile bp = (BucketProfile)profile;
       if (!bp.inRecovery && bp.cachedOrAllEventsWithListener()) {
-        ArrayList<Object> uninitializedRegions = recipients.members.getIfAbsentPutWith(
+        List<Object> uninitializedRegions = recipients.members.getIfAbsentPutWith(
             bp.getDistributedMember(), recipients, bp);
         if (uninitializedRegions != null) {
           final ProxyBucketRegion pbr = ((BucketAdvisor)advisor)
@@ -376,7 +372,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       if (!(profile instanceof PartitionProfile)) {
         final CacheProfile cp = (CacheProfile)profile;
         if (!cp.inRecovery && cp.cachedOrAllEventsWithListener()) {
-          ArrayList<Object> uninitializedRegions = recipients.members.getIfAbsentPutWith(
+          List<Object> uninitializedRegions = recipients.members.getIfAbsentPutWith(
               cp.getDistributedMember(), recipients, cp);
           if (uninitializedRegions != null) {
             if (!cp.regionInitialized) {
@@ -403,12 +399,13 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
   };
 
   public static final class MemberToGIIRegions
-      implements Function<CacheProfile, ArrayList<Object>> {
-    final UnifiedMap<InternalDistributedMember, ArrayList<Object>> members;
+      implements Function<CacheProfile, List<Object>> {
+    final UnifiedMap<InternalDistributedMember, List<Object>> members;
     final THashMap eventsToBePublished;
     long[] viewVersions;
     DistributionAdvisor[] viewAdvisors;
     boolean hasUninitialized;
+    private transient boolean regionInitialized;
     /**
      * If this is the transaction coordinator, this gets a consistent DiskStoreID
      * (primary for PRs and anyone for RRs) to be used for region versions by all
@@ -446,10 +443,6 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       this.hasUninitialized = false;
     }
 
-    public final UnifiedMap<InternalDistributedMember, ArrayList<Object>> getMembers() {
-      return this.members;
-    }
-
     public final void endOperationSend(TXStateProxy proxy) {
       final long[] viewVersions = this.viewVersions;
       final DistributionAdvisor[] advisors;
@@ -464,13 +457,22 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
         while (--numOps >= 0) {
           viewVersion = viewVersions[numOps];
           if (viewVersion != -1) {
-            advisors[numOps].endOperation(viewVersion);
+            DistributionAdvisor advisor = advisors[numOps];
+            advisor.endOperation(viewVersion);
             if (logger != null) {
+              DistributionAdvisee advisee = advisor.getAdvisee();
+              String logVersion = "";
+              if (advisee instanceof LocalRegion) {
+                RegionVersionVector rvv = ((LocalRegion)advisee).getVersionVector();
+                if (rvv != null && rvv.getSnapShotOfMemberVersion() != null) {
+                  logVersion = " RVV = " + rvv.getSnapShotOfMemberVersion();
+                }
+              }
               logger.info(LocalizedStrings.DEBUG, "TXCommit: "
                   + proxy.getTransactionId().shortToString()
                   + " done dispatching operation for "
-                  + advisors[numOps].getAdvisee().getFullPath()
-                  + " in view version " + viewVersion);
+                  + advisor.getAdvisee().getFullPath()
+                  + " in view version " + viewVersion + logVersion);
             }
           }
         }
@@ -484,10 +486,10 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     }
 
     @Override
-    public ArrayList<Object> valueOf(CacheProfile cp) {
+    public List<Object> valueOf(CacheProfile cp) {
       if (cp.regionInitialized) {
         if (this.eventsToBePublished == null) {
-          return null;
+          return Collections.emptyList();
         }
         else {
           // put an empty placeHolder expecting some events for the member
@@ -760,7 +762,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
 
     // get the set of recipients for commit using the list of affected regions
     final MemberToGIIRegions finishRecipients = getFinishMessageRecipients(true);
-    final Set<?> recipients = finishRecipients.members.keySet();
+    final Set<InternalDistributedMember> recipients = finishRecipients.members.keySet();
 
     final TXManagerImpl.TXContext context = TXManagerImpl.currentTXContext();
     context.setCommitRecipients(finishRecipients);
@@ -814,7 +816,9 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
             // need to send the phase1 message separately to remaining
             // recipients
             if (numRecipients > batchResponses.size()) {
-              final THashSet remainingRecipients = new THashSet(recipients);
+              // make a copy since original is required later
+              final UnifiedSet<InternalDistributedMember> remainingRecipients =
+                  new UnifiedSet<>(recipients);
               for (TXBatchResponse batchResponse : batchResponses) {
                 remainingRecipients.remove(batchResponse.recipient);
               }
@@ -1052,7 +1056,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       // final commit message
       checkAllCopiesDown(dm);
 
-      final UnifiedMap<InternalDistributedMember, ArrayList<Object>> recipientsData =
+      final UnifiedMap<InternalDistributedMember, List<Object>> recipientsData =
           finishRecipients.members;
       // set the commit time only once
       if (this.commitTime == 0) {
@@ -1134,7 +1138,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       // mark operation end for state flush
       finishRecipients.endOperationSend(this);
       if (thr == null) {
-        cleanup();
+        cleanup(false);
       }
       else {
         getCache().getCancelCriterion().checkCancelInProgress(thr);
@@ -1235,7 +1239,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
         if (txState != null) {
           txMgr.commit(txState, callbackArg, TXManagerImpl.FULL_COMMIT, null,
               true/*remote to coordinator*/);
-          cleanup();
+          cleanup(false);
         }
       }
       else {
@@ -1339,12 +1343,10 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     }
   }
 
-  private static final TObjectLongProcedure endBatchSend =
-      new TObjectLongProcedure() {
-    @Override
-    public boolean execute(Object o, long viewVersion) {
+  private static final ObjectLongProcedure<DistributionAdvisor>
+      endBatchSend = (advisor, viewVersion) -> {
+    {
       if (viewVersion != -1) {
-        DistributionAdvisor advisor = (DistributionAdvisor)o;
         advisor.endOperation(viewVersion);
         if (LOG_VERSIONS) {
           LogWriterI18n logger = InternalDistributedSystem.getLoggerI18n();
@@ -1356,7 +1358,6 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
           }
         }
       }
-      return true;
     }
   };
   /**
@@ -1378,13 +1379,13 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       dm = this.txManager.getDM();
     }
 
-    TObjectLongHashMapWithIndex versions = new TObjectLongHashMapWithIndex();
+    ObjectLongHashMap<DistributionAdvisor> versions = new ObjectLongHashMap(16);
     this.lock.lock();
     try {
       batchResponses = sendPendingOps(dm, localState, versions, null, false);
     } finally {
-      if (!versions.isEmpty()) {
-        versions.forEachEntry(endBatchSend);
+      if (versions.size() > 0) {
+        versions.forEachKeyValue(endBatchSend);
       }
       this.lock.unlock();
     }
@@ -1412,7 +1413,8 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     if (LOG_FINE) {
       if (batchResponses != null) {
         final LogWriterI18n logger = dm.getLoggerI18n();
-        final THashSet batchRecipients = new THashSet();
+        final UnifiedSet<InternalDistributedMember> batchRecipients =
+            new UnifiedSet<>(batchResponses.size());
         for (TXBatchResponse br : batchResponses) {
           batchRecipients.add(br.recipient);
         }
@@ -1442,7 +1444,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
 
   @SuppressWarnings("unchecked")
   private final ArrayList<TXBatchResponse> sendPendingOps(final DM dm,
-      final TXState localState, final TObjectLongHashMapWithIndex versions,
+      final TXState localState, final ObjectLongHashMap<DistributionAdvisor> versions,
       final List<AbstractOperationMessage> postMessages,
       final boolean conflictWithEX) throws TransactionException {
     int numPending;
@@ -1472,19 +1474,23 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
             // put in the map only once (and also avoid calling startOperation
             // more than once for a region)
             DistributionAdvisor advisor = dataRegion.getDistributionAdvisor();
-            int insertionIndex = versions.getInsertionIndex(advisor);
-            if (insertionIndex >= 0) {
-              long viewVersion = -1;
-              viewVersion = advisor.startOperation();
-              if (viewVersion != -1) {
-                versions.putAtIndex(advisor, viewVersion, insertionIndex);
-                if (LOG_VERSIONS) {
-                  getTxMgr().getLogger().info(LocalizedStrings.DEBUG,
-                      "TXBatch: dispatching operation for "
-                          + dataRegion.getFullPath() + " in view version "
-                          + viewVersion);
+            try {
+              versions.getIfAbsentPut(advisor, () -> {
+                long viewVersion = advisor.startOperation();
+                if (viewVersion != -1) {
+                  if (LOG_VERSIONS) {
+                    getTxMgr().getLogger().info(LocalizedStrings.DEBUG,
+                        "TXBatch: dispatching operation for "
+                            + dataRegion.getFullPath() + " in view version "
+                            + viewVersion);
+                  }
+                  return viewVersion;
+                } else {
+                  // abort the insert
+                  throw new IllegalStateException();
                 }
-              }
+              });
+            } catch (IllegalStateException ignored) {
             }
           }
           // find the recipients for this entry
@@ -1574,7 +1580,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
   protected final void sendNewGIINodeMessages(
       final MemberToGIIRegions finishRecipients, final DM dm,
       final boolean forCommit) {
-    UnifiedMap<InternalDistributedMember, ArrayList<Object>> members;
+    UnifiedMap<InternalDistributedMember, List<Object>> members;
     if (finishRecipients.hasUninitialized
         && !(members = finishRecipients.members).isEmpty()) {
       members.forEachKeyValue((m, l) -> {
@@ -1589,7 +1595,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
    * This should be invoked by TXState when non-null else from commit/rollback
    * here.
    */
-  protected void cleanup() {
+  protected void cleanup(boolean rollback) {
     this.hasCohorts = false;
     this.isDirty = false;
     this.hasReadOps = false;
@@ -1993,7 +1999,6 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
    * 
    * ONLY FOR TESTS.
    */
-  @SuppressWarnings("unchecked")
   public final Collection<LocalRegion> getRegions() {
     final Collection<?> allRegions;
     // coordinator has the record of all regions
@@ -2011,7 +2016,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
           allRegions = Collections.emptySet();
         }
       }
-      final THashSet regs = new THashSet(allRegions.size());
+      final UnifiedSet<LocalRegion> regs = new UnifiedSet<>(allRegions.size());
       for (Object owner : allRegions) {
         LocalRegion r;
         if (owner instanceof Bucket) {
@@ -2335,7 +2340,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       mlock.readLock().unlock();
       // remove from hosted txState list neverthless
       this.txManager.removeHostedTXState(this.txId, Boolean.FALSE);
-      cleanup();
+      cleanup(true);
     }
 
     if (TRACE_EXECUTE) {
@@ -2394,7 +2399,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
           }
           onRollback(null, callbackArg);
         } finally {
-          cleanup();
+          cleanup(true);
         }
       }
       else {
@@ -2413,7 +2418,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
 
   /** only for testing */
   public Set<?> getFinishMessageRecipientsForTest() {
-    return getFinishMessageRecipients(false).getMembers().keySet();
+    return getFinishMessageRecipients(false).members.keySet();
   }
 
   private boolean checkIfRegionSetHasBucketRegion() {
@@ -3624,13 +3629,13 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     return null;
   }
 
-  @SuppressWarnings("unchecked")
-  private final GemFireException revertFailedOp(final LocalRegion dataRegion,
+  private GemFireException revertFailedOp(final LocalRegion dataRegion,
       final Object regionKey, GemFireException failedEx,
       final Set<InternalDistributedMember> originalRecipients,
       final Map<InternalDistributedMember, ReplyException> exceptions,
       final boolean revertSelf) {
-    final THashSet revertMembers = new THashSet(originalRecipients);
+    final UnifiedSet<InternalDistributedMember> revertMembers =
+        new UnifiedSet<>(originalRecipients);
     final Class<?> failedExClass = failedEx.getClass();
     Throwable cause;
     if (exceptions != null) {

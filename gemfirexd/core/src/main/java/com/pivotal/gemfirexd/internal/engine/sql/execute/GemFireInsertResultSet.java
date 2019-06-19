@@ -170,7 +170,8 @@ public final class GemFireInsertResultSet extends AbstractGemFireResultSet {
 
     TXStateInterface tx = this.gfContainer.getActiveTXState(this.tran);
     // TOOD: decide on autocommit or this flag: Discuss
-    if (tx == null && (this.gfContainer.isRowBuffer() || reg.getCache().snapshotEnabledForTest())) {
+    if (tx == null && (this.gfContainer.isRowBuffer() ||
+        (reg != null && reg.getCache().snapshotEnabledForTest()))) {
       this.tran.getTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
       ((GemFireTransaction)lcc.getTransactionExecute()).setActiveTXState(TXManagerImpl.getCurrentTXState(), false);
       this.tran.setImplicitSnapshotTxStarted(true);

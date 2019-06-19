@@ -550,25 +550,30 @@ public class HeapRowLocation extends DataType implements RowLocation
       return null;
     }
 
-
     @Override
     public Object getValueWithoutFaultInOrOffHeapEntry(LocalRegion owner) {
       throw new IllegalStateException(
-          "HeapRowLocation:getValueWithoutFaultIn: method should not get invoked");
+          "HeapRowLocation:getValueWithoutFaultInOrOffHeapEntry: method should not get invoked");
     }
-    
+
     @Override
     public Object getValueOrOffHeapEntry(LocalRegion owner)   {
       throw new IllegalStateException(
-          "HeapRowLocation:getValueWithoutFaultIn: method should not get invoked");
+          "HeapRowLocation:getValueOrOffHeapEntry: method should not get invoked");
     }
-    
+
     @Override
     public Object getRawValue() {
       throw new IllegalStateException(
-          "HeapRowLocation:getValueWithoutFaultIn: method should not get invoked");
+          "HeapRowLocation:getRawValue: method should not get invoked");
     }
-    
+
+    @Override
+    public boolean isValueNull() {
+      throw new IllegalStateException(
+          "HeapRowLocation:isValueNull: method should not get invoked");
+    }
+
     @Override
     public void markDeleteFromIndexInProgress() {
       //NOOP

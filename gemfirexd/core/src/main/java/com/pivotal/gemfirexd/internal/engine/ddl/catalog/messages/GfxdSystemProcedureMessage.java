@@ -77,6 +77,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.RoutinePermsDescriptor
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TableDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.TablePermsDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
+import com.pivotal.gemfirexd.internal.iapi.util.ReuseFactory;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 import com.pivotal.gemfirexd.internal.impl.sql.catalog.SYSROUTINEPERMSRowFactory;
 import com.pivotal.gemfirexd.internal.impl.sql.catalog.SYSTABLEPERMSRowFactory;
@@ -1927,6 +1928,38 @@ public final class GfxdSystemProcedureMessage extends
         final StringBuilder sb = new StringBuilder();
         return sb.append("CALL SYS.REFRESH_LDAP_GROUP('").append(params[0])
             .append("')").toString();
+      }
+    },
+
+    purgeCodegenCaches {
+      @Override
+      boolean allowExecution(Object[] params) {
+        // only on process nodes
+        return GemFireXDUtils.getMyVMKind().isAccessorOrStore();
+      }
+
+      @Override
+      boolean preprocess() {
+        return false;
+      }
+
+      @Override
+      public void processMessage(Object[] params, DistributedMember sender) {
+        CallbackFactoryProvider.getStoreCallbacks().clearCodegenCaches();
+      }
+
+      @Override
+      Object[] readParams(DataInput in, short flags) {
+        return ReuseFactory.getZeroLenObjectArray();
+      }
+
+      @Override
+      void writeParams(Object[] params, DataOutput out) {
+      }
+
+      @Override
+      String getSQLStatement(Object[] params) {
+        return "CALL SYS.PURGE_CODEGEN_CACHES()";
       }
     },
     ;

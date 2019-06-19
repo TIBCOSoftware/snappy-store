@@ -666,12 +666,12 @@ public class ClientStatement extends ClientFetchColumnValue implements
       this.attrs.setRequireAutoIncCols(false);
       this.attrs.setRequireAutoIncColsIsSet(false);
     }
-    if (autoIncColumns != null) {
+    if (autoIncColumns != null && autoIncColumns.length > 0) {
       this.attrs.setAutoIncColumns(getIntegerList(autoIncColumns));
     } else {
       this.attrs.setAutoIncColumns(null);
     }
-    if (autoIncColumnNames != null) {
+    if (autoIncColumnNames != null && autoIncColumnNames.length > 0) {
       this.attrs.setAutoIncColumnNames(Arrays.asList(autoIncColumnNames));
     } else {
       this.attrs.setAutoIncColumnNames(null);

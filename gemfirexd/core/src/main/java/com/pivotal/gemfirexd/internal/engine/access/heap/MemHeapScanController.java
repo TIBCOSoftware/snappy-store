@@ -848,7 +848,10 @@ public class MemHeapScanController implements MemScanController, RowCountable,
 
     final boolean isGlobalScan = (this.openMode &
         GfxdConstants.SCAN_OPENMODE_FOR_GLOBALINDEX) != 0;
-    LocalRegion owner = null;
+    final boolean isRowBuffer = this.gfContainer.isRowBuffer();
+    final boolean hasQualifier = this.init_qualifier != null &&
+        this.init_qualifier.length > 0;
+    LocalRegion owner;
     RegionEntry entry = null;
     while (entryIterator.hasNext()) {
       ExecRow row = null;
@@ -906,14 +909,27 @@ public class MemHeapScanController implements MemScanController, RowCountable,
             this.currentDataRegion = owner;
           }
           if (this.templateCompactExecRow != null) {
-            row = RegionEntryUtils.fillRowWithoutFaultIn(this.gfContainer,
-                owner, this.currentRowLocation.getRegionEntry(),
-                this.templateCompactExecRow) ? templateCompactExecRow : null;
-          }
-          else {
-            row = RegionEntryUtils.getRowWithoutFaultIn(this.gfContainer,
-                owner, this.currentRowLocation.getRegionEntry(),
-                this.currentRowLocation.getTableInfo(this.gfContainer));
+            // always fault-in for row buffer
+            if (isRowBuffer) {
+              row = RegionEntryUtils.fillRowFaultInOptimized(this.gfContainer,
+                  owner, this.currentRowLocation, this.templateCompactExecRow)
+                  ? templateCompactExecRow : null;
+            } else {
+              row = RegionEntryUtils.fillRowWithoutFaultIn(this.gfContainer,
+                  owner, this.currentRowLocation.getRegionEntry(),
+                  this.templateCompactExecRow) ? templateCompactExecRow : null;
+            }
+          } else {
+            // always fault-in for row buffer
+            if (isRowBuffer) {
+              row = RegionEntryUtils.getRow(this.gfContainer,
+                  owner, this.currentRowLocation.getRegionEntry(),
+                  this.currentRowLocation.getTableInfo(this.gfContainer));
+            } else {
+              row = RegionEntryUtils.getRowWithoutFaultIn(this.gfContainer,
+                  owner, this.currentRowLocation.getRegionEntry(),
+                  this.currentRowLocation.getTableInfo(this.gfContainer));
+            }
           }
           if (row != null) {
             this.currentExecRow = row;           
@@ -974,10 +990,14 @@ public class MemHeapScanController implements MemScanController, RowCountable,
 
       boolean rowQualified = false;
       try {
-        if (this.init_qualifier == null
+        if (!hasQualifier
             || RowFormatter.qualifyRow(this.currentExecRow,
                 this.byteArrayStore, this.init_qualifier)) {
           rowQualified = true;
+          // fault-in the entry if filters are present
+          if (hasQualifier && !isRowBuffer) {
+            this.currentRowLocation.getValueOrOffHeapEntry(owner);
+          }
           this.statNumRowsQualified++;
           if (this.currentDataRegion != null) {
             this.localTXState.addReadLockForScan(entry, this.readLockMode,

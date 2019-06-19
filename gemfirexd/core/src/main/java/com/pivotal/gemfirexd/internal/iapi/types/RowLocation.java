@@ -195,6 +195,8 @@ public interface RowLocation extends DataValueDescriptor, CloneableObject,
    */
   public Object getRawValue();
 
+  public boolean isValueNull();
+
   public void markDeleteFromIndexInProgress();
   public void unmarkDeleteFromIndexInProgress();
   public boolean useRowLocationForIndexKey();

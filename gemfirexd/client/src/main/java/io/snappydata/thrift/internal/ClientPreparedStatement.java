@@ -116,6 +116,17 @@ public class ClientPreparedStatement extends ClientStatement implements
     this.numParams = prepare();
   }
 
+  /*
+  ClientPreparedStatement(ClientConnection conn, String sql, int numParams,
+      boolean getAutoInc, int[] autoIncColumns, String[] autoIncColumnNames)
+      throws SQLException {
+    super(conn);
+    this.preparedSQL = sql;
+    setAutoIncAttributes(getAutoInc, autoIncColumns, autoIncColumnNames);
+    this.numParams = numParams;
+  }
+  */
+
   protected Map<Integer, OutputParameter> getOutputParameters() {
     return Collections.emptyMap();
   }
@@ -220,6 +231,45 @@ public class ClientPreparedStatement extends ClientStatement implements
       throw informListeners(ThriftExceptionUtil.newSQLException(se));
     }
   }
+
+  /*
+  public final boolean prepareAndExecute() throws SQLException {
+    checkClosed();
+    reset();
+    this.attrs.setPoolable(true);
+    try {
+      StatementResult sr = this.service.prepareAndExecute(
+          // don't throw exception in getLobSource rather return null and
+          // service will failover to new node and do re-prepare as required
+          getLobSource(false, "executePrepared"), this.preparedSQL,
+          Collections.singletonList(this.paramsList), getOutputParameters(),
+          getAttributes());
+      clearPendingTransactionAttrs();
+      int numParams = setPrepareResult(sr.getPreparedResult());
+      if (numParams != this.numParams) {
+        throw ThriftExceptionUtil.newSQLException(
+            SQLState.LANG_INVALID_COLUMN_POSITION, new IllegalStateException(
+                "mismatch in parameter list size = " + this.numParams +
+                    " and prepared " + numParams), this.numParams, numParams);
+      }
+      this.warnings = sr.getWarnings();
+      if (this.attrs.isRequireAutoIncCols()) {
+        this.currentGeneratedKeys = sr.getGeneratedKeys();
+      }
+      initializeProcedureOutParams(sr);
+      final RowSet rs = sr.getResultSet();
+      if (rs != null) {
+        setCurrentRowSet(rs);
+        return true;
+      } else {
+        this.currentUpdateCount = sr.getUpdateCount();
+        return false;
+      }
+    } catch (SnappyException se) {
+      throw informListeners(ThriftExceptionUtil.newSQLException(se));
+    }
+  }
+  */
 
   /**
    * {@inheritDoc}

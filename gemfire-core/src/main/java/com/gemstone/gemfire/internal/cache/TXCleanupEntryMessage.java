@@ -23,11 +23,11 @@ import java.io.IOException;
 import java.util.Set;
 
 import com.gemstone.gemfire.DataSerializer;
-import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DM;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.ReplyProcessor21;
+import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.cache.delta.Delta;
 
 /**
@@ -74,7 +74,7 @@ public final class TXCleanupEntryMessage extends TXMessage {
 
   public static ReplyProcessor21 send(final InternalDistributedSystem system,
       final DM dm, final TXStateInterface txState,
-      final Set<DistributedMember> recipients, final LocalRegion dataRegion,
+      final Set<InternalDistributedMember> recipients, final LocalRegion dataRegion,
       final Object regionKey, final byte originalOp,
       final byte originalDestroy, final boolean originalBulkOp,
       final Object originalValue, final Delta originalDelta) {

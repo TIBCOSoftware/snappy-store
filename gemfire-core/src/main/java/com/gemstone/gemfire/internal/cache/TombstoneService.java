@@ -539,7 +539,7 @@ public class TombstoneService  implements ResourceListener<MemoryEvent> {
     
     public int getSize() {
       return Tombstone.PER_TOMBSTONE_OVERHEAD // includes per-entry overhead
-        + ObjectSizer.DEFAULT.sizeof(entry.getRawKey());
+        + CachedDeserializableFactory.calcMemSize(entry.getRawKey(), ObjectSizer.DEFAULT, true);
     }
     
     @Override

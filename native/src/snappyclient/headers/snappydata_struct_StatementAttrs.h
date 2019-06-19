@@ -25,7 +25,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 typedef struct _StatementAttrs__isset {
-  _StatementAttrs__isset() : resultSetType(false), updatable(false), holdCursorsOverCommit(false), requireAutoIncCols(false), autoIncColumns(false), autoIncColumnNames(false), batchSize(true), fetchReverse(false), lobChunkSize(false), maxRows(false), maxFieldSize(false), timeout(false), cursorName(false), possibleDuplicate(false), poolable(false), doEscapeProcessing(false), pendingTransactionAttrs(false), bucketIds(false), bucketIdsTable(false) {}
+  _StatementAttrs__isset() : resultSetType(false), updatable(false), holdCursorsOverCommit(false), requireAutoIncCols(false), autoIncColumns(false), autoIncColumnNames(false), batchSize(true), fetchReverse(false), lobChunkSize(false), maxRows(false), maxFieldSize(false), timeout(false), cursorName(false), possibleDuplicate(false), poolable(false), doEscapeProcessing(false), pendingTransactionAttrs(false), bucketIds(false), bucketIdsTable(false), retainBucketIds(false), metadataVersion(false), snapshotTransactionId(false), lockOwner(false) {}
   bool resultSetType :1;
   bool updatable :1;
   bool holdCursorsOverCommit :1;
@@ -45,6 +45,10 @@ typedef struct _StatementAttrs__isset {
   bool pendingTransactionAttrs :1;
   bool bucketIds :1;
   bool bucketIdsTable :1;
+  bool retainBucketIds :1;
+  bool metadataVersion :1;
+  bool snapshotTransactionId :1;
+  bool lockOwner :1;
 } _StatementAttrs__isset;
 
 class StatementAttrs {
@@ -54,7 +58,7 @@ class StatementAttrs {
   StatementAttrs(StatementAttrs&&) noexcept;
   StatementAttrs& operator=(const StatementAttrs&);
   StatementAttrs& operator=(StatementAttrs&&) noexcept;
-  StatementAttrs() : resultSetType(0), updatable(0), holdCursorsOverCommit(0), requireAutoIncCols(0), batchSize(8192), fetchReverse(0), lobChunkSize(0), maxRows(0), maxFieldSize(0), timeout(0), cursorName(), possibleDuplicate(0), poolable(0), doEscapeProcessing(0), bucketIdsTable() {
+  StatementAttrs() : resultSetType(0), updatable(0), holdCursorsOverCommit(0), requireAutoIncCols(0), batchSize(8192), fetchReverse(0), lobChunkSize(0), maxRows(0), maxFieldSize(0), timeout(0), cursorName(), possibleDuplicate(0), poolable(0), doEscapeProcessing(0), bucketIdsTable(), retainBucketIds(0), metadataVersion(0), snapshotTransactionId(), lockOwner() {
   }
 
   virtual ~StatementAttrs() noexcept;
@@ -77,6 +81,10 @@ class StatementAttrs {
   std::map<TransactionAttribute::type, bool>  pendingTransactionAttrs;
   std::set<int32_t>  bucketIds;
   std::string bucketIdsTable;
+  bool retainBucketIds;
+  int32_t metadataVersion;
+  std::string snapshotTransactionId;
+  std::string lockOwner;
 
   _StatementAttrs__isset __isset;
 
@@ -117,6 +125,14 @@ class StatementAttrs {
   void __set_bucketIds(const std::set<int32_t> & val);
 
   void __set_bucketIdsTable(const std::string& val);
+
+  void __set_retainBucketIds(const bool val);
+
+  void __set_metadataVersion(const int32_t val);
+
+  void __set_snapshotTransactionId(const std::string& val);
+
+  void __set_lockOwner(const std::string& val);
 
   bool operator == (const StatementAttrs & rhs) const
   {
@@ -195,6 +211,22 @@ class StatementAttrs {
     if (__isset.bucketIdsTable != rhs.__isset.bucketIdsTable)
       return false;
     else if (__isset.bucketIdsTable && !(bucketIdsTable == rhs.bucketIdsTable))
+      return false;
+    if (__isset.retainBucketIds != rhs.__isset.retainBucketIds)
+      return false;
+    else if (__isset.retainBucketIds && !(retainBucketIds == rhs.retainBucketIds))
+      return false;
+    if (__isset.metadataVersion != rhs.__isset.metadataVersion)
+      return false;
+    else if (__isset.metadataVersion && !(metadataVersion == rhs.metadataVersion))
+      return false;
+    if (__isset.snapshotTransactionId != rhs.__isset.snapshotTransactionId)
+      return false;
+    else if (__isset.snapshotTransactionId && !(snapshotTransactionId == rhs.snapshotTransactionId))
+      return false;
+    if (__isset.lockOwner != rhs.__isset.lockOwner)
+      return false;
+    else if (__isset.lockOwner && !(lockOwner == rhs.lockOwner))
       return false;
     return true;
   }

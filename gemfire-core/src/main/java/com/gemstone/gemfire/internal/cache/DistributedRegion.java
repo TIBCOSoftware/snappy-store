@@ -117,7 +117,6 @@ import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.util.ArraySortedCollection;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableCountDownLatch;
 import com.gemstone.gnu.trove.TObjectIntProcedure;
-import com.gemstone.gnu.trove.TObjectObjectProcedure;
 import com.gemstone.org.jgroups.util.StringId;
 import org.eclipse.collections.impl.map.mutable.UnifiedMap;
 
@@ -1796,7 +1795,7 @@ public class DistributedRegion extends LocalRegion implements
           final TXManagerImpl txMgr = getCache().getCacheTransactionManager();
           for (TXRegionState txrs : orderedTXRegionState) {
             TXState txState = txrs.getTXState();
-            int txOrder = 0;
+            long txOrder = 0;
             getLogWriterI18n().info(LocalizedStrings.DEBUG, "Locking txState = " + txState);
             txState.lockTXState();
             if (txState.isInProgress() && (txOrder = is.getFinishedTXOrder(
@@ -1825,8 +1824,8 @@ public class DistributedRegion extends LocalRegion implements
               Arrays.sort(finishedTXRS, new Comparator<TXRegionState>() {
                 @Override
                 public int compare(TXRegionState t1, TXRegionState t2) {
-                  final int o1 = t1.getFinishOrder();
-                  final int o2 = t2.getFinishOrder();
+                  final long o1 = t1.getFinishOrder();
+                  final long o2 = t2.getFinishOrder();
                   return (o1 < o2) ? -1 : ((o1 == o2) ? 0 : 1);
                 }
               });
@@ -3656,7 +3655,8 @@ public class DistributedRegion extends LocalRegion implements
             }
           }
           RegionEntry re = (RegionEntry)this.it.next();
-          if (re.isOverflowedToDisk(this.region, dp, false)) {
+          if (re.isValueNull() &&
+              re.isOverflowedToDisk(this.region, dp, false)) {
             // add dp to sorted list
             // avoid create DiskPage everytime for lookup
             // TODO: SW: Can reduce the intermediate memory and boost

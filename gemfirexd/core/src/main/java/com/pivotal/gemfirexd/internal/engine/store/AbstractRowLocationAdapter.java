@@ -618,8 +618,12 @@ public class AbstractRowLocationAdapter implements RowLocation {
 
   @Override
   public Object getRawValue() {
-    
     return null;
+  }
+
+  @Override
+  public boolean isValueNull() {
+    return true;
   }
 
   @Override

@@ -185,6 +185,10 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
+    public void clearCodegenCaches() {
+    }
+
+    @Override
     public URLClassLoader getLeadClassLoader() { return null; }
 
     @Override

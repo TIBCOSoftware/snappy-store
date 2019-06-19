@@ -755,7 +755,8 @@ public final class Oplog implements CompactableOplog {
       if (ex instanceof DiskAccessException) {
         throw (DiskAccessException) ex;
       }
-      throw new DiskAccessException(LocalizedStrings.Oplog_FAILED_CREATING_OPERATION_LOG_BECAUSE_0.toLocalizedString(ex), getParent());
+      throw new DiskAccessException(LocalizedStrings.Oplog_FAILED_CREATING_OPERATION_LOG_BECAUSE_0
+          .toLocalizedString(ex), ex, getParent());
     }
   }
 

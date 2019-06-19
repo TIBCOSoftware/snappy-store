@@ -104,7 +104,7 @@ public final class TXRegionState extends ReentrantLock {
    */
   private boolean isValid;
   /** a sort order for commit/rollback if GII was not done */
-  int finishOrder;
+  long finishOrder;
 
   // temporary transient variables
   private transient int tmpEntryCount;
@@ -746,7 +746,7 @@ public final class TXRegionState extends ReentrantLock {
     return this.tmpEx;
   }
 
-  public final int getFinishOrder() {
+  public final long getFinishOrder() {
     return this.finishOrder;
   }
 

@@ -3972,10 +3972,10 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     public int size() {
       return this.ints.size() + this.longs.size();
     }
-    
+
     public void addAll(OplogEntryIdSet toAdd) {
-      this.ints.addAll(toAdd.ints.toArray());
-      this.longs.addAll(toAdd.longs.toArray());
+      this.ints.addAll(toAdd.ints);
+      this.longs.addAll(toAdd.longs);
     }
   }
 

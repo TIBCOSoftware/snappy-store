@@ -122,6 +122,26 @@ void StatementAttrs::__set_bucketIdsTable(const std::string& val) {
 __isset.bucketIdsTable = true;
 }
 
+void StatementAttrs::__set_retainBucketIds(const bool val) {
+  this->retainBucketIds = val;
+__isset.retainBucketIds = true;
+}
+
+void StatementAttrs::__set_metadataVersion(const int32_t val) {
+  this->metadataVersion = val;
+__isset.metadataVersion = true;
+}
+
+void StatementAttrs::__set_snapshotTransactionId(const std::string& val) {
+  this->snapshotTransactionId = val;
+__isset.snapshotTransactionId = true;
+}
+
+void StatementAttrs::__set_lockOwner(const std::string& val) {
+  this->lockOwner = val;
+__isset.lockOwner = true;
+}
+
 uint32_t StatementAttrs::read(::apache::thrift::protocol::TProtocol* iprot) {
 
   uint32_t xfer = 0;
@@ -348,6 +368,38 @@ uint32_t StatementAttrs::read(::apache::thrift::protocol::TProtocol* iprot) {
           xfer += iprot->skip(ftype);
         }
         break;
+      case 20:
+        if (ftype == ::apache::thrift::protocol::T_BOOL) {
+          xfer += iprot->readBool(this->retainBucketIds);
+          this->__isset.retainBucketIds = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 21:
+        if (ftype == ::apache::thrift::protocol::T_I32) {
+          xfer += iprot->readI32(this->metadataVersion);
+          this->__isset.metadataVersion = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 22:
+        if (ftype == ::apache::thrift::protocol::T_STRING) {
+          xfer += iprot->readString(this->snapshotTransactionId);
+          this->__isset.snapshotTransactionId = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 23:
+        if (ftype == ::apache::thrift::protocol::T_STRING) {
+          xfer += iprot->readString(this->lockOwner);
+          this->__isset.lockOwner = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
       default:
         xfer += iprot->skip(ftype);
         break;
@@ -492,6 +544,26 @@ uint32_t StatementAttrs::write(::apache::thrift::protocol::TProtocol* oprot) con
     xfer += oprot->writeString(this->bucketIdsTable);
     xfer += oprot->writeFieldEnd();
   }
+  if (this->__isset.retainBucketIds) {
+    xfer += oprot->writeFieldBegin("retainBucketIds", ::apache::thrift::protocol::T_BOOL, 20);
+    xfer += oprot->writeBool(this->retainBucketIds);
+    xfer += oprot->writeFieldEnd();
+  }
+  if (this->__isset.metadataVersion) {
+    xfer += oprot->writeFieldBegin("metadataVersion", ::apache::thrift::protocol::T_I32, 21);
+    xfer += oprot->writeI32(this->metadataVersion);
+    xfer += oprot->writeFieldEnd();
+  }
+  if (this->__isset.snapshotTransactionId) {
+    xfer += oprot->writeFieldBegin("snapshotTransactionId", ::apache::thrift::protocol::T_STRING, 22);
+    xfer += oprot->writeString(this->snapshotTransactionId);
+    xfer += oprot->writeFieldEnd();
+  }
+  if (this->__isset.lockOwner) {
+    xfer += oprot->writeFieldBegin("lockOwner", ::apache::thrift::protocol::T_STRING, 23);
+    xfer += oprot->writeString(this->lockOwner);
+    xfer += oprot->writeFieldEnd();
+  }
   xfer += oprot->writeFieldStop();
   xfer += oprot->writeStructEnd();
   return xfer;
@@ -519,6 +591,10 @@ void swap(StatementAttrs &a, StatementAttrs &b) noexcept {
   swap(a.pendingTransactionAttrs, b.pendingTransactionAttrs);
   swap(a.bucketIds, b.bucketIds);
   swap(a.bucketIdsTable, b.bucketIdsTable);
+  swap(a.retainBucketIds, b.retainBucketIds);
+  swap(a.metadataVersion, b.metadataVersion);
+  swap(a.snapshotTransactionId, b.snapshotTransactionId);
+  swap(a.lockOwner, b.lockOwner);
   swap(a.__isset, b.__isset);
 }
 
@@ -542,6 +618,10 @@ StatementAttrs::StatementAttrs(const StatementAttrs& other181) {
   pendingTransactionAttrs = other181.pendingTransactionAttrs;
   bucketIds = other181.bucketIds;
   bucketIdsTable = other181.bucketIdsTable;
+  retainBucketIds = other181.retainBucketIds;
+  metadataVersion = other181.metadataVersion;
+  snapshotTransactionId = other181.snapshotTransactionId;
+  lockOwner = other181.lockOwner;
   __isset = other181.__isset;
 }
 StatementAttrs::StatementAttrs( StatementAttrs&& other182) noexcept {
@@ -564,6 +644,10 @@ StatementAttrs::StatementAttrs( StatementAttrs&& other182) noexcept {
   pendingTransactionAttrs = std::move(other182.pendingTransactionAttrs);
   bucketIds = std::move(other182.bucketIds);
   bucketIdsTable = std::move(other182.bucketIdsTable);
+  retainBucketIds = std::move(other182.retainBucketIds);
+  metadataVersion = std::move(other182.metadataVersion);
+  snapshotTransactionId = std::move(other182.snapshotTransactionId);
+  lockOwner = std::move(other182.lockOwner);
   __isset = std::move(other182.__isset);
 }
 StatementAttrs& StatementAttrs::operator=(const StatementAttrs& other183) {
@@ -586,6 +670,10 @@ StatementAttrs& StatementAttrs::operator=(const StatementAttrs& other183) {
   pendingTransactionAttrs = other183.pendingTransactionAttrs;
   bucketIds = other183.bucketIds;
   bucketIdsTable = other183.bucketIdsTable;
+  retainBucketIds = other183.retainBucketIds;
+  metadataVersion = other183.metadataVersion;
+  snapshotTransactionId = other183.snapshotTransactionId;
+  lockOwner = other183.lockOwner;
   __isset = other183.__isset;
   return *this;
 }
@@ -609,6 +697,10 @@ StatementAttrs& StatementAttrs::operator=(StatementAttrs&& other184) noexcept {
   pendingTransactionAttrs = std::move(other184.pendingTransactionAttrs);
   bucketIds = std::move(other184.bucketIds);
   bucketIdsTable = std::move(other184.bucketIdsTable);
+  retainBucketIds = std::move(other184.retainBucketIds);
+  metadataVersion = std::move(other184.metadataVersion);
+  snapshotTransactionId = std::move(other184.snapshotTransactionId);
+  lockOwner = std::move(other184.lockOwner);
   __isset = std::move(other184.__isset);
   return *this;
 }
@@ -634,6 +726,10 @@ void StatementAttrs::printTo(std::ostream& out) const {
   out << ", " << "pendingTransactionAttrs="; (__isset.pendingTransactionAttrs ? (out << to_string(pendingTransactionAttrs)) : (out << "<null>"));
   out << ", " << "bucketIds="; (__isset.bucketIds ? (out << to_string(bucketIds)) : (out << "<null>"));
   out << ", " << "bucketIdsTable="; (__isset.bucketIdsTable ? (out << to_string(bucketIdsTable)) : (out << "<null>"));
+  out << ", " << "retainBucketIds="; (__isset.retainBucketIds ? (out << to_string(retainBucketIds)) : (out << "<null>"));
+  out << ", " << "metadataVersion="; (__isset.metadataVersion ? (out << to_string(metadataVersion)) : (out << "<null>"));
+  out << ", " << "snapshotTransactionId="; (__isset.snapshotTransactionId ? (out << to_string(snapshotTransactionId)) : (out << "<null>"));
+  out << ", " << "lockOwner="; (__isset.lockOwner ? (out << to_string(lockOwner)) : (out << "<null>"));
   out << ")";
 }
 

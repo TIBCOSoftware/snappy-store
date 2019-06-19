@@ -18,6 +18,7 @@
 package com.gemstone.gemfire.internal.cache;
 
 import com.gemstone.gemfire.compression.Compressor;
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 
 /**
  * Provides important contextual information that allows a {@link RegionEntry} to manage its state.
@@ -25,8 +26,14 @@ import com.gemstone.gemfire.compression.Compressor;
  * @since 7.5
  */
 public interface RegionEntryContext extends HasCachePerfStats {
-  public static final String DEFAULT_COMPRESSION_PROVIDER="com.gemstone.gemfire.compression.SnappyCompressor";
-  
+
+  String DEFAULT_COMPRESSION_PROVIDER =
+      "com.gemstone.gemfire.compression.SnappyCompressor";
+
+  boolean COMPRESSION_ENABLED = SystemProperties.getServerInstance().getBoolean(
+      "compression.enable", !GemFireCacheImpl.gfxdSystem() &&
+          !SystemProperties.isUsingGemFireXDEntryPoint());
+
   /**
    * Returns the compressor to be used by this region entry when storing the
    * entry value.

@@ -263,7 +263,7 @@ public class ChannelBufferUnsafeOutputStream extends OutputStreamChannel {
     final ByteBuffer buffer = this.buffer;
     if (buffer != null) {
       this.buffer = null;
-      DirectBufferAllocator.instance().release(buffer);
+      DirectBufferAllocator.releaseBuffer(buffer);
     }
   }
 

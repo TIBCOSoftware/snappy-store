@@ -18,6 +18,7 @@
 package com.gemstone.gemfire.internal.util;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 import com.gemstone.gemfire.internal.lang.StringUtils;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
@@ -240,13 +241,7 @@ public abstract class ArrayUtils {
    * this class...
    */
   public static boolean objectEquals(Object o1, Object o2) {
-    if (o1 == o2) {
-      return true;
-    }
-    if (o1 == null) {
-      return false;
-    }
-    return o1.equals(o2);
+    return Objects.equals(o1, o2);
   }
 
   /**

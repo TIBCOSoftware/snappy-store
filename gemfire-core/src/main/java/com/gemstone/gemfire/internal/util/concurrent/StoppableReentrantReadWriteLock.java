@@ -46,7 +46,7 @@ public class StoppableReentrantReadWriteLock implements /* ReadWriteLock, */ jav
   /**
    * This is how often waiters will wake up to check for cancellation
    */
-  private static final long RETRY_TIME = 15 * 1000; // milliseconds
+  private static final long RETRY_TIME = 5 * 1000; // milliseconds
 
   /**
    * Create a new instance
@@ -136,6 +136,7 @@ public class StoppableReentrantReadWriteLock implements /* ReadWriteLock, */ jav
             break;
           }
           catch (InterruptedException e) {
+            stopper.checkCancelInProgress(e);
             interrupted = true;
           }
         } // for
@@ -152,6 +153,27 @@ public class StoppableReentrantReadWriteLock implements /* ReadWriteLock, */ jav
         stopper.checkCancelInProgress(null);
         if (lock.tryLock(RETRY_TIME, TimeUnit.MILLISECONDS))
           break;
+      }
+    }
+
+    /**
+     * Unlike <code>lock()</code> delay cancellation check to be done only if
+     * lock acquisition is not successful for a while.
+     */
+    public void lockDelayCancel() {
+      boolean interrupted = Thread.interrupted();
+      try {
+        for (;;) {
+          try {
+            if (lock.tryLock(RETRY_TIME, TimeUnit.MILLISECONDS)) break;
+            stopper.checkCancelInProgress(null);
+          } catch (InterruptedException e) {
+            stopper.checkCancelInProgress(e);
+            interrupted = true;
+          }
+        } // for
+      } finally {
+        if (interrupted) Thread.currentThread().interrupt();
       }
     }
 
@@ -223,6 +245,7 @@ public class StoppableReentrantReadWriteLock implements /* ReadWriteLock, */ jav
             break;
           }
           catch (InterruptedException e) {
+            stopper.checkCancelInProgress(e);
             interrupted = true;
           }
         } // for

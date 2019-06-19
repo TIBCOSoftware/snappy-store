@@ -13,7 +13,6 @@ com.gemstone.gemfire.cache.hdfs.internal.hoplog.mapreduce.GFRwHoplogRecordReader
 com.gemstone.gemfire.cache.hdfs.internal.hoplog.mapreduce.GFStreamRecordReader
 com.gemstone.gemfire.internal.cache.BucketRegionIndexCleaner
 com.gemstone.gemfire.internal.cache.ObjectEqualsHashingStrategy
-com.gemstone.gemfire.internal.cache.TObjectLongHashMapWithIndex
 com.gemstone.gemfire.internal.cache.TXRegionState
 com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSegment
 com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet

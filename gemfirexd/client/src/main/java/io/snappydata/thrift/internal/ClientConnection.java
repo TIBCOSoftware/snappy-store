@@ -790,6 +790,21 @@ public final class ClientConnection extends ReentrantLock implements Connection 
     }
   }
 
+  /*
+  public ClientPreparedStatement getPrepared(String sql, int numParams,
+      boolean returnGeneratedKeys, int[] columnIndexes,
+      String[] columnNames) throws SQLException {
+    super.lock();
+    try {
+      checkClosedConnection();
+      return new ClientPreparedStatement(this, sql, numParams,
+          returnGeneratedKeys, columnIndexes, columnNames);
+    } finally {
+      super.unlock();
+    }
+  }
+  */
+
   /**
    * {@inheritDoc}
    */

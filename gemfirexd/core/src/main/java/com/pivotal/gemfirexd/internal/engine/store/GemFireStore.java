@@ -174,6 +174,8 @@ import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
+import io.snappydata.execute.AcquireBucketMaintLock;
+import io.snappydata.execute.ReleaseBucketMaintLocks;
 
 import static com.gemstone.gemfire.distributed.internal.InternalLocator.FORCE_LOCATOR_DM_TYPE;
 
@@ -1192,6 +1194,8 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
       FunctionService.registerFunction(new GfxdCacheLoader.GetRowFunction());
       FunctionService.registerFunction(new QueryCancelFunction());
       FunctionService.registerFunction(new SnappyRegionStatsCollectorFunction());
+      FunctionService.registerFunction(new AcquireBucketMaintLock());
+      FunctionService.registerFunction(new ReleaseBucketMaintLocks());
       FunctionService.registerFunction(new DiskStoreIDs.DiskStoreIDFunction());
 
       final ConnectionSignaller signaller = ConnectionSignaller.getInstance();

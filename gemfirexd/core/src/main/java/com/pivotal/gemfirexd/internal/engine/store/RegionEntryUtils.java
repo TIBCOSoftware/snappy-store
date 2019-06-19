@@ -31,7 +31,6 @@ import com.gemstone.gemfire.cache.EntryExistsException;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.distributed.DistributedMember;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
-import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.gemstone.gemfire.internal.DSCODE;
@@ -589,12 +588,26 @@ public final class RegionEntryUtils {
     return false;
   }
 
+  public static boolean fillRowFaultInOptimized(
+      final GemFireContainer baseContainer, final LocalRegion region,
+      final RowLocation entry, final AbstractCompactExecRow row)
+      throws StandardException {
+    return fillRowOptimized(entry.getValueOrOffHeapEntry(region),
+        baseContainer, region, entry, row);
+  }
+
   public static boolean fillRowWithoutFaultInOptimized(
       final GemFireContainer baseContainer, final LocalRegion region,
       final RowLocation entry, final AbstractCompactExecRow row)
       throws StandardException {
+    return fillRowOptimized(entry.getValueWithoutFaultInOrOffHeapEntry(region),
+        baseContainer, region, entry, row);
+  }
 
-    final Object value = entry.getValueWithoutFaultInOrOffHeapEntry(region);
+  private static boolean fillRowOptimized(final Object value,
+      final GemFireContainer baseContainer, final LocalRegion region,
+      final RowLocation entry, final AbstractCompactExecRow row)
+      throws StandardException {
     if (value != null) {
       final Class<?> valClass = value.getClass();
       if (valClass == byte[][].class) {

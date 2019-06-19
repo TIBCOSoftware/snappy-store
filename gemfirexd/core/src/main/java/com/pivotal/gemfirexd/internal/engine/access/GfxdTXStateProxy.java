@@ -507,12 +507,12 @@ public final class GfxdTXStateProxy extends TXStateProxy {
   }
 
   @Override
-  protected final void cleanup() {
+  protected final void cleanup(boolean rollback) {
     transUpdater.set(this, null);
     if (!this.dbOps.isEmpty()) {
       this.dbOps.clear();
     }
-    super.cleanup();
+    super.cleanup(rollback);
   }
 
   private final void remoteConnCleanup(final boolean rollback,

@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.GemFireCheckedException;
@@ -75,6 +76,7 @@ import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.services.monitor.Monitor;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
+import com.pivotal.gemfirexd.internal.iapi.util.ReuseFactory;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.xplain.XPLAINUtil;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
@@ -1567,8 +1569,6 @@ public abstract class GfxdFunctionMessage<T> extends
 
       protected int lastFlushedId;
 
-      private static final Object[] zeroLenArray = new Object[0];
-
       /**
        * The array buffer into which the elements of the list are stored.
        */
@@ -1577,7 +1577,7 @@ public abstract class GfxdFunctionMessage<T> extends
       private int size;
 
       public ListOfReplies(int capacity) {
-        this.elementData = capacity == 0 ? zeroLenArray
+        this.elementData = capacity == 0 ? ReuseFactory.getZeroLenObjectArray()
             : new Object[capacity];
       }
 

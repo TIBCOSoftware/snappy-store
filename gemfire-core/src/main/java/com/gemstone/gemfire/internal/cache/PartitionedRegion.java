@@ -7201,7 +7201,7 @@ public class PartitionedRegion extends LocalRegion implements
 
     }
 
-    PRLocalScanIterator(final Set<Integer> bucketIds, final TXState tx,
+    public PRLocalScanIterator(final Set<Integer> bucketIds, final TXState tx,
         final boolean forUpdate, final boolean includeValues,
         final boolean fetchRemote) {
       this(bucketIds, tx, DEFAULT_ITERATOR_CREATOR,

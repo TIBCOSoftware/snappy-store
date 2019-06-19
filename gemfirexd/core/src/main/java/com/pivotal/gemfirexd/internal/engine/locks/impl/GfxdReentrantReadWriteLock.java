@@ -135,7 +135,7 @@ public final class GfxdReentrantReadWriteLock extends AtomicInteger implements
   /**
    * The current owner of the lock.
    */
-  private Object lockOwner;
+  private volatile Object lockOwner;
 
   /**
    * The value of "ack-wait-threshold" GemFire property that is also used to log
@@ -147,12 +147,12 @@ public final class GfxdReentrantReadWriteLock extends AtomicInteger implements
    * Flags for this lock object including whether this lock is in global map of
    * {@link GfxdLocalLockService}.
    */
-  byte flags;
+  private byte flags;
 
   /**
    * If true then indicates that lock tracing is on for this lock.
    */
-  byte traceLock;
+  private byte traceLock;
 
   /**
    * Class prefix used for toString() output.

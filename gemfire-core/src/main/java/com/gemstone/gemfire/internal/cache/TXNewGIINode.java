@@ -21,6 +21,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 import com.gemstone.gemfire.cache.TransactionException;
 import com.gemstone.gemfire.distributed.internal.DM;
@@ -61,7 +62,7 @@ public class TXNewGIINode extends TXMessage {
   @SuppressWarnings({ "unchecked", "rawtypes" })
   public static void send(final InternalDistributedSystem system, final DM dm,
       final TXStateInterface tx, final InternalDistributedMember recipient,
-      final ArrayList<Object> memberData, final boolean forCommit) {
+      final List<Object> memberData, final boolean forCommit) {
     final int dataLen;
     if (memberData == null || (dataLen = memberData.size()) == 0) {
       return;

@@ -724,7 +724,7 @@ public class DiskRegion extends AbstractDiskRegion {
     getDiskStore().releaseReadLock(this);
   }
   void basicAcquireReadLock() {
-    this.rwLock.readLock().lock();
+    this.rwLock.readLock().lockDelayCancel();
     // basicAcquireLock();
   }
   void basicReleaseReadLock() {

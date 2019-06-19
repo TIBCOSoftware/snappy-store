@@ -165,7 +165,7 @@ public interface ImageState /* extends Lock */ {
    * transaction has not been recorded as finished, and a negative of the order
    * if it was recorded as having been rolled back.
    */
-  public int getFinishedTXOrder(TXId txId);
+  public long getFinishedTXOrder(TXId txId);
 
   /**
    * Adjust the orders returned by getPendingTXOrder using the ordering from

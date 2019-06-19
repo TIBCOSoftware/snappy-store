@@ -82,14 +82,13 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
   
   
   /** map of member to version h older.  This is the actual version "vector" */
-  //private ConcurrentHashMap<T, RegionVersionHolder<T>> memberToVersion;
-  private final Map<T, RegionVersionHolder<T>> memberToVersion;
-  private final Map<T, RegionVersionHolder<T>> memberToVersionSnapshot;
+  private final ConcurrentHashMap<T, RegionVersionHolder<T>> memberToVersion;
+  private final CopyOnWriteHashMap<T, RegionVersionHolder<T>> memberToVersionSnapshot;
 
   /** current version in the local region for generating next version */
-  private AtomicLong localVersion = new AtomicLong(0);
-  private AtomicLong localVersionForSnapshot = new AtomicLong(0);
-  private AtomicLong localVersionForWrite = new AtomicLong(0);
+  private final AtomicLong localVersion = new AtomicLong(0);
+  // private AtomicLong localVersionForSnapshot = new AtomicLong(0);
+  // private AtomicLong localVersionForWrite = new AtomicLong(0);
   /**
    * The list of exceptions for the local member. The version held
    * in this RegionVersionHolder may not be accurate, but the exception list
@@ -102,39 +101,37 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
    * the version of the local exceptions under lock.
    */
   private RegionVersionHolder<T> localExceptions;
-  
+
   /** highest reaped tombstone region-version for this member */
-  private AtomicLong localGCVersion = new AtomicLong(0);
-  
+  private final AtomicLong localGCVersion = new AtomicLong(0);
+
   /** the member that this version vector applies to */
   private T myId;
-  
 
-  
   /**
    * a flag stating whether this vector contains only the version information
    * for a single member.  This is used when a member crashed to transmit only
    * the version information for that member.
    */
   private boolean singleMember;
-  
+
   /** a flag to prevent accidental serialization of a live member */
   private transient boolean isLiveVector;
-  
+
   private final ConcurrentHashMap<T, Long> memberToGCVersion;
-  
+
   /** map of canonical IDs for this RVV that are not in the memberToVersion map */
   private transient ConcurrentHashMap<T, T> canonicalIds = new ConcurrentHashMap<>();
 
   /** a log writer used in debugging */
   private transient LogWriterI18n log;
-  
+
   /** is recording disabled? */
   private transient boolean recordingDisabled;
-  
+
   /** is this a vector in a client cache? */
   private transient boolean clientVector;
-  
+
   /**
    * this read/write lock is used to stop generation of new versions by the vector
    * while a region-level operation is underway.  The locking scheme assumes that
@@ -152,16 +149,16 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
   
   private transient final Object clearLockSync = new Object(); // sync for coordinating thread startup and lockOwner setting
 
-  
+
   /** create a live version vector for a region */
   public RegionVersionVector(T ownerId) {
     this.myId = ownerId;
     this.isLiveVector = true;
 
-    this.localExceptions = new RegionVersionHolder<T>(0);
-    this.memberToVersionSnapshot = new CopyOnWriteHashMap<T, RegionVersionHolder<T>>();
-    this.memberToVersion = new ConcurrentHashMap<T, RegionVersionHolder<T>>(INITIAL_CAPACITY, LOAD_FACTOR, CONCURRENCY_LEVEL);
-    this.memberToGCVersion = new ConcurrentHashMap<T, Long> (INITIAL_CAPACITY, LOAD_FACTOR, CONCURRENCY_LEVEL);
+    this.localExceptions = new RegionVersionHolder<>(0);
+    this.memberToVersionSnapshot = new CopyOnWriteHashMap<>();
+    this.memberToVersion = new ConcurrentHashMap<>(INITIAL_CAPACITY, LOAD_FACTOR, CONCURRENCY_LEVEL);
+    this.memberToGCVersion = new ConcurrentHashMap<>(INITIAL_CAPACITY, LOAD_FACTOR, CONCURRENCY_LEVEL);
   }
 
   // this has to make sure that no other thread is modifying the memberToSnapshotVersion
@@ -220,8 +217,7 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
    * if it wants consistent view of snapshot across cache
    */
   public Map<T, RegionVersionHolder<T>> getSnapShotOfMemberVersion() {
-
-    return ((CopyOnWriteHashMap)memberToVersionSnapshot).getInnerMap();
+    return memberToVersionSnapshot.getInnerMap();
   }
 
   protected abstract RegionVersionVector<T> createCopy(T ownerId,
@@ -259,7 +255,7 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
    * Retrieve a collection of tombstone GC region-versions
    */
   public Map<T, Long> getTombstoneGCVector() {
-    Map<T, Long> result;
+    UnifiedMap<T, Long> result;
     synchronized(memberToGCVersion) {
       result = new UnifiedMap<>(this.memberToGCVersion);
     }
@@ -1289,7 +1285,7 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
       RegionVersionHolder<T> localExceptions) {
     this.myId = ownerId;
     this.memberToVersion = vector;
-    this.memberToVersionSnapshot = new CopyOnWriteHashMap(vector);
+    this.memberToVersionSnapshot = new CopyOnWriteHashMap<>(vector);
     this.memberToGCVersion = gcVersions;
     this.localGCVersion.set(gcVersion);
     this.localVersion.set(version);
@@ -1300,9 +1296,9 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
   
   /** deserialize a cloned vector */
   public RegionVersionVector() {
-    this.memberToVersionSnapshot = new CopyOnWriteHashMap<T, RegionVersionHolder<T>>();
-    this.memberToVersion = new ConcurrentHashMap<T, RegionVersionHolder<T>>(INITIAL_CAPACITY, LOAD_FACTOR, CONCURRENCY_LEVEL);
-    this.memberToGCVersion = new ConcurrentHashMap<T, Long>(INITIAL_CAPACITY, LOAD_FACTOR, CONCURRENCY_LEVEL);
+    this.memberToVersionSnapshot = new CopyOnWriteHashMap<>();
+    this.memberToVersion = new ConcurrentHashMap<>(INITIAL_CAPACITY, LOAD_FACTOR, CONCURRENCY_LEVEL);
+    this.memberToGCVersion = new ConcurrentHashMap<>(INITIAL_CAPACITY, LOAD_FACTOR, CONCURRENCY_LEVEL);
   }
   
   /**

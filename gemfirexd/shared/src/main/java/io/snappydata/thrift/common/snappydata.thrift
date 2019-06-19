@@ -522,6 +522,8 @@ struct StatementAttrs {
  // the last catalog meta-data version recorded by client which will throw exception
  // on mismatch so that caller can refresh catalog meta-data (if being cached)
  23: optional i64                                          catalogVersion
+ // column table updates/deletes can use this as the owner for bucket read locks
+ 24: optional string                                       lockOwner
 }
 
 union ColumnValue {

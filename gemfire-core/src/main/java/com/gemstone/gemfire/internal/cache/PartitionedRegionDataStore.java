@@ -74,8 +74,8 @@ import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWrite
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock.StoppableReadLock;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock.StoppableWriteLock;
 import com.gemstone.gnu.trove.THashSet;
-import com.gemstone.gnu.trove.TIntArrayList;
 import com.gemstone.org.jgroups.util.StringId;
+import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 /**
@@ -3110,24 +3110,11 @@ public final class PartitionedRegionDataStore implements HasCachePerfStats
   }
 
   @SuppressWarnings("unchecked")
-  public TIntArrayList getAllLocalPrimaryBucketIdArray() {
-    TIntArrayList bucketIds = new TIntArrayList();
+  public IntArrayList getAllLocalPrimaryBucketIdArray() {
+    IntArrayList bucketIds = new IntArrayList();
     for (BucketRegion bucket : localBucket2RegionMap.values()) {
       if (bucket.getBucketAdvisor().isPrimary()) {
         bucketIds.add(bucket.getId());
-      }
-    }
-    return bucketIds;
-  }
-
-  public Set<Integer> getAllLocalPrimaryBucketIdsBetweenProvidedIds(int low,
-      int high) {
-    Set<Integer> bucketIds = new HashSet<Integer>();
-    for (Map.Entry<Integer, BucketRegion> bucketEntry : getAllLocalBuckets()) {
-      BucketRegion bucket = bucketEntry.getValue();
-      if (bucket.getBucketAdvisor().isPrimary() && (bucket.getId() >= low)
-          && (bucket.getId() < high)) {
-        bucketIds.add(Integer.valueOf(bucket.getId()));
       }
     }
     return bucketIds;

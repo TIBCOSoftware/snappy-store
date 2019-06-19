@@ -1402,10 +1402,9 @@ public final class ClientService extends ReentrantLock implements LobService {
     }
   }
 
-  public StatementResult prepareAndExecute(String sql, List<Row> paramsBatch,
-      Map<Integer, OutputParameter> outputParams, StatementAttrs attrs)
-      throws SnappyException {
-    HostConnection source = this.currentHostConnection;
+  public StatementResult prepareAndExecute(HostConnection source, String sql,
+      List<Row> paramsBatch, Map<Integer, OutputParameter> outputParams,
+      StatementAttrs attrs) throws SnappyException {
     if (SanityManager.TraceClientStatement) {
       final long ns = System.nanoTime();
       SanityManager.DEBUG_PRINT_COMPACT("prepareAndExecute_S", sql,

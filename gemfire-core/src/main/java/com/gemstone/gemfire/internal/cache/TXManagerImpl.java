@@ -54,8 +54,8 @@ import com.gemstone.gemfire.internal.concurrent.MapResult;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
-import com.gemstone.gnu.trove.TObjectIntHashMap;
 import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.map.mutable.primitive.ObjectLongHashMap;
 
 /**
  * <p>
@@ -378,7 +378,7 @@ public final class TXManagerImpl implements CacheTransactionManager,
      */
     Object isTXCommitted(TXId txId) {
       TXFinished result = this.finishedMap.get(txId);
-      return result != null ? Boolean.valueOf(result.isCommit) : null;
+      return result != null ? result.isCommit : null;
     }
 
     /**
@@ -386,9 +386,9 @@ public final class TXManagerImpl implements CacheTransactionManager,
      * transaction has been rolled back then it returns negative of the ordering
      * to indicate so.
      */
-    TObjectIntHashMap getTXCommitOrders(Collection<TXId> txIds) {
+    ObjectLongHashMap<TXId> getTXCommitOrders(Collection<TXId> txIds) {
       final HashMap<TXId, TXId> txIdSet = new HashMap<TXId, TXId>(txIds.size());
-      final TObjectIntHashMap txIdOrders = new TObjectIntHashMap();
+      final ObjectLongHashMap<TXId> txIdOrders = new ObjectLongHashMap<>(16);
       for (TXId txId : txIds) {
         txIdSet.put(txId, txId);
       }
@@ -398,7 +398,7 @@ public final class TXManagerImpl implements CacheTransactionManager,
         final TXFinished head = this.tail.next;
         TXFinished next = head;
         TXId txId;
-        int pos = 1;
+        long pos = 1;
         while ((next = next.next) != head) {
           lookupId.memberId = next.txMemberId;
           lookupId.uniqId = next.txUniqId;

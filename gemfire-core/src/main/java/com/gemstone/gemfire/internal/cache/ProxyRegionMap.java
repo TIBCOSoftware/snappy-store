@@ -307,7 +307,7 @@ public final class ProxyRegionMap implements RegionMap {
       FilterRoutingInfo filterRoutingInfo,
       ClientProxyMembershipID bridgeContext, VersionTag<?> versionTag,
       long tailKey, TXRegionState txr, EntryEventImpl cbEvent) {
-    this.owner.txApplyDestroyPart2(markerEntry, key, inTokenMode,
+    this.owner.txApplyDestroyPart2(txState, markerEntry, key, inTokenMode,
         false /*Clear conflict occured */);
     if (!inTokenMode) {
       /*
@@ -349,8 +349,8 @@ public final class ProxyRegionMap implements RegionMap {
       FilterRoutingInfo filterRoutingInfo,
       ClientProxyMembershipID bridgeContext, VersionTag<?> versionTag,
       long tailKey, TXRegionState txr, EntryEventImpl cbEvent) {
-    this.owner.txApplyInvalidatePart2(markerEntry, key, didDestroy, true,
-        false /*Clear conflic occured */);
+    this.owner.txApplyInvalidatePart2(txState, markerEntry, key, didDestroy,
+        true, false /* clear conflict occurred */);
     if (this.owner.isInitialized()) {
       /*
       if (txEvent != null) {

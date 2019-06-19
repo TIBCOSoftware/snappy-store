@@ -1639,7 +1639,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
           argTypes, 0, 0, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines,
           tc, GFXD_SYS_PROC_CLASSNAME, true);
     }
-    
+
     {
         // void SET_BUCKETS_FOR_LOCAL_EXECUTION(TableName, buckets)
         String[] argNames = new String[] { "TABLE_NAME", "BUCKETS", "CATALOG_VERSION"};
@@ -1651,6 +1651,39 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
         super.createSystemProcedureOrFunction("SET_BUCKETS_FOR_LOCAL_EXECUTION", sysUUID, argNames,
             argTypes, 0, 0, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines,
             tc, GFXD_SYS_PROC_CLASSNAME, false);
+    }
+
+    {
+      // void SET_BUCKETS_FOR_LOCAL_EXECUTION_EX(tableName, buckets,
+      //   relDestroyVersion, lockOwner)
+      String[] argNames = new String[] { "TABLE_NAME", "BUCKETS", "CATALOG_VERSION",
+          "LOCK_OWNER" };
+      TypeDescriptor[] argTypes = new TypeDescriptor[] {
+          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
+          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
+          DataTypeDescriptor.getCatalogType(Types.BIGINT),
+          DataTypeDescriptor.getCatalogType(Types.VARCHAR)
+      };
+      super.createSystemProcedureOrFunction("SET_BUCKETS_FOR_LOCAL_EXECUTION_EX",
+          sysUUID, argNames, argTypes, 0, 0, RoutineAliasInfo.NO_SQL, null,
+          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
+    }
+
+    {
+      // void RELEASE_BUCKET_MAINTENANCE_LOCKS(tableName, forWrite, lockOwner, buckets)
+      String[] argNames = new String[] { "TABLE_NAME", "FOR_WRITE",
+          "LOCK_OWNER", "BUCKETS" };
+      TypeDescriptor[] argTypes = new TypeDescriptor[] {
+          DataTypeDescriptor.getBuiltInDataTypeDescriptor(
+              Types.VARCHAR, false).getCatalogType(),
+          DataTypeDescriptor.getBuiltInDataTypeDescriptor(
+              Types.BOOLEAN, false).getCatalogType(),
+          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
+          DataTypeDescriptor.getCatalogType(Types.VARCHAR)
+      };
+      super.createSystemProcedureOrFunction("RELEASE_BUCKET_MAINTENANCE_LOCKS",
+          sysUUID, argNames, argTypes, 0, 0, RoutineAliasInfo.NO_SQL, null,
+          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
     }
 
     {

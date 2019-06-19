@@ -51,7 +51,7 @@ public final class ReentrantReadWriteWriteShareLock extends
 
   private final QueuedSynchronizer sync;
 
-  private Object ownerId;
+  private volatile Object ownerId;
 
   public ReentrantReadWriteWriteShareLock() {
     this.sync = new QueuedSynchronizer();

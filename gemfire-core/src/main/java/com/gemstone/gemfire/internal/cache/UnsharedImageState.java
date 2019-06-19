@@ -17,11 +17,12 @@
 
 package com.gemstone.gemfire.internal.cache;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
@@ -35,9 +36,9 @@ import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableNonReentrantLock;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
-import com.gemstone.gnu.trove.TObjectIntHashMap;
 import com.gemstone.org.jgroups.util.StringId;
 import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.map.mutable.primitive.ObjectLongHashMap;
 
 /**
  * Used on distributed replicated regions to track GII and various state.
@@ -78,8 +79,8 @@ public class UnsharedImageState implements ImageState {
   private volatile UnifiedMap<TXId, TXRegionState> pendingTXRegionStates;
   private final NonReentrantReadWriteLock pendingTXRegionStatesLock;
   private volatile Thread pendingTXRegionStatesLockOwner;
-  private final AtomicInteger pendingTXOrder;
-  private volatile TObjectIntHashMap finishedTXIdOrders;
+  private final AtomicLong pendingTXOrder;
+  private volatile ObjectLongHashMap<TXId> finishedTXIdOrders;
 
   UnsharedImageState(final boolean isClient,
                      final boolean isReplicate,
@@ -103,7 +104,7 @@ public class UnsharedImageState implements ImageState {
     this.pendingTXRegionStates = isLocal ? null : new UnifiedMap<>();
     this.pendingTXRegionStatesLock = isLocal ? null
         : new NonReentrantReadWriteLock(stopper);
-    this.pendingTXOrder = new AtomicInteger(0);
+    this.pendingTXOrder = new AtomicLong(0L);
   }
 
   private void initDestroyedKeysMap() {
@@ -350,14 +351,16 @@ public class UnsharedImageState implements ImageState {
    */
   @Override
   public boolean addPendingTXRegionState(TXRegionState txrs) {
-    if (this.pendingTXRegionStates != null) {
+    final UnifiedMap<TXId, TXRegionState> pendingTXRegionStates =
+        this.pendingTXRegionStates;
+    if (pendingTXRegionStates != null) {
       // don't add if the advisor has not been initialized yet, that is the
       // initial CreateRegionMessage replies are still on the wire so all
       // operations on TXRegionState are essentially ignored
       final LocalRegion region = txrs.region;
       if (region.isProfileExchanged()) {
         Object old;
-        if ((old = this.pendingTXRegionStates.getIfAbsentPut(txrs.getTXState()
+        if ((old = pendingTXRegionStates.getIfAbsentPut(txrs.getTXState()
             .getTransactionId(), txrs)) != txrs) {
           Assert.fail("ImageState#addPendingTXRegionState: failed to add "
               + txrs + ", existing=" + old);
@@ -379,10 +382,11 @@ public class UnsharedImageState implements ImageState {
    */
   @Override
   public void removePendingTXRegionState(TXId txId) {
-    if (this.pendingTXRegionStates != null) {
+    final UnifiedMap<TXId, TXRegionState> pendingTXRegionStates =
+        this.pendingTXRegionStates;
+    if (pendingTXRegionStates != null) {
       TXRegionState txrs;
-      if ((txrs = (TXRegionState)this.pendingTXRegionStates.remove(
-          txId)) != null) {
+      if ((txrs = pendingTXRegionStates.remove(txId)) != null) {
         if (TXStateProxy.LOG_FINE) {
           final LogWriterI18n logger = txrs.region.getLogWriterI18n();
           logger.info(LocalizedStrings.DEBUG,
@@ -410,8 +414,10 @@ public class UnsharedImageState implements ImageState {
       }
     }
     try {
-      if (this.pendingTXRegionStates != null) {
-        txrs = this.pendingTXRegionStates.get(txId);
+      final UnifiedMap<TXId, TXRegionState> pendingTXRegionStates =
+          this.pendingTXRegionStates;
+      if (pendingTXRegionStates != null) {
+        txrs = pendingTXRegionStates.get(txId);
         if (TXStateProxy.LOG_FINE) {
           if (txrs != null) {
             final LogWriterI18n logger = txrs.region.getLogWriterI18n();
@@ -504,10 +510,11 @@ public class UnsharedImageState implements ImageState {
    */
   @Override
   public Collection<TXRegionState> getPendingTXRegionStates() {
-    if (this.pendingTXRegionStates != null) {
-      @SuppressWarnings("unchecked")
-      final Collection<TXRegionState> result = this.pendingTXRegionStates
-          .values();
+    final UnifiedMap<TXId, TXRegionState> pendingTXRegionStates =
+        this.pendingTXRegionStates;
+    if (pendingTXRegionStates != null && !pendingTXRegionStates.isEmpty()) {
+      final Collection<TXRegionState> result =
+          new ArrayList<>(pendingTXRegionStates.values());
       if (TXStateProxy.LOG_FINE) {
         final LogWriterI18n logger = InternalDistributedSystem.getLoggerI18n();
         if (logger != null) {
@@ -528,11 +535,11 @@ public class UnsharedImageState implements ImageState {
   @Override
   public void setTXOrderForFinish(TXRegionState txrs) {
     if (this.pendingTXRegionStatesLock != null) {
-      TObjectIntHashMap finishedOrders;
+      final ObjectLongHashMap<TXId> finishedOrders;
       // assume read lock on pendingTXRegionStates is already held
       Assert.assertTrue(this.pendingTXRegionStatesLock.numReaders() > 0);
       if ((finishedOrders = this.finishedTXIdOrders) != null) {
-        int order = finishedOrders.get(txrs.getTXState().getTransactionId());
+        long order = finishedOrders.get(txrs.getTXState().getTransactionId());
         if (order != 0) {
           txrs.finishOrder = Math.abs(order);
           return;
@@ -546,8 +553,8 @@ public class UnsharedImageState implements ImageState {
    * {@inheritDoc}
    */
   @Override
-  public int getFinishedTXOrder(TXId txId) {
-    TObjectIntHashMap finishedOrders;
+  public long getFinishedTXOrder(TXId txId) {
+    final ObjectLongHashMap<TXId> finishedOrders;
     if ((finishedOrders = this.finishedTXIdOrders) != null) {
       return finishedOrders.get(txId);
     }
@@ -570,7 +577,7 @@ public class UnsharedImageState implements ImageState {
         // this is deliberately invoked under the lock to sync against
         // any concurrent getPendingTXOrder call
         final TXManagerImpl txMgr = region.getCache().getTxManager();
-        TObjectIntHashMap txIdOrders = txMgr.finishedTXStates
+        final ObjectLongHashMap<TXId> txIdOrders = txMgr.finishedTXStates
             .getTXCommitOrders(txIds);
         // loop through existing TXRegionStates and reset the order to that
         // passed in txIdOrders
@@ -586,7 +593,7 @@ public class UnsharedImageState implements ImageState {
             if (txrs.finishOrder == 0) {
               continue;
             }
-            int order = txIdOrders.get(txrs.getTXState().getTransactionId());
+            long order = txIdOrders.get(txrs.getTXState().getTransactionId());
             if (order != 0) {
               txrs.finishOrder = Math.abs(order);
             }
@@ -614,7 +621,7 @@ public class UnsharedImageState implements ImageState {
       if (txrs != null) {
         txrs.clear();
       }
-      final TObjectIntHashMap txIds = this.finishedTXIdOrders;
+      final ObjectLongHashMap<TXId> txIds = this.finishedTXIdOrders;
       if (txIds != null) {
         txIds.clear();
       }

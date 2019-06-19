@@ -152,10 +152,17 @@ public abstract class SerializedDiskBuffer extends ByteBufferReference {
   protected abstract void releaseBuffer();
 
   /**
-   * For buffers which are stored in region, set its DiskId.
+   * For buffers which are stored in region, set DiskId and RegionEntryContext.
    */
   public void setDiskEntry(AbstractOplogDiskRegionEntry entry,
       RegionEntryContext context) {
+  }
+
+  /**
+   * Return the RegionEntryContext set by {@link #setDiskEntry} for this buffer.
+   */
+  public RegionEntryContext getRegionContext() {
+    return null;
   }
 
   /**
