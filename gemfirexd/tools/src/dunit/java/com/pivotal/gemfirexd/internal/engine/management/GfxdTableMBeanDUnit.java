@@ -898,7 +898,6 @@ public class GfxdTableMBeanDUnit extends GfxdManagementTestBase {
       
       long rowCount;
       double entrySize;
-      Thread.sleep(30*000);
       
       logInfo("Validating index info for all indexes ");
 
@@ -908,6 +907,23 @@ public class GfxdTableMBeanDUnit extends GfxdManagementTestBase {
       indexNames.add("INDEX_TAG");
       indexNames.add("INDEX_NAME");
       indexNames.add(pkIndexName);
+      waitForCriterion(new WaitCriterion() {
+        @Override
+        public boolean done() {
+          try {
+            CompositeData[] data = (CompositeData[])mbsc.invoke(tableMBeanName,
+                "listIndexInfo", null, null);
+            return data != null && data.length == 4;
+          } catch (Exception e) {
+            throw new AssertionError(e.getMessage(), e);
+          }
+        }
+
+        @Override
+        public String description() {
+          return "waiting for index information to show up in metadata";
+        }
+      }, 30000, 500, true);
       CompositeData[] data = (CompositeData[]) mbsc.invoke(tableMBeanName, "listIndexInfo", null, null);
       assertEquals(4, data.length);
       for (CompositeData indexInfo : data) {

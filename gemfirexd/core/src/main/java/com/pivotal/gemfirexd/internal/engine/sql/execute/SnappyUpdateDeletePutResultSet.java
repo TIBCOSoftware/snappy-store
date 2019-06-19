@@ -17,15 +17,16 @@
 
 package com.pivotal.gemfirexd.internal.engine.sql.execute;
 
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecRow;
 
-public final class SnappyUpdateDeleteResultSet extends SnappySelectResultSet {
+public final class SnappyUpdateDeletePutResultSet extends SnappySelectResultSet {
 
   private int rowCount = -1;
 
-  SnappyUpdateDeleteResultSet(Activation ac, boolean returnRows) {
+  SnappyUpdateDeletePutResultSet(Activation ac, boolean returnRows) {
     super(ac, returnRows);
   }
 
@@ -44,10 +45,10 @@ public final class SnappyUpdateDeleteResultSet extends SnappySelectResultSet {
           rowCount += row.getLastColumn().getInt();
         }
       } catch (Exception ex) {
-        throw GemFireXDRuntimeException.newRuntimeException("Update or Delete on Snappy", ex);
+        throw GemFireXDRuntimeException.newRuntimeException("Update or Delete or Put on Snappy", ex);
       }
     }
-
+    Misc.getCacheLogWriter().info("SnappyUpdateDeleteResultSet:::modifiedRowCount" + rowCount);
     return rowCount;
   }
 }
