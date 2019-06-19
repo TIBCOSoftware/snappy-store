@@ -342,7 +342,7 @@ public class IndexDDLStmt implements DDLStmtIF {
     
     String type = " ";
     long count = SQLBB.getBB().getSharedCounters().incrementAndRead(SQLBB.indexCount);
-    String indexName = "index" /*+ RemoteTestModule.getCurrentThread().getThreadId()*/ + "_" + count;
+    String indexName = "trade.index" /*+ RemoteTestModule.getCurrentThread().getThreadId() */ + "_" + count;
     int createTypeIndex = 10; //1 in 10 chances
     if (rand.nextInt(createTypeIndex) == 0) {
       type = types[rand.nextInt(types.length)];
@@ -359,7 +359,6 @@ public class IndexDDLStmt implements DDLStmtIF {
     
     try {
       Statement stmt = conn.createStatement();
-      stmt.execute("set schema trade");
       Log.getLogWriter().info("creating index statement is " + createIndexStmt);
       stmt.executeUpdate(createIndexStmt);
       SQLWarning warning = stmt.getWarnings(); //test to see there is a warning
