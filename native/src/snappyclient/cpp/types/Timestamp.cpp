@@ -117,8 +117,8 @@ Timestamp Timestamp::parseString(const std::string& str,
         boost::date_time::parse_delimited_time_duration<
             _snappy_impl::nano_time_duration>(timeStr);
 	// nanoseconds will lie within int32 limits
-	return Timestamp(ymd.year, ymd.month, ymd.day, td.hours(), td.minutes(),
-        td.seconds(), static_cast<int32_t>(td.fractional_seconds()), utc);
+	return Timestamp(static_cast<uint16_t>(ymd.year), static_cast<uint16_t>(ymd.month), static_cast<uint16_t>(ymd.day), static_cast<uint16_t>(td.hours()), static_cast<uint16_t>(td.minutes()),
+		static_cast<uint16_t>(td.seconds()), static_cast<int32_t>(td.fractional_seconds()), utc);
   } catch (const std::exception& e) {
     std::string err(str);
     err.append(": ").append(e.what());
@@ -142,7 +142,7 @@ std::string& Timestamp::toString(std::string& str, const bool utc) const {
       boost::posix_time::time_duration td = dateTime.time_of_day();
 
       return DateTime::toString(uint16_t(ymd.year), ymd.month.as_number(),
-          ymd.day.as_number(), td.hours(), td.minutes(), td.seconds(), m_nanos,
+          ymd.day.as_number(), static_cast<uint16_t>(td.hours()), static_cast<uint16_t>(td.minutes()), static_cast<uint16_t>(td.seconds()), m_nanos,
           str);
     } catch (const std::exception&) {
       throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1,
@@ -189,7 +189,7 @@ std::ostream& operator <<(std::ostream& stream, Timestamp ts) {
       boost::posix_time::time_duration td = dateTime.time_of_day();
 
       return DateTime::toString(uint16_t(ymd.year), ymd.month.as_number(),
-          ymd.day.as_number(), td.hours(), td.minutes(), td.seconds(),
+		  static_cast<uint16_t>(ymd.day.as_number()), static_cast<uint16_t>(td.hours()), static_cast<uint16_t>(td.minutes()), static_cast<uint16_t>(td.seconds()),
           ts.getNanos(), stream);
     } catch (const std::exception&) {
       throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1,

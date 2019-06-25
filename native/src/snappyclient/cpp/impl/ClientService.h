@@ -63,7 +63,11 @@ namespace impl {
 
   class ClientTransport;
   class ControlConnection;
-
+  enum class FailoverStatus :unsigned char{
+                NONE,         /** no failover to be done */
+                NEW_SERVER,   /** failover to a new server */
+                RETRY         /** retry to the same server */
+              };
   class SnappyDataClient : public thrift::SnappyDataServiceClient {
   public:
     SnappyDataClient(protocol::TProtocol* prot) :
@@ -359,7 +363,14 @@ namespace impl {
         }
 
   };
+class NetConnection{
+private:
 
+  /** set of SQLState strings that denote failover should be done */
+    static std::set<std::string> failoverSQLStateSet;
+public:
+  static FailoverStatus getFailoverStatus(const std::string& sqlState,const int32_t& errorCode, const TException& snappyEx);
+  };
 } /* namespace impl */
 } /* namespace client */
 } /* namespace snappydata */
