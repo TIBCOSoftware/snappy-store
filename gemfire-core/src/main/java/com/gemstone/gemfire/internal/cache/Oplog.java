@@ -783,6 +783,18 @@ public final class Oplog implements CompactableOplog {
     }
   }
 
+  // Asof: StandBy oplog to be used in case of disk full, to allow
+  //  rollback logging etc.
+  // When this oplog is used, it is assumed that before the switch to
+  // this oplog, the compactor thread will be stopped. This means that
+  // it is guaranteed that previous oplog will not be compacted
+  //( as the compactor is stopped while the previous oplog is not yet
+  // added for compaction. This means that fixed data like RVV etc
+  //  need not be added to standby oplog (atleast that is my understanding))
+  Oplog(long oplogId, DirectoryHolder dirHolder, Oplog prevOplog, File reservedSpace) {
+
+  }
+
   /**
    * Asif: A copy constructor used for creating a new oplog based on the
    * previous Oplog. This constructor is invoked only from the function

@@ -77,6 +77,7 @@ import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.FileUtil;
+import com.gemstone.gemfire.internal.InsufficientDiskSpaceException;
 import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.NanoTimer;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
@@ -102,6 +103,7 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.OffHeapHelper;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
+import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.THashSet;
@@ -407,6 +409,9 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
    */
   private final DiskBlockSortManager sortManager;
 
+  private final File standByOplogSpace;
+  private final String standByFileName = "StandByOplog.file" ;
+
   // ///////////////////// Constructors /////////////////////////
 
   private static int calcCompactionThreshold(int ct) {
@@ -503,6 +508,33 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     }
 
     File[] dirs = getDiskDirs();
+    // first delete any existing stand by oplog file in any of the disk dirs.
+    for (File dir: dirs) {
+      if (dir.exists()) {
+        File []  standByOplogFiles = dir.listFiles((File parent, String fileName) ->
+          fileName.equals(standByFileName));
+        for ( File f: standByOplogFiles) {
+          f.delete();
+        }
+      }
+    }
+
+    // now create the stand by oplog file space in the 0th directory
+    this.standByOplogSpace = new File(dirs[0], standByFileName);
+    // preblow the file
+    try {
+      NativeCalls.getInstance().preBlow(this.standByOplogSpace.getAbsolutePath(), this.maxOplogSizeInBytes,
+        (DiskStoreImpl.PREALLOCATE_OPLOGS && !DiskStoreImpl.SET_IGNORE_PREALLOCATE));
+    }
+    catch (IOException ioe) {
+
+      throw new InsufficientDiskSpaceException(
+        LocalizedStrings.Oplog_PreAllocate_Failure.toLocalizedString(
+          this.standByOplogSpace.getAbsolutePath(), this.maxOplogSizeInBytes), ioe, this);
+    } finally {
+      this.standByOplogSpace.delete();
+    }
+
     int[] dirSizes = getDiskDirSizes();
     int length = dirs.length;
     this.directories = new DirectoryHolder[length];
@@ -517,6 +549,8 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
         tempMaxDirSize = dirSizes[i];
       }
     }
+    directories[0].incrementTotalOplogSize(this.maxOplogSizeInBytes);
+
     // stored in bytes
     this.maxDirSize = tempMaxDirSize * 1024 * 1024;
     this.infoFileDirIndex = 0;
