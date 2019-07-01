@@ -700,7 +700,29 @@ public final class Oplog implements CompactableOplog {
     this.firstRecord = false; 
     this.logger = getParent().getCache().getLoggerI18n();
     this.opState = new OpState();
-    long maxOplogSizeParam = getParent().getMaxOplogSizeInBytes();
+    try {
+    // Minimum Required Ops to be logged into oplog
+    OpState commonDiskRecordOp = createDiskStoreRecordOp();
+    OpState[] commonGFEVersionRecordOp = createGemfireVersionRecordOp();
+    OpState drfRVVRecordOp = createRVVRecordOp(true);
+    OpState crfRVVRecordOp = createRVVRecordOp(false);
+
+    OpState [] allOps = new OpState[2 + commonGFEVersionRecordOp.length];
+    allOps[0] = commonDiskRecordOp;
+    for (int i = 1; i < 1 + commonGFEVersionRecordOp.length; ++i) {
+      allOps[i] = commonGFEVersionRecordOp[i];
+    }
+
+    long commonMinSize = commonDiskRecordOp.size;
+    for(OpState op : commonGFEVersionRecordOp) {
+      commonMinSize += op.size;
+    }
+    long minDrfSize = commonMinSize + drfRVVRecordOp.size;
+    long minCrfSize = commonMinSize + crfRVVRecordOp.size;
+
+
+    long maxOplogSizeParam = getParent().getMaxOplogSizeInBytes() + minCrfSize + minDrfSize;
+
     long availableSpace = this.dirHolder.getAvailableSpace();
     if (availableSpace < maxOplogSizeParam) {
       if (DiskStoreImpl.PREALLOCATE_OPLOGS && !DiskStoreImpl.SET_IGNORE_PREALLOCATE) {
@@ -730,7 +752,7 @@ public final class Oplog implements CompactableOplog {
       }
       this.maxOplogSize = maxOplogSizeParam;
     }
-    setMaxCrfDrfSize();
+    setMaxCrfDrfSize(minCrfSize, minDrfSize);
     this.stats = getParent().getStats();
     this.compactOplogs = getParent().getAutoCompact();
 
@@ -740,9 +762,11 @@ public final class Oplog implements CompactableOplog {
                              oplogSet.getPrefix()
                              + n + "_" + oplogId);
     this.idxkrf = new OplogIndex(this);
-    try {
-      createDrf(null);
-      createCrf(null);
+
+      allOps[allOps.length -1] = drfRVVRecordOp;
+      createDrf(null, allOps);
+      allOps[allOps.length -1] = crfRVVRecordOp;
+      createCrf(null, allOps);
       // open krf for offline compaction
       if (getParent().isOfflineCompacting()) {
         krfFileCreate();
@@ -781,12 +805,42 @@ public final class Oplog implements CompactableOplog {
     this.dirHolder = dirHolder;
     this.opState = new OpState();
     this.logger = prevOplog.logger;
-    long maxOplogSizeParam = getParent().getMaxOplogSizeInBytes();
+
+    // Minimum Required Ops to be logged into oplog
+    try {
+    OpState commonDiskRecordOp = createDiskStoreRecordOp();
+    OpState[] commonGFEVersionRecordOp = createGemfireVersionRecordOp();
+    OpState drfRVVRecordOp = createRVVRecordOp(true);
+    OpState crfRVVRecordOp = createRVVRecordOp(false);
+
+    OpState [] allOps = new OpState[2 + commonGFEVersionRecordOp.length];
+    allOps[0] = commonDiskRecordOp;
+    for (int i = 1; i < 1 + commonGFEVersionRecordOp.length; ++i) {
+      allOps[i] = commonGFEVersionRecordOp[i];
+    }
+
+    long commonMinSize = commonDiskRecordOp.size;
+    for(OpState op : commonGFEVersionRecordOp) {
+      commonMinSize += op.size;
+    }
+    long minDrfSize = commonMinSize + drfRVVRecordOp.size;
+    long minCrfSize = commonMinSize + crfRVVRecordOp.size;
+
+
+    long maxOplogSizeParam = getParent().getMaxOplogSizeInBytes() + minCrfSize + minDrfSize;
     long availableSpace = this.dirHolder.getAvailableSpace();
     if (prevOplog.compactOplogs) {
       this.maxOplogSize = maxOplogSizeParam;
     } else {
       if (availableSpace < maxOplogSizeParam) {
+        if (availableSpace < (minCrfSize + minDrfSize)) {
+          throw new InsufficientDiskSpaceException(
+            LocalizedStrings.Oplog_PreAllocate_Failure_Init.toLocalizedString(
+              this.dirHolder, maxOplogSizeParam), new IOException(
+            "not enough space left to create and pre grow oplog files, available="
+              + availableSpace + ", required=" + maxOplogSizeParam),
+            getParent());
+        }
         this.maxOplogSize = availableSpace;
         if (this.logger.warningEnabled()) {
           logger.warning(LocalizedStrings.DEBUG, "Reducing maxOplogSize to " + availableSpace + " because that is all the room remaining in the directory.");
@@ -795,7 +849,7 @@ public final class Oplog implements CompactableOplog {
         this.maxOplogSize = maxOplogSizeParam;
       }
     }
-    setMaxCrfDrfSize();
+    setMaxCrfDrfSize(minCrfSize, minDrfSize);
     this.stats = prevOplog.stats;
     this.compactOplogs = prevOplog.compactOplogs;
     // copy over the previous Oplog's data version since data is not being
@@ -808,9 +862,11 @@ public final class Oplog implements CompactableOplog {
                              oplogSet.getPrefix()
                              + n + "_" + oplogId);
     this.idxkrf = new OplogIndex(this);
-    try {
-      createDrf(prevOplog);
-      createCrf(prevOplog);
+
+      allOps[allOps.length -1] = drfRVVRecordOp;
+      createDrf(prevOplog, allOps);
+      allOps[allOps.length -1] = crfRVVRecordOp;
+      createCrf(prevOplog, allOps);
       // open krf for offline compaction
       if (getParent().isOfflineCompacting()) {
         krfFileCreate();
@@ -875,12 +931,45 @@ public final class Oplog implements CompactableOplog {
     return Collections.unmodifiableCollection(this.regionMap.values());
   }
 
+  private OpState createDiskStoreRecordOp() {
+    OpState op = new OpState();
+    op.initialize(getParent().getDiskStoreID());
+    return op;
+  }
+
+
   private void writeDiskStoreRecord(OplogFile olf) throws IOException {
     this.opState = new OpState();
     this.opState.initialize(getParent().getDiskStoreID());
     writeOpLogBytes(olf, false, true); // fix for bug 41928
     olf.currSize += getOpStateSize();
     this.dirHolder.incrementTotalOplogSize(getOpStateSize());
+  }
+
+  private OpState[] createGemfireVersionRecordOp() {
+    if (this.gfversion == null) {
+      this.gfversion = Version.CURRENT;
+    }
+    Version dataVersion = getDataVersionIfOld();
+    if (dataVersion == null) {
+      dataVersion = Version.CURRENT;
+    }
+    // if gfversion and dataVersion are not same, then write a special token
+    // version and then write both, else write gfversion as before
+    // this is for backward compatibility with 7.0
+
+    if (this.gfversion == dataVersion) {
+      OpState op = new OpState();
+      op.initialize(this.gfversion.ordinal());
+      return new OpState[]{op};
+    }
+    else {
+      OpState[] ops = new OpState[]{new OpState(), new OpState(), new OpState()};
+      ops[0].initialize(Version.TOKEN.ordinal());
+      ops[1].initialize(this.gfversion.ordinal());
+      ops[2].initialize(dataVersion.ordinal());
+      return ops;
+    }
   }
 
   private void writeGemfireVersionRecord(OplogFile olf) throws IOException {
@@ -917,6 +1006,12 @@ public final class Oplog implements CompactableOplog {
 
   public final Version currentRecoveredGFVersion() {
     return this.gfversion;
+  }
+
+  private OpState createRVVRecordOp(boolean writeGCRVV) throws  IOException {
+    OpState op = new OpState();
+    op.initialize(getParent().getAllDiskRegions(), writeGCRVV);
+    return op;
   }
   
   /**
@@ -997,7 +1092,7 @@ public final class Oplog implements CompactableOplog {
     this.opState = new OpState();
     long maxOplogSizeParam = getParent().getMaxOplogSizeInBytes();
     this.maxOplogSize = maxOplogSizeParam;
-    setMaxCrfDrfSize();
+    setMaxCrfDrfSize(0,0);
     this.stats = getParent().getStats();
     this.compactOplogs = getParent().getAutoCompact();
     this.closed = true;
@@ -1260,7 +1355,7 @@ public final class Oplog implements CompactableOplog {
    * 
    * @throws IOException
    */
-  private void createCrf(Oplog prevOplog) throws IOException
+  private void createCrf(Oplog prevOplog, OpState[] fixedOps) throws IOException
   {
     File f = new File(this.diskFile.getPath() + CRF_FILE_EXT);
     if (logger.fineEnabled()) {
@@ -1287,6 +1382,12 @@ public final class Oplog implements CompactableOplog {
     }
 
     this.stats.incOpenOplogs();
+    for(OpState op : fixedOps) {
+      writeOpLogBytes(this.crf, false, true); // fix for bug 41928
+      this.crf.currSize += getOpStateSize();
+      this.dirHolder.incrementTotalOplogSize(getOpStateSize());
+    }
+    /*
     writeDiskStoreRecord(this.crf);
     writeGemfireVersionRecord(this.crf);    
     writeRVVRecord(this.crf, false);
@@ -1296,6 +1397,7 @@ public final class Oplog implements CompactableOplog {
     //even if we have a large RVV, we can still write up to
     //max-oplog-size bytes to this oplog.
     this.maxCrfSize += this.crf.currSize;
+    */
   }
 
   private static OplogFile.FileChannelOutputStream createOutputStream(
@@ -1320,7 +1422,7 @@ public final class Oplog implements CompactableOplog {
    * 
    * @throws IOException
    */
-  private void createDrf(Oplog prevOplog) throws IOException
+  private void createDrf(Oplog prevOplog, OpState[] fixedOps) throws IOException
   {
     String drfFilePath = this.diskFile.getPath() + DRF_FILE_EXT;
     File f = new File(drfFilePath);
@@ -1342,10 +1444,19 @@ public final class Oplog implements CompactableOplog {
                                 getFileType(this.drf),
                                 getParent().getName()});
     }
+    for(OpState op : fixedOps) {
+      writeOpLogBytes(this.drf, false, true); // fix for bug 41928
+      this.drf.currSize += getOpStateSize();
+      this.dirHolder.incrementTotalOplogSize(getOpStateSize());
+    }
+    /*
     writeDiskStoreRecord(this.drf);
     writeGemfireVersionRecord(this.drf);
     writeRVVRecord(this.drf, true);
+    */
   }
+
+
   
   /**
    * Returns the <code>DiskStoreStats</code> for this oplog
@@ -4235,12 +4346,18 @@ public final class Oplog implements CompactableOplog {
         // are written in the same order as they are created.
         // This allows us to not encode the oplogEntryId explicitly in the record
         long createOplogEntryId = getOplogSet().newOplogEntryId();
-        id.setKeyId(createOplogEntryId);
+
 
         // startPosForSynchOp = this.crf.currSize;
         // Asif: Allow it to be added to the OpLOg so increase the
         // size of currenstartPosForSynchOpt oplog
         int dataLength = getOpStateSize();
+
+        // do the io while holding lock so that switch can set doneAppending
+        // Write the data to the opLog for the synch mode
+        startPosForSynchOp = writeOpLogBytes(this.crf, async, true);
+        // set the entry id & oplog Id after successfully writing the create to oplog
+        id.setKeyId(createOplogEntryId);
         // Asif: It is necessary that we set the
         // Oplog ID here without releasing the lock on object as we are
         // writing to the file after releasing the lock. This can cause
@@ -4251,7 +4368,7 @@ public final class Oplog implements CompactableOplog {
         // This is because a compactor thread will iterate over the entries &
         // use only those which have OplogID equal to that of Oplog being
         // compacted without taking any lock. A lock is taken only if the
-        // entry is a potential candidate. 
+        // entry is a potential candidate.
         // Further the compactor may delete the file as a compactor thread does
         // not require to take any shared/exclusive lock at DiskStoreImpl
         // or Oplog level.
@@ -4264,9 +4381,6 @@ public final class Oplog implements CompactableOplog {
         // writer of previous
         // oplog can interfere with the current oplog.
         id.setOplogId(getOplogId());
-        // do the io while holding lock so that switch can set doneAppending
-        // Write the data to the opLog for the synch mode
-        startPosForSynchOp = writeOpLogBytes(this.crf, async, true);
 //         if (this.crf.currSize != startPosForSynchOp) {
 //           LogWriterI18n l = parent.getOwner().getCache().getLoggerI18n();
 //            logger.info(LocalizedStrings.DEBUG, "currSize=" + this.crf.currSize
@@ -5963,13 +6077,15 @@ public final class Oplog implements CompactableOplog {
   private long getMaxDrfSize() {
     return this.maxDrfSize;
   }
-  private void setMaxCrfDrfSize() {
+  private void setMaxCrfDrfSize(long minCrfSize, long minDrfSize) {
     int crfPct = Integer.getInteger("gemfire.CRF_MAX_PERCENTAGE", 90);
     if (crfPct > 100 || crfPct < 0) {
       crfPct = 90;
     }
-    this.maxCrfSize = (long)(this.maxOplogSize * (crfPct / 100.0));
+    long variableAvailable = this.maxOplogSize - (minCrfSize + minDrfSize);
+    this.maxCrfSize = (long)(variableAvailable * (crfPct / 100.0)) + minCrfSize;
     this.maxDrfSize = this.maxOplogSize - this.maxCrfSize;
+    assert this.maxDrfSize > minDrfSize;
   }
   /**
    * 
