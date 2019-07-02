@@ -409,8 +409,11 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
    */
   private final DiskBlockSortManager sortManager;
 
-  private final File standByOplogSpace;
-  private final String standByFileName = "StandByOplog.file" ;
+  final long standbyCrfSize;
+  final long standbyDrfSize;
+  final Oplog.OplogFile standByCrf;
+  final Oplog.OplogFile standByDrf;
+  final String standByFileName = "StandByOplog" ;
 
   // ///////////////////// Constructors /////////////////////////
 
@@ -512,28 +515,26 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     for (File dir: dirs) {
       if (dir.exists()) {
         File []  standByOplogFiles = dir.listFiles((File parent, String fileName) ->
-          fileName.equals(standByFileName));
+          fileName.equals(standByFileName + ".crf") || fileName.equals(standByFileName + ".drf"));
         for ( File f: standByOplogFiles) {
           f.delete();
         }
       }
     }
 
-    // now create the stand by oplog file space in the 0th directory
-    this.standByOplogSpace = new File(dirs[0], standByFileName);
-    // preblow the file
-    try {
-      NativeCalls.getInstance().preBlow(this.standByOplogSpace.getAbsolutePath(), this.maxOplogSizeInBytes,
-        (DiskStoreImpl.PREALLOCATE_OPLOGS && !DiskStoreImpl.SET_IGNORE_PREALLOCATE));
+    int crfPct = Integer.getInteger("gemfire.CRF_MAX_PERCENTAGE", 90);
+    if (crfPct > 100 || crfPct < 0) {
+      crfPct = 90;
     }
-    catch (IOException ioe) {
 
-      throw new InsufficientDiskSpaceException(
-        LocalizedStrings.Oplog_PreAllocate_Failure.toLocalizedString(
-          this.standByOplogSpace.getAbsolutePath(), this.maxOplogSizeInBytes), ioe, this);
-    } finally {
-      this.standByOplogSpace.delete();
-    }
+    this.standbyCrfSize = (long)(maxOplogSizeInBytes * (crfPct / 100.0)) ;
+    this.standbyDrfSize = maxOplogSizeInBytes - this.standbyCrfSize;
+    // now create the stand by oplog file space in the 0th directory
+    this.standByCrf = new Oplog.OplogFile();
+    this.standByDrf = new Oplog.OplogFile();
+    File crfFile = new File(dirs[0], standByFileName +".crf");
+    File drfFile = new File(dirs[0], standByFileName +".drf");
+    // preblow the file
 
     int[] dirSizes = getDiskDirSizes();
     int length = dirs.length;
@@ -549,7 +550,12 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
         tempMaxDirSize = dirSizes[i];
       }
     }
-    directories[0].incrementTotalOplogSize(this.maxOplogSizeInBytes);
+    try {
+      this.preblow(this.standByCrf, this.standbyCrfSize, directories[0]);
+      this.preblow(this.standByDrf, this.standbyCrfSize, directories[0]);
+    } catch (IOException ioe) {
+      throw new IllegalStateException("Unable to reserve space for stand by oplogs");
+    }
 
     // stored in bytes
     this.maxDirSize = tempMaxDirSize * 1024 * 1024;
@@ -602,6 +608,94 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
   }
 
   ////////////////////// Instance Methods //////////////////////
+
+  void preblow(Oplog.OplogFile olf, long maxSize, DirectoryHolder dirHolder) throws IOException {
+    GemFireCacheImpl.StaticSystemCallbacks ssc = GemFireCacheImpl.getInternalProductCallbacks();
+    if (!this.isOfflineCompacting() && ssc != null && ssc.isSnappyStore() && ssc.isAccessor()
+      && this.getName().equals(GemFireCacheImpl.getDefaultDiskStoreName())) {
+      logger.warning(LocalizedStrings.SHOULDNT_INVOKE, "Pre blow is invoked on Accessor Node.");
+      return;
+    }
+
+//     logger.info(LocalizedStrings.DEBUG, "DEBUG preblow(" + maxSize + ")  dirAvailSpace=" + this.dirHolder.getAvailableSpace());
+    long availableSpace = dirHolder.getAvailableSpace();
+    if (availableSpace >= maxSize) {
+      try {
+        NativeCalls.getInstance().preBlow(olf.f.getAbsolutePath(), maxSize,
+          (DiskStoreImpl.PREALLOCATE_OPLOGS && !DiskStoreImpl.SET_IGNORE_PREALLOCATE));
+      }
+      catch (IOException ioe) {
+        logger.warning(LocalizedStrings.DEBUG, "Could not pregrow oplog to " + maxSize + " because: " + ioe);
+//         if (this.logger.warningEnabled()) {
+//           this.logger.warning(
+//               LocalizedStrings.Oplog_OPLOGCREATEOPLOGEXCEPTION_IN_PREBLOWING_THE_FILE_A_NEW_RAF_OBJECT_FOR_THE_OPLOG_FILE_WILL_BE_CREATED_WILL_NOT_BE_PREBLOWNEXCEPTION_STRING_IS_0,
+//               ioe, null);
+//         }
+        // I don't think I need any of this. If setLength throws then
+        // the file is still ok.
+        // I need this on windows. I'm seeing this in testPreblowErrorCondition:
+// Caused by: java.io.IOException: The parameter is incorrect
+// 	at sun.nio.ch.FileDispatcher.write0(Native Method)
+// 	at sun.nio.ch.FileDispatcher.write(FileDispatcher.java:44)
+// 	at sun.nio.ch.IOUtil.writeFromNativeBuffer(IOUtil.java:104)
+// 	at sun.nio.ch.IOUtil.write(IOUtil.java:60)
+// 	at sun.nio.ch.FileChannelImpl.write(FileChannelImpl.java:206)
+// 	at com.gemstone.gemfire.internal.cache.Oplog.flush(Oplog.java:3377)
+// 	at com.gemstone.gemfire.internal.cache.Oplog.flushAll(Oplog.java:3419)
+        /*
+        {
+          String os = System.getProperty("os.name");
+          if (os != null) {
+	    if (os.indexOf("Windows") != -1) {
+              olf.raf.close();
+              olf.RAFClosed = true;
+              if (!olf.f.delete() && olf.f.exists()) {
+                throw new DiskAccessException(LocalizedStrings.Oplog_COULD_NOT_DELETE__0_.toLocalizedString(olf.f.getAbsolutePath()), getParent());
+              }
+              if (logger.fineEnabled()) {
+                logger.fine("recreating operation log file " + olf.f);
+              }
+              olf.raf = new RandomAccessFile(olf.f, SYNC_WRITES ? "rwd" : "rw");
+              olf.RAFClosed = false;
+            }
+          }
+        }
+        */
+        closeAndDeleteAfterEx(ioe, olf);
+        throw new InsufficientDiskSpaceException(
+          LocalizedStrings.Oplog_PreAllocate_Failure.toLocalizedString(
+            olf.f.getAbsolutePath(), maxSize), ioe, this);
+      }
+    }
+    // TODO: Perhaps the test flag is not requierd here. Will re-visit.
+    else if (DiskStoreImpl.PREALLOCATE_OPLOGS && !DiskStoreImpl.SET_IGNORE_PREALLOCATE) {
+      throw new InsufficientDiskSpaceException(
+        LocalizedStrings.Oplog_PreAllocate_Failure.toLocalizedString(
+          olf.f.getAbsolutePath(), maxSize), new IOException(
+        "not enough space left to pre-blow, available=" + availableSpace
+          + ", required=" + maxSize), this);
+    }
+  }
+
+  private void closeAndDeleteAfterEx(IOException ex, Oplog.OplogFile olf) {
+    if (olf == null) {
+      return;
+    }
+
+    if (olf.raf != null) {
+      try {
+        olf.raf.close();
+      } catch (IOException e) {
+        logger.warning(LocalizedStrings.Oplog_Close_Failed, olf.f.getAbsolutePath(), e);
+      }
+    }
+    olf.RAFClosed = true;
+    if (!olf.f.delete() && olf.f.exists()) {
+      throw new DiskAccessException(
+        LocalizedStrings.Oplog_COULD_NOT_DELETE__0_.toLocalizedString(olf.f
+          .getAbsolutePath()), ex, this);
+    }
+  }
 
   public void setUsedForInternalUse() {
     this.isForInternalUse = true;
