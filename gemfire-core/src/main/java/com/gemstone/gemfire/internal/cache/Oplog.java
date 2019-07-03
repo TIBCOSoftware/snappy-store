@@ -1388,10 +1388,12 @@ public final class Oplog implements CompactableOplog {
 
     this.stats.incOpenOplogs();
     for(OpState op : fixedOps) {
+      this.opState = op;
       writeOpLogBytes(this.crf, false, true); // fix for bug 41928
       this.crf.currSize += getOpStateSize();
       this.dirHolder.incrementTotalOplogSize(getOpStateSize());
     }
+    this.opState.reset();
     /*
     writeDiskStoreRecord(this.crf);
     writeGemfireVersionRecord(this.crf);    
@@ -1450,10 +1452,12 @@ public final class Oplog implements CompactableOplog {
                                 getParent().getName()});
     }
     for(OpState op : fixedOps) {
+      this.opState = op;
       writeOpLogBytes(this.drf, false, true); // fix for bug 41928
       this.drf.currSize += getOpStateSize();
       this.dirHolder.incrementTotalOplogSize(getOpStateSize());
     }
+    this.opState.reset();
     /*
     writeDiskStoreRecord(this.drf);
     writeGemfireVersionRecord(this.drf);
