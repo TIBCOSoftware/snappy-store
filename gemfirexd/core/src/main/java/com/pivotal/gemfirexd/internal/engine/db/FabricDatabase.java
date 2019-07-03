@@ -1894,8 +1894,12 @@ public final class FabricDatabase implements ModuleControl,
     // Clean up GemFireXD MBeans if management was not disabled
     //GfxdManagementService.handleEvent(GfxdResourceEvent.FABRIC_DB__STOP, this.memStore);
     active = false;
-    tempDir.deleteAll();
-    tempDir = null;
+    final DirFile tempDir = this.tempDir;
+    if (tempDir != null) {
+      // noinspection ResultOfMethodCallIgnored
+      tempDir.deleteAll();
+      this.tempDir = null;
+    }
     runtimeStatisticsOn = false;
   }
 
@@ -2576,8 +2580,8 @@ public final class FabricDatabase implements ModuleControl,
                     .nextInt(Integer.MAX_VALUE);
                 final DirFile df = new DirFile(tDir, TEMP_DIR_PREFIX
                     + Integer.toString(rl) + ".d");
-                df.deleteOnExit();
                 if (df.mkdirs()) {
+                  df.deleteOnExit();
                   assert df.canWrite();
                   return df;
                 }
