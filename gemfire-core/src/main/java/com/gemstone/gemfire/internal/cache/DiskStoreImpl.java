@@ -535,7 +535,8 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     File crfFile = new File(dirs[0], standByFileName +".crf");
     File drfFile = new File(dirs[0], standByFileName +".drf");
     // preblow the file
-
+    this.standByCrf.f = crfFile;
+    this.standByDrf.f = drfFile;
     int[] dirSizes = getDiskDirSizes();
     int length = dirs.length;
     this.directories = new DirectoryHolder[length];
