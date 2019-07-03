@@ -891,7 +891,18 @@ public final class Oplog implements CompactableOplog {
     this.dirHolder = dirHolder;
     this.opState = new OpState();
     this.logger = prevOplog.logger;
+    this.stats = prevOplog.stats;
+    this.compactOplogs = prevOplog.compactOplogs;
+    // copy over the previous Oplog's data version since data is not being
+    // transformed at this point
+    this.dataVersion = prevOplog.getDataVersionIfOld();
 
+    this.closed = false;
+    String n = getParent().getName();
+    this.diskFile = new File(this.dirHolder.getDir(),
+      oplogSet.getPrefix()
+        + n + "_" + oplogId);
+    this.idxkrf = new OplogIndex(this);
     // Minimum Required Ops to be logged into oplog
     try {
     OpState commonDiskRecordOp = createDiskStoreRecordOp();
@@ -902,7 +913,7 @@ public final class Oplog implements CompactableOplog {
     OpState [] allOps = new OpState[2 + commonGFEVersionRecordOp.length];
     allOps[0] = commonDiskRecordOp;
     for (int i = 1; i < 1 + commonGFEVersionRecordOp.length; ++i) {
-      allOps[i] = commonGFEVersionRecordOp[i];
+      allOps[i] = commonGFEVersionRecordOp[i - 1];
     }
 
     long commonMinSize = commonDiskRecordOp.size;
@@ -936,18 +947,7 @@ public final class Oplog implements CompactableOplog {
       }
     }
     setMaxCrfDrfSize(minCrfSize, minDrfSize);
-    this.stats = prevOplog.stats;
-    this.compactOplogs = prevOplog.compactOplogs;
-    // copy over the previous Oplog's data version since data is not being
-    // transformed at this point
-    this.dataVersion = prevOplog.getDataVersionIfOld();
 
-    this.closed = false;
-    String n = getParent().getName();
-    this.diskFile = new File(this.dirHolder.getDir(),
-                             oplogSet.getPrefix()
-                             + n + "_" + oplogId);
-    this.idxkrf = new OplogIndex(this);
 
       allOps[allOps.length -1] = drfRVVRecordOp;
       createDrf(prevOplog, allOps);
@@ -960,7 +960,7 @@ public final class Oplog implements CompactableOplog {
     }
     catch (Exception ex) {
       close();
-      
+
       getParent().getCancelCriterion().checkCancelInProgress(ex);
       if (ex instanceof DiskAccessException) {
         throw (DiskAccessException) ex;
@@ -969,6 +969,8 @@ public final class Oplog implements CompactableOplog {
       throw new DiskAccessException(LocalizedStrings.Oplog_FAILED_CREATING_OPERATION_LOG_BECAUSE_0.toLocalizedString(ex), getParent());
     }
   }
+
+
   
   public void replaceIncompatibleEntry(DiskRegionView dr, DiskEntry old, DiskEntry repl) {
     boolean useNextOplog = false;
