@@ -715,7 +715,7 @@ public final class Oplog implements CompactableOplog {
     OpState [] allOps = new OpState[2 + commonGFEVersionRecordOp.length];
     allOps[0] = commonDiskRecordOp;
     for (int i = 1; i < 1 + commonGFEVersionRecordOp.length; ++i) {
-      allOps[i] = commonGFEVersionRecordOp[i];
+      allOps[i] = commonGFEVersionRecordOp[i - 1];
     }
 
     long commonMinSize = commonDiskRecordOp.size;
