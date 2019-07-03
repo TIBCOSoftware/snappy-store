@@ -677,6 +677,22 @@ public final class Oplog implements CompactableOplog {
   static final int LARGE_BUFFER_SIZE = 128 * 1024;
 
   // ///////////////////// Constructors ////////////////////////
+
+  /**
+   * Creates new <code>Oplog</code> for the given region.
+   *
+   * @param oplogId
+   *          int identifying the new oplog
+   * @param dirHolder
+   *          The directory in which to create new Oplog
+   *
+   * @throws DiskAccessException
+   *           if the disk files can not be initialized
+   */
+  Oplog(long oplogId, PersistentOplogSet parent, DirectoryHolder dirHolder) {
+    this(oplogId, parent, dirHolder, null);
+  }
+
   /**
    * Creates new <code>Oplog</code> for the given region.
    * 
@@ -688,7 +704,7 @@ public final class Oplog implements CompactableOplog {
    * @throws DiskAccessException
    *           if the disk files can not be initialized
    */
-  Oplog(long oplogId, PersistentOplogSet parent, DirectoryHolder dirHolder) {
+  private Oplog(long oplogId, PersistentOplogSet parent, DirectoryHolder dirHolder, Version dataVersion) {
     if (oplogId > DiskId.MAX_OPLOG_ID) {
       throw new IllegalStateException("Too many oplogs. The oplog id can not exceed " + DiskId.MAX_OPLOG_ID);
     }
@@ -702,7 +718,8 @@ public final class Oplog implements CompactableOplog {
     // Pretend we have already seen the first record.
     // This will cause a large initial record to force a switch
     // which allows the maxDirSize to be checked.
-    this.firstRecord = false; 
+    this.firstRecord = false;
+    this.dataVersion = dataVersion;
     this.logger = getParent().getCache().getLoggerI18n();
     this.opState = new OpState();
     try {
@@ -788,7 +805,25 @@ public final class Oplog implements CompactableOplog {
     }
   }
 
-  // Asof: StandBy oplog to be used in case of disk full, to allow
+
+  /**
+   * Asif: A copy constructor used for creating a new oplog based on the
+   * previous Oplog. This constructor is invoked only from the function
+   * switchOplog
+   *
+   * @param oplogId
+   *          integer identifying the new oplog
+   * @param dirHolder
+   *          The directory in which to create new Oplog
+   * @param prevOplog
+   *          The previous oplog
+   */
+  private Oplog(long oplogId, DirectoryHolder dirHolder, Oplog prevOplog) {
+    this(oplogId, prevOplog.oplogSet, dirHolder, prevOplog.getDataVersionIfOld());
+  }
+
+
+  // Asif: StandBy oplog to be used in case of disk full, to allow
   //  rollback logging etc.
   // When this oplog is used, it is assumed that before the switch to
   // this oplog, the compactor thread will be stopped. This means that
@@ -866,109 +901,8 @@ public final class Oplog implements CompactableOplog {
 
   }
 
-  /**
-   * Asif: A copy constructor used for creating a new oplog based on the
-   * previous Oplog. This constructor is invoked only from the function
-   * switchOplog
-   * 
-   * @param oplogId
-   *          integer identifying the new oplog
-   * @param dirHolder
-   *          The directory in which to create new Oplog
-   * @param prevOplog
-   *          The previous oplog
-   */
-  private Oplog(long oplogId, DirectoryHolder dirHolder, Oplog prevOplog) {
-    if (oplogId > DiskId.MAX_OPLOG_ID) {
-      throw new IllegalStateException("Too many oplogs. The oplog id can not exceed " + DiskId.MAX_OPLOG_ID);
-    }
-    this.drf = new OplogFile();
-    this.crf = new OplogFile();
-    this.isStandByOplog = false;
-    this.oplogId = oplogId;
-    this.parent = prevOplog.parent;
-    this.oplogSet = prevOplog.oplogSet;
-    this.dirHolder = dirHolder;
-    this.opState = new OpState();
-    this.logger = prevOplog.logger;
-    this.stats = prevOplog.stats;
-    this.compactOplogs = prevOplog.compactOplogs;
-    // copy over the previous Oplog's data version since data is not being
-    // transformed at this point
-    this.dataVersion = prevOplog.getDataVersionIfOld();
-
-    this.closed = false;
-    String n = getParent().getName();
-    this.diskFile = new File(this.dirHolder.getDir(),
-      oplogSet.getPrefix()
-        + n + "_" + oplogId);
-    this.idxkrf = new OplogIndex(this);
-    // Minimum Required Ops to be logged into oplog
-    try {
-    OpState commonDiskRecordOp = createDiskStoreRecordOp();
-    OpState[] commonGFEVersionRecordOp = createGemfireVersionRecordOp();
-    OpState drfRVVRecordOp = createRVVRecordOp(true);
-    OpState crfRVVRecordOp = createRVVRecordOp(false);
-
-    OpState [] allOps = new OpState[2 + commonGFEVersionRecordOp.length];
-    allOps[0] = commonDiskRecordOp;
-    for (int i = 1; i < 1 + commonGFEVersionRecordOp.length; ++i) {
-      allOps[i] = commonGFEVersionRecordOp[i - 1];
-    }
-
-    long commonMinSize = commonDiskRecordOp.size;
-    for(OpState op : commonGFEVersionRecordOp) {
-      commonMinSize += op.size;
-    }
-    long minDrfSize = commonMinSize + drfRVVRecordOp.size;
-    long minCrfSize = commonMinSize + crfRVVRecordOp.size;
 
 
-    long maxOplogSizeParam = getParent().getMaxOplogSizeInBytes() + minCrfSize + minDrfSize;
-    long availableSpace = this.dirHolder.getAvailableSpace();
-    if (prevOplog.compactOplogs) {
-      this.maxOplogSize = maxOplogSizeParam;
-    } else {
-      if (availableSpace < maxOplogSizeParam) {
-        if (availableSpace < (minCrfSize + minDrfSize)) {
-          throw new InsufficientDiskSpaceException(
-            LocalizedStrings.Oplog_PreAllocate_Failure_Init.toLocalizedString(
-              this.dirHolder, maxOplogSizeParam), new IOException(
-            "not enough space left to create and pre grow oplog files, available="
-              + availableSpace + ", required=" + maxOplogSizeParam),
-            getParent());
-        }
-        this.maxOplogSize = availableSpace;
-        if (this.logger.warningEnabled()) {
-          logger.warning(LocalizedStrings.DEBUG, "Reducing maxOplogSize to " + availableSpace + " because that is all the room remaining in the directory.");
-        }
-      } else {
-        this.maxOplogSize = maxOplogSizeParam;
-      }
-    }
-    setMaxCrfDrfSize(minCrfSize, minDrfSize);
-
-
-      allOps[allOps.length -1] = drfRVVRecordOp;
-      createDrf(prevOplog, allOps);
-      allOps[allOps.length -1] = crfRVVRecordOp;
-      createCrf(prevOplog, allOps);
-      // open krf for offline compaction
-      if (getParent().isOfflineCompacting()) {
-        krfFileCreate();
-      }
-    }
-    catch (Exception ex) {
-      close();
-
-      getParent().getCancelCriterion().checkCancelInProgress(ex);
-      if (ex instanceof DiskAccessException) {
-        throw (DiskAccessException) ex;
-      }
-      logger.warning(LocalizedStrings.Oplog_FAILED_CREATING_OPERATION_LOG_BECAUSE_0, ex);
-      throw new DiskAccessException(LocalizedStrings.Oplog_FAILED_CREATING_OPERATION_LOG_BECAUSE_0.toLocalizedString(ex), getParent());
-    }
-  }
 
 
   
