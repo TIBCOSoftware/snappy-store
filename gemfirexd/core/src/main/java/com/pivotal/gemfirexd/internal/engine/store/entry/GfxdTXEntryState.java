@@ -701,13 +701,13 @@ public final class GfxdTXEntryState extends TXEntryState implements
     final boolean isOpDestroy = isOpDestroy();
     // in case of op = destroy or op = update/put of an existing entry
     // we need to reinstate the old index during rollback
-    if (!isOpPut && !isOpDestroy) {
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN, "ERROR: Unexpected op = " +
-          this.op + ", opToString returns: " + this.opToString() + " for " + toString() +
-          ", event: " + event);
-      throw new IllegalTransactionStateException("TXEntryState.wrapperForRollback: unexpected " +
-          "operation " + opToString() + " for event: " + event + ", on entry: " + toString());
-    }
+//    if (!isOpPut && !isOpDestroy) {
+//      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_TRAN, "ERROR: Unexpected op = " +
+//          this.op + ", opToString returns: " + this.opToString() + " for " + toString() +
+//          ", event: " + event);
+//      throw new IllegalTransactionStateException("TXEntryState.wrapperForRollback: unexpected " +
+//          "operation " + opToString() + " for event: " + event + ", on entry: " + toString());
+//    }
 
     final TXRegionState txrs = this.txRegionState;
     txrs.lock();
@@ -1714,5 +1714,15 @@ public final class GfxdTXEntryState extends TXEntryState implements
   @Override
   public Version[] getSerializationVersions() {
     return null;
+  }
+
+  private volatile RegionEntry committedRegionEntry = null;
+
+  public void setCommittedRegionEntry(RegionEntry committedRegionEntry) {
+    this.committedRegionEntry = committedRegionEntry;
+  }
+
+  public RegionEntry getCommittedEntry() {
+    return this.committedRegionEntry;
   }
 }

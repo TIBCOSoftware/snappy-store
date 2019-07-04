@@ -143,7 +143,7 @@ public final class ContainsUniqueKeyExecutorMessage extends
           if (rl != null && (rlTXId = rl.getTXId()) != null) {
             rl = SortedMap2IndexScanController.AbstractRowLocationIterator
                 .isRowLocationValidForTransaction(rl, rlTXId, tx,
-                    GfxdConstants.SCAN_OPENMODE_FOR_READONLY_LOCK);
+                    GfxdConstants.SCAN_OPENMODE_FOR_READONLY_LOCK, indexContainer.isUniqueIndex());
           }
           final Object ckey = fetch.getCurrentKey();
           final CompactCompositeIndexKey mapKey = ckey != null
