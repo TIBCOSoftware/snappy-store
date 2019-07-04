@@ -2447,7 +2447,11 @@ public class GfxdSystemProcedures extends SystemProcedures {
 
   public static void ACQUIRE_REGION_LOCK(String lockName)
       throws SQLException {
-    try {
+
+    Misc.getGemFireCache().lockTable(lockName);
+
+    /*try {
+      System.out.println("SKSK ACQUIRING in procedure");
       Misc.getGemFireCacheNoThrow().getLogger().info("SKSK ACQUIRING LOCK On object " + lockName);
       PartitionedRegion.RegionLock lock = PartitionedRegion.getRegionLock
           (lockName, GemFireCacheImpl.getExisting());
@@ -2455,12 +2459,15 @@ public class GfxdSystemProcedures extends SystemProcedures {
       Misc.getGemFireCacheNoThrow().getLogger().info("SKSK ACQUIRED LOCK On object " + lockName);
     } catch (Throwable t) {
       throw TransactionResourceImpl.wrapInSQLException(t);
-    }
+    }*/
   }
 
   public static void RELEASE_REGION_LOCK(String lockName)
       throws SQLException {
-    try {
+    Misc.getGemFireCache().unlockTable(lockName);
+
+    /*try {
+      System.out.println("SKSK RELEASING in procedure");
       Misc.getGemFireCacheNoThrow().getLogger().info("SKSK RELEASING LOCK On object " + lockName);
 
       PartitionedRegion.RegionLock lock = PartitionedRegion.getRegionLock
@@ -2470,7 +2477,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
 
     } catch (Throwable t) {
       throw TransactionResourceImpl.wrapInSQLException(t);
-    }
+    }*/
   }
 
   public static void COMMIT_SNAPSHOT_TXID(String txId, String rolloverTable)

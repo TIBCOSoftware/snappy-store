@@ -8334,7 +8334,7 @@ public class PartitionedRegion extends LocalRegion implements
 
     public void unlock() {
 
-      cache.getLogger().info("SKSK Is the lock take " + this.lockName + " taken = " + this.lockOwned);
+      cache.getLogger().info("SKSK Is the lock taken " + this.lockName + " taken = " + this.lockOwned);
       if (this.lockOwned) {
         try {
           this.lockService.unlock(this.lockName);
