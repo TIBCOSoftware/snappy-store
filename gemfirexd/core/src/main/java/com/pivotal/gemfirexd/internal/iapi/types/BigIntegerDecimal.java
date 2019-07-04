@@ -90,13 +90,13 @@ public final class BigIntegerDecimal extends BinaryDecimal
     {
 		if (isNull())
 			return 0.0f;
-		return NumberDataType.normalizeREAL(Float.parseFloat(getString()));
+		return NumberDataType.normalizeREALAllowNaN(Float.parseFloat(getString()));
 	}
 	public double getDouble() throws StandardException
     {
 		if (isNull())
 			return 0.0;
-		return NumberDataType.normalizeDOUBLE(Double.parseDouble(getString()));
+		return NumberDataType.normalizeDOUBLEAllowNaN(Double.parseDouble(getString()));
 	}	
 	
     // 0 or null is false, all else is true
