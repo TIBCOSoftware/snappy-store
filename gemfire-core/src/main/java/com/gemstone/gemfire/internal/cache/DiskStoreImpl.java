@@ -62,6 +62,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.GemFireIOException;
+import com.gemstone.gemfire.InternalGemFireException;
 import com.gemstone.gemfire.StatisticsFactory;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.Cache;
@@ -107,6 +108,8 @@ import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.THashSet;
+import com.gemstone.org.jgroups.oswego.concurrent.ReadWriteLock;
+import com.gemstone.org.jgroups.oswego.concurrent.WriterPreferenceReadWriteLock;
 import org.eclipse.collections.impl.set.mutable.primitive.IntHashSet;
 import org.eclipse.collections.impl.set.mutable.primitive.LongHashSet;
 
@@ -331,7 +334,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
    * disk store from multiple threads, but I think at some point we should use
    * this to prevent any other ops from completing during the close operation.
    */
-  private final AtomicReference<DiskAccessException> diskException = new AtomicReference<DiskAccessException>();
+  // private final AtomicReference<DiskAccessException> diskException = new AtomicReference<DiskAccessException>();
 
   private boolean isForInternalUse;
 
@@ -349,6 +352,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
   private static final int INDEXRECOVERY_DONE = 3;
   private final int[] indexRecoveryState;
   private final AtomicReference<Throwable> indexRecoveryFailure;
+  private final ReadWriteLock diskStoreLock = new WriterPreferenceReadWriteLock();
 
   // private boolean isThreadWaitingForSpace = false;
 
@@ -1950,7 +1954,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     }
 
     public void run() {
-      DiskAccessException fatalDae = null;
+
       // logger.info(LocalizedStrings.DEBUG, "DEBUG maxAsyncItems=" +
       // maxAsyncItems
       // + " asyncTime=" + getTimeInterval());
@@ -2043,9 +2047,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
       } catch (DiskAccessException dae) {
         // logger.info(LocalizedStrings.DEBUG, "DEBUG: dae", dae);
         boolean okToIgnore = dae.getCause() instanceof ClosedByInterruptException;
-        if (!okToIgnore || !stopFlusher) {
-          fatalDae = dae;
-        }
+
       } catch (CancelException ignore) {
         // logger.info(LocalizedStrings.DEBUG, "DEBUG", ignore);
         // the above checkCancelInProgress will throw a CancelException
@@ -2057,7 +2059,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
           throw new GemFireIOException("Exception encountered in flusher thread: " + t.getMessage(), t);
         }
         logger.severe(LocalizedStrings.DiskStoreImpl_FATAL_ERROR_ON_FLUSH, t);
-        fatalDae = new DiskAccessException(LocalizedStrings.DiskStoreImpl_FATAL_ERROR_ON_FLUSH.toLocalizedString(), t, DiskStoreImpl.this);
+
       } finally {
         // logger.info(LocalizedStrings.DEBUG,
         // "DEBUG: Async writer thread stopped stopFlusher=" + stopFlusher);
@@ -2069,9 +2071,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
           flusherThreadTerminated = true;
           stopFlusher = true; // set this before calling handleDiskAccessException
           // or it will hang
-          if (fatalDae != null) {
-            handleDiskAccessException(fatalDae, true);
-          }
+
         }
       }
     }
@@ -3449,7 +3449,6 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
                 new Object[] { getName(), ids });
           }
         } catch (DiskAccessException dae) {
-          handleDiskAccessException(dae, true);
           throw dae;
         } catch (KillCompactorException ex) {
           if (logger.fineEnabled()) {
@@ -3902,68 +3901,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     this.drMap.remove(regionId);
   }
 
-  void handleDiskAccessException(final DiskAccessException dae,
-      final boolean stopBridgeServers) {
-    boolean causedByRDE = LocalRegion.causedByRDE(dae);
 
-    // @todo is it ok for flusher and compactor to call this method if RDE?
-    // I think they need to keep working (for other regions) in this case.
-    if (causedByRDE) {
-      return;
-    }
-
-    // If another thread has already hit a DAE and is cleaning up, do nothing
-    if (!diskException.compareAndSet(null, dae)) {
-      return;
-    }
-
-    final ThreadGroup exceptionHandlingGroup = LogWriterImpl.createThreadGroup(
-        "Disk Store Exception Handling Group", cache.getLoggerI18n());
-
-    // Shutdown the regions and bridge servers in another thread, to make sure
-    // that we don't cause a deadlock because this thread is holding some lock
-    Thread thread = new Thread(exceptionHandlingGroup,
-        "Disk store exception handler") {
-      @Override
-      public void run() {
-        // first ask each region to handle the exception.
-        for (DiskRegion dr : DiskStoreImpl.this.drMap.values()) {
-          DiskExceptionHandler lr = dr.getExceptionHandler();
-          lr.handleDiskAccessException(dae, false);
-        }
-
-        // then stop the bridge server if needed
-        if (stopBridgeServers) {
-          LogWriterI18n logger = getCache().getLoggerI18n();
-          logger
-              .info(LocalizedStrings.LocalRegion_ATTEMPTING_TO_CLOSE_THE_BRIDGESERVERS_TO_INDUCE_FAILOVER_OF_THE_CLIENTS);
-          try {
-            getCache().stopServers();
-            // also close GemFireXD network servers to induce failover (#45651)
-            final StaticSystemCallbacks sysCb =
-              GemFireCacheImpl.FactoryStatics.systemCallbacks;
-            if (sysCb != null) {
-              sysCb.stopNetworkServers();
-            }
-            logger.info(LocalizedStrings
-                .LocalRegion_BRIDGESERVERS_STOPPED_SUCCESSFULLY);
-          } catch (Exception e) {
-            logger.error(LocalizedStrings
-                .LocalRegion_THE_WAS_A_PROBLEM_IN_STOPPING_BRIDGESERVERS_FAILOVER_OF_CLIENTS_IS_SUSPECT, e);
-          }
-        }
-
-        logger.error(LocalizedStrings
-            .LocalRegion_A_DISKACCESSEXCEPTION_HAS_OCCURED_WHILE_WRITING_TO_THE_DISK_FOR_DISKSTORE_0_THE_DISKSTORE_WILL_BE_CLOSED,
-                DiskStoreImpl.this.getName(), dae);
-
-        // then close this disk store
-        onClose();
-        close();
-      }
-    };
-    thread.start();
-  }
 
   private final String name;
   private final boolean autoCompact;
@@ -5389,4 +5327,88 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
       resetAsyncQueueCapacity();
     }
   }
+
+  public void acquireDiskStoreReadLock() {
+    try {
+      this.diskStoreLock.readLock().acquire();
+    } catch(InterruptedException ie) {
+      this.stopper.checkCancelInProgress(ie);
+      Thread.currentThread().interrupt();
+      throw new InternalGemFireException(ie);
+    }
+  }
+
+  public void releaseDiskStoreReadLock() {
+    this.diskStoreLock.readLock().release();
+  }
+
+  public void acquireDiskStoreWriteLock() {
+    try {
+      this.diskStoreLock.writeLock().acquire();
+    } catch (InterruptedException ie) {
+      this.stopper.checkCancelInProgress(ie);
+      Thread.currentThread().interrupt();
+      throw new InternalGemFireException(ie);
+    }
+  }
+
+  public void releaseDiskStoreWriteLock() {
+    this.diskStoreLock.writeLock().release();
+  }
+
+  void shutdownDiskStoreAndAffiliatedRegions(DiskAccessException dae) {
+    final ThreadGroup exceptionHandlingGroup = LogWriterImpl.createThreadGroup(
+      "Disk Store Exception Handling Group", cache.getLoggerI18n());
+
+    // Shutdown the regions and bridge servers in another thread, to make sure
+    // that we don't cause a deadlock because this thread is holding some lock
+    Thread thread = new Thread(exceptionHandlingGroup,
+      "Disk store exception handler") {
+      @Override
+      public void run() {
+        DiskStoreImpl.this.acquireDiskStoreWriteLock();
+        try {
+        // first ask each region to handle the exception.
+        for (DiskRegion dr : DiskStoreImpl.this.drMap.values()) {
+          DiskExceptionHandler lr = dr.getExceptionHandler();
+          lr.handleDiskAccessException(dae, false);
+        }
+
+        // then stop the bridge server if needed
+
+          LogWriterI18n logger = getCache().getLoggerI18n();
+          logger
+            .info(LocalizedStrings.LocalRegion_ATTEMPTING_TO_CLOSE_THE_BRIDGESERVERS_TO_INDUCE_FAILOVER_OF_THE_CLIENTS);
+          try {
+            getCache().stopServers();
+            // also close GemFireXD network servers to induce failover (#45651)
+            final StaticSystemCallbacks sysCb =
+              GemFireCacheImpl.FactoryStatics.systemCallbacks;
+            if (sysCb != null) {
+              sysCb.stopNetworkServers();
+            }
+            logger.info(LocalizedStrings
+              .LocalRegion_BRIDGESERVERS_STOPPED_SUCCESSFULLY);
+          } catch (Exception e) {
+            logger.error(LocalizedStrings
+              .LocalRegion_THE_WAS_A_PROBLEM_IN_STOPPING_BRIDGESERVERS_FAILOVER_OF_CLIENTS_IS_SUSPECT, e);
+          }
+
+
+        logger.error(LocalizedStrings
+            .LocalRegion_A_DISKACCESSEXCEPTION_HAS_OCCURED_WHILE_WRITING_TO_THE_DISK_FOR_DISKSTORE_0_THE_DISKSTORE_WILL_BE_CLOSED,
+          DiskStoreImpl.this.getName(), dae);
+
+        // then close this disk store
+        onClose();
+        close();
+      } finally {
+          DiskStoreImpl.this.releaseDiskStoreWriteLock();
+        }
+     }
+    };
+    thread.start();
+
+  }
+
 }

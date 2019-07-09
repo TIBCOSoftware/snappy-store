@@ -2238,6 +2238,8 @@ RETRY_LOOP:
     final boolean isRegionReady = !inTokenMode;
     boolean cbEventInPending = false;
     LogWriterI18n log = owner.getLogWriterI18n();
+   this.acquireDiskStoreReadLock();
+
     try {
 
       // check that entry lock has already been upgraded to EX mode
@@ -2433,8 +2435,11 @@ RETRY_LOOP:
       throw dae;
     } finally {
       if (!cbEventInPending && cbEvent != null) cbEvent.release();
+      this.releaseDiskStoreReadLock();
     }
   }
+
+
 
   public final boolean invalidate(EntryEventImpl event,
       boolean invokeCallbacks, boolean forceNewEntry, boolean forceCallbacks)
@@ -2451,7 +2456,7 @@ RETRY_LOOP:
     boolean didInvalidate = false;
     RegionEntry invalidatedRe = null;
     boolean clearOccured = false;
-
+    this.acquireDiskStoreReadLock();
     //DiskRegion dr = owner.getDiskRegion();
     // Fix for Bug #44431. We do NOT want to update the region and wait
     // later for index INIT as region.clear() can cause inconsistency if
@@ -2845,6 +2850,7 @@ RETRY_LOOP:
       else if (!didInvalidate){
         resetThreadLocals();
       }
+      this.releaseDiskStoreReadLock();
     }
     return didInvalidate;
   }
@@ -2881,7 +2887,7 @@ RETRY_LOOP:
 
     }
     final LogWriterI18n log = owner.getCache().getLoggerI18n();
-    
+    this.acquireDiskStoreReadLock();
     DiskRegion dr = owner.getDiskRegion();
     if (dr != null) {
       dr.setClearCountReference();
@@ -2924,6 +2930,7 @@ RETRY_LOOP:
       if (dr != null) {
         dr.removeClearCountReference();
       }
+      this.releaseDiskStoreReadLock();
     }
   }
 
@@ -2939,7 +2946,7 @@ RETRY_LOOP:
     final LocalRegion owner = _getOwner();
     boolean cbEventInPending = false;
     //boolean forceNewEntry = !owner.isInitialized() && owner.isAllEvents();
-
+    this.acquireDiskStoreReadLock();
     //final boolean hasRemoteOrigin = !txState.isCoordinator();
     //DiskRegion dr = owner.getDiskRegion();
     // Fix for Bug #44431. We do NOT want to update the region and wait
@@ -3276,6 +3283,7 @@ RETRY_LOOP:
         owner.getIndexManager().countDownIndexUpdaters();
       }
       if (!cbEventInPending && cbEvent != null) cbEvent.release();
+      this.releaseDiskStoreReadLock();
     }
   }
 
@@ -3809,6 +3817,7 @@ RETRY_LOOP:
       Assert.assertTrue(false, "The owner for RegionMap " + this
           + " is null for event " + event);
     }
+    this.acquireDiskStoreReadLock();
     final LogWriterI18n log = owner.getLogWriterI18n();
     if ((AbstractLRURegionMap.debug || TombstoneService.DEBUG_TOMBSTONE_COUNT)
         && !(owner instanceof HARegion)) {
@@ -4150,6 +4159,7 @@ RETRY_LOOP:
         } else {
           resetThreadLocals();
         }
+        this.releaseDiskStoreReadLock();
     } // finally
 
     return result;
@@ -4458,7 +4468,7 @@ RETRY_LOOP:
     }
     final LogWriterI18n log = owner.getLogWriterI18n();
     Object newValue = nv;
-
+    this.acquireDiskStoreReadLock();
     //final boolean hasRemoteOrigin = !txState.isCoordinator();
     final boolean isRegionReady = owner.isInitialized();
     final long lastMod = cbEvent.getEventTime(0L, owner);
@@ -4711,6 +4721,7 @@ RETRY_LOOP:
       }
 
       if (!cbEventInPending && cbEvent != null) cbEvent.release();
+      this.releaseDiskStoreReadLock();
     }
   }
 
@@ -5111,6 +5122,7 @@ RETRY_LOOP:
 
   public final void writeSyncIfPresent(Object key, Runnable runner)
   {
+    this.acquireDiskStoreReadLock();
     RegionEntry re = getEntry(key);
     if (re != null) {
       final boolean disabled = disableLruUpdateCallback();
@@ -5131,6 +5143,7 @@ RETRY_LOOP:
           this._getOwner().handleDiskAccessException(dae, true/* stop bridge servers*/);
           throw dae;
         }
+        this.releaseDiskStoreReadLock();
       }
     }
   }
@@ -5409,5 +5422,21 @@ RETRY_LOOP:
 
   public final Map<Object, SuspectEntryList> getTestSuspectMap() {
     return this.suspectEntries;
+  }
+
+  private void acquireDiskStoreReadLock() {
+    final LocalRegion owner = _getOwner();
+    DiskRegion dr = owner.getDiskRegion();
+    if (dr != null) {
+      dr.getDiskStore().acquireDiskStoreReadLock();
+    }
+  }
+
+  private void releaseDiskStoreReadLock() {
+    final LocalRegion owner = _getOwner();
+    DiskRegion dr = owner.getDiskRegion();
+    if (dr != null) {
+      dr.getDiskStore().releaseDiskStoreReadLock();
+    }
   }
 }

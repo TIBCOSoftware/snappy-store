@@ -4286,6 +4286,7 @@ public final class Oplog implements CompactableOplog {
         useNextOplog = true;
       }
       else {
+        throwExceptionIfStandByOplogInOpenTx();
         if (this.lockedForKRFcreate) {
           throw new CacheClosedException("The disk store is closed.");
         }
@@ -4439,6 +4440,20 @@ public final class Oplog implements CompactableOplog {
     }
   }
 
+  private void throwExceptionIfStandByOplogInOpenTx() {
+    if (this.isStandByOplog) {
+      TXManagerImpl txMgr = (TXManagerImpl)this.getParent().getCache().getCacheTransactionManager();
+      if (txMgr != null) {
+        TXStateInterface tsi = txMgr.getTXState();
+        if (tsi != null && tsi.isOpen()) {
+          // throw DiskAccessException to initiate rollback
+          throw new InsufficientDiskSpaceException("Standby Oplog is in use, transaction should be rolled back",
+            null, this.getParent());
+        }
+      }
+    }
+  }
+
   /**
    * This oplog will be forced to switch to a new oplog
    * 
@@ -4564,6 +4579,8 @@ public final class Oplog implements CompactableOplog {
         Oplog newOplog = new Oplog(this.oplogId + 1, standByHolder, this, true);
         newOplog.firstRecord = true;
         getOplogSet().setChild(newOplog);
+        // start the asynch thread to shut down the system
+        this.parent.shutdownDiskStoreAndAffiliatedRegions(temp);
       }
 
       Runnable delayedExpensiveWriter = new Runnable() {
@@ -5605,6 +5622,7 @@ public final class Oplog implements CompactableOplog {
           useNextOplog = true;
         }
         else {
+          throwExceptionIfStandByOplogInOpenTx();
           if (this.lockedForKRFcreate) {
             throw new CacheClosedException("The disk store is closed.");
           }
@@ -6118,6 +6136,7 @@ public final class Oplog implements CompactableOplog {
         }
         useNextOplog = true;
       } else {
+        throwExceptionIfStandByOplogInOpenTx();
         if (this.lockedForKRFcreate) {
           throw new CacheClosedException("The disk store is closed.");
         }

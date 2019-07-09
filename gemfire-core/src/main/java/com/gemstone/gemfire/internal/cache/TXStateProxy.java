@@ -2143,6 +2143,15 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
     return this.isDirty /*&& (getLockingPolicy() != LockingPolicy.SNAPSHOT)*/;
   }
 
+  @Override
+  public final boolean isOpen() {
+    final TXState localState = this.localTXState;
+    if (localState != null) {
+      return localState.isInProgress() || (this.state.get() == State.OPEN);
+    }
+    return (this.state.get() == State.OPEN);
+  }
+
   /**
    * Return true if this transaction has acquired read locks (for
    * REPEATABLE_READ isolation).
