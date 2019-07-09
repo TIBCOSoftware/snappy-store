@@ -334,7 +334,7 @@ public final class SQLDouble extends NumberDataType
             if (isnull)
                 value = 0;
             else 
-                value = NumberDataType.normalizeDOUBLE(dv);
+                value = NumberDataType.normalizeDOUBLEAllowNaN(dv);
 	}
 	/**
 		Set the value into a PreparedStatement.
@@ -377,19 +377,19 @@ public final class SQLDouble extends NumberDataType
 
 	public SQLDouble(double val) throws StandardException
 	{
-		value = NumberDataType.normalizeDOUBLE(val);
+		value = NumberDataType.normalizeDOUBLEAllowNaN(val);
 	}
 
 	public SQLDouble(Double obj) throws StandardException {
 		if (isnull = (obj == null))
             ;
 		else
-			value = NumberDataType.normalizeDOUBLE(obj.doubleValue());
+			value = NumberDataType.normalizeDOUBLEAllowNaN(obj.doubleValue());
 	}
 
 	private SQLDouble(double val, boolean startsnull) throws StandardException
 	{
-		value = NumberDataType.normalizeDOUBLE(val); // maybe only do if !startsnull
+		value = NumberDataType.normalizeDOUBLEAllowNaN(val); // maybe only do if !startsnull
 		isnull = startsnull;
 	}
 
@@ -413,7 +413,7 @@ public final class SQLDouble extends NumberDataType
 			} catch (NumberFormatException nfe) {
 			    throw invalidFormat();
 			}
-			value = NumberDataType.normalizeDOUBLE(doubleValue);
+			value = NumberDataType.normalizeDOUBLEAllowNaN(doubleValue);
 			isnull = false;
 		}
 	}
@@ -423,7 +423,7 @@ public final class SQLDouble extends NumberDataType
 	 */
 	public void setValue(double theValue) throws StandardException
 	{
-		value = NumberDataType.normalizeDOUBLE(theValue);
+		value = NumberDataType.normalizeDOUBLEAllowNaN(theValue);
 		isnull = false;
 	}
 
@@ -432,7 +432,7 @@ public final class SQLDouble extends NumberDataType
 	 */
 	public void setValue(float theValue) throws StandardException
 	{
-		value = NumberDataType.normalizeDOUBLE(theValue);
+		value = NumberDataType.normalizeDOUBLEAllowNaN(theValue);
 		isnull = false;
 	}
 

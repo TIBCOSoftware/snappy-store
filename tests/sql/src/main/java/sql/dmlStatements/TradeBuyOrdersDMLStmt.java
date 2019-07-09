@@ -62,6 +62,9 @@ public class TradeBuyOrdersDMLStmt extends AbstractDMLStmt {
    *   int tid; //for update or delete unique records to the thread
    */
 
+  public static String str_sid = SQLPrms.isSnappyMode()?"SID".toLowerCase():"SID";
+  public static String str_cid = SQLPrms.isSnappyMode()?"CID".toLowerCase():"CID";
+
   protected static String insert = "insert into trade.buyorders values (?,?,?,?,?,?,?,?)";
   protected static String put = "put into trade.buyorders values (?,?,?,?,?,?,?,?)";
   protected static String[] update = { 
@@ -91,7 +94,7 @@ public class TradeBuyOrdersDMLStmt extends AbstractDMLStmt {
     //no uniqkey queries
     "select * from trade.buyorders",
     "select cid, bid, cid, sid from trade.buyorders where cid >?  and sid <? and qty >? and orderTime<?  ",
-    "select sid, count(*) as COUNT from trade.buyorders  where status =? GROUP BY sid HAVING count(*) >=1",
+    "select sid, CAST(count(*) as integer) as COUNT from trade.buyorders  where status =? GROUP BY sid HAVING count(*) >=1",
     "select cid, CAST(count(distinct sid) as integer) as DIST_SID from trade.buyorders  where status =? GROUP BY cid",
     "select cid, cast (avg(qty*bid) as decimal (30, 20)) as amount from trade.buyorders  where status =? GROUP BY cid ORDER BY amount",
     "select cid, max(qty*bid) as largest_order from trade.buyorders  where status =? GROUP BY cid HAVING max(qty*bid) > 20000 ORDER BY largest_order, cid DESC ",
@@ -1183,13 +1186,14 @@ public class TradeBuyOrdersDMLStmt extends AbstractDMLStmt {
       
       int i=0;
       int temp = 0;
+
       while (rs.next() && i<size) {
         if (temp ==0 ) {
-          cid[i] = rs.getInt("CID");
-          sid[i] = rs.getInt("SID");
+          cid[i] = rs.getInt(str_cid);
+          sid[i] = rs.getInt(str_sid);
         } else if (n>=temp) {
-          cid[i] = rs.getInt("CID");
-          sid[i] = rs.getInt("SID");
+          cid[i] = rs.getInt(str_cid);
+          sid[i] = rs.getInt(str_sid);
           i++;
         }
         temp++;                         
