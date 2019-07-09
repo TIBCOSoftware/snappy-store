@@ -5367,6 +5367,22 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
       @Override
       public void run() {
         DiskStoreImpl.this.acquireDiskStoreWriteLock();
+        // wait in a loop for Transactions to be empty
+        TXManagerImpl txManager = DiskStoreImpl.this.cache.getTxManager();
+        // wait for 5 minutes for tx to be empty , then just close?
+        int count = 0;
+        while(txManager.hasHostedTransactions()) {
+          try {
+            Thread.sleep(10000);
+            ++count;
+            if (count == 30) {
+              break;
+            }
+          } catch (InterruptedException ie) {
+            // just proceed to close!!?
+            break;
+          }
+        }
         try {
         // first ask each region to handle the exception.
         for (DiskRegion dr : DiskStoreImpl.this.drMap.values()) {

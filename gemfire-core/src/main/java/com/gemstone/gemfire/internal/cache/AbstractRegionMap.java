@@ -2238,7 +2238,7 @@ RETRY_LOOP:
     final boolean isRegionReady = !inTokenMode;
     boolean cbEventInPending = false;
     LogWriterI18n log = owner.getLogWriterI18n();
-   this.acquireDiskStoreReadLock();
+
 
     try {
 
@@ -2435,7 +2435,6 @@ RETRY_LOOP:
       throw dae;
     } finally {
       if (!cbEventInPending && cbEvent != null) cbEvent.release();
-      this.releaseDiskStoreReadLock();
     }
   }
 
@@ -2456,7 +2455,7 @@ RETRY_LOOP:
     boolean didInvalidate = false;
     RegionEntry invalidatedRe = null;
     boolean clearOccured = false;
-    this.acquireDiskStoreReadLock();
+    this.acquireDiskStoreReadLockConditionally(event.getTXState() != null);
     //DiskRegion dr = owner.getDiskRegion();
     // Fix for Bug #44431. We do NOT want to update the region and wait
     // later for index INIT as region.clear() can cause inconsistency if
@@ -2829,7 +2828,10 @@ RETRY_LOOP:
     } catch( DiskAccessException dae) {
       invalidatedRe = null;
       didInvalidate = false;
-      this._getOwner().handleDiskAccessException(dae, true/* stop bridge servers*/);
+      // No need here to close the region etc, the asynch shutdown thread spawned in diskstore will do
+      // Moreover for non tx threads this exception is not expected, for Tx threads let this exception
+      // cause rollback
+     // this._getOwner().handleDiskAccessException(dae, true/* stop bridge servers*/);
       throw dae;
     } finally {
       releaseCacheModificationLock(owner, event);
@@ -2843,14 +2845,17 @@ RETRY_LOOP:
         try {
           lruUpdateCallback();
         } catch( DiskAccessException dae) {
-          this._getOwner().handleDiskAccessException(dae, true/* stop bridge servers*/);
+          // No need here to close the region etc, the asynch shutdown thread spawned in diskstore will do
+          // Moreover for non tx threads this exception is not expected, for Tx threads let this exception
+          // cause rollback
+         // this._getOwner().handleDiskAccessException(dae, true/* stop bridge servers*/);
           throw dae;
         }
       }
       else if (!didInvalidate){
         resetThreadLocals();
       }
-      this.releaseDiskStoreReadLock();
+      this.releaseDiskStoreReadLockConditionally(event.getTXState() != null);
     }
     return didInvalidate;
   }
@@ -2887,7 +2892,7 @@ RETRY_LOOP:
 
     }
     final LogWriterI18n log = owner.getCache().getLoggerI18n();
-    this.acquireDiskStoreReadLock();
+    this.acquireDiskStoreReadLockConditionally(event.getTXState() != null);
     DiskRegion dr = owner.getDiskRegion();
     if (dr != null) {
       dr.setClearCountReference();
@@ -2923,14 +2928,17 @@ RETRY_LOOP:
         owner.checkEntryNotFound(event.getKey());
       }
     }  catch( DiskAccessException dae) {
-      this._getOwner().handleDiskAccessException(dae, true/* stop bridge servers*/);
+      // No need here to close the region etc, the asynch shutdown thread spawned in diskstore will do
+      // Moreover for non tx threads this exception is not expected, for Tx threads let this exception
+      // cause rollback
+      //this._getOwner().handleDiskAccessException(dae, true/* stop bridge servers*/);
       throw dae;
     } finally {
       releaseCacheModificationLock(owner, event);
       if (dr != null) {
         dr.removeClearCountReference();
       }
-      this.releaseDiskStoreReadLock();
+      this.releaseDiskStoreReadLockConditionally(event.getTXState() != null);
     }
   }
 
@@ -2946,7 +2954,6 @@ RETRY_LOOP:
     final LocalRegion owner = _getOwner();
     boolean cbEventInPending = false;
     //boolean forceNewEntry = !owner.isInitialized() && owner.isAllEvents();
-    this.acquireDiskStoreReadLock();
     //final boolean hasRemoteOrigin = !txState.isCoordinator();
     //DiskRegion dr = owner.getDiskRegion();
     // Fix for Bug #44431. We do NOT want to update the region and wait
@@ -3283,7 +3290,6 @@ RETRY_LOOP:
         owner.getIndexManager().countDownIndexUpdaters();
       }
       if (!cbEventInPending && cbEvent != null) cbEvent.release();
-      this.releaseDiskStoreReadLock();
     }
   }
 
@@ -3817,7 +3823,7 @@ RETRY_LOOP:
       Assert.assertTrue(false, "The owner for RegionMap " + this
           + " is null for event " + event);
     }
-    this.acquireDiskStoreReadLock();
+    this.acquireDiskStoreReadLockConditionally(event.getTXState() != null);
     final LogWriterI18n log = owner.getLogWriterI18n();
     if ((AbstractLRURegionMap.debug || TombstoneService.DEBUG_TOMBSTONE_COUNT)
         && !(owner instanceof HARegion)) {
@@ -4105,10 +4111,11 @@ RETRY_LOOP:
             } // sync re
           }// end while
     } catch (DiskAccessException dae) {
-      //Asif:Feel that it is safe to destroy the region here as there appears
-      // to be no chance of deadlock during region destruction      
+      // No need here to close the region etc, the asynch shutdown thread spawned in diskstore will do
+      // Moreover for non tx threads this exception is not expected, for Tx threads let this exception
+      // cause rollback
       result = null;
-      owner.handleDiskAccessException(dae, true/* stop bridge servers*/);
+      //owner.handleDiskAccessException(dae, true/* stop bridge servers*/);
       throw dae;
     } finally {
         releaseCacheModificationLock(owner, event);
@@ -4148,10 +4155,11 @@ RETRY_LOOP:
               try {
                 lruUpdateCallback();
               } catch( DiskAccessException dae) {
-                //Asif:Feel that it is safe to destroy the region here as there appears
-                // to be no chance of deadlock during region destruction      
                 result = null;
-                owner.handleDiskAccessException(dae, true/* stop bridge servers*/);
+                // No need here to close the region etc, the asynch shutdown thread spawned in diskstore will do
+                // Moreover for non tx threads this exception is not expected, for Tx threads let this exception
+                // cause rollback
+              //  owner.handleDiskAccessException(dae, true/* stop bridge servers*/);
                 throw dae;
               }
             }
@@ -4159,7 +4167,7 @@ RETRY_LOOP:
         } else {
           resetThreadLocals();
         }
-        this.releaseDiskStoreReadLock();
+        this.releaseDiskStoreReadLockConditionally(event.getTXState() != null);
     } // finally
 
     return result;
@@ -4468,7 +4476,6 @@ RETRY_LOOP:
     }
     final LogWriterI18n log = owner.getLogWriterI18n();
     Object newValue = nv;
-    this.acquireDiskStoreReadLock();
     //final boolean hasRemoteOrigin = !txState.isCoordinator();
     final boolean isRegionReady = owner.isInitialized();
     final long lastMod = cbEvent.getEventTime(0L, owner);
@@ -4721,7 +4728,7 @@ RETRY_LOOP:
       }
 
       if (!cbEventInPending && cbEvent != null) cbEvent.release();
-      this.releaseDiskStoreReadLock();
+
     }
   }
 
@@ -5122,7 +5129,6 @@ RETRY_LOOP:
 
   public final void writeSyncIfPresent(Object key, Runnable runner)
   {
-    this.acquireDiskStoreReadLock();
     RegionEntry re = getEntry(key);
     if (re != null) {
       final boolean disabled = disableLruUpdateCallback();
@@ -5140,10 +5146,12 @@ RETRY_LOOP:
         try {
           lruUpdateCallback();
         }catch(DiskAccessException dae) {
-          this._getOwner().handleDiskAccessException(dae, true/* stop bridge servers*/);
+          // No need here to close the region etc, the asynch shutdown thread spawned in diskstore will do
+          // Moreover for non tx threads this exception is not expected, for Tx threads let this exception
+          // cause rollback
+         // this._getOwner().handleDiskAccessException(dae, true/* stop bridge servers*/);
           throw dae;
         }
-        this.releaseDiskStoreReadLock();
       }
     }
   }
@@ -5424,19 +5432,26 @@ RETRY_LOOP:
     return this.suspectEntries;
   }
 
-  private void acquireDiskStoreReadLock() {
+  private void acquireDiskStoreReadLockConditionally(boolean hasTx) {
+    if (hasTx) {
+      return;
+    }
+
     final LocalRegion owner = _getOwner();
-    DiskRegion dr = owner.getDiskRegion();
-    if (dr != null) {
-      dr.getDiskStore().acquireDiskStoreReadLock();
+    DiskStoreImpl ds = owner.getDiskStore();
+    if (ds != null) {
+      ds.acquireDiskStoreReadLock();
     }
   }
 
-  private void releaseDiskStoreReadLock() {
+  private void releaseDiskStoreReadLockConditionally(boolean hasTx) {
+    if (hasTx) {
+      return;
+    }
     final LocalRegion owner = _getOwner();
-    DiskRegion dr = owner.getDiskRegion();
-    if (dr != null) {
-      dr.getDiskStore().releaseDiskStoreReadLock();
+    DiskStoreImpl ds = owner.getDiskStore();
+    if (ds != null) {
+      ds.releaseDiskStoreReadLock();
     }
   }
 }
