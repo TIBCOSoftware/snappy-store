@@ -32,6 +32,7 @@ import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
+import com.gemstone.gemfire.internal.InsufficientDiskSpaceException;
 
 /**
  * Persistent version of {@link VMIdAdvisor} that will persist UUIDs
@@ -334,10 +335,16 @@ public class PersistentUUIDAdvisor extends VMIdAdvisor {
               getLogWriter().fine(
                   toString() + ": Persisting generated local UUID=" + update);
             }
-            getUUIDPersistentRegion().put(getFullPath() + UUID_KEY_SUFFIX,
+            try {
+              getUUIDPersistentRegion().put(getFullPath() + UUID_KEY_SUFFIX,
                 update);
-            this.persistingUUID = false;
-            this.uuidLock.notifyAll();
+            } catch (InsufficientDiskSpaceException idse) {
+              super.compareAndSetSequenceId(update, expect, reset);
+              throw idse;
+            } finally {
+              this.persistingUUID = false;
+              this.uuidLock.notifyAll();
+            }
             return true;
           }
           else {
