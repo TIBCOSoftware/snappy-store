@@ -557,7 +557,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     }
     try {
       this.preblow(this.standByCrf, this.standbyCrfSize, directories[0]);
-      this.preblow(this.standByDrf, this.standbyCrfSize, directories[0]);
+      this.preblow(this.standByDrf, this.standbyDrfSize, directories[0]);
     } catch (IOException ioe) {
       throw new IllegalStateException("Unable to reserve space for stand by oplogs");
     }
@@ -5366,22 +5366,28 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
       "Disk store exception handler") {
       @Override
       public void run() {
-        DiskStoreImpl.this.acquireDiskStoreWriteLock();
+
         // wait in a loop for Transactions to be empty
         TXManagerImpl txManager = DiskStoreImpl.this.cache.getTxManager();
         // wait for 5 minutes for tx to be empty , then just close?
         int count = 0;
+        DiskStoreImpl.this.acquireDiskStoreWriteLock();
         while(txManager.hasHostedTransactions()) {
+          DiskStoreImpl.this.releaseDiskStoreWriteLock();
           try {
-            Thread.sleep(10000);
+            Thread.sleep(20000);
             ++count;
-            if (count == 30) {
+            if (count == 15) {
+              // just proceed to close!!?
+              DiskStoreImpl.this.acquireDiskStoreWriteLock();
               break;
             }
           } catch (InterruptedException ie) {
+            DiskStoreImpl.this.acquireDiskStoreWriteLock();
             // just proceed to close!!?
             break;
           }
+          DiskStoreImpl.this.acquireDiskStoreWriteLock();
         }
         try {
         // first ask each region to handle the exception.
