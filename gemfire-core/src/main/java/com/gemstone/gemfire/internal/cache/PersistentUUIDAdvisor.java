@@ -85,6 +85,7 @@ public class PersistentUUIDAdvisor extends VMIdAdvisor {
   private volatile boolean persistingShortUUID;
   private final Object uuidLock = new Object();
   private final Object shortUUIDLock = new Object();
+  private boolean insufficientDiskSpace = false;
 
   protected PersistentUUIDAdvisor(InternalDistributedSystem sys,
       String fullPath, int uuidRecordInterval, LocalRegion forRegion) {
@@ -306,6 +307,9 @@ public class PersistentUUIDAdvisor extends VMIdAdvisor {
       // if UUID is being persisted then wait for it to be done first
       while (this.persistingUUID) {
         synchronized (this.uuidLock) {
+          if (this.insufficientDiskSpace) {
+            throw new InternalGemFireException("standby oplog in use, transaction needs to be aborted");
+          }
           if (!this.persistingUUID) {
             break;
           }
@@ -342,6 +346,7 @@ public class PersistentUUIDAdvisor extends VMIdAdvisor {
               super.compareAndSetSequenceId(update, expect, reset);
               throw idse;
             } finally {
+              this.insufficientDiskSpace = true;
               this.persistingUUID = false;
               this.uuidLock.notifyAll();
             }

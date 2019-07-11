@@ -4276,6 +4276,11 @@ public final class Oplog implements CompactableOplog {
         useNextOplog = true;
       }
       else if (temp > getMaxCrfSize() && !isFirstRecord()) {
+        if (this.isStandByOplog) {
+              // throw DiskAccessException to initiate rollback
+         throw new InsufficientDiskSpaceException("Even Standby Oplog cannot accomodate this operation!!",
+                null, this.getParent());
+        }
         try {
           switchOpLog(dr, getOpStateSize(), entry, false);
         } catch (InsufficientDiskSpaceException idseTemp) {
@@ -4578,6 +4583,7 @@ public final class Oplog implements CompactableOplog {
         DirectoryHolder standByHolder = this.getParent().directories[0];
         Oplog newOplog = new Oplog(this.oplogId + 1, standByHolder, this, true);
         newOplog.firstRecord = true;
+        this.doneAppending = true;
         getOplogSet().setChild(newOplog);
         // start the asynch thread to shut down the system
         this.parent.shutdownDiskStoreAndAffiliatedRegions(temp);
@@ -4651,9 +4657,6 @@ public final class Oplog implements CompactableOplog {
       // ensure that the Oplog has been compacted or not.
       getOplogSet().removeOplog(this.oplogId) ;
       throw dae;
-    }
-    if (idse != null) {
-      throw idse;
     }
   }
 
@@ -5611,6 +5614,11 @@ public final class Oplog implements CompactableOplog {
         assert adjustment > 0;
         long temp = (this.crf.currSize + adjustment);
         if (temp > getMaxCrfSize() && !isFirstRecord()) {
+          if (this.isStandByOplog) {
+            // throw DiskAccessException to initiate rollback
+            throw new InsufficientDiskSpaceException("Even Standby Oplog cannot accomodate this operation!!",
+              null, this.getParent());
+          }
           try {
             switchOpLog(dr, adjustment, entry, false);
           } catch (InsufficientDiskSpaceException idseTemp) {
@@ -5755,7 +5763,6 @@ public final class Oplog implements CompactableOplog {
       if (idse != null) {
         this.parent.closeCompactor(false);
         this.parent.stopAsyncFlusher();
-        throw idse;
       }
     }
     else {
@@ -6129,6 +6136,11 @@ public final class Oplog implements CompactableOplog {
         useNextOplog = true;
       } else if ((this.drf.currSize + MAX_DELETE_ENTRY_RECORD_BYTES)
                  > getMaxDrfSize() && !isFirstRecord()) {
+        if (this.isStandByOplog) {
+          // throw DiskAccessException to initiate rollback
+          throw new InsufficientDiskSpaceException("Even Standby Oplog cannot accomodate this operation!!",
+            null, this.getParent());
+        }
         try {
           switchOpLog(dr, MAX_DELETE_ENTRY_RECORD_BYTES, entry, false);
         } catch (InsufficientDiskSpaceException idseTemp) {
@@ -6229,7 +6241,6 @@ public final class Oplog implements CompactableOplog {
       if (idse != null) {
         this.parent.closeCompactor(false);
         this.parent.stopAsyncFlusher();
-        throw idse;
       }
     } else {
       if (LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER) {
