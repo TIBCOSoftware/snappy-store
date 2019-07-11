@@ -137,7 +137,7 @@ public class ResultSetHelper {
         }
         
         oTypes[i] = new ObjectTypeImpl(clazz); //resultSet column starts from 1
-        fieldNames[i] = rsmd.getColumnName(i+1); //resultSet column starts from 1
+        fieldNames[i] = rsmd.getColumnName(i+1).toUpperCase();//resultSet column starts from 1
       }
     } catch (SQLException se) {
       throw new TestException ("could not getStruct from resultSet\n" + TestHelper.getStackTrace(se));

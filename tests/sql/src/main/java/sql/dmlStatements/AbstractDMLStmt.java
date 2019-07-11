@@ -153,6 +153,7 @@ public abstract class AbstractDMLStmt implements DMLStmtIF {
   public static ThreadLocal<Calendar> myCal; 
   public static boolean testworkaroundFor51519 = TestConfig.tab().booleanAt(sql.SQLPrms.testworkaroundFor51519,
       true) && !SQLTest.hasDerbyServer;
+  public static String str_sec_id = SQLPrms.isSnappyMode()?"SEC_ID".toLowerCase():"SEC_ID";
 
   static {
     if (SQLTest.isSnappyTest || SQLPrms.isSnappyMode()) {
@@ -790,11 +791,11 @@ public abstract class AbstractDMLStmt implements DMLStmtIF {
         rs = conn.createStatement().executeQuery(s);
         Log.getLogWriter().info("executed " + s + " from " + database);
         int temp=0;
+
         while (rs.next()) {
-          if (temp == 0 && rand.nextInt(1000) != 1) sid = rs.getInt("SEC_ID"); 
-          
+          if (temp == 0 && rand.nextInt(1000) != 1) sid = rs.getInt(str_sec_id);
           if (n==temp) {
-            sid = rs.getInt("SEC_ID");
+            sid = rs.getInt(str_sec_id);
             Log.getLogWriter().info("sec_id to be returned is " + sid);
             break;
           }
