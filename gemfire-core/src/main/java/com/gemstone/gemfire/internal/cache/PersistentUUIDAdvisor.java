@@ -343,10 +343,10 @@ public class PersistentUUIDAdvisor extends VMIdAdvisor {
               getUUIDPersistentRegion().put(getFullPath() + UUID_KEY_SUFFIX,
                 update);
             } catch (InsufficientDiskSpaceException idse) {
+              this.insufficientDiskSpace = true;
               super.compareAndSetSequenceId(update, expect, reset);
               throw idse;
             } finally {
-              this.insufficientDiskSpace = true;
               this.persistingUUID = false;
               this.uuidLock.notifyAll();
             }
