@@ -8099,6 +8099,9 @@ public class PartitionedRegion extends LocalRegion implements
       this.enableAlerts = enableAlerts;
     }
 
+    public String getLockName() {
+        return this.lockName;
+    }
     /**
      * Locks the given name (provided during construction) uninterruptibly or
      * throws an exception.
@@ -8333,16 +8336,18 @@ public class PartitionedRegion extends LocalRegion implements
     }
 
     public void unlock() {
-
-      cache.getLogger().info("SKSK Is the lock taken " + this.lockName + " taken = " + this.lockOwned);
+        cache.getLoggerI18n().info(LocalizedStrings.DEBUG, "BucketLock#unlock: " + "Lock Name "
+                + this.lockName + " this.lockowned " + this.lockOwned);
       if (this.lockOwned) {
         try {
+            cache.getLoggerI18n().info(LocalizedStrings.DEBUG, "BucketLock#unlock: " + "Lock service "
+                    + this.lockService, new Throwable("UNLOCK"));
           this.lockService.unlock(this.lockName);
         } catch (LockServiceDestroyedException ignore) {
           // cache was probably closed which destroyed this lock service
           // note: destroyed lock services release all held locks
           cache.getCancelCriterion().checkCancelInProgress(null);
-          if (cache.getLoggerI18n().fineEnabled()) {
+          if (true||cache.getLoggerI18n().fineEnabled()) {
             cache.getLoggerI18n().fine("BucketLock#unlock: " + "Lock service "
                     + this.lockService + " was destroyed", ignore);
           }
@@ -8352,7 +8357,7 @@ public class PartitionedRegion extends LocalRegion implements
       }
     }
 
-    public void unlock(boolean force) {
+    /*public void unlock(boolean force) {
       try {
         this.lockService.unlock(this.lockName);
       } catch (LockServiceDestroyedException ignore) {
@@ -8366,7 +8371,7 @@ public class PartitionedRegion extends LocalRegion implements
       } finally {
         this.lockOwned = false;
       }
-    }
+    }*/
 
 
 

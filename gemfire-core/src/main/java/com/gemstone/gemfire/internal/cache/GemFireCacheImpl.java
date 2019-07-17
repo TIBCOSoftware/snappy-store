@@ -577,7 +577,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   private ScheduledExecutorService oldEntryMapCleanerService;
 
   private ExecutorService tableLockService;
-  private Map<InternalDistributedMember, Set<String>> memberToTableLockRequest = new HashMap<InternalDistributedMember, Set<String>>();
+  private Map<InternalDistributedMember, Set<String>> tableLockMap = new HashMap<InternalDistributedMember, Set<String>>();
 
   /**
    * Time interval after which oldentries cleaner thread run
@@ -875,14 +875,14 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     new OldEntriesCleanerThread().run();
   }
 
-  public void lockTable(String lockName) {
+  public void lockTable(String lockName, long connId) {
+
     getLogger().info("SKSK GOING to ACQUIRING LOCK On object " + lockName + " tableLockService " + tableLockService);
     if (tableLockService != null) {
       Future f = tableLockService.submit(new Runnable() {
         @Override
         public void run() {
           try {
-            System.out.println("SKSK ACQUIRING in procedure");
             getLogger().info("SKSK ACQUIRING LOCK On object " + lockName);
             PartitionedRegion.RegionLock lock = PartitionedRegion.getRegionLock
                     (lockName, GemFireCacheImpl.getExisting());
@@ -904,17 +904,16 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     }
   }
 
-  public void unlockTable(String lockName) {
+  public void unlockTable(PartitionedRegion.RegionLock lock, long connId) {
+
+    getLogger().info("SKSK RELEASING LOCK On object " + lock + " connId : " + connId, new Throwable("SKSK CacheUnlock"));
     if (tableLockService != null) {
       Future f = tableLockService.submit(new Runnable() {
         @Override
         public void run() {
           try {
-            getLogger().info("SKSK RELEASING LOCK On object " + lockName);
-            PartitionedRegion.RegionLock lock = PartitionedRegion.getRegionLock
-                    (lockName, GemFireCacheImpl.getExisting());
-            lock.unlock(true);
-            getLogger().info("SKSK RELEASED LOCK On object " + lockName);
+            lock.unlock();
+            getLogger().info("SKSK RELEASED LOCK On object " + lock);
           } catch (Throwable t) {
             throw t;
           }

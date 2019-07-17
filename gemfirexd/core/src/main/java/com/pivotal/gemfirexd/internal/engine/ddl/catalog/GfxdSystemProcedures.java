@@ -2370,6 +2370,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     Region region = Misc.getRegionForTable(tableName, true);
     lcc.setExecuteLocally(bucketSet, region, false, null);
     lcc.setBucketRetentionForLocalExecution(retain);
+
   }
 
   /**
@@ -2445,39 +2446,47 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
   }
 
-  public static void ACQUIRE_REGION_LOCK(String lockName)
+  public static Boolean ACQUIRE_REGION_LOCK(String lockName)
       throws SQLException {
-
-    Misc.getGemFireCache().lockTable(lockName);
-
-    /*try {
-      System.out.println("SKSK ACQUIRING in procedure");
-      Misc.getGemFireCacheNoThrow().getLogger().info("SKSK ACQUIRING LOCK On object " + lockName);
-      PartitionedRegion.RegionLock lock = PartitionedRegion.getRegionLock
-          (lockName, GemFireCacheImpl.getExisting());
+    LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+    GemFireTransaction tr = (GemFireTransaction)lcc.getTransactionExecute();
+    //Misc.getGemFireCache().lockTable(lockName, lcc.getConnectionId());
+    Misc.getGemFireCacheNoThrow().getLogger().info("SKSK ACQUIRING LOCK On object " + lockName + " conId "
+            + lcc.getConnectionId() + " tr " + tr);
+    PartitionedRegion.RegionLock lock = PartitionedRegion.getRegionLock
+            (lockName, GemFireCacheImpl.getExisting());
+    try {
       lock.lock();
       Misc.getGemFireCacheNoThrow().getLogger().info("SKSK ACQUIRED LOCK On object " + lockName);
     } catch (Throwable t) {
       throw TransactionResourceImpl.wrapInSQLException(t);
-    }*/
+    }
+    if (lock != null)
+      tr.addTableLock(lock);
+
+    return true;
   }
 
-  public static void RELEASE_REGION_LOCK(String lockName)
+  public static Boolean RELEASE_REGION_LOCK(String lockName)
       throws SQLException {
-    Misc.getGemFireCache().unlockTable(lockName);
+    LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+    GemFireTransaction tr = (GemFireTransaction)lcc.getTransactionExecute();
+    //Misc.getGemFireCache().unlockTable(lockName, lcc.getConnectionId());
+    PartitionedRegion.RegionLock lock = tr.getRegionLock(lockName);
+    System.out.println("SKSK RELEASING in procedure " + lockName);
+    if (lock != null) {
+      try {
+        Misc.getGemFireCacheNoThrow().getLogger().info("SKSK RELEASING LOCK On object " + lockName + " connId " + lcc.getConnectionId());
+        lock.unlock();
+        Misc.getGemFireCacheNoThrow().getLogger().info("SKSK RELEASED LOCK On object " + lockName);
 
-    /*try {
-      System.out.println("SKSK RELEASING in procedure");
-      Misc.getGemFireCacheNoThrow().getLogger().info("SKSK RELEASING LOCK On object " + lockName);
-
-      PartitionedRegion.RegionLock lock = PartitionedRegion.getRegionLock
-          (lockName, GemFireCacheImpl.getExisting());
-      lock.unlock(true);
-      Misc.getGemFireCacheNoThrow().getLogger().info("SKSK RELEASED LOCK On object " + lockName);
-
-    } catch (Throwable t) {
-      throw TransactionResourceImpl.wrapInSQLException(t);
-    }*/
+      } catch (Throwable t) {
+        throw TransactionResourceImpl.wrapInSQLException(t);
+      }
+      tr.removeTableLock(lock);
+    }
+    // we should ignore exceptions.
+    return true;
   }
 
   public static void COMMIT_SNAPSHOT_TXID(String txId, String rolloverTable)

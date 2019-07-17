@@ -38,14 +38,11 @@ import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.GemFireException;
 import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.TransactionFlag;
-import com.gemstone.gemfire.internal.cache.Checkpoint;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion.RecoveryLock;
-import com.gemstone.gemfire.internal.cache.TXId;
-import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.TXManagerImpl.TXContext;
-import com.gemstone.gemfire.internal.cache.TXStateInterface;
-import com.gemstone.gemfire.internal.cache.TXStateProxy;
 import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
@@ -153,6 +150,8 @@ public final class GemFireTransaction extends RawTransaction implements
 
   /** {@link GfxdLockSet} used for locking in this transaction */
   private final GfxdLockSet lockSet;
+  /** {@link GfxdLockSet} used for locking in this transaction */
+  private final Set<PartitionedRegion.RegionLock> tableLocks;
 
   /** {@link LogFactory} used to create {@link Logger}s for undo/redo logs */
   private final LogFactory logFactory;
@@ -362,6 +361,9 @@ public final class GemFireTransaction extends RawTransaction implements
     else {
       this.lockSet = compatibilitySpace;
     }
+
+    this.tableLocks = new HashSet();
+
     this.skipLocks = skipLocks;
     if (isTxExecute) {
       this.txManager = Misc.getGemFireCache().getCacheTransactionManager();
@@ -2873,6 +2875,10 @@ public final class GemFireTransaction extends RawTransaction implements
     releaseRegionLock();
     waitForPendingRC();
     releaseAllLocksOnly(force, removeRef);
+
+    Misc.getGemFireCache().getLoggerI18n().info(LocalizedStrings.DEBUG," releaseAllLock", new Throwable("releaseAllLocks"));
+    if (force && removeRef)
+      releaseAllTableLocks();
   }
 
   private void waitForPendingRC() {
@@ -2891,6 +2897,23 @@ public final class GemFireTransaction extends RawTransaction implements
       if (lockSet.unlockAll(force, removeRef)) {
         // free any distributed lock resources after container drop
         lockSet.freeLockResources();
+      }
+    }
+
+    Misc.getGemFireCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "releasealllocksonly " + this, new Throwable("SK ReleasweAllLocksOnly"));
+    if (force && removeRef) {
+      releaseAllTableLocks();
+    }
+
+  }
+
+  private void releaseAllTableLocks() {
+    for (PartitionedRegion.RegionLock lock : this.tableLocks) {
+
+      try {
+        Misc.getGemFireCache().unlockTable(lock, lcc.getConnectionId());
+      } catch (Exception e) {
+          Misc.getGemFireCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "Unlocking the table for exception ", e);
       }
     }
   }
@@ -4103,6 +4126,28 @@ public final class GemFireTransaction extends RawTransaction implements
     }
     return null;
   }
+
+  public void addTableLock(PartitionedRegion.RegionLock lock) {
+    this.tableLocks.add(lock);
+  }
+
+    public PartitionedRegion.RegionLock getRegionLock(String lockName) {
+
+        for (PartitionedRegion.RegionLock lock : tableLocks) {
+          Misc.getGemFireCache().getLoggerI18n().info(LocalizedStrings.DEBUG,
+                  "The loks is " + lock + " and" +
+                  " the locaname is " + lock.getLockName());
+            if (lock.getLockName().equals(lockName)) {
+                return lock;
+            }
+        }
+        return null;
+    }
+
+    public void removeTableLock(PartitionedRegion.RegionLock lock) {
+    this.tableLocks.remove(lock);
+  }
+
   // ------------------------ Methods below are not yet used in GemFireXD
 
   public boolean anyoneBlocked() {
