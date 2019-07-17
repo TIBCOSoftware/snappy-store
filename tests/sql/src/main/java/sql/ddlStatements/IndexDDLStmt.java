@@ -342,7 +342,8 @@ public class IndexDDLStmt implements DDLStmtIF {
     
     String type = " ";
     long count = SQLBB.getBB().getSharedCounters().incrementAndRead(SQLBB.indexCount);
-    String indexName = "index" /*+ RemoteTestModule.getCurrentThread().getThreadId()*/ + "_" + count;
+    String indexName = "index" /*+ RemoteTestModule.getCurrentThread().getThreadId() */ + "_" + count;
+    if(SQLPrms.isSnappyMode()) indexName = "trade."  + indexName;
     int createTypeIndex = 10; //1 in 10 chances
     if (rand.nextInt(createTypeIndex) == 0) {
       type = types[rand.nextInt(types.length)];
@@ -414,7 +415,9 @@ public class IndexDDLStmt implements DDLStmtIF {
     String indexName;
     synchronized (indexList) {
       if (indexList.size() == 0) return; //no indexes available to drop
-      indexName = "trade." + (String) indexList.remove(rand.nextInt(indexList.size())); //remove on of index name of the list
+      indexName = (String) indexList.remove(rand.nextInt(indexList.size()));
+      if (!indexName.startsWith("trade."))
+        indexName = "trade." + indexName; //remove on of index name of the list
     }
     String dropIndexStmt = "drop index " + indexName;
     try {
