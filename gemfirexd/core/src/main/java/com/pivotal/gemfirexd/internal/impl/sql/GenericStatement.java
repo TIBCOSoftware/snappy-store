@@ -711,7 +711,7 @@ public class GenericStatement
 						  String messageId = ex instanceof StandardException ? ((StandardException)ex).getMessageId() : "";
 						  boolean routeToSnappy = messageId.equals(SQLState.ROW_LEVEL_SECURITY_ENABLED) ||
 									(routeQuery && !NON_ROUTED_QUERY.matcher(source).find()
-									// don't route if failure due to error such as invalid column name in prepared statement
+									//SNAP-2765 don't route if failure due to error such as invalid column name in prepared statement
 									&& !(isDML && this.isPreparedStatement() &&
 											(messageId.equals(SQLState.LANG_COLUMN_NOT_FOUND_IN_TABLE)
 											|| messageId.equals(SQLState.LANG_DB2_INVALID_COLS_SPECIFIED)
