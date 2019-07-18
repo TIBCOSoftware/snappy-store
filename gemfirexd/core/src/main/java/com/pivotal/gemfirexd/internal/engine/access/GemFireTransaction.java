@@ -2876,7 +2876,7 @@ public final class GemFireTransaction extends RawTransaction implements
     waitForPendingRC();
     releaseAllLocksOnly(force, removeRef);
 
-    Misc.getGemFireCache().getLoggerI18n().info(LocalizedStrings.DEBUG," releaseAllLock", new Throwable("releaseAllLocks"));
+    Misc.getGemFireCache().getLoggerI18n().info(LocalizedStrings.DEBUG," releaseAllLock");
     if (force && removeRef)
       releaseAllTableLocks();
   }
@@ -2900,7 +2900,7 @@ public final class GemFireTransaction extends RawTransaction implements
       }
     }
 
-    Misc.getGemFireCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "releasealllocksonly " + this, new Throwable("SK ReleasweAllLocksOnly"));
+    Misc.getGemFireCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "releasealllocksonly " + this);
     if (force && removeRef) {
       releaseAllTableLocks();
     }

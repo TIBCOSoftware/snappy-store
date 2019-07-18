@@ -2473,7 +2473,6 @@ public class GfxdSystemProcedures extends SystemProcedures {
     GemFireTransaction tr = (GemFireTransaction)lcc.getTransactionExecute();
     //Misc.getGemFireCache().unlockTable(lockName, lcc.getConnectionId());
     PartitionedRegion.RegionLock lock = tr.getRegionLock(lockName);
-    System.out.println("SKSK RELEASING in procedure " + lockName);
     if (lock != null) {
       try {
         Misc.getGemFireCacheNoThrow().getLogger().info("SKSK RELEASING LOCK On object " + lockName + " connId " + lcc.getConnectionId());
