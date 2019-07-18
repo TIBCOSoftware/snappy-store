@@ -1761,7 +1761,8 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
                 DataTypeDescriptor.getBuiltInDataTypeDescriptor(
                         Types.VARCHAR, false).getCatalogType() };
         super.createSystemProcedureOrFunction("ACQUIRE_REGION_LOCK", sysUUID,
-                argNames, argTypes, 0, 0, RoutineAliasInfo.NO_SQL, null,
+                argNames, argTypes, 0, 0, RoutineAliasInfo.READS_SQL_DATA,
+                DataTypeDescriptor.getCatalogType(Types.BOOLEAN),
                 newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
       }
       {
@@ -1770,7 +1771,8 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
                 DataTypeDescriptor.getBuiltInDataTypeDescriptor(
                         Types.VARCHAR, false).getCatalogType() };
         super.createSystemProcedureOrFunction("RELEASE_REGION_LOCK", sysUUID,
-                argNames, argTypes, 0, 0, RoutineAliasInfo.NO_SQL, null,
+                argNames, argTypes, 0, 0, RoutineAliasInfo.READS_SQL_DATA,
+                DataTypeDescriptor.getCatalogType(Types.BOOLEAN),
                 newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
       }
     }
