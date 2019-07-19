@@ -712,13 +712,7 @@ public class GenericStatement
 						  boolean routeToSnappy = messageId.equals(SQLState.ROW_LEVEL_SECURITY_ENABLED) ||
 									(routeQuery && !NON_ROUTED_QUERY.matcher(source).find()
 									//SNAP-2765 don't route if failure due to error such as invalid column name in prepared statement
-									&& !(isDML && this.isPreparedStatement() &&
-											(messageId.equals(SQLState.LANG_COLUMN_NOT_FOUND_IN_TABLE)
-											|| messageId.equals(SQLState.LANG_DB2_INVALID_COLS_SPECIFIED)
-											|| messageId.equals(SQLState.LANG_DUPLICATE_COLUMN_NAME_INSERT)
-											|| messageId.equals(SQLState.LANG_DUPLICATE_COLUMN_NAME_UPDATE)
-											|| messageId.equals(SQLState.LANG_COLUMN_NOT_FOUND))
-											));
+									&& !(isDML && isPrepStmtInvalidColumnError(messageId)));
 
 					  if (routeToSnappy) {
 					    if (observer != null) {
@@ -1317,6 +1311,15 @@ public class GenericStatement
 
 
 		return preparedStmt;
+	}
+
+	private boolean isPrepStmtInvalidColumnError(String messageId) {
+		return this.isPreparedStatement() &&
+				(messageId.equals(SQLState.LANG_COLUMN_NOT_FOUND_IN_TABLE)
+				|| messageId.equals(SQLState.LANG_DB2_INVALID_COLS_SPECIFIED)
+				|| messageId.equals(SQLState.LANG_DUPLICATE_COLUMN_NAME_INSERT)
+				|| messageId.equals(SQLState.LANG_DUPLICATE_COLUMN_NAME_UPDATE)
+				|| messageId.equals(SQLState.LANG_COLUMN_NOT_FOUND));
 	}
 
 	public boolean invalidQueryOnColumnTable(LanguageConnectionContext _lcc,
