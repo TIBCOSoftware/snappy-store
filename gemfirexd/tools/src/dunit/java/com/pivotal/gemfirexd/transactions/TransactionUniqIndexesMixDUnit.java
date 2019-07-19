@@ -27,7 +27,7 @@ public class TransactionUniqIndexesMixDUnit extends DistributedSQLTestBase {
   }
 
   protected String reduceLogging() {
-    return "fine";
+    return "config";
   }
 
   protected int getIsolationLevel() {
