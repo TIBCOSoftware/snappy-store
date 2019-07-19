@@ -280,7 +280,7 @@ public final class SQLReal
 
         // jsk: should use double? depends on DB2
 		float thisValue = this.getFloat();
-		float otherValue = NumberDataType.normalizeREAL(arg.getFloat()); // could gotten from "any type", may not be a float
+		float otherValue = NumberDataType.normalizeREALAllowNaN(arg.getFloat()); // could gotten from "any type", may not be a float
 
 		if (thisValue == otherValue)
 			return 0;
@@ -371,13 +371,13 @@ public final class SQLReal
 	public SQLReal(float val)
 		throws StandardException
 	{
-		value = NumberDataType.normalizeREAL(val);
+		value = NumberDataType.normalizeREALAllowNaN(val);
 	}
 	public SQLReal(Float obj) throws StandardException {
 		if (isnull = (obj == null))
 			;
 		else {
-			value = NumberDataType.normalizeREAL(obj.floatValue());
+			value = NumberDataType.normalizeREALAllowNaN(obj.floatValue());
 		}
 	}
 
@@ -435,7 +435,7 @@ public final class SQLReal
 	public void setValue(float theValue)
 		throws StandardException
 	{
-		value = NumberDataType.normalizeREAL(theValue);
+		value = NumberDataType.normalizeREALAllowNaN(theValue);
 		isnull = false;
 	}
 

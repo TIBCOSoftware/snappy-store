@@ -495,6 +495,25 @@ public abstract class NumberDataType extends DataType
 	}
 
 	/**
+	 normalizeREAL checks the validity of the given java float that
+	 it fits within the range of DB2 REALs. In addition it
+	 normalizes the value, so that negative zero (-0.0) becomes positive.
+	 */
+	public static float normalizeREALAllowNaN(float v) throws StandardException
+	{
+		if ( ((v < Limits.DB2_SMALLEST_REAL) || (v > Limits.DB2_LARGEST_REAL)) ||
+				((v > 0) && (v < Limits.DB2_SMALLEST_POSITIVE_REAL)) ||
+				((v < 0) && (v > Limits.DB2_LARGEST_NEGATIVE_REAL)) )
+		{
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME, (String)null);
+		}
+		// Normalize negative floats to be "positive" (can't detect easily without using Float object because -0.0f = 0.0f)
+		if (v == 0.0f) v = 0.0f;
+
+		return v;
+	}
+
+	/**
        normalizeREAL checks the validity of the given java double that
        it fits within the range of DB2 REALs. In addition it
        normalizes the value, so that negative zero (-0.0) becomes positive.
@@ -521,6 +540,31 @@ public abstract class NumberDataType extends DataType
     }
 
 	/**
+	 normalizeREAL checks the validity of the given java double that
+	 it fits within the range of DB2 REALs. In addition it
+	 normalizes the value, so that negative zero (-0.0) becomes positive.
+
+	 The reason for having normalizeREAL with two signatures is to
+	 avoid that normalizeREAL is called with a casted (float)doublevalue,
+	 since this invokes an unwanted rounding (of underflow values to 0.0),
+	 in contradiction to DB2s casting semantics. also allows NAN values
+	 */
+	public static float normalizeREALAllowNaN(double v) throws StandardException
+	{
+		// can't just cast it to float and call normalizeFloat(float) since casting can round down to 0.0
+		if ( ((v < Limits.DB2_SMALLEST_REAL) || (v > Limits.DB2_LARGEST_REAL)) ||
+				((v > 0) && (v < Limits.DB2_SMALLEST_POSITIVE_REAL)) ||
+				((v < 0) && (v > Limits.DB2_LARGEST_NEGATIVE_REAL)) )
+		{
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME, (String)null);
+		}
+		// Normalize negative floats to be "positive" (can't detect easily without using Float object because -0.0f = 0.0f)
+		if (v == 0.0d) v = 0.0d;
+
+		return (float)v;
+	}
+
+	/**
        normalizeDOUBLE checks the validity of the given java double that
        it fits within the range of DB2 DOUBLEs. In addition it
        normalizes the value, so that negative zero (-0.0) becomes positive.
@@ -540,6 +584,23 @@ public abstract class NumberDataType extends DataType
         return v;
 	}
 
+	/**
+	 normalizeDOUBLEAllowNaN checks the validity of the given java double that
+	 it fits within the range of DB2 DOUBLEs. In addition it
+	 normalizes the value, so that negative zero (-0.0) becomes positive.
+	 also allows NAN values
+	 */
+	public static double normalizeDOUBLEAllowNaN(double v) throws StandardException {
+		if (((v < Limits.DB2_SMALLEST_DOUBLE) || (v > Limits.DB2_LARGEST_DOUBLE)) ||
+				((v > 0) && (v < Limits.DB2_SMALLEST_POSITIVE_DOUBLE)) ||
+				((v < 0) && (v > Limits.DB2_LARGEST_NEGATIVE_DOUBLE)) ) {
+			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.DOUBLE_NAME, (String)null);
+		}
+		// Normalize negative doubles to be "positive" (can't detect easily without using Double object because -0.0f = 0.0f)
+		if (v == 0.0d) v = 0.0d;
+
+		return v;
+	}
 
 }
 

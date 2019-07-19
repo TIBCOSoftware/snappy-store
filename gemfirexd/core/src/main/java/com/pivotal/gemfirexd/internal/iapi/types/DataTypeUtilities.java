@@ -1877,7 +1877,7 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.DECIMAL_TYPE_ID: {
         final BigDecimal localValue = SQLDecimal.getAsBigDecimal(inBytes,
             offset, columnWidth);
-        return NumberDataType.normalizeREAL(localValue.floatValue());
+        return NumberDataType.normalizeREALAllowNaN(localValue.floatValue());
       }
       case StoredFormatIds.LONGINT_TYPE_ID:
         return RowFormatter.readLong(inBytes, offset);
@@ -1937,7 +1937,7 @@ public abstract class DataTypeUtilities {
       case StoredFormatIds.DECIMAL_TYPE_ID: {
         final BigDecimal localValue = SQLDecimal.getAsBigDecimal(
             memOffset, columnWidth);
-        return NumberDataType.normalizeREAL(localValue.floatValue());
+        return NumberDataType.normalizeREALAllowNaN(localValue.floatValue());
       }
       case StoredFormatIds.LONGINT_TYPE_ID:
         return RowFormatter.readLong(memOffset);
