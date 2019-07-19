@@ -264,6 +264,7 @@ public final class SortedMap2IndexInsertOperation extends MemIndexOperation {
             throw StandardException.newException(
                 SQLState.GFXD_OPERATION_CONFLICT, ce, ce.getMessage());
           } else {
+            // This else part is mainly added to handle SNAP-2620
             if (oldValue instanceof WrapperRowLocationForTxn) {
               GfxdTXEntryState gfxdtxentry = (GfxdTXEntryState)value;
               gfxdtxentry.setCommittedRegionEntry(
