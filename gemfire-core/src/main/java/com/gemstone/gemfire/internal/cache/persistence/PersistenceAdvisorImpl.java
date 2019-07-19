@@ -89,7 +89,10 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   private boolean DISALLOW_CLUSTER_RESTART_CHECK = Boolean.getBoolean(
       "gemfire.DISALLOW_CLUSTER_RESTART_CHECK");
 
-  public static final boolean TRACE = Boolean.getBoolean("gemfire.TRACE_PERSISTENCE_ADVISOR");
+  private boolean IGNORE_CONFLICTING_PERSISTENT_DISK_STORE_CHECK = Boolean.getBoolean(
+          "gemfire.IGNORE_CONFLICTING_PERSISTENT_DISK_STORES");
+
+  public static final boolean TRACE = true;//Boolean.getBoolean("gemfire.TRACE_PERSISTENCE_ADVISOR");
   
   public PersistenceAdvisorImpl(CacheDistributionAdvisor advisor, DistributedLockService dl, PersistentMemberView storage, String regionPath, DiskRegionStats diskStats, PersistentMemberManager memberManager) {
     this.advisor = advisor;
@@ -763,18 +766,22 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
       }
 
       if(myId != null && stateOnPeer == null) {
+
         // This can be made as a property to make sure doesn't happen always
-        if (true) {
+        if (IGNORE_CONFLICTING_PERSISTENT_DISK_STORE_CHECK) {
           // There is nothign on remote or remote has same diskId.
           if (remoteId == null || (remoteId.diskStoreId == myId.diskStoreId)) {
             // continue..
             advisor.getLogWriter().info(LocalizedStrings.DEBUG,
                 "Continuing as my DiskStoreId is same as remoteID" + member + " remoteID " + remoteId);
           } else {
-            String message = LocalizedStrings.CreatePersistentRegionProcessor_SPLIT_DISTRIBUTED_SYSTEM
+            return false;
+          }
+        }
+        else {
+          String message = LocalizedStrings.CreatePersistentRegionProcessor_SPLIT_DISTRIBUTED_SYSTEM
                 .toLocalizedString(regionPath, member, remoteId, myId);
             throw new ConflictingPersistentDataException(message);
-          }
         }
       }
       if(myId != null && stateOnPeer == PersistentMemberState.EQUAL) {
@@ -783,7 +790,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
       
       //TODO prpersist - This check might not help much. The other member changes it's ID when it
       //comes back online.
-      if(remoteId != null) {
+      if(remoteId != null && !IGNORE_CONFLICTING_PERSISTENT_DISK_STORE_CHECK) {
         PersistentMemberState remoteState = getPersistedStateOfMember(remoteId);
         if(remoteState == PersistentMemberState.OFFLINE) {
           String message = LocalizedStrings.CreatePersistentRegionProcessor_INITIALIZING_FROM_OLD_DATA
@@ -1266,6 +1273,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
       boolean warned = false;
       synchronized(this) {
         try {
+          advisor.getLogWriter().info(LocalizedStrings.DEBUG, " Going to wait for ALL " + allMembersToWaitFor + " offline " + offlineMembersToWaitFor);
           setWaitingOnMembers(allMembersToWaitFor, offlineMembersToWaitFor);
           while(!membershipChanged && !isClosed && !doNotWait) {
             checkInterruptedByShutdownAll();
@@ -1403,10 +1411,12 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
     @Override
     public void addPersistentIDs(Set<PersistentMemberID> localData) {
       PersistentMemberID id = getPersistentID();
+      advisor.getLogWriter().info(LocalizedStrings.DEBUG, "The ids are " + id);
       if(id != null) {
         localData.add(id);
       }
       id = getInitializingID();
+      advisor.getLogWriter().info(LocalizedStrings.DEBUG, "The initialized ids are " + id);
       if(id != null) {
         localData.add(id);
       }

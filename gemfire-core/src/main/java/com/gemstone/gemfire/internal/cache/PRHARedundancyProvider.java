@@ -1858,13 +1858,14 @@ public class PRHARedundancyProvider
               try {
                 super.run();
               } finally {
+                getLogger().info(LocalizedStrings.DEBUG, "CountDown the allBucketRecovery.");
                 allBucketsRecoveredFromDisk.countDown();
               }
             }
 
             @Override
             public void run2() {
-                proxyBucket.recoverFromDiskRecursively();
+                proxyBucket.recoverFromDiskRecursively(allBucketsRecoveredFromDisk);
             }
           };
           Thread recoveryThread = new Thread(recoveryRunnable, "Recovery thread for bucket " + proxyBucket.getName());
@@ -1884,7 +1885,7 @@ public class PRHARedundancyProvider
           proxyBucket.waitForPrimaryPersistentRecovery();
         }
         for(final ProxyBucketRegion proxyBucket : bucketsNotHostedLocally) {
-          proxyBucket.recoverFromDiskRecursively();
+          proxyBucket.recoverFromDiskRecursively(allBucketsRecoveredFromDisk);
         }
       } finally {
         for(final ProxyBucketRegion proxyBucket : bucketsNotHostedLocally) {
