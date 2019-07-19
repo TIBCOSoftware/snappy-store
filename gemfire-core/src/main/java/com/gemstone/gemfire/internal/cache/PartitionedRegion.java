@@ -8340,14 +8340,12 @@ public class PartitionedRegion extends LocalRegion implements
                 + this.lockName + " this.lockowned " + this.lockOwned);
       if (this.lockOwned) {
         try {
-            cache.getLoggerI18n().info(LocalizedStrings.DEBUG, "BucketLock#unlock: " + "Lock service "
-                    + this.lockService, new Throwable("UNLOCK"));
           this.lockService.unlock(this.lockName);
         } catch (LockServiceDestroyedException ignore) {
           // cache was probably closed which destroyed this lock service
           // note: destroyed lock services release all held locks
           cache.getCancelCriterion().checkCancelInProgress(null);
-          if (true||cache.getLoggerI18n().fineEnabled()) {
+          if (cache.getLoggerI18n().fineEnabled()) {
             cache.getLoggerI18n().fine("BucketLock#unlock: " + "Lock service "
                     + this.lockService + " was destroyed", ignore);
           }
