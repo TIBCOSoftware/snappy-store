@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.internal.AvailablePort;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gnu.trove.THashMap;
 import com.pivotal.gemfirexd.internal.client.am.SingleHopPreparedStatement;
 
@@ -647,14 +648,16 @@ public class SingleHopDUnit extends DistributedSQLTestBase {
     final boolean warmup = numTimes > 100 ? true : false;
     final Properties props = new Properties();
     props.put("log-level", "config");
-    if (warmup) {
-      invokeInEveryVM(new SerializableRunnable() {
-        @Override
-        public void run() {
+    invokeInEveryVM(new SerializableRunnable() {
+      @Override
+      public void run() {
+        if (warmup) {
           DistributionManager.VERBOSE = false;
         }
-      });
-    }
+        ClientSharedUtils.setThriftDefault(false);
+      }
+    });
+    ClientSharedUtils.setThriftDefault(false);
     // start some servers
     startVMs(0, 4, 0, null, props);
     // Start network server on the VMs

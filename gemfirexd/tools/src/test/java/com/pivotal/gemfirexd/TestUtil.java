@@ -320,6 +320,10 @@ public class TestUtil extends TestCase {
     return TestConfiguration.getNetProtocol(hostName, port);
   }
 
+  public static String getNetProtocol(String hostName, int port, boolean useThrift) {
+    return TestConfiguration.getNetProtocol(hostName, port, useThrift);
+  }
+
   protected Class<?> getTestClass() {
     Class<?> clazz = getClass();
     while (clazz.getDeclaringClass() != null) {

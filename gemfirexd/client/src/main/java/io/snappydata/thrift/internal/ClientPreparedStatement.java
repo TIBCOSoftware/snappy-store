@@ -618,7 +618,7 @@ public class ClientPreparedStatement extends ClientStatement implements
   public void addBatch() throws SQLException {
     checkClosed();
 
-    if (this.parameterMetaData != null && this.parameterMetaData.size() > 0) {
+    if (this.parameterMetaData != null) {
       if (this.paramsBatch == null) {
         this.paramsBatch = new ArrayList<>();
       }

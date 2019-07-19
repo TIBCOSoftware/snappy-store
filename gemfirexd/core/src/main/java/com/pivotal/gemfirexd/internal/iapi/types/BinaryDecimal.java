@@ -252,7 +252,7 @@ abstract class BinaryDecimal extends NumberDataType
 	 */
 	public final void setValue(double theValue) throws StandardException
 	{
-		setCoreValue(NumberDataType.normalizeDOUBLE(theValue));
+		setCoreValue(NumberDataType.normalizeDOUBLEAllowNaN(theValue));
 	}
 
 	/**
@@ -262,7 +262,7 @@ abstract class BinaryDecimal extends NumberDataType
 	public final void setValue(float theValue)
 		throws StandardException
 	{
-		setCoreValue((double)NumberDataType.normalizeREAL(theValue));
+		setCoreValue((double)NumberDataType.normalizeREALAllowNaN(theValue));
 	}
 	
 	private void setCoreValue(double theValue) throws StandardException {

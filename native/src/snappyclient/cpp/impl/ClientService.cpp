@@ -289,14 +289,14 @@ void ClientService::setPendingTransactionAttrs(
 // settings; this could become configurable in future
 ClientService::ClientService(const std::string& host, const int port,
     thrift::OpenConnectionArgs& connArgs) :
-            // default for load-balance is true
-            m_connArgs(initConnectionArgs(connArgs)), m_loadBalance(true),
-            m_reqdServerType(thrift::ServerType::THRIFT_SNAPPY_CP),
-            m_useFramedTransport(false), m_serverGroups(),
-            m_transport(), m_client(createDummyProtocol()),
-            m_connHosts(1), m_connId(0), m_token(), m_isOpen(false),
-            m_pendingTXAttrs(), m_hasPendingTXAttrs(false),
-            m_isolationLevel(IsolationLevel::NONE), m_lock() {
+        // default for load-balance is false
+        m_connArgs(initConnectionArgs(connArgs)), m_loadBalance(false),
+        m_reqdServerType(thrift::ServerType::THRIFT_SNAPPY_CP),
+        m_useFramedTransport(false), m_serverGroups(),
+        m_transport(), m_client(createDummyProtocol()),
+        m_connHosts(1), m_connId(0), m_token(), m_isOpen(false),
+        m_pendingTXAttrs(), m_hasPendingTXAttrs(false),
+        m_isolationLevel(IsolationLevel::NONE), m_lock() {
   std::map<std::string, std::string>& props = connArgs.properties;
   std::map<std::string, std::string>::iterator propValue;
 
@@ -308,7 +308,7 @@ ClientService::ClientService(const std::string& host, const int port,
   if (!props.empty()) {
     if ((propValue = props.find(ClientAttribute::LOAD_BALANCE))
         != props.end()) {
-      m_loadBalance = !(boost::iequals("false", propValue->second));
+      m_loadBalance = boost::iequals("true", propValue->second);
       props.erase(propValue);
     }
 
@@ -386,9 +386,11 @@ void ClientService::openConnection(thrift::HostAddress& hostAddr,
   while (true) {
     boost::lock_guard<boost::mutex> serviceGuard(m_lock);
     if (m_loadBalance) {
-      boost::optional<ControlConnection&> controlService = ControlConnection::getOrCreateControlConnection(m_connHosts,this,nullptr);
+      boost::optional<ControlConnection&> controlService = ControlConnection::
+          getOrCreateControlConnection(m_connHosts, this, nullptr);
       // at this point query the control service for preferred server
-      controlService->getPreferredServer(hostAddr ,nullptr,failedServers,this->m_serverGroups, false);
+      controlService->getPreferredServer(hostAddr, nullptr, failedServers,
+          this->m_serverGroups, false);
     }
 
     try {
@@ -1500,17 +1502,19 @@ void ClientService::close() {
     handleUnknownException("close");
   }
 }
-void ClientService::updateFailedServersForCurrent(std::set<thrift::HostAddress>& failedServers,
-    bool checkAllFailed, std::exception* failure){
+
+void ClientService::updateFailedServersForCurrent(
+    std::set<thrift::HostAddress>& failedServers, bool checkAllFailed,
+    std::exception* failure) {
 
   //TODO:: Need to discuss with sumedh about this method
   thrift::HostAddress host = this->m_currentHostAddr;
 
   auto ret = failedServers.insert(host);
-  if(ret.second==false && checkAllFailed){
-    boost::optional<ControlConnection&> controlService = ControlConnection::getOrCreateControlConnection(m_connHosts,this,failure);
+  if (ret.second == false && checkAllFailed) {
+    boost::optional<ControlConnection&> controlService = ControlConnection::
+        getOrCreateControlConnection(m_connHosts, this, failure);
     thrift::HostAddress pHost;
-    controlService->searchRandomServer(failedServers,failure,pHost);
+    controlService->searchRandomServer(failedServers, failure, pHost);
   }
-
 }

@@ -247,6 +247,14 @@ public class GfxdDistributionLocator extends GfxdServerLauncher {
     if (this.bindAddress == null) {
       this.bindAddress = FabricLocator.LOCATOR_DEFAULT_BIND_ADDRESS;
     }
+
+    Properties prop = (Properties) options.get(PROPERTIES);
+    if (prop.getProperty(DistributionConfig.DISABLE_AUTO_RECONNECT_NAME) == null &&
+            prop.getProperty(DistributionConfig.GEMFIRE_PREFIX
+                    + DistributionConfig.DISABLE_AUTO_RECONNECT_NAME) == null) {
+      prop.put(DistributionConfig.DISABLE_AUTO_RECONNECT_NAME, "false");
+    }
+
     final String locPort = (String)options.get(LOC_PORT_ARG);
     if (locPort != null) {
       this.port = Integer.parseInt(locPort);

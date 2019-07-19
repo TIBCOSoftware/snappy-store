@@ -215,17 +215,17 @@ public abstract class UnsafeHolder {
   }
 
   public static ByteBuffer reallocateDirectBuffer(ByteBuffer buffer,
-      int newSize, Class<?> expectedClass, FreeMemory.Factory factory) {
+      final int newLength, Class<?> expectedClass, FreeMemory.Factory factory) {
     sun.nio.ch.DirectBuffer directBuffer = (sun.nio.ch.DirectBuffer)buffer;
-    final long address = directBuffer.address();
     long newAddress = 0L;
 
-    newSize = getAllocationSize(newSize);
+    final int newSize = getAllocationSize(newLength);
     final sun.misc.Cleaner cleaner = directBuffer.cleaner();
     if (cleaner != null) {
       // reset the runnable to not free the memory and clean it up
       try {
         Object freeMemory = Wrapper.cleanerRunnableField.get(cleaner);
+        long address;
         if (expectedClass != null && (freeMemory == null ||
             !expectedClass.isInstance(freeMemory))) {
           throw new IllegalStateException("Expected class to be " +
@@ -233,9 +233,10 @@ public abstract class UnsafeHolder {
               (freeMemory != null ? freeMemory.getClass().getName() : "null"));
         }
         // use the efficient realloc call if possible
+        // and clear address so that cleaner.clean() below does nothing
         if ((freeMemory instanceof FreeMemory) &&
-            ((FreeMemory)freeMemory).tryFree() != 0L) {
-          newAddress = Wrapper.unsafe.reallocateMemory(address, newSize);
+            (address = ((FreeMemory)freeMemory).tryFree()) != 0L) {
+          newAddress = getUnsafe().reallocateMemory(address, newSize);
         }
       } catch (IllegalAccessException e) {
         // fallback to full copy
@@ -247,16 +248,18 @@ public abstract class UnsafeHolder {
             expectedClass.getName() + " in reallocate but was non-runnable");
       }
       newAddress = getUnsafe().allocateMemory(newSize);
-      Platform.copyMemory(null, address, null, newAddress,
-          Math.min(newSize, buffer.limit()));
+      Platform.copyMemory(null, directBuffer.address(), null, newAddress,
+          Math.min(newLength, buffer.limit()));
     }
     // clean only after copying is done
     if (cleaner != null) {
       cleaner.clean();
       cleaner.clear();
     }
-    return allocateDirectBuffer(newAddress, newSize, factory)
+    ByteBuffer newBuffer = allocateDirectBuffer(newAddress, newSize, factory)
         .order(buffer.order());
+    newBuffer.limit(newLength);
+    return newBuffer;
   }
 
   /**

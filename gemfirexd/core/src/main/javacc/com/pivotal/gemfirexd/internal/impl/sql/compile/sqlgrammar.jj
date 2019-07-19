@@ -311,6 +311,7 @@ public class SQLParser
 
 	static final String SINGLEQUOTES = "\'\'";
 	static final String DOUBLEQUOTES = "\"\"";
+	static final String DOUBLEBACKTICK = "``";
 
 // GemStone changes BEGIN
     static final String DEFAULT_INDEX_TYPE = GfxdConstants.LOCAL_SORTEDMAP_INDEX_TYPE; //   "BTREE";
@@ -733,7 +734,7 @@ public class SQLParser
          * characters of a string (quotes enclosing string), need to adjust here accordingly.
          * index = result.indexOf(quotes, 1);
          */
-        index = result.indexOf(quotes, 0);
+        index = result.indexOf(quotes);
         
         /* Replace each occurrence with a single quote and begin the
          * search for the next occurrence from where we left off.
@@ -744,7 +745,7 @@ public class SQLParser
             /*originally 
              * result = result.substring(0, index + 1) + result.substring(index + 2);
              */
-             result = result.substring(0, index + 0) + result.substring(index + 1);
+             result = result.substring(0, index) + result.substring(index + 1);
             //GemStone changes END
             
              index = result.indexOf(quotes, index + 1);
@@ -767,11 +768,16 @@ public class SQLParser
 	** Post process delimited identifiers to eliminate leading and
 	** trailing " and convert all occurrences of "" to ".
 	*/
-	private static String normalizeDelimitedID(String str)
+	private static String normalizeDelimitedID(String str, boolean backTickDelim)
 	{
-		str = compressQuotes(str, DOUBLEQUOTES);
-		return str;
+		str = compressQuotes(str, backTickDelim ? DOUBLEBACKTICK : DOUBLEQUOTES);
+		// All identifiers are case-insensitive in snappy-store.
+		// Case-sensitivity only depends on Spark session setting during query execution
+		// and not for storage and will be determined by Spark-side catalog if required.
+		return Misc.getMemStoreBooting().isSnappyStore()
+			? StringUtil.SQLToUpperCase(str) : str;
 	}
+
 	private static boolean isDATETIME(int val)
 	{
 		if (val == DATE || val == TIME || val == TIMESTAMP)
@@ -16304,7 +16310,7 @@ dropSchemaStatement() throws StandardException :
 }
 {
 	// GemStone changes BEGIN
-	<SCHEMA>
+	( <SCHEMA> | <DATABASE> )
 	{
 		CompilerContext cc = getCompilerContext();
 		cc.markAsDDLForSnappyUse(true);
@@ -17704,7 +17710,7 @@ delimitedIdentifier() :
         str = tok.image;
         //originally str = tok.image.substring(1, tok.image.length() -1);
         //GemStone changes END
-		str = normalizeDelimitedID( str );
+		str = normalizeDelimitedID(str, tok.kind == BACKQUOTED_IDENTIFIER);
 		// Remember whether last token was a delimited identifier
 		nextToLastTokenDelimitedIdentifier = lastTokenDelimitedIdentifier;
 		lastTokenDelimitedIdentifier = Boolean.TRUE;

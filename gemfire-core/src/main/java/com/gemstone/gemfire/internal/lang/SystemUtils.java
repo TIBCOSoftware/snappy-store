@@ -33,6 +33,7 @@ public class SystemUtils {
   // Java Virtual Machine (JVM) Names
   public static final String IBM_J9_JVM_NAME = "J9";
   public static final String JAVA_HOTSPOT_JVM_NAME = "HotSpot";
+  public static final String OPENJDK_JVM_NAME = "OpenJDK";
   public static final String ORACLE_JROCKIT_JVM_NAME = "JRockit";
 
   // Operating System Names
@@ -71,7 +72,8 @@ public class SystemUtils {
    */
   public static boolean isHotSpotVM() {
     final String vm = System.getProperty("java.vm.name");
-    return (vm != null && vm.contains(JAVA_HOTSPOT_JVM_NAME));
+    return (vm != null &&
+        (vm.contains(JAVA_HOTSPOT_JVM_NAME) || vm.contains(OPENJDK_JVM_NAME)));
   }
 
   /**

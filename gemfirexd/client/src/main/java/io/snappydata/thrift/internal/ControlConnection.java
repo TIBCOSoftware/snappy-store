@@ -310,6 +310,10 @@ final class ControlConnection {
     throw failoverExhausted(failedServers, failure);
   }
 
+  synchronized Set<HostAddress> getLocatorsCopy() {
+    return new HashSet<>(this.locators);
+  }
+
   private synchronized Set<HostAddress> failoverToAvailableHost(
       Set<HostAddress> failedServers, boolean checkFailedControlHosts,
       Throwable failure) throws SnappyException {
@@ -431,12 +435,21 @@ final class ControlConnection {
     this.controlHostSet.addAll(allHosts);
   }
 
-  private SnappyException unexpectedError(Throwable t, HostAddress host) {
+  void close(boolean clearGlobal) {
     this.controlHost = null;
     if (this.controlLocator != null) {
       this.controlLocator.getOutputProtocol().getTransport().close();
       this.controlLocator = null;
     }
+    if (clearGlobal) {
+      synchronized (allControlConnections) {
+        allControlConnections.remove(this);
+      }
+    }
+  }
+
+  private SnappyException unexpectedError(Throwable t, HostAddress host) {
+    close(false);
     return ThriftExceptionUtil.newSnappyException(SQLState.JAVA_EXCEPTION, t,
         host != null ? host.toString() : null, t.getClass(), t.getMessage());
   }

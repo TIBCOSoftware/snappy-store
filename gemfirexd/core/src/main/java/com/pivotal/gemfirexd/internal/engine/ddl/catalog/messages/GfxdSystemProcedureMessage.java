@@ -52,7 +52,7 @@ import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
-import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLPreprocess;
+import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLPreprocessOrPostProcess;
 import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.CallbackProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.GfxdSystemProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.AbstractGfxdReplayableMessage;
@@ -99,13 +99,14 @@ import org.apache.log4j.LogManager;
  * 
  */
 public final class GfxdSystemProcedureMessage extends
-    AbstractGfxdReplayableMessage implements GfxdDDLPreprocess {
+    AbstractGfxdReplayableMessage implements GfxdDDLPreprocessOrPostProcess {
 
   private static final long serialVersionUID = 2039841562674551814L;
 
   protected static final short HAS_SERVER_GROUPS = UNRESERVED_FLAGS_START;
   protected static final short INITIAL_DDL_REPLAY_IN_PROGRESS =
       (HAS_SERVER_GROUPS << 1);
+
 
   public enum SysProcMethod {
 
@@ -1506,7 +1507,7 @@ public final class GfxdSystemProcedureMessage extends
         Boolean useNativeTimer = (Boolean)params[0];
         String nativeTimerType = (String)params[1];
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
-            "GfxdSystemProcedureMessage:SET_NANOTIMER_TYPE native timer: " + useNativeTimer + 
+            "GfxdSystemProcedureMessage:SET_NANOTIMER_TYPE native timer: " + useNativeTimer +
             " NativeTimerType: " + nativeTimerType );
         NanoTimer.setNativeTimer(useNativeTimer, nativeTimerType);
       }
@@ -1565,6 +1566,15 @@ public final class GfxdSystemProcedureMessage extends
         out.writeUTF((String)params[0]);
         out.writeUTF((String)params[1]);
         out.writeBoolean((Boolean)params[2]);
+      }
+
+      @Override
+      boolean preprocess() {
+        return false;
+      }
+
+      boolean postprocess() {
+        return true;
       }
 
       @Override
@@ -2008,6 +2018,10 @@ public final class GfxdSystemProcedureMessage extends
       return true;
     }
 
+    boolean postprocess() {
+      return false;
+    }
+
     abstract String getSQLStatement(Object[] params) throws StandardException;
 
     void appendParams(Object[] params, StringBuilder sb) {
@@ -2043,6 +2057,7 @@ public final class GfxdSystemProcedureMessage extends
     this.procMethod = null;
     this.params = null;
     this.sender = null;
+    //assert !(preprocess() && postprocess());
   }
 
   public GfxdSystemProcedureMessage(SysProcMethod procMethod, Object[] params,
@@ -2055,6 +2070,7 @@ public final class GfxdSystemProcedureMessage extends
     this.params = params;
     this.sender = sender;
     this.initialDDLReplayInProgress = Misc.initialDDLReplayInProgress();
+    assert !(procMethod.preprocess() && procMethod.postprocess());
   }
 
   @Override
@@ -2286,6 +2302,10 @@ public final class GfxdSystemProcedureMessage extends
   @Override
   public boolean preprocess() {
     return this.procMethod.preprocess();
+  }
+
+  public boolean postprocess() {
+    return this.procMethod.postprocess();
   }
 
   /**

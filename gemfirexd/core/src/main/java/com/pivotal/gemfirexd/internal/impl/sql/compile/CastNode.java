@@ -709,7 +709,7 @@ public class CastNode extends ValueNode
 
 			case Types.REAL:
 				nodeType = C_NodeTypes.FLOAT_CONSTANT_NODE;
-				constantObject = new Float(NumberDataType.normalizeREAL(constantValue.getDouble()));
+				constantObject = new Float(NumberDataType.normalizeREALAllowNaN(constantValue.getDouble()));
 				break;
 
 			case Types.DOUBLE:

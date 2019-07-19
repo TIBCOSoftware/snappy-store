@@ -22,6 +22,9 @@ import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
 import java.lang.management.MemoryUsage;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -29,11 +32,13 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-
+import java.util.function.Function;
 import javax.management.ListenerNotFoundException;
+import javax.management.MalformedObjectNameException;
 import javax.management.Notification;
 import javax.management.NotificationEmitter;
 import javax.management.NotificationListener;
+import javax.management.ObjectName;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.SystemFailure;
@@ -42,6 +47,7 @@ import com.gemstone.gemfire.cache.query.internal.QueryMonitor;
 import com.gemstone.gemfire.distributed.internal.ProcessorKeeper21;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
+import com.gemstone.gemfire.internal.Assert;
 import com.gemstone.gemfire.internal.DiskCapacityMonitor;
 import com.gemstone.gemfire.internal.GemFireStatSampler;
 import com.gemstone.gemfire.internal.LocalStatListener;
@@ -49,7 +55,6 @@ import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.SetUtils;
 import com.gemstone.gemfire.internal.StatisticsImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager.ResourceType;
 import com.gemstone.gemfire.internal.cache.control.MemoryThresholds.MemoryState;
 import com.gemstone.gemfire.internal.cache.control.ResourceAdvisor.ResourceManagerProfile;
@@ -152,13 +157,14 @@ public final class HeapMemoryMonitor implements NotificationListener,
   private static final long edenAndSurvivorPoolMaxMemory;
 
   static {
-    MemoryPoolMXBean matchingTenuredMemoryPoolMXBean = null;
+    ArrayList<MemoryPoolMXBean> matchingTenuredMemoryPoolMXBeans =
+        new ArrayList<>(2);
     MemoryPoolMXBean matchingEdenMemoryPoolMXBean = null;
     MemoryPoolMXBean matchingSurvivorPoolMXBean = null;
     for (MemoryPoolMXBean memoryPoolMXBean : ManagementFactory.getMemoryPoolMXBeans()) {
       if (isTenured(memoryPoolMXBean)) {
         if (memoryPoolMXBean.isUsageThresholdSupported()) {
-          matchingTenuredMemoryPoolMXBean = memoryPoolMXBean;
+          matchingTenuredMemoryPoolMXBeans.add(memoryPoolMXBean);
         }
       }
       else if (isEden(memoryPoolMXBean)) {
@@ -169,13 +175,18 @@ public final class HeapMemoryMonitor implements NotificationListener,
       }
     }
 
-    tenuredMemoryPoolMXBean = matchingTenuredMemoryPoolMXBean;
     edenMemoryPoolMXBean = matchingEdenMemoryPoolMXBean;
     survivorPoolMXBean = matchingSurvivorPoolMXBean;
 
-    if (tenuredMemoryPoolMXBean == null) {
+    if (matchingTenuredMemoryPoolMXBeans.isEmpty()) {
       LogWriterI18n logger = LogService.logger();
       logger.error(LocalizedStrings.HeapMemoryMonitor_NO_POOL_FOUND_POOLS_0, getAllMemoryPoolNames());
+      tenuredMemoryPoolMXBean = null;
+    } else {
+      tenuredMemoryPoolMXBean = matchingTenuredMemoryPoolMXBeans.size() == 1
+          ? matchingTenuredMemoryPoolMXBeans.get(0)
+          : new CompositePoolMXBean("tenured-composite",
+          matchingTenuredMemoryPoolMXBeans.toArray(new MemoryPoolMXBean[0]));
     }
 
     /*
@@ -183,8 +194,7 @@ public final class HeapMemoryMonitor implements NotificationListener,
      * http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=7078465 by getting max
      * memory from runtime and subtracting all other heap pools from it.
      */
-    if (tenuredMemoryPoolMXBean != null
-        && tenuredMemoryPoolMXBean.getUsage().getMax() != -1) {
+    if (tenuredMemoryPoolMXBean.getUsage().getMax() != -1) {
       tenuredPoolMaxMemory = tenuredMemoryPoolMXBean.getUsage().getMax();
     }
     else {
@@ -232,14 +242,15 @@ public final class HeapMemoryMonitor implements NotificationListener,
     }
     
     String name = memoryPoolMXBean.getName();
-    
+
     return name.equals("CMS Old Gen")     // Sun Concurrent Mark Sweep GC
         || name.equals("PS Old Gen")      // Sun Parallel GC
         || name.equals("G1 Old Gen")      // Sun G1 GC
         || name.equals("Old Space")       // BEA JRockit 1.5, 1.6 GC
         || name.equals("Tenured Gen")     // Hitachi 1.5 GC
         || name.equals("Java heap")       // IBM 1.5, 1.6 GC
-        
+        || name.equals("tenured-SOA")     // OpenJ9
+        || name.equals("tenured-LOA")     // OpenJ9
         // Allow an unknown pool name to monitor
         || (HEAP_POOL != null && name.equals(HEAP_POOL));
   }
@@ -260,11 +271,12 @@ public final class HeapMemoryMonitor implements NotificationListener,
 
     String name = memoryPoolMXBean.getName();
 
-    return name.equals("Par Eden Space")  // Oracle ParNew with Concurrent Mark Sweep GC
-        || name.equals("PS Eden Space")   // Oracle Parallel GC
-        || name.equals("G1 Eden")         // Oracle G1 GC
-        //|| name.equals("Nursery")       // BEA JRockit 1.5, 1.6 GC
-        || name.equals("Eden Space")      // Hitachi 1.5 GC
+    return name.equals("Par Eden Space")    // Oracle ParNew with Concurrent Mark Sweep GC
+        || name.equals("PS Eden Space")     // Oracle Parallel GC
+        || name.equals("G1 Eden")           // Oracle G1 GC
+        //|| name.equals("Nursery")         // BEA JRockit 1.5, 1.6 GC
+        || name.equals("Eden Space")        // Hitachi 1.5 GC
+        || name.equals("nursery-allocate")  // OpenJ9
         // Allow an unknown pool name to monitor
         || (HEAP_EDEN_POOL != null && name.equals(HEAP_EDEN_POOL));
   }
@@ -289,6 +301,7 @@ public final class HeapMemoryMonitor implements NotificationListener,
         || name.equals("PS Survivor Space")   // Oracle Parallel GC
         || name.equals("G1 Survivor")         // Oracle G1 GC
         || name.equals("Survivor Space")      // Hitachi 1.5 GC
+        || name.equals("nursery-survivor")    // OpenJ9
         // Allow an unknown pool name to monitor
         || (HEAP_SURVIVOR_POOL != null && name.equals(HEAP_SURVIVOR_POOL));
   }
@@ -1179,6 +1192,192 @@ public void stopMonitoring() {
       }
     } else {
       return false;
+    }
+  }
+
+  public static class CompositePoolMXBean implements MemoryPoolMXBean {
+
+    private final String name;
+    private final String objectName;
+    private final MemoryPoolMXBean[] pools;
+
+    public CompositePoolMXBean(String name, MemoryPoolMXBean[] pools) {
+      // all pool types must be same
+      Assert.assertTrue(pools.length > 1);
+      MemoryType expectedType = pools[0].getType();
+      for (int i = 1; i < pools.length; i++) {
+        Assert.assertTrue(pools[i].getType().equals(expectedType));
+      }
+
+      this.name = name;
+      this.objectName = ManagementFactory.MEMORY_POOL_MXBEAN_DOMAIN_TYPE +
+          ",name=" + name;
+      this.pools = pools;
+    }
+
+    private MemoryUsage combineMemoryUsage(
+        Function<MemoryPoolMXBean, MemoryUsage> getUsage) {
+      long init = 0L;
+      long used = 0L;
+      long committed = 0L;
+      long max = 0L;
+      for (MemoryPoolMXBean pool : this.pools) {
+        MemoryUsage usage = getUsage.apply(pool);
+        init += Math.max(0L, usage.getInit());
+        used += usage.getUsed();
+        committed += usage.getCommitted();
+        max += Math.max(0L, usage.getMax());
+      }
+      if (init == 0L) init = -1L;
+      if (max == 0L) max = -1L;
+      return new MemoryUsage(init, used, committed, max);
+    }
+
+    @Override
+    public String getName() {
+      return this.name;
+    }
+
+    @Override
+    public MemoryType getType() {
+      return this.pools[0].getType();
+    }
+
+    @Override
+    public MemoryUsage getUsage() {
+      return combineMemoryUsage(MemoryPoolMXBean::getUsage);
+    }
+
+    @Override
+    public MemoryUsage getPeakUsage() {
+      return combineMemoryUsage(MemoryPoolMXBean::getPeakUsage);
+    }
+
+    @Override
+    public void resetPeakUsage() {
+      for (MemoryPoolMXBean pool : this.pools) {
+        pool.resetPeakUsage();
+      }
+    }
+
+    @Override
+    public boolean isValid() {
+      for (MemoryPoolMXBean pool : this.pools) {
+        if (!pool.isValid()) return false;
+      }
+      return true;
+    }
+
+    @Override
+    public String[] getMemoryManagerNames() {
+      LinkedHashSet<String> managers = new LinkedHashSet<>(this.pools.length);
+      for (MemoryPoolMXBean pool : this.pools) {
+        managers.addAll(Arrays.asList(pool.getMemoryManagerNames()));
+      }
+      // noinspection ToArrayCallWithZeroLengthArrayArgument
+      return managers.toArray(new String[managers.size()]);
+    }
+
+    @Override
+    public long getUsageThreshold() {
+      long usageThreshold = 0L;
+      for (MemoryPoolMXBean pool : this.pools) {
+        long threshold = pool.getUsageThreshold();
+        if (threshold > 0L && (usageThreshold == 0L || threshold < usageThreshold)) {
+          usageThreshold = threshold;
+        }
+      }
+      return usageThreshold;
+    }
+
+    @Override
+    public void setUsageThreshold(long threshold) {
+      for (MemoryPoolMXBean pool : this.pools) {
+        pool.setUsageThreshold(threshold);
+      }
+    }
+
+    @Override
+    public boolean isUsageThresholdExceeded() {
+      for (MemoryPoolMXBean pool : this.pools) {
+        if (pool.isUsageThresholdExceeded()) return true;
+      }
+      return false;
+    }
+
+    @Override
+    public long getUsageThresholdCount() {
+      long usageThresholdCount = 0L;
+      for (MemoryPoolMXBean pool : this.pools) {
+        usageThresholdCount += pool.getUsageThresholdCount();
+      }
+      return usageThresholdCount;
+    }
+
+    @Override
+    public boolean isUsageThresholdSupported() {
+      for (MemoryPoolMXBean pool : this.pools) {
+        if (!pool.isUsageThresholdSupported()) return false;
+      }
+      return true;
+    }
+
+    @Override
+    public long getCollectionUsageThreshold() {
+      long usageThreshold = 0L;
+      for (MemoryPoolMXBean pool : this.pools) {
+        long threshold = pool.getCollectionUsageThreshold();
+        if (threshold > 0L && (usageThreshold == 0L || threshold < usageThreshold)) {
+          usageThreshold = threshold;
+        }
+      }
+      return usageThreshold;
+    }
+
+    @Override
+    public void setCollectionUsageThreshold(long threshold) {
+      for (MemoryPoolMXBean pool : this.pools) {
+        pool.setCollectionUsageThreshold(threshold);
+      }
+    }
+
+    @Override
+    public boolean isCollectionUsageThresholdExceeded() {
+      for (MemoryPoolMXBean pool : this.pools) {
+        if (pool.isCollectionUsageThresholdExceeded()) return true;
+      }
+      return false;
+    }
+
+    @Override
+    public long getCollectionUsageThresholdCount() {
+      long usageThresholdCount = 0L;
+      for (MemoryPoolMXBean pool : this.pools) {
+        usageThresholdCount += pool.getCollectionUsageThresholdCount();
+      }
+      return usageThresholdCount;
+    }
+
+    @Override
+    public MemoryUsage getCollectionUsage() {
+      return combineMemoryUsage(MemoryPoolMXBean::getCollectionUsage);
+    }
+
+    @Override
+    public boolean isCollectionUsageThresholdSupported() {
+      for (MemoryPoolMXBean pool : this.pools) {
+        if (!pool.isCollectionUsageThresholdSupported()) return false;
+      }
+      return true;
+    }
+
+    @Override
+    public ObjectName getObjectName() {
+      try {
+        return ObjectName.getInstance(this.objectName);
+      } catch (MalformedObjectNameException e) {
+        throw new IllegalArgumentException(e);
+      }
     }
   }
 }

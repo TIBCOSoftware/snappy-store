@@ -81,7 +81,7 @@ public class GfxdWanTestBase extends DistributedSQLTestBase{
 
     getLogWriter().info("Comparing site results for query:" + query);
 
-    String firstUrl = TestUtil.getNetProtocol("localhost", siteOnePort);
+    String firstUrl = TestUtil.getNetProtocol("localhost", siteOnePort, false);
     Properties props = new Properties();
 
     Connection conn = DriverManager.getConnection(firstUrl, props);
@@ -89,7 +89,7 @@ public class GfxdWanTestBase extends DistributedSQLTestBase{
     st.execute(query);
     ResultSet result = st.getResultSet();
 
-    String secondUrl = TestUtil.getNetProtocol("localhost", siteTwoPort);
+    String secondUrl = TestUtil.getNetProtocol("localhost", siteTwoPort, false);
     Connection conn2 = DriverManager.getConnection(secondUrl, props);
     Statement st2 = conn2.createStatement();
     st2.execute(query);

@@ -14,9 +14,6 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-/**
- *
- */
 package com.pivotal.gemfirexd.internal.engine.sql.catalog;
 
 import java.util.ArrayList;
@@ -89,7 +86,7 @@ public final class DistributionDescriptor extends TupleDescriptor {
       int maxPartSize, String colocateTable, boolean isPersistent,
       SortedSet<String> serverGroups) {
     this.policy = policy;
-    this.columns = columns;
+    this.columns = columns != null ? columns.clone() : null;
     this.values = null;
     this.redundancy = redundancy;
     this.maxPartSize = maxPartSize;
@@ -114,7 +111,7 @@ public final class DistributionDescriptor extends TupleDescriptor {
   }
 
   public void setPartitionColumnNames(String[] cols) {
-    this.columns = cols;
+    this.columns = cols != null ? cols.clone() : null;
   }
 
   public final String[] getPartitionColumnNames() {
@@ -237,7 +234,7 @@ public final class DistributionDescriptor extends TupleDescriptor {
 
   public int getPartitioningColumnIdx(String colName) {
     for (int i = 0; i < columns.length; i++) {
-      if (columns[i].toUpperCase().equals(colName.toUpperCase())) {
+      if (columns[i].equalsIgnoreCase(colName)) {
         return i;
       }
     }

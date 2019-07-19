@@ -120,7 +120,7 @@ public final class NonLocalRowLocationRegionEntry extends NonLocalRegionEntry
   @Override
   public ExecRow getRow(GemFireContainer baseContainer)
       throws StandardException {
-    return baseContainer.newExecRow(this.value);
+    return baseContainer.newExecRow(this.key, this.value);
   }
 
   /**
@@ -129,7 +129,7 @@ public final class NonLocalRowLocationRegionEntry extends NonLocalRegionEntry
   @Override
   public ExecRow getRowWithoutFaultIn(GemFireContainer baseContainer)
       throws StandardException {
-    return baseContainer.newExecRow(this.value);
+    return baseContainer.newExecRow(this.key, this.value);
   }
 
   /**

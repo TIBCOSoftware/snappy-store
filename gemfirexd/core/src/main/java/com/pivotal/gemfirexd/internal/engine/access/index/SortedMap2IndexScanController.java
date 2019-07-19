@@ -863,7 +863,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
 
     public static final RowLocation isRowLocationValidForTransaction(
         final RowLocation rl, final TXId rlTXId, final TXStateInterface tx,
-        final int openMode) {
+        final int openMode, final boolean isUniqIndex) {
       RowLocation ret = null;
       final boolean sameTransaction = tx != null
           && rlTXId.equals(tx.getTransactionId());
@@ -904,6 +904,10 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
         }
         if (sameTransaction) {
           ret = rl;
+        // check if it is a case of unique index and then see if the underlying region entry
+        // should be returned or not.
+        } else if (isUniqIndex) {
+          ret = (RowLocation) ((GfxdTXEntryState)rl).getCommittedEntry();
         }
       }
       return ret;
@@ -912,7 +916,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
     public static final RowLocation isRowLocationValid(RowLocation rowloc,
         final LanguageConnectionContext lcc, final TXStateInterface tx,
         final GemFireContainer container, final boolean[] localBucketSet,
-        final int openMode) {
+        final int openMode, final OpenMemIndex openConglom) {
       final TXId rlTXId;
 
       if (GemFireXDUtils.TraceIndex) {
@@ -927,7 +931,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
         // below will tell whether RowLocation has to be skipped for this
         // transaction and also unwrap a TX deleted row if required
         rowloc = isRowLocationValidForTransaction(rowloc, rlTXId, tx,
-            openMode);
+            openMode, openConglom.isUnique());
         if (rowloc == null) {
           if (GfxdTXStateProxy.LOG_FINEST | GemFireXDUtils.TraceIndex) {
             SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_INDEX,
@@ -1012,7 +1016,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
       for (;;) {
         if (this.index < this.rlArray.length) {
           RowLocation rl = isRowLocationValid(this.rlArray[this.index], lcc,
-              txState, this.container, this.localBucketSet, openMode);
+              txState, this.container, this.localBucketSet, openMode, openConglom);
           this.index++;
           if (rl != null) {
             return rl;
@@ -1063,7 +1067,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
         while (itrPos < itrLen) {
           RowLocation rl = (RowLocation)itrCache[itrPos++];
           rl = isRowLocationValid(rl, lcc, txState, this.container,
-              this.localBucketSet, openMode);
+              this.localBucketSet, openMode, openConglom);
           if (rl != null) {
             return rl;
           }
@@ -1075,7 +1079,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
       else if ((itr = this.itr) != null) {
         while (itr.hasNext()) {
           RowLocation rl = isRowLocationValid((RowLocation)itr.next(), lcc,
-              txState, this.container, this.localBucketSet, openMode);
+              txState, this.container, this.localBucketSet, openMode, openConglom);
           if (rl != null) {
             return rl;
           }
@@ -1265,7 +1269,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
           this.rlIterator = null;
           if ((rl = AbstractRowLocationIterator.isRowLocationValid(
               (RowLocation)nextValue, lcc, this.txState, this.baseContainer,
-              this.localBucketSet, this.openMode)) != null) {
+              this.localBucketSet, this.openMode, openConglom)) != null) {
             //this.movedToNextIndexKey = true;
             ++this.scanKeyGroupID;
             return rl;
@@ -1343,7 +1347,7 @@ public final class SortedMap2IndexScanController extends MemIndexScanController
       if (set.contains(this.initRowLocation)) {
         return AbstractRowLocationIterator.isRowLocationValid(
             this.initRowLocation, lcc, this.txState, this.baseContainer,
-            this.localBucketSet, this.openMode);
+            this.localBucketSet, this.openMode, openConglom);
       }
       return null;
     }

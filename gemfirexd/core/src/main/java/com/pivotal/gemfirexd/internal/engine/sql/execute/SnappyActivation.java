@@ -57,17 +57,17 @@ public class SnappyActivation extends BaseActivation {
   private String sql;
   private boolean returnRows;
   private boolean isPrepStmt;
-  private boolean isUpdateOrDelete;
+  private boolean isUpdateOrDeleteOrPut;
 
   public SnappyActivation(LanguageConnectionContext lcc, ExecPreparedStatement eps, 
-      boolean returnRows,  boolean isPrepStmt, boolean isUpdateOrDelete) {
+      boolean returnRows,  boolean isPrepStmt, boolean isUpdateOrDeleteOrPut) {
     super(lcc);
     sql = eps.getSource();
     this.preStmt = eps;
     this.returnRows = returnRows;
     this.connectionID = lcc.getConnectionId();
     this.isPrepStmt = isPrepStmt;
-    this.isUpdateOrDelete = isUpdateOrDelete;
+    this.isUpdateOrDeleteOrPut = isUpdateOrDeleteOrPut;
   }
 
   public void initialize_pvs() throws StandardException {
@@ -100,7 +100,7 @@ public class SnappyActivation extends BaseActivation {
         GenericPreparedStatement gps = (GenericPreparedStatement)preStmt;
         gps.setParameterTypes(types);
         final String statementType;
-        if (isUpdateOrDelete) {
+        if (isUpdateOrDeleteOrPut) {
           statementType = "INSERT"; // Default
         } else {
           statementType = "SELECT";
@@ -182,8 +182,8 @@ public class SnappyActivation extends BaseActivation {
 
   private SnappySelectResultSet createResultSet()
       throws StandardException {
-    if (isUpdateOrDelete) {
-      return new SnappyUpdateDeleteResultSet(this, this.returnRows);
+    if (isUpdateOrDeleteOrPut) {
+      return new SnappyUpdateDeletePutResultSet(this, this.returnRows);
     } else {
       return new SnappySelectResultSet(this, this.returnRows);
     }
@@ -199,14 +199,14 @@ public class SnappyActivation extends BaseActivation {
     boolean enableStreaming = this.lcc.streamingEnabled();
     GfxdResultCollector<Object> rc = getResultCollector(enableStreaming, rs);
     executeOnLeadNode(rs, rc, this.sql, enableStreaming, this.getConnectionID(), this.lcc
-        .getCurrentSchemaName(), this.pvs, this.isPrepStmt, this.isUpdateOrDelete, this.lcc);
+        .getCurrentSchemaName(), this.pvs, this.isPrepStmt, this.isUpdateOrDeleteOrPut, this.lcc);
   }
 
   private void prepareWithResultSet(SnappyPrepareResultSet rs)
       throws StandardException {
     GfxdResultCollector<Object> rc = getPrepareResultCollector(rs);
     prepareOnLeadNode(rs, rc, this.sql, this.getConnectionID(), this.lcc
-        .getCurrentSchemaName(), this.pvs, this.isUpdateOrDelete, this.lcc);
+        .getCurrentSchemaName(), this.pvs, this.isUpdateOrDeleteOrPut, this.lcc);
   }
 
   private GfxdResultCollector<Object> getResultCollector(final boolean enableStreaming,
@@ -316,13 +316,13 @@ public class SnappyActivation extends BaseActivation {
 
   private static void executeOnLeadNode(SnappySelectResultSet rs, GfxdResultCollector<Object> rc,
       String sql, boolean enableStreaming, long connId, String schema, ParameterValueSet pvs,
-      boolean isPreparedStatement, boolean isUpdateOrDelete, LanguageConnectionContext lcc)
+      boolean isPreparedStatement, boolean isUpdateOrDeleteOrPut, LanguageConnectionContext lcc)
       throws StandardException {
     // TODO: KN probably username, statement id and connId to be sent in
     // execution and of course tx id when transaction will be supported.
     LeadNodeExecutionContext ctx = new LeadNodeExecutionContext(connId);
     LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(sql, schema, ctx, rc, pvs,
-        isPreparedStatement, false, isUpdateOrDelete);
+        isPreparedStatement, false, isUpdateOrDeleteOrPut);
     // release all locks before sending the message else it can lead to deadlocks
     if (lcc != null) {
       lcc.getTransactionExecute().releaseAllLocks(true, true);
@@ -344,12 +344,12 @@ public class SnappyActivation extends BaseActivation {
 
   private static void prepareOnLeadNode(SnappyPrepareResultSet rs, GfxdResultCollector<Object> rc,
       String sql, long connId, String schema, ParameterValueSet pvs,
-      boolean isUpdateOrDelete, LanguageConnectionContext lcc) throws StandardException {
+      boolean isUpdateOrDeleteOrPut, LanguageConnectionContext lcc) throws StandardException {
     // TODO: KN probably username, statement id and connId to be sent in
     // execution and of course tx id when transaction will be supported.
     LeadNodeExecutionContext ctx = new LeadNodeExecutionContext(connId);
     LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(sql, schema, ctx, rc, pvs,
-        true, true, isUpdateOrDelete);
+        true, true, isUpdateOrDeleteOrPut);
     if (lcc != null) {
       lcc.getTransactionExecute().releaseAllLocks(true, true);
     }

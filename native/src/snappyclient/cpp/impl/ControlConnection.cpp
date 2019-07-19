@@ -192,6 +192,7 @@ void ControlConnection::getPreferredServer(thrift::HostAddress& preferredServer,
     }catch(thrift::SnappyException &snEx){
       // TODO:
       //Discuss with Sumedh
+      throw unexpectedError(snEx, m_controlHost);
     }catch(TException &tex){
       // TODO: SanityManager
       //Search for a new host for locator query

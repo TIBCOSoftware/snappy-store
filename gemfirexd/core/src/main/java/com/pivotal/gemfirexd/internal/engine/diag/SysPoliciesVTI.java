@@ -32,6 +32,7 @@ import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultColumnDescriptor;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSetMetaData;
 import com.pivotal.gemfirexd.internal.impl.sql.catalog.GfxdDataDictionary;
+import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.Limits;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,11 +83,11 @@ public class SysPoliciesVTI extends GfxdVTITemplate
   protected Object getObjectForColumn(int columnNumber) {
     switch (columnNumber) {
       case 1: // Policy Name
-        return this.currentPolicyMeta.policyName;
+        return SharedUtils.SQLToUpperCase(this.currentPolicyMeta.policyName);
       case 2: // TABLE SCHEMA NAME
-        return this.currentPolicyMeta.schemaName;
+        return SharedUtils.SQLToUpperCase(this.currentPolicyMeta.schemaName);
       case 3: // TABLE
-        return this.currentPolicyMeta.tableName;
+        return SharedUtils.SQLToUpperCase(this.currentPolicyMeta.tableName);
       case 4: // For
         return this.currentPolicyMeta.policyFor;
       case 5: // Apply To

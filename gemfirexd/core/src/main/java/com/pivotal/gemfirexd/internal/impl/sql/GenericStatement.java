@@ -49,6 +49,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gnu.trove.THashMap;
@@ -238,10 +239,10 @@ public class GenericStatement
 	// GemStone changes BEGIN
 	private GenericPreparedStatement getPreparedStatementForSnappy(boolean commitNestedTransaction,
 			StatementContext statementContext, LanguageConnectionContext lcc, boolean isDDL,
-			boolean checkCancellation, boolean isUpdateOrDelete, Throwable cause) throws StandardException {
+			boolean checkCancellation, boolean isUpdateOrDeleteOrPut, Throwable cause) throws StandardException {
       GenericPreparedStatement gps = preparedStmt;
       GeneratedClass ac = new SnappyActivationClass(lcc, !isDDL, isPreparedStatement() && !isDDL,
-          isUpdateOrDelete);
+          isUpdateOrDeleteOrPut);
       gps.setActivationClass(ac);
       gps.incrementVersionCounter();
       gps.makeValid();
@@ -255,11 +256,11 @@ public class GenericStatement
      if (GemFireXDUtils.TraceQuery) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
           "GenericStatement.getPreparedStatementForSnappy: Created SnappyActivation for sql: " +
-              this.getSource() + " ,isDDL=" + isDDL + " ,isUpdateOrDelete=" + isUpdateOrDelete);
+              this.getSource() + " ,isDDL=" + isDDL + " ,isUpdateOrDeleteOrPut=" + isUpdateOrDeleteOrPut);
      }
      if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("GenericStatement.getPreparedStatementForSnappy: routing sql: " +
-            this.getSource() + " ,isDDL=" + isDDL + " ,isUpdateOrDelete=" + isUpdateOrDelete, cause);
+            this.getSource() + " ,isDDL=" + isDDL + " ,isUpdateOrDeleteOrPut=" + isUpdateOrDeleteOrPut, cause);
      }
      if (checkCancellation) {
        Misc.checkMemory(thresholdListener, statementText, -1);
@@ -705,16 +706,19 @@ public class GenericStatement
 						qt.bindStatement();
 					}
 					catch(StandardException | AssertFailure ex) {
-				      boolean routeToSnappy = (ex instanceof StandardException && ((StandardException)ex).
-									getMessageId().equals(SQLState.ROW_LEVEL_SECURITY_ENABLED)) ||
-									(routeQuery && !NON_ROUTED_QUERY.matcher(source).find());
+						  boolean isDML = DML_TABLE_PATTERN.matcher(source).find();
+						  String messageId = ex instanceof StandardException ? ((StandardException)ex).getMessageId() : "";
+						  boolean routeToSnappy = messageId.equals(SQLState.ROW_LEVEL_SECURITY_ENABLED) ||
+									(routeQuery && !NON_ROUTED_QUERY.matcher(source).find()
+									//SNAP-2765 don't route if failure due to error such as invalid column name in prepared statement
+									&& !(isDML && isPrepStmtInvalidColumnError(messageId)));
 
 					  if (routeToSnappy) {
 					    if (observer != null) {
 					      observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
 					    }
 							return getPreparedStatementForSnappy(true, statementContext, lcc, false,
-							  checkCancellation, DML_TABLE_PATTERN.matcher(source).find(), ex);
+							  checkCancellation, isDML, ex);
 					  }
 					  throw ex;
 					}
@@ -847,6 +851,19 @@ public class GenericStatement
                                                     statementContext, lcc, false,
                                                     checkCancellation, isUpdateOrDelete, null);
                                               }
+                                            }
+                                          }
+
+                                          if (routeQuery && qinfo != null && qinfo.isDML() && qinfo.isInsert() && ((InsertQueryInfo)qinfo).isPutDML()) {
+                                            InsertNode in = qt instanceof InsertNode ? ((InsertNode)qt) : null;
+                                            TableDescriptor ttd = in != null ? in.targetTableDescriptor : null;
+                                            String table = ttd.getQualifiedName();
+                                            Region region = Misc.getRegionForTable(table.replaceAll("\"", ""), true);
+                                            GemFireContainer container = (GemFireContainer)region.getUserAttribute();
+                                            boolean isColumnTable = container.isRowBuffer();
+                                            if (isColumnTable) {
+                                              return getPreparedStatementForSnappy(true, statementContext, lcc,
+                                                  false, checkCancellation, true, null);
                                             }
                                           }
 
@@ -1293,6 +1310,15 @@ public class GenericStatement
 
 
 		return preparedStmt;
+	}
+
+	private boolean isPrepStmtInvalidColumnError(String messageId) {
+		return this.isPreparedStatement() &&
+				(messageId.equals(SQLState.LANG_COLUMN_NOT_FOUND_IN_TABLE)
+				|| messageId.equals(SQLState.LANG_DB2_INVALID_COLS_SPECIFIED)
+				|| messageId.equals(SQLState.LANG_DUPLICATE_COLUMN_NAME_INSERT)
+				|| messageId.equals(SQLState.LANG_DUPLICATE_COLUMN_NAME_UPDATE)
+				|| messageId.equals(SQLState.LANG_COLUMN_NOT_FOUND));
 	}
 
 	public boolean invalidQueryOnColumnTable(LanguageConnectionContext _lcc,

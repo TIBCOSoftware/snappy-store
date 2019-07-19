@@ -608,7 +608,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
 
 		// If the BigDecimal is out of range for the float
 		// then positive or negative infinity is returned.
-		float value = NumberDataType.normalizeREAL(localValue.floatValue());
+		float value = NumberDataType.normalizeREALAllowNaN(localValue.floatValue());
 
 		return value;
 	}
@@ -635,7 +635,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
 
 	  // If the BigDecimal is out of range for double
 	  // then positive or negative infinity is returned.
-	  double value = NumberDataType.normalizeDOUBLE(localValue.doubleValue());
+	  double value = NumberDataType.normalizeDOUBLEAllowNaN(localValue.doubleValue());
 	  return value;
 	}
 
@@ -1090,7 +1090,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
 	 */
 	public void setValue(double theValue) throws StandardException
 	{
-		setCoreValue(NumberDataType.normalizeDOUBLE(theValue));
+		setCoreValue(NumberDataType.normalizeDOUBLEAllowNaN(theValue));
 	}
 
 	/**
@@ -1100,7 +1100,7 @@ public final class SQLDecimal extends NumberDataType implements VariableSizeData
 	public void setValue(float theValue)
 		throws StandardException
 	{
-		setCoreValue((double)NumberDataType.normalizeREAL(theValue));
+		setCoreValue((double)NumberDataType.normalizeREALAllowNaN(theValue));
 	}
 
 	/**

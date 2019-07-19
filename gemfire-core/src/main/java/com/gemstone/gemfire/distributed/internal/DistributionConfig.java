@@ -2328,7 +2328,7 @@ public interface DistributionConfig extends Config, ManagerLogWriter.LogConfig {
   public static final String DISABLE_AUTO_RECONNECT_NAME = "disable-auto-reconnect";
 
   /** The default value of the corresponding property */
-  public static final boolean DEFAULT_DISABLE_AUTO_RECONNECT = false;
+  public static final boolean DEFAULT_DISABLE_AUTO_RECONNECT = true;
   
   /**
    * Gets the value of <a href="../DistributedSystem.html#disable-auto-reconnect">"disable-auto-reconnect"</a>

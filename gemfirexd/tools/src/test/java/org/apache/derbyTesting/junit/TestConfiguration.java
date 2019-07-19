@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.Properties;
 
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.drda.NetworkServerControl;
 import junit.extensions.TestSetup;
@@ -1174,6 +1175,7 @@ public class TestConfiguration {
         .getBoolean(USE_ODBC_BRIDGE_PROP);
 
     private static final String netProtocol = "jdbc:gemfirexd://";
+    private static final String thriftProtocol = "jdbc:snappydata://";
 
     // assumes ODBC datasource named gemfirexd
     private static final String odbcProtocol = "jdbc:odbc:gemfirexd";
@@ -1181,6 +1183,10 @@ public class TestConfiguration {
         "/odbc/odbc.ini");
 
     public static String getNetProtocol(String hostName, int port) {
+      return getNetProtocol(hostName, port, ClientSharedUtils.isThriftDefault());
+    }
+
+    public static String getNetProtocol(String hostName, int port, boolean useThrift) {
       if (USE_ODBC_BRIDGE) {
         // create an odbc.ini with the host/port, if required
         if (!odbcIni.exists()) {
@@ -1202,11 +1208,12 @@ public class TestConfiguration {
         return odbcProtocol;
       }
       else {
-        return netProtocol + hostName + '[' + port + "]/";
+        return (useThrift ? thriftProtocol : netProtocol) +
+            hostName + '[' + port + "]/";
       }
     }
 // GemStone changes END
-    
+
     /**
      * Initialize the connection factory.
      * Defaults to the DriverManager implementation
