@@ -8088,30 +8088,32 @@ public class PartitionedRegion extends LocalRegion implements
     private boolean lockOwned = false;
 
     private final GemFireCacheImpl cache;
-
+    
     private final boolean enableAlerts;
 
     protected BucketLock(String lockName, GemFireCacheImpl cache, boolean enableAlerts) {
       this.lockService = (DLockService)
-              cache.getPartitionedRegionLockService();
+          cache.getPartitionedRegionLockService();
       this.cache = cache;
       this.lockName = lockName;
       this.enableAlerts = enableAlerts;
     }
 
     public String getLockName() {
-        return this.lockName;
+      return this.lockName;
     }
+
     /**
      * Locks the given name (provided during construction) uninterruptibly or
      * throws an exception.
-     *
+     * 
      * @throws LockServiceDestroyedException
      */
     public void lock() {
       try {
         basicLock();
-      } catch (LockServiceDestroyedException e) {
+      }
+      catch (LockServiceDestroyedException e) {
         cache.getCancelCriterion().checkCancelInProgress(null);
         throw e;
       }
@@ -8120,7 +8122,7 @@ public class PartitionedRegion extends LocalRegion implements
     /**
      * Attempts to lock the given name (provided during construction)
      * uninterruptibly
-     *
+     * 
      * @return true if the lock was acquired, otherwise false.
      * @throws LockServiceDestroyedException
      */
@@ -8128,42 +8130,46 @@ public class PartitionedRegion extends LocalRegion implements
       try {
         cache.getCancelCriterion().checkCancelInProgress(null);
         basicTryLock(
-                PartitionedRegionHelper.DEFAULT_WAIT_PER_RETRY_ITERATION);
-      } catch (LockServiceDestroyedException e) {
+            PartitionedRegionHelper.DEFAULT_WAIT_PER_RETRY_ITERATION);
+      }
+      catch (LockServiceDestroyedException e) {
         cache.getCancelCriterion().checkCancelInProgress(null);
         throw e;
       }
       return this.lockOwned;
     }
-
+    
+    
 
     private void basicLock() {
-      if (enableAlerts) {
+      if(enableAlerts) {
         ReplyProcessor21.forceSevereAlertProcessing();
       }
       try {
         DM dm = cache.getDistributedSystem().getDistributionManager();
-
-        long ackWaitThreshold = 0;
+  
+        long ackWaitThreshold = 0; 
         long ackSAThreshold = dm.getConfig().getAckSevereAlertThreshold() * 1000;
         boolean suspected = false;
         boolean severeAlertIssued = false;
         DistributedMember lockHolder = null;
-
+        
         long waitInterval;
         long startTime;
-
-        if (!enableAlerts) {
+  
+        if(!enableAlerts) {
           //Make sure we only attempt the lock long enough not to
           //get a 15 second warning from the reply processor.
           ackWaitThreshold = dm.getConfig().getAckWaitThreshold() * 1000;
           waitInterval = ackWaitThreshold - 1;
           startTime = System.currentTimeMillis();
-        } else if (ackSAThreshold > 0) {
+        }
+        else if (ackSAThreshold > 0) {
           ackWaitThreshold = dm.getConfig().getAckWaitThreshold() * 1000;
           waitInterval = ackWaitThreshold;
           startTime = System.currentTimeMillis();
-        } else {
+        }
+        else {
           waitInterval = PartitionedRegion.VM_OWNERSHIP_WAIT_TIME;
           startTime = 0;
         }
@@ -8175,8 +8181,8 @@ public class PartitionedRegion extends LocalRegion implements
           if (count > 0) {
             try {
               for (int i = 0; i < (ackWaitThreshold * count) / 200; i++) {
-                cache.getCancelCriterion().checkCancelInProgress(null);
-                Thread.sleep(200);
+                  cache.getCancelCriterion().checkCancelInProgress(null);
+                  Thread.sleep(200);
               }
               Thread.sleep(ackWaitThreshold * count);
             } catch (InterruptedException e) {
@@ -8186,7 +8192,7 @@ public class PartitionedRegion extends LocalRegion implements
             count++;
           }
           this.lockOwned = this.lockService.lock(this.lockName,
-                  waitInterval, -1);
+              waitInterval, -1);
           if (!this.lockOwned && ackSAThreshold > 0 && enableAlerts) {
             long elapsed = System.currentTimeMillis() - startTime;
             if (elapsed > ackWaitThreshold && enableAlerts) {
@@ -8198,21 +8204,23 @@ public class PartitionedRegion extends LocalRegion implements
                 lockHolder = remoteToken.getLessee();
                 if (lockHolder != null) {
                   dm.getMembershipManager()
-                          .suspectMember(lockHolder,
-                                  "Has not released a partitioned region lock in over "
-                                          + ackWaitThreshold / 1000 + " sec");
+                    .suspectMember(lockHolder,
+                      "Has not released a partitioned region lock in over "
+                      + ackWaitThreshold / 1000 + " sec");
                 }
-              } else if (elapsed > ackSAThreshold && enableAlerts) {
+              }
+              else if (elapsed > ackSAThreshold  && enableAlerts) {
                 DLockRemoteToken remoteToken = this.lockService.queryLock(this.lockName);
                 if (lockHolder != null && remoteToken.getLessee() != null
-                        && lockHolder.equals(remoteToken.getLessee())) {
+                    && lockHolder.equals(remoteToken.getLessee())) {
                   if (!severeAlertIssued) {
                     severeAlertIssued = true;
                     cache.getLoggerI18n().severe(
-                            LocalizedStrings.PartitionedRegion_0_SECONDS_HAVE_ELAPSED_WAITING_FOR_THE_PARTITIONED_REGION_LOCK_HELD_BY_1,
-                            new Object[]{Long.valueOf((ackWaitThreshold + ackSAThreshold) / 1000), lockHolder});
+                      LocalizedStrings.PartitionedRegion_0_SECONDS_HAVE_ELAPSED_WAITING_FOR_THE_PARTITIONED_REGION_LOCK_HELD_BY_1,
+                      new Object[] {Long.valueOf((ackWaitThreshold+ackSAThreshold)/1000), lockHolder});     
                   }
-                } else {
+                }
+                else {
                   // either no lock holder now, or the lock holder has changed
                   // since the ackWaitThreshold last elapsed
                   suspected = false;
@@ -8223,16 +8231,19 @@ public class PartitionedRegion extends LocalRegion implements
             }
           }
         }
-      } finally {
-        if (enableAlerts) {
+      }
+      finally {
+        if(enableAlerts) {
           ReplyProcessor21.unforceSevereAlertProcessing();
         }
       }
     }
-
-
-    private void basicTryLock(long time) {
-
+    
+    
+    
+    private void basicTryLock(long time)
+    {
+      
       final Object key = this.lockName;
 
       final DM dm = cache.getDistributedSystem().getDistributionManager();
@@ -8243,7 +8254,8 @@ public class PartitionedRegion extends LocalRegion implements
       if (timeoutMS < 0) {
         timeoutMS = Long.MAX_VALUE;
         end = Long.MAX_VALUE;
-      } else {
+      }
+      else {
         end = start + timeoutMS;
       }
 
@@ -8259,7 +8271,8 @@ public class PartitionedRegion extends LocalRegion implements
         ackWaitThreshold = cache.getDistributedSystem().getConfig().getAckWaitThreshold() * 1000;
         waitInterval = ackWaitThreshold;
         start = System.currentTimeMillis();
-      } else {
+      }
+      else {
         waitInterval = timeoutMS;
         ackWaitThreshold = 0;
         start = 0;
@@ -8267,10 +8280,10 @@ public class PartitionedRegion extends LocalRegion implements
 
       do {
         try {
-          waitInterval = Math.min(end - System.currentTimeMillis(), waitInterval);
+          waitInterval = Math.min(end-System.currentTimeMillis(), waitInterval);
           ReplyProcessor21.forceSevereAlertProcessing();
           this.lockOwned = this.lockService.lock(key,
-                  waitInterval, -1, true, false);
+                waitInterval, -1, true, false);
           if (this.lockOwned) {
             return;
           }
@@ -8283,26 +8296,28 @@ public class PartitionedRegion extends LocalRegion implements
                 severeAlertIssued = false; // in case this is a new lock holder
                 waitInterval = ackSAThreshold;
                 DLockRemoteToken remoteToken =
-                        this.lockService.queryLock(key);
+                  this.lockService.queryLock(key);
                 lockHolder = remoteToken.getLessee();
                 if (lockHolder != null) {
                   dm.getMembershipManager()
-                          .suspectMember(lockHolder,
-                                  "Has not released a global region entry lock in over "
-                                          + ackWaitThreshold / 1000 + " sec");
+                  .suspectMember(lockHolder,
+                      "Has not released a global region entry lock in over "
+                      + ackWaitThreshold / 1000 + " sec");
                 }
-              } else if (elapsed > ackSAThreshold) {
+              }
+              else if (elapsed > ackSAThreshold) {
                 DLockRemoteToken remoteToken =
-                        this.lockService.queryLock(key);
+                  this.lockService.queryLock(key);
                 if (lockHolder != null && remoteToken.getLessee() != null
-                        && lockHolder.equals(remoteToken.getLessee())) {
+                    && lockHolder.equals(remoteToken.getLessee())) {
                   if (!severeAlertIssued) {
                     severeAlertIssued = true;
                     cache.getLoggerI18n().severe(
-                            LocalizedStrings.PartitionedRegion_0_SECONDS_HAVE_ELAPSED_WAITING_FOR_GLOBAL_REGION_ENTRY_LOCK_HELD_BY_1,
-                            new Object[]{Long.valueOf(ackWaitThreshold + ackSAThreshold) / 1000 /* fix for bug 44757*/, lockHolder});
+                        LocalizedStrings.PartitionedRegion_0_SECONDS_HAVE_ELAPSED_WAITING_FOR_GLOBAL_REGION_ENTRY_LOCK_HELD_BY_1,
+                        new Object[] {Long.valueOf(ackWaitThreshold+ackSAThreshold)/1000 /* fix for bug 44757*/, lockHolder});
                   }
-                } else {
+                }
+                else {
                   // the lock holder has changed
                   suspected = false;
                   waitInterval = ackWaitThreshold;
@@ -8311,10 +8326,12 @@ public class PartitionedRegion extends LocalRegion implements
               }
             }
           } // ackSAThreshold processing
-        } catch (IllegalStateException ex) {
+        }
+        catch (IllegalStateException ex) {
           cache.getCancelCriterion().checkCancelInProgress(null);
           throw ex;
-        } finally {
+        }
+        finally {
           ReplyProcessor21.unforceSevereAlertProcessing();
         }
       } while (System.currentTimeMillis() < end);
@@ -8322,56 +8339,38 @@ public class PartitionedRegion extends LocalRegion implements
 
     /**
      * Ask the grantor who has the lock
-     *
      * @return the ID of the member holding the lock
      */
     public DistributedMember queryLock() {
       try {
         DLockRemoteToken remoteToken = this.lockService.queryLock(this.lockName);
         return remoteToken.getLessee();
-      } catch (LockServiceDestroyedException e) {
+      }
+      catch (LockServiceDestroyedException e) {
         cache.getCancelCriterion().checkCancelInProgress(null);
         throw e;
       }
     }
 
     public void unlock() {
-        cache.getLoggerI18n().info(LocalizedStrings.DEBUG, "BucketLock#unlock: " + "Lock Name "
-                + this.lockName + " this.lockowned " + this.lockOwned);
       if (this.lockOwned) {
         try {
           this.lockService.unlock(this.lockName);
-        } catch (LockServiceDestroyedException ignore) {
+        }
+        catch (LockServiceDestroyedException ignore) {
           // cache was probably closed which destroyed this lock service
           // note: destroyed lock services release all held locks
           cache.getCancelCriterion().checkCancelInProgress(null);
           if (cache.getLoggerI18n().fineEnabled()) {
             cache.getLoggerI18n().fine("BucketLock#unlock: " + "Lock service "
-                    + this.lockService + " was destroyed", ignore);
+                + this.lockService + " was destroyed", ignore);
           }
-        } finally {
+        }
+        finally {
           this.lockOwned = false;
         }
       }
     }
-
-    /*public void unlock(boolean force) {
-      try {
-        this.lockService.unlock(this.lockName);
-      } catch (LockServiceDestroyedException ignore) {
-        // cache was probably closed which destroyed this lock service
-        // note: destroyed lock services release all held locks
-        cache.getCancelCriterion().checkCancelInProgress(null);
-        if (cache.getLoggerI18n().fineEnabled()) {
-          cache.getLoggerI18n().fine("BucketLock#unlock: " + "Lock service "
-                  + this.lockService + " was destroyed", ignore);
-        }
-      } finally {
-        this.lockOwned = false;
-      }
-    }*/
-
-
 
     @Override
     public boolean equals(Object obj) {

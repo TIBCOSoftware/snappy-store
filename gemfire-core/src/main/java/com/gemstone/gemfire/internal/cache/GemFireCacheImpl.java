@@ -576,9 +576,6 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
   
   private ScheduledExecutorService oldEntryMapCleanerService;
 
-  private ExecutorService tableLockService;
-  private Map<InternalDistributedMember, Set<String>> tableLockMap = new HashMap<InternalDistributedMember, Set<String>>();
-
   /**
    * Time interval after which oldentries cleaner thread run
    */
@@ -871,67 +868,9 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     }
   }
 
-  public void runOldEntriesCleanerThread() {
+  public void runOldEntriesCleanerThread(){
     new OldEntriesCleanerThread().run();
   }
-
-  public void lockTable(String lockName, long connId) {
-
-    getLogger().info("SKSK GOING to ACQUIRING LOCK On object " + lockName + " tableLockService " + tableLockService);
-    if (tableLockService != null) {
-      Future f = tableLockService.submit(new Runnable() {
-        @Override
-        public void run() {
-          try {
-            getLogger().info("SKSK ACQUIRING LOCK On object " + lockName);
-            PartitionedRegion.RegionLock lock = PartitionedRegion.getRegionLock
-                    (lockName, GemFireCacheImpl.getExisting());
-            lock.lock();
-            getLogger().info("SKSK ACQUIRED LOCK On object " + lockName);
-          } catch (Throwable t) {
-            throw t;
-          }
-        }
-      });
-
-      try {
-        f.get();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      } catch (ExecutionException e) {
-        e.printStackTrace();
-      }
-    }
-  }
-
-  public void unlockTable(PartitionedRegion.RegionLock lock, long connId) {
-
-    getLogger().info("SKSK RELEASING LOCK On object " + lock + " connId : " + connId, new Throwable("SKSK CacheUnlock"));
-    if (tableLockService != null) {
-      Future f = tableLockService.submit(new Runnable() {
-        @Override
-        public void run() {
-          try {
-            lock.unlock();
-            getLogger().info("SKSK RELEASED LOCK On object " + lock);
-          } catch (Throwable t) {
-            throw t;
-          }
-        }
-      });
-
-      try {
-        f.get();
-      } catch (InterruptedException e) {
-        // LOG
-        e.printStackTrace();
-      } catch (ExecutionException e) {
-        // LOG
-        e.printStackTrace();
-      }
-    }
-  }
-
 
   class OldEntriesCleanerThread implements Runnable {
     // Keep each entry alive for at least 20 secs.
@@ -1450,24 +1389,6 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
       if (snapshotEnabled()) {
         startOldEntryCleanerService();
       }
-
-      final ThreadGroup tableLockerThreadGroup = LogWriterImpl.createThreadGroup(
-              "Table Locker Thread Group", getLoggerI18n());
-      ThreadFactory tfThread = new ThreadFactory() {
-        public Thread newThread(final Runnable command) {
-          final Runnable r = new Runnable() {
-            public void run() {
-              ConnectionTable.threadWantsSharedResources();
-              command.run();
-            }
-          };
-          Thread thread = new Thread(tableLockerThreadGroup, r, "Table Locker Thread");
-          thread.setDaemon(true);
-          return thread;
-        }
-      };
-
-      tableLockService = Executors.newFixedThreadPool(1,tfThread);
 
       this.creationDate = new Date();
 
@@ -2695,10 +2616,6 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
 
       if (oldEntryMapCleanerService != null) {
         oldEntryMapCleanerService.shutdownNow();
-      }
-
-      if (tableLockService != null) {
-        tableLockService.shutdownNow();
       }
 
       /**

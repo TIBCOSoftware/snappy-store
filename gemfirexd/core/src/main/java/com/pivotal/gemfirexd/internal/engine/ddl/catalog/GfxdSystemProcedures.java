@@ -2447,17 +2447,13 @@ public class GfxdSystemProcedures extends SystemProcedures {
   }
 
   public static Boolean ACQUIRE_REGION_LOCK(String lockName)
-      throws SQLException {
+          throws SQLException {
     LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
-    GemFireTransaction tr = (GemFireTransaction)lcc.getTransactionExecute();
-    //Misc.getGemFireCache().lockTable(lockName, lcc.getConnectionId());
-    Misc.getGemFireCacheNoThrow().getLogger().info("SKSK ACQUIRING LOCK On object " + lockName + " conId "
-            + lcc.getConnectionId() + " tr " + tr);
+    GemFireTransaction tr = (GemFireTransaction) lcc.getTransactionExecute();
     PartitionedRegion.RegionLock lock = PartitionedRegion.getRegionLock
             (lockName, GemFireCacheImpl.getExisting());
     try {
       lock.lock();
-      Misc.getGemFireCacheNoThrow().getLogger().info("SKSK ACQUIRED LOCK On object " + lockName);
     } catch (Throwable t) {
       throw TransactionResourceImpl.wrapInSQLException(t);
     }
@@ -2470,15 +2466,11 @@ public class GfxdSystemProcedures extends SystemProcedures {
   public static Boolean RELEASE_REGION_LOCK(String lockName)
       throws SQLException {
     LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
-    GemFireTransaction tr = (GemFireTransaction)lcc.getTransactionExecute();
-    //Misc.getGemFireCache().unlockTable(lockName, lcc.getConnectionId());
+    GemFireTransaction tr = (GemFireTransaction) lcc.getTransactionExecute();
     PartitionedRegion.RegionLock lock = tr.getRegionLock(lockName);
     if (lock != null) {
       try {
-        Misc.getGemFireCacheNoThrow().getLogger().info("SKSK RELEASING LOCK On object " + lockName + " connId " + lcc.getConnectionId());
         lock.unlock();
-        Misc.getGemFireCacheNoThrow().getLogger().info("SKSK RELEASED LOCK On object " + lockName);
-
       } catch (Throwable t) {
         throw TransactionResourceImpl.wrapInSQLException(t);
       }

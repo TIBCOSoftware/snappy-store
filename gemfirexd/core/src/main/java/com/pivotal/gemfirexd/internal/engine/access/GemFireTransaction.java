@@ -112,6 +112,7 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataValueFactory;
 import com.pivotal.gemfirexd.internal.iapi.util.ByteArray;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnectionContext;
+import com.pivotal.gemfirexd.internal.impl.jdbc.TransactionResourceImpl;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.impl.store.access.conglomerate.ConglomerateUtil;
 import com.pivotal.gemfirexd.internal.impl.store.access.sort.ArraySorter;
@@ -150,7 +151,8 @@ public final class GemFireTransaction extends RawTransaction implements
 
   /** {@link GfxdLockSet} used for locking in this transaction */
   private final GfxdLockSet lockSet;
-  /** {@link GfxdLockSet} used for locking in this transaction */
+
+  /** Used for table locking while doing write ops on column table in smart-conn mode.*/
   private final Set<PartitionedRegion.RegionLock> tableLocks;
 
   /** {@link LogFactory} used to create {@link Logger}s for undo/redo logs */
@@ -2907,11 +2909,15 @@ public final class GemFireTransaction extends RawTransaction implements
 
   private void releaseAllTableLocks() {
     for (PartitionedRegion.RegionLock lock : this.tableLocks) {
-
+      if (GemFireXDUtils.TraceLock) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_LOCK,
+                "GemFireTransaction: releasing the table lock " + lock);
+      }
       try {
-        Misc.getGemFireCache().unlockTable(lock, lcc.getConnectionId());
+        lock.unlock();
       } catch (Exception e) {
-          Misc.getGemFireCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "Unlocking the table for exception ", e);
+        SanityManager.DEBUG_PRINT("warning: TableLock ", "Got exception while" +
+                " unlocking the table lock " + lock, e);
       }
     }
   }
@@ -4129,20 +4135,19 @@ public final class GemFireTransaction extends RawTransaction implements
     this.tableLocks.add(lock);
   }
 
-    public PartitionedRegion.RegionLock getRegionLock(String lockName) {
-
-        for (PartitionedRegion.RegionLock lock : tableLocks) {
-          Misc.getGemFireCache().getLoggerI18n().info(LocalizedStrings.DEBUG,
-                  "The loks is " + lock + " and" +
-                  " the locaname is " + lock.getLockName());
-            if (lock.getLockName().equals(lockName)) {
-                return lock;
-            }
-        }
-        return null;
+  public PartitionedRegion.RegionLock getRegionLock(String lockName) {
+    for (PartitionedRegion.RegionLock lock : tableLocks) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_LOCK,
+              "The locks is " + lock + " and" +
+                      " the lockname is " + lock.getLockName());
+      if (lock.getLockName().equals(lockName)) {
+        return lock;
+      }
     }
+    return null;
+  }
 
-    public void removeTableLock(PartitionedRegion.RegionLock lock) {
+  public void removeTableLock(PartitionedRegion.RegionLock lock) {
     this.tableLocks.remove(lock);
   }
 
