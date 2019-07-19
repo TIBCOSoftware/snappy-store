@@ -340,9 +340,6 @@ public class InternalResourceManager implements ResourceManager {
       RegionFilter filter = new FilterByPath(this.includedRegions, this.excludedRegions);
       RebalanceOperationImpl op = new RebalanceOperationImpl(InternalResourceManager.this.cache, false,filter);
       op.start();
-      // needed for Snappy Spark Smart connector as we cache buckets to server
-      // mapping for tables
-      CallbackFactoryProvider.getStoreCallbacks().registerCatalogSchemaChange();
       return op;
     }
 
