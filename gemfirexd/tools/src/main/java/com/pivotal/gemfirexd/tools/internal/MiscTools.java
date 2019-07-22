@@ -120,8 +120,8 @@ public class MiscTools extends ToolsBase {
           addPathOption(opts);
           addEncodingOption(opts);
           addIgnoreErrorsOption(opts);
-          addParamOption(opts);
-          addNumTimesToRun(opts);
+//          addParamOption(opts);
+//          addNumTimesToRun(opts);
         }
 
         @Override
