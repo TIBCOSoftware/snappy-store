@@ -194,6 +194,7 @@ public abstract class ToolsBase {
         true);
     // add the examples, if any
     printUsageExamples(formatter, pw, width, cmd, cmdDescKey);
+
     GfxdUtilLauncher.printUsage(pw.toString(),
         SanityManager.DEFAULT_MAX_OUT_LINES, reader);
   }
@@ -238,11 +239,11 @@ public abstract class ToolsBase {
   protected void addConnectionOptions(final Options opts) {
     GfxdOption opt;
 
-//    opt = new GfxdOptionBuilder().withArgName(LocalizedResource.getMessage(
-//        "TOOLS_URL_ARG")).hasArg().withValueSeparator('=')
-//        .withDescription(LocalizedResource.getMessage(
-//            "TOOLS_CONNECTION_URL_MESSAGE")).create(CONNECTION_URL);
-//    opts.addOption(opt);
+    opt = new GfxdOptionBuilder().withArgName(LocalizedResource.getMessage(
+        "TOOLS_URL_ARG")).hasArg().withValueSeparator('=')
+        .withDescription(LocalizedResource.getMessage(
+            "TOOLS_CONNECTION_URL_MESSAGE")).create(CONNECTION_URL);
+    opts.addOption(opt);
 
     opt = new GfxdOptionBuilder().withArgName(LocalizedResource.getMessage(
         "TOOLS_PORT_ARG")).hasArg().withValueSeparator('=')
@@ -256,29 +257,29 @@ public abstract class ToolsBase {
             "TOOLS_CLIENT_ADDRESS_MESSAGE")).create(CLIENT_BIND_ADDRESS);
     opts.addOption(opt);
 
-//    opt = new GfxdOptionBuilder().withArgName(LocalizedResource.getMessage(
-//        "TOOLS_PORT_ARG")).hasArg().withValueSeparator('=')
-//        .withDescription(LocalizedResource.getMessage(
-//            "TOOLS_MCAST_PORT_MESSAGE")).create(MCAST_PORT);
-//    opts.addOption(opt);
-//
-//    opt = new GfxdOptionBuilder().withArgName(LocalizedResource.getMessage(
-//        "TOOLS_ADDRESS_ARG")).hasArg().withValueSeparator('=')
-//        .withDescription(LocalizedResource.getMessage(
-//            "TOOLS_MCAST_ADDRESS_MESSAGE")).create(MCAST_ADDRESS);
-//    opts.addOption(opt);
-//
-//    opt = new GfxdOptionBuilder().withArgName(LocalizedResource.getMessage(
-//        "TOOLS_LOCATORS_ARG")).hasArg().withValueSeparator('=')
-//        .withDescription(LocalizedResource.getMessage(
-//            "TOOLS_LOCATORS_MESSAGE")).create(LOCATORS);
-//    opts.addOption(opt);
+    opt = new GfxdOptionBuilder().withArgName(LocalizedResource.getMessage(
+        "TOOLS_PORT_ARG")).hasArg().withValueSeparator('=')
+        .withDescription(LocalizedResource.getMessage(
+            "TOOLS_MCAST_PORT_MESSAGE")).create(MCAST_PORT);
+    opts.addOption(opt);
 
-//    opt = new GfxdOptionBuilder().withArgName(LocalizedResource.getMessage(
-//        "TOOLS_ADDRESS_ARG")).hasArg().withValueSeparator('=')
-//        .withDescription(LocalizedResource.getMessage(
-//            "TOOLS_BIND_ADDRESS_MESSAGE")).create(BIND_ADDRESS);
-//    opts.addOption(opt);
+    opt = new GfxdOptionBuilder().withArgName(LocalizedResource.getMessage(
+        "TOOLS_ADDRESS_ARG")).hasArg().withValueSeparator('=')
+        .withDescription(LocalizedResource.getMessage(
+            "TOOLS_MCAST_ADDRESS_MESSAGE")).create(MCAST_ADDRESS);
+    opts.addOption(opt);
+
+    opt = new GfxdOptionBuilder().withArgName(LocalizedResource.getMessage(
+        "TOOLS_LOCATORS_ARG")).hasArg().withValueSeparator('=')
+        .withDescription(LocalizedResource.getMessage(
+            "TOOLS_LOCATORS_MESSAGE")).create(LOCATORS);
+    opts.addOption(opt);
+
+    opt = new GfxdOptionBuilder().withArgName(LocalizedResource.getMessage(
+        "TOOLS_ADDRESS_ARG")).hasArg().withValueSeparator('=')
+        .withDescription(LocalizedResource.getMessage(
+            "TOOLS_BIND_ADDRESS_MESSAGE")).create(BIND_ADDRESS);
+    opts.addOption(opt);
 
     opt = new GfxdOptionBuilder().withArgName(LocalizedResource.getMessage(
         "TOOLS_AUTH_PROVIDER_ARG")).hasArg().withValueSeparator('=')
