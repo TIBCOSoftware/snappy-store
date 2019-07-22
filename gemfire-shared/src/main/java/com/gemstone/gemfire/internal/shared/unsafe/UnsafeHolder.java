@@ -177,17 +177,11 @@ public abstract class UnsafeHolder {
     return hasUnsafe;
   }
 
-  public static int getAllocationSize(int originalSize) {
+  public static int getAllocationSize(int size) {
     // round to word size
-    int size = ((originalSize + 7) >>> 3) << 3;
+    size = ((size + 7) >>> 3) << 3;
     if (size > 0) return size;
-    else {
-      if (originalSize > 0 && size < 0) {
-        return originalSize;
-      } else {
-        throw new BufferOverflowException();
-      }
-    }
+    else throw new BufferOverflowException();
   }
 
   public static ByteBuffer allocateDirectBuffer(int size,
