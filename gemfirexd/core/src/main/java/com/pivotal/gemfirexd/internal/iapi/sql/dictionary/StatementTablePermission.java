@@ -134,9 +134,7 @@ public class StatementTablePermission extends StatementPermission
 		throws StandardException
 	{
 		DataDictionary dd = lcc.getDataDictionary();
-	
-		if( ! hasPermissionOnTable( dd, authorizationId, forGrant) && !isSelectOnHiveMetastore
-				(getTableDescriptor(dd)))
+		if(!hasPermissionOnTable( dd, authorizationId, forGrant))
 		{
 			TableDescriptor td = getTableDescriptor( dd);
 			throw StandardException.newException( forGrant ? SQLState.AUTH_NO_TABLE_PERMISSION_FOR_GRANT

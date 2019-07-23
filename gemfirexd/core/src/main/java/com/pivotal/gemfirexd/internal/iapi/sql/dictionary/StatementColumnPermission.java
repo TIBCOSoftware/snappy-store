@@ -127,8 +127,7 @@ public class StatementColumnPermission extends StatementTablePermission
                 }
                 // GemStone changes END
 
-		if( hasPermissionOnTable(dd, authorizationId, forGrant) || isSelectOnHiveMetastore
-				(getTableDescriptor(dd)))
+		if( hasPermissionOnTable(dd, authorizationId, forGrant))
 			return;
 		FormatableBitSet permittedColumns = null;
 		if( ! forGrant)
