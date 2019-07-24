@@ -170,12 +170,11 @@ public abstract class MemIndexScanController implements MemScanController,
     if (GemFireXDUtils.TraceIndex) {
       GfxdIndexManager.traceIndex("Opening MemIndexScanController for index "
           + "container=%s, in mode=0x%s with scanColumnList=%s startKey=%s "
-          + "startOp=%s stopKey=%s stopOp=%s qualifier=%s tx=%s",
+          + "startOp=%s stopKey=%s stopOp=%s qualifier=%s",
           conglomerate.getGemFireContainer(), Integer.toHexString(openMode),
           scanColumnList, ArrayUtils.objectString(startKeyValue),
           startSearchOperator, ArrayUtils.objectString(stopKeyValue),
-          stopSearchOperator, ArrayUtils.objectString(qualifier),
-          tran.getActiveTXState());
+          stopSearchOperator, ArrayUtils.objectString(qualifier));
     }
 
     this.openMode = openMode;

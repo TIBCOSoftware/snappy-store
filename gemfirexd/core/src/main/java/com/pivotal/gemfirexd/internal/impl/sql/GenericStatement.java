@@ -707,16 +707,19 @@ public class GenericStatement
 						qt.bindStatement();
 					}
 					catch(StandardException | AssertFailure ex) {
-				      boolean routeToSnappy = (ex instanceof StandardException && ((StandardException)ex).
-									getMessageId().equals(SQLState.ROW_LEVEL_SECURITY_ENABLED)) ||
-									(routeQuery && !NON_ROUTED_QUERY.matcher(source).find());
+						  boolean isDML = DML_TABLE_PATTERN.matcher(source).find();
+						  String messageId = ex instanceof StandardException ? ((StandardException)ex).getMessageId() : "";
+						  boolean routeToSnappy = messageId.equals(SQLState.ROW_LEVEL_SECURITY_ENABLED) ||
+									(routeQuery && !NON_ROUTED_QUERY.matcher(source).find()
+									//SNAP-2765 don't route if failure due to error such as invalid column name in prepared statement
+									&& !(isDML && isPrepStmtInvalidColumnError(messageId)));
 
 					  if (routeToSnappy) {
 					    if (observer != null) {
 					      observer.testExecutionEngineDecision(qinfo, ExecutionEngine.SPARK, this.statementText);
 					    }
 							return getPreparedStatementForSnappy(true, statementContext, lcc, false,
-							  checkCancellation, DML_TABLE_PATTERN.matcher(source).find(), ex);
+							  checkCancellation, isDML, ex);
 					  }
 					  throw ex;
 					}
@@ -1308,6 +1311,15 @@ public class GenericStatement
 
 
 		return preparedStmt;
+	}
+
+	private boolean isPrepStmtInvalidColumnError(String messageId) {
+		return this.isPreparedStatement() &&
+				(messageId.equals(SQLState.LANG_COLUMN_NOT_FOUND_IN_TABLE)
+				|| messageId.equals(SQLState.LANG_DB2_INVALID_COLS_SPECIFIED)
+				|| messageId.equals(SQLState.LANG_DUPLICATE_COLUMN_NAME_INSERT)
+				|| messageId.equals(SQLState.LANG_DUPLICATE_COLUMN_NAME_UPDATE)
+				|| messageId.equals(SQLState.LANG_COLUMN_NOT_FOUND));
 	}
 
 	public boolean invalidQueryOnColumnTable(LanguageConnectionContext _lcc,

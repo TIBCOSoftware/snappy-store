@@ -67,7 +67,7 @@ import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnectionContext;
 /**
  * Extends GFE {@link TXStateProxy} to add GFXD specific artifacts including
  * DBSynchronizer message list to be sent out at commit time.
- * 
+ *
  * @author swale
  * @since 7.0
  */
@@ -433,7 +433,7 @@ public final class GfxdTXStateProxy extends TXStateProxy {
                 false /* isPutDML */);
 
         if (GemFireXDUtils.TraceIndex | GemFireXDUtils.TraceQuery) {
-          GfxdIndexManager.traceIndex("SortedMap2Index cleanup: "
+          GfxdIndexManager.traceIndex("GfxdTXStateProxy cleanupIndexEntryForDestroy: "
               + "rolled back key=%s to value=(%s) in %s", indexKey,
               GemFireXDUtils.TraceIndex ? oldRowLocation : ArrayUtils
                   .objectRefString(oldRowLocation), indexContainer);
@@ -476,7 +476,7 @@ public final class GfxdTXStateProxy extends TXStateProxy {
         }
       });
     }
-    
+
     if (unaffectedIndexInfo != null) {
       unaffectedIndexInfo.forEachEntry(new TObjectObjectObjectProcedure() {
         @Override
@@ -663,12 +663,12 @@ public final class GfxdTXStateProxy extends TXStateProxy {
       throws StandardException {
     boolean deleted;
     Object valueBytesBeingReplaced = sqle.getPendingValue();
-    
-    //TODO:Asif: This will cause a memory leak if an existing entry is 
+
+    //TODO:Asif: This will cause a memory leak if an existing entry is
     //updated in txn, such a new index key is introduced, and then again
-    // a txn update happens such that byte [] changes . Then 
+    // a txn update happens such that byte [] changes . Then
     // the firts indexkey's byte[] will not match the pending value
-    
+
     try {
       if (rollback) {
         if (!indexContainer.isGlobalIndex()) {

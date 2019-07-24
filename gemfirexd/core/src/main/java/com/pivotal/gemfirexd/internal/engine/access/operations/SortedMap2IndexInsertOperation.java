@@ -27,13 +27,7 @@ import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.cache.ConflictException;
 import com.gemstone.gemfire.cache.query.IndexMaintenanceException;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
-import com.gemstone.gemfire.internal.cache.AbstractRegionEntry;
-import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.cache.ObjectEqualsHashingStrategy;
-import com.gemstone.gemfire.internal.cache.OffHeapRegionEntry;
-import com.gemstone.gemfire.internal.cache.TXEntryState;
-import com.gemstone.gemfire.internal.cache.TXId;
-import com.gemstone.gemfire.internal.cache.TXStateInterface;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.locks.ExclusiveSharedSynchronizer;
 import com.gemstone.gemfire.internal.cache.locks.LockMode;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy;
@@ -197,80 +191,100 @@ public final class SortedMap2IndexInsertOperation extends MemIndexOperation {
         final TXId txId, rlTXId;
         final RowLocation rl;
         if (tx != null && oldValue instanceof RowLocation
-            && (rlTXId = (rl = (RowLocation)oldValue).getTXId()) != null
-            && !rlTXId.equals(txId = tx.getTransactionId())) {
-          final LockingPolicy lockPolicy = tx.getLockingPolicy();
-          if (lockTimeout < 0) { // not set
-            final AbstractRegionEntry re = (AbstractRegionEntry)rl
-                .getUnderlyingRegionEntry();
-            final LockMode currentMode;
-            if (re == null || (currentMode = ExclusiveSharedSynchronizer
-                    .getLockModeFromState(re.getState())) == null) {
-              throw GemFireXDUtils.newDuplicateKeyViolation("unique constraint",
-                  container.getQualifiedTableName(), "key=" + key.toString()
-                      + ", row=" + value, rl, null, null);
-            }
-            lockTimeout = lockPolicy.getTimeout(rl,
-                lockPolicy.getWriteLockMode(), currentMode, 0, 0);
-            waitThreshold = re.getWaitThreshold() * 1000;
-            if (lockTimeout < 0) {
-              lockTimeout = ExclusiveSharedSynchronizer.getMaxMillis();
-            }
-            continue;
-          }
-          else if (lockTimeout > 0) { // wait before throwing conflict
-            final long sleepTime = lockTimeout < 5 ? lockTimeout : 5;
-            final long start = System.nanoTime();
-            final GemFireCacheImpl cache = Misc.getGemFireCache();
-            try {
-              Thread.sleep(sleepTime);
-              long elapsed = (System.nanoTime() - start + 500000) / 1000000;
-              if (elapsed <= 0) {
-                elapsed = 1;
+            && (rlTXId = (rl = (RowLocation) oldValue).getTXId()) != null) {
+          if (!rlTXId.equals(txId = tx.getTransactionId())) {
+            final LockingPolicy lockPolicy = tx.getLockingPolicy();
+            if (lockTimeout < 0) { // not set
+              final AbstractRegionEntry re = (AbstractRegionEntry) rl
+                  .getUnderlyingRegionEntry();
+              final LockMode currentMode;
+              if (re == null || (currentMode = ExclusiveSharedSynchronizer
+                  .getLockModeFromState(re.getState())) == null) {
+                throw GemFireXDUtils.newDuplicateKeyViolation("unique constraint",
+                    container.getQualifiedTableName(), "key=" + key.toString()
+                        + ", row=" + value, rl, null, null);
               }
-              final long origLockTimeout = lockTimeout;
-              if (lockTimeout < elapsed) {
-                lockTimeout = 0;
+              lockTimeout = lockPolicy.getTimeout(rl,
+                  lockPolicy.getWriteLockMode(), currentMode, 0, 0);
+              waitThreshold = re.getWaitThreshold() * 1000;
+              if (lockTimeout < 0) {
+                lockTimeout = ExclusiveSharedSynchronizer.getMaxMillis();
+              }
+              continue;
+            } else if (lockTimeout > 0) { // wait before throwing conflict
+              final long sleepTime = lockTimeout < 5 ? lockTimeout : 5;
+              final long start = System.nanoTime();
+              final GemFireCacheImpl cache = Misc.getGemFireCache();
+              try {
+                Thread.sleep(sleepTime);
+                long elapsed = (System.nanoTime() - start + 500000) / 1000000;
+                if (elapsed <= 0) {
+                  elapsed = 1;
+                }
+                final long origLockTimeout = lockTimeout;
+                if (lockTimeout < elapsed) {
+                  lockTimeout = 0;
+                } else {
+                  lockTimeout -= elapsed;
+                }
+                if (waitThreshold > 0) {
+                  // check if there is a factor of waitThreshold between
+                  // origLockTimeout and lockTimeout
+                  final long origQuotient = origLockTimeout / waitThreshold;
+                  final long quotient = lockTimeout / waitThreshold;
+                  if (origQuotient > quotient
+                      || (origLockTimeout % waitThreshold) == 0) {
+                    final LogWriterI18n logger = cache.getLoggerI18n();
+                    if (logger.warningEnabled()) {
+                      logger.warning(LocalizedStrings.LocalLock_Waiting,
+                          new Object[]{"SortedMap2IndexInsertOperation",
+                              Double.toString(waitThreshold / 1000.0),
+                              lockPolicy.getWriteLockMode().toString(),
+                              "index key with oldValue=" + ArrayUtils
+                                  .objectStringNonRecursive(oldValue) + ", owner="
+                                  + rlTXId, ArrayUtils.objectString(key),
+                              lockTimeout});
+                    }
+                    // increase waitThreshold by a factor of 2 for next iteration
+                    waitThreshold <<= 1;
+                  }
+                }
+              } catch (InterruptedException ie) {
+                cache.getCancelCriterion().checkCancelInProgress(ie);
+              }
+              continue;
+            }
+            final ConflictException ce = new ConflictException(
+                LocalizedStrings.TX_CONFLICT_ON_OBJECT.toLocalizedString("index="
+                        + container + "; indexKey=" + ArrayUtils.objectString(key)
+                        + "; having oldValue=" + ArrayUtils.objectStringNonRecursive(
+                    oldValue) + "; owner TX=" + rlTXId
+                        + "; requested for TX=" + txId,
+                    lockPolicy.getWriteLockMode().toString()));
+            throw StandardException.newException(
+                SQLState.GFXD_OPERATION_CONFLICT, ce, ce.getMessage());
+          } else {
+            // This else part is mainly added to handle SNAP-2620
+            if (oldValue instanceof WrapperRowLocationForTxn) {
+              GfxdTXEntryState gfxdtxentry = (GfxdTXEntryState)value;
+              gfxdtxentry.setCommittedRegionEntry(
+                  ((WrapperRowLocationForTxn)oldValue).getUnderlyingRegionEntry());
+              if (skipListMap.replace(key, oldValue, value)) {
+                // remove txentry, wrapper pair for reinstated map
+                // which is with TXRegionState
+                TXRegionState txrs = tx.readRegion((gfxdtxentry).getDataRegion());
+                if (txrs.getToBeReinstatedIndexMap() != null) {
+                  Object wrappedRL = ((WrapperRowLocationForTxn)oldValue).getWrappedRowLocation();
+                  txrs.getToBeReinstatedIndexMap().removeKeyPair(wrappedRL, container);
+                  gfxdtxentry.updateIndexInfos(container, key);
+                }
+                break;
               }
               else {
-                lockTimeout -= elapsed;
+                continue;
               }
-              if (waitThreshold > 0) {
-                // check if there is a factor of waitThreshold between
-                // origLockTimeout and lockTimeout
-                final long origQuotient = origLockTimeout / waitThreshold;
-                final long quotient = lockTimeout / waitThreshold;
-                if (origQuotient > quotient
-                    || (origLockTimeout % waitThreshold) == 0) {
-                  final LogWriterI18n logger = cache.getLoggerI18n();
-                  if (logger.warningEnabled()) {
-                    logger.warning(LocalizedStrings.LocalLock_Waiting,
-                        new Object[] { "SortedMap2IndexInsertOperation",
-                            Double.toString(waitThreshold / 1000.0),
-                            lockPolicy.getWriteLockMode().toString(),
-                            "index key with oldValue=" + ArrayUtils
-                                .objectStringNonRecursive(oldValue) + ", owner="
-                                + rlTXId, ArrayUtils.objectString(key),
-                                lockTimeout });
-                  }
-                  // increase waitThreshold by a factor of 2 for next iteration
-                  waitThreshold <<= 1;
-                }
-              }
-            } catch (InterruptedException ie) {
-              cache.getCancelCriterion().checkCancelInProgress(ie);
             }
-            continue;
           }
-          final ConflictException ce = new ConflictException(
-              LocalizedStrings.TX_CONFLICT_ON_OBJECT.toLocalizedString("index="
-                  + container + "; indexKey=" + ArrayUtils.objectString(key)
-                  + "; having oldValue=" + ArrayUtils.objectStringNonRecursive(
-                      oldValue) + "; owner TX=" + rlTXId
-                      + "; requested for TX=" + txId,
-                      lockPolicy.getWriteLockMode().toString()));
-          throw StandardException.newException(
-              SQLState.GFXD_OPERATION_CONFLICT, ce, ce.getMessage());
         }
         if (wrapperToReplaceUniqEntry != null) {
           // if existing value is already a wrapper then no need to replace;
