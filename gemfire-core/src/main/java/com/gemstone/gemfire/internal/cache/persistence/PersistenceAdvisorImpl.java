@@ -92,7 +92,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   private boolean IGNORE_CONFLICTING_PERSISTENT_DISK_STORE_CHECK = Boolean.getBoolean(
           "gemfire.IGNORE_CONFLICTING_PERSISTENT_DISK_STORES");
 
-  public static final boolean TRACE = true;//Boolean.getBoolean("gemfire.TRACE_PERSISTENCE_ADVISOR");
+  public static final boolean TRACE = Boolean.getBoolean("gemfire.TRACE_PERSISTENCE_ADVISOR");
   
   public PersistenceAdvisorImpl(CacheDistributionAdvisor advisor, DistributedLockService dl, PersistentMemberView storage, String regionPath, DiskRegionStats diskStats, PersistentMemberManager memberManager) {
     this.advisor = advisor;
@@ -137,9 +137,6 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
     }
     
     advisor.addProfileChangeListener(listener);
-
-    advisor.getLogWriter().info(LocalizedStrings.DEBUG, "addign revocationListerner " + listener +
-            " for " +advisor.getAdvisee().getFullPath());
     Set<PersistentMemberPattern> revokedMembers = this.memberManager.addRevocationListener(listener, storage.getRevokedMembers());
 
     for(PersistentMemberPattern pattern : revokedMembers) {
@@ -1275,9 +1272,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
       boolean warned = false;
       synchronized(this) {
         try {
-          advisor.getLogWriter().info(LocalizedStrings.DEBUG, " Going to wait for ALL " + allMembersToWaitFor + " offline " + offlineMembersToWaitFor);
           setWaitingOnMembers(allMembersToWaitFor, offlineMembersToWaitFor);
-
           while(!membershipChanged && !isClosed && !doNotWait) {
             if (getPersistentID() == null) {
               if (memberManager.unblockNonHostingBuckets())
@@ -1422,12 +1417,10 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
     @Override
     public void addPersistentIDs(Set<PersistentMemberID> localData) {
       PersistentMemberID id = getPersistentID();
-      advisor.getLogWriter().info(LocalizedStrings.DEBUG, "The ids are " + id);
       if(id != null) {
         localData.add(id);
       }
       id = getInitializingID();
-      advisor.getLogWriter().info(LocalizedStrings.DEBUG, "The initialized ids are " + id);
       if(id != null) {
         localData.add(id);
       }

@@ -1858,7 +1858,6 @@ public class PRHARedundancyProvider
               try {
                 super.run();
               } finally {
-                getLogger().info(LocalizedStrings.DEBUG, "CountDown the allBucketRecovery.");
                 allBucketsRecoveredFromDisk.countDown();
               }
             }

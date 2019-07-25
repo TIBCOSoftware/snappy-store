@@ -516,7 +516,6 @@ public final class ProxyBucketRegion implements Bucket {
       exception=e;
       throw e;
     } finally {
-      partitionedRegion.getLogWriterI18n().info(LocalizedStrings.DEBUG, "SK RecoveryDonw for butcket " + getBucketId());
       persistenceAdvisor.recoveryDone(exception);
     }
   }
