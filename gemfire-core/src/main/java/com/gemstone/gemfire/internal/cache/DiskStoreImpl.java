@@ -273,6 +273,11 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
   // /** delay for slowing down recovery, for testing purposes only */
   // public static volatile int recoverDelay = 0;
 
+  // extra reserved space to be freed when standby oplog is in use,
+  // so that renaming of standby oplog, & creation of krf idxkrf etc is successful
+  // This is to be specified in MB & default is 1 GB , i.e 1024 MB
+  private static int extraReservedSpace = Integer.getInteger("gemfire.EXTRA_RESERVED_SPACE", 1024);
+
   // //////////////////// Instance Fields ///////////////////////
 
   private final GemFireCacheImpl cache;
@@ -417,7 +422,9 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
   final long standbyDrfSize;
   final Oplog.OplogFile standByCrf;
   final Oplog.OplogFile standByDrf;
-  final String standByFileName = "StandByOplog" ;
+  final Oplog.OplogFile extraSpaceReservedFile;
+  final static String standByFileName = "StandByOplog";
+  final static String extraReservedSpaceFileName = "standByReserve";
 
   // ///////////////////// Constructors /////////////////////////
 
@@ -519,7 +526,9 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     for (File dir: dirs) {
       if (dir.exists()) {
         File []  standByOplogFiles = dir.listFiles((File parent, String fileName) ->
-          fileName.equals(standByFileName + ".crf") || fileName.equals(standByFileName + ".drf"));
+          fileName.equals(standByFileName + ".crf")
+            || fileName.equals(standByFileName + ".drf")
+            || fileName.equals(extraReservedSpaceFileName + ".oplog"));
         for ( File f: standByOplogFiles) {
           f.delete();
         }
@@ -534,13 +543,17 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     this.standbyCrfSize = (long)(maxOplogSizeInBytes * (crfPct / 100.0)) ;
     this.standbyDrfSize = maxOplogSizeInBytes - this.standbyCrfSize;
     // now create the stand by oplog file space in the 0th directory
+    this.extraSpaceReservedFile = new Oplog.OplogFile();
     this.standByCrf = new Oplog.OplogFile();
     this.standByDrf = new Oplog.OplogFile();
     File crfFile = new File(dirs[0], standByFileName +".crf");
     File drfFile = new File(dirs[0], standByFileName +".drf");
+    File extraSpaceFile = new File(dirs[0], extraReservedSpaceFileName +".oplog");
+
     // preblow the file
     this.standByCrf.f = crfFile;
     this.standByDrf.f = drfFile;
+    this.extraSpaceReservedFile.f = extraSpaceFile;
     int[] dirSizes = getDiskDirSizes();
     int length = dirs.length;
     this.directories = new DirectoryHolder[length];
@@ -558,6 +571,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     try {
       this.preblow(this.standByCrf, this.standbyCrfSize, directories[0]);
       this.preblow(this.standByDrf, this.standbyDrfSize, directories[0]);
+      this.preblow(this.extraSpaceReservedFile, extraReservedSpace * 1024 * 1024, directories[0]);
     } catch (IOException ioe) {
       throw new IllegalStateException("Unable to reserve space for stand by oplogs");
     }
@@ -682,7 +696,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     }
   }
 
-  private void closeAndDeleteAfterEx(IOException ex, Oplog.OplogFile olf) {
+  void closeAndDeleteAfterEx(IOException ex, Oplog.OplogFile olf) {
     if (olf == null) {
       return;
     }

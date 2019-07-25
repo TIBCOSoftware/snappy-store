@@ -851,8 +851,10 @@ public final class Oplog implements CompactableOplog {
     // copy over the previous Oplog's data version since data is not being
     // transformed at this point
     this.dataVersion = prevOplog.getDataVersionIfOld();
-
     this.closed = false;
+    // release the extra reserved space to allow room for renaming file & creation of krf,
+    // idxkrf files.
+    this.parent.closeAndDeleteAfterEx(null, this.parent.extraSpaceReservedFile);
     String n = getParent().getName();
     this.diskFile = new File(this.dirHolder.getDir(),
       oplogSet.getPrefix()
