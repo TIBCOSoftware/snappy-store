@@ -70,7 +70,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   private volatile Set<PersistentStateListener> listeners = Collections.emptySet();
   protected final LogWriterI18n logger;
   private DiskRegionStats stats;
-  private PersistentMemberManager memberManager;
+  protected PersistentMemberManager memberManager;
   private ProfileChangeListener listener;
   private volatile boolean initialized;
   private volatile boolean shouldUpdatePersistentView;
@@ -137,9 +137,11 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
     }
     
     advisor.addProfileChangeListener(listener);
-    
+
+    advisor.getLogWriter().info(LocalizedStrings.DEBUG, "addign revocationListerner " + listener +
+            " for " +advisor.getAdvisee().getFullPath());
     Set<PersistentMemberPattern> revokedMembers = this.memberManager.addRevocationListener(listener, storage.getRevokedMembers());
-    
+
     for(PersistentMemberPattern pattern : revokedMembers) {
       memberRevoked(pattern);
     }
@@ -1275,7 +1277,16 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
         try {
           advisor.getLogWriter().info(LocalizedStrings.DEBUG, " Going to wait for ALL " + allMembersToWaitFor + " offline " + offlineMembersToWaitFor);
           setWaitingOnMembers(allMembersToWaitFor, offlineMembersToWaitFor);
+
           while(!membershipChanged && !isClosed && !doNotWait) {
+            if (getPersistentID() == null) {
+              if (memberManager.unblockNonHostingBuckets())
+                doNotWait = true;
+            } else {
+              if (memberManager.doNotWaitOnMember(getPersistentID()))
+                doNotWait = true;
+            }
+
             checkInterruptedByShutdownAll();
             advisor.getAdvisee().getCancelCriterion().checkCancelInProgress(null);
             this.wait(100);
