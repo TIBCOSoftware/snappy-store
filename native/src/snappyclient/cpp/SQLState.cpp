@@ -131,6 +131,8 @@ const SQLState SQLState::DATA_CONTAINER_CLOSED("40XD0",
     ExceptionSeverity::TRANSACTION_SEVERITY);
 const SQLState SQLState::THRIFT_PROTOCOL_ERROR("58015",
     ExceptionSeverity::SESSION_SEVERITY);
+const SQLState SQLState::NODE_BUCKET_MOVED("X0Z18",
+    ExceptionSeverity::TRANSACTION_SEVERITY);
 
 void SQLState::staticInitialize() {
 }
