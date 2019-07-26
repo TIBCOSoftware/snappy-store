@@ -32,7 +32,7 @@ public class RecoverConflictingDiskStoreDUnit extends DistributedSQLTestBase {
 
     @Override
     protected String reduceLogging() {
-        return "fine";
+        return "config";
     }
 
     @Override
@@ -52,7 +52,20 @@ public class RecoverConflictingDiskStoreDUnit extends DistributedSQLTestBase {
 
     }
 
-    public void testWaitForLatestMember22() throws Exception {
+    // 2 server, 1 table with redundancy and Some insert
+    // server1 down
+    // more insert
+    // server2 down
+    // server1 up, which will wait
+    // force start server1
+    // some insert (conflcting data)
+    // server1 down
+    // server2 up, it will start without wait
+    // server1 start, will fail with conflictingdiskexception in normal case
+    // with the flag it will start and do GII from server1
+    // conflicting data will be lost
+
+    public void testForceStartOneServerAndIgnoreConflictingDiskStoreDataLoss() throws Exception {
         Properties p = new Properties();
         p.setProperty("default-recovery-delay", "-1");
         p.setProperty("default-startup-recovery-delay", "-1");
@@ -168,6 +181,11 @@ public class RecoverConflictingDiskStoreDUnit extends DistributedSQLTestBase {
         assertEquals(20, count);
     }
 
+    /**
+     * Same as above test except that this has one more table which doesn't do any operation when a node is down
+     * When everythign is up, it shouldn't lose any data.
+     * @throws Exception
+     */
 
 
     public void testUnlrelatedTableForLatestMember22() throws Exception {
