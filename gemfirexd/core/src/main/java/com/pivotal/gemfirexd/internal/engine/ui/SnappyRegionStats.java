@@ -39,6 +39,7 @@ public class SnappyRegionStats implements VersionedDataSerializable {
   private int bucketCount;
   private int redundancy = 0;
   private boolean isRedundancyImpaired = false;
+  private boolean isAnyBucketLost = false;
 
   public SnappyRegionStats() {
   }
@@ -141,6 +142,14 @@ public class SnappyRegionStats implements VersionedDataSerializable {
     isRedundancyImpaired = redundancyImpaired;
   }
 
+  public boolean isAnyBucketLost() {
+    return isAnyBucketLost;
+  }
+
+  public void setAnyBucketLost(boolean anyBucketLost) {
+    isAnyBucketLost = anyBucketLost;
+  }
+
   public SnappyRegionStats getCombinedStats(SnappyRegionStats stats) {
     String tableName = this.isColumnTable ? stats.tableName : this.tableName;
     SnappyRegionStats combinedStats = new SnappyRegionStats(tableName);
@@ -159,6 +168,7 @@ public class SnappyRegionStats implements VersionedDataSerializable {
     combinedStats.setBucketCount(this.bucketCount);
     combinedStats.setRedundancy(this.redundancy);
     combinedStats.setRedundancyImpaired(this.isRedundancyImpaired);
+    combinedStats.setAnyBucketLost(this.isAnyBucketLost);
     return combinedStats;
   }
 
@@ -185,6 +195,7 @@ public class SnappyRegionStats implements VersionedDataSerializable {
     out.writeLong(sizeSpillToDisk);
     out.writeInt(redundancy);
     out.writeBoolean(isRedundancyImpaired);
+    out.writeBoolean(isAnyBucketLost);
   }
 
   public void fromDataPre_STORE_1_6_2_0(DataInput in) throws IOException {
@@ -203,6 +214,7 @@ public class SnappyRegionStats implements VersionedDataSerializable {
     this.sizeSpillToDisk = in.readLong();
     this.redundancy = in.readInt();
     this.isRedundancyImpaired = in.readBoolean();
+    this.isAnyBucketLost = in.readBoolean();
   }
 
   @Override
@@ -211,6 +223,6 @@ public class SnappyRegionStats implements VersionedDataSerializable {
         " sizeInMemory=" + sizeInMemory + " sizeSpillToDisk=" + sizeSpillToDisk +
         " rowCount=" + rowCount + " isColumnTable=" + isColumnTable + " isReplicatedTable=" +
         isReplicatedTable + " bucketCount=" + bucketCount + " redundancy=" + redundancy
-        + " isRedundancyImpaired=" + isRedundancyImpaired;
+        + " isRedundancyImpaired=" + isRedundancyImpaired + " isAnyBucketLost=" + isAnyBucketLost;
   }
 }
