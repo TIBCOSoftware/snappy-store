@@ -463,9 +463,13 @@ public final class SortedMap2IndexDeleteOperation extends MemIndexOperation {
       else {
         if (newValues != null) {
           if (index == newLength) {
-            // means that we exhausted all entries without finding the one
-            // to be deleted
-            return null;
+            if (((RowLocation)deletedRow).isDestroyedOrRemoved()) {
+              return newValue;
+            } else {
+              // means that we exhausted all entries without finding the one
+              // to be deleted
+              return null;
+            }
           }
           newValues[index++] = existingRow;
         }
@@ -474,7 +478,7 @@ public final class SortedMap2IndexDeleteOperation extends MemIndexOperation {
         }
       }
     }
-    if (foundDeleted) {
+    if (foundDeleted || ((RowLocation)deletedRow).isDestroyedOrRemoved()) {
       return newValue;
     }
     else {
@@ -524,7 +528,7 @@ public final class SortedMap2IndexDeleteOperation extends MemIndexOperation {
 
     // Rahul: I dont think the following assert is need.
     // assert existingValues.size() >= ROWLOCATION_THRESHOLD;
-    if (!existingValues.remove(deletedRow)) {
+    if (!existingValues.remove(deletedRow) && !((RowLocation)deletedRow).isDestroyedOrRemoved()) {
       return null;
     }
 
