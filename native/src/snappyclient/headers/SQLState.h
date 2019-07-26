@@ -377,6 +377,11 @@ namespace client {
      * protocol is detected (can be due to server failure).
      */
     static const SQLState THRIFT_PROTOCOL_ERROR;
+    /**
+     * SQLState of the exception thrown when an error
+     *  is detected due to bucket moved.
+     */
+    static const SQLState NODE_BUCKET_MOVED;
   };
 
 } /* namespace client */
