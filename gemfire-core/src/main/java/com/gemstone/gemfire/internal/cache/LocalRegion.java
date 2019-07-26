@@ -235,6 +235,8 @@ public class LocalRegion extends AbstractRegion
 
   public volatile boolean isDestroyed = false;
 
+  public volatile GemFireException diskConflictingException;
+
   // In case of parallel wan, when a destroy is called on userPR, it waits for
   // parallelQueue to drain and then destroys paralleQueue. In this time if
   // operation like put happens on userPR then it will keep on building parallel
@@ -7881,6 +7883,7 @@ public class LocalRegion extends AbstractRegion
           // unhooking this region from the parent subregion map, and
           // sending listener events
           Assert.assertTrue(this.isDestroyed);
+          this.diskConflictingException = event.getDiskException();
           
           /**
            * Added for M&M : At this point we can safely call ResourceEvent
@@ -9364,6 +9367,9 @@ public class LocalRegion extends AbstractRegion
         ex = new RegionReinitializedException(toString(), getFullPath());
       } else if (this.cache.isCacheAtShutdownAll()) {
         throw new CacheClosedException("Cache is being closed by ShutdownAll");
+      }
+      else if(diskConflictingException != null) {
+        throw diskConflictingException;
       }
       else {
         ex = new RegionDestroyedException(toString(), getFullPath());

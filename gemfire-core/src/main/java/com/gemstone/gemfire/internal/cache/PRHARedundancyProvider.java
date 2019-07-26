@@ -111,7 +111,7 @@ public class PRHARedundancyProvider
   private final Object shutdownLock = new Object();
   private boolean shutdown = false;
   
-  volatile CountDownLatch allBucketsRecoveredFromDisk;
+  volatile CountDownLatch allBucketsRecoveredFromDiskLatch;
   
   /**
    * Used to consolidate logging for bucket regions waiting on other
@@ -1815,7 +1815,7 @@ public class PRHARedundancyProvider
     /*
      * Start the redundancy logger before recovering any proxy buckets.
      */
-      allBucketsRecoveredFromDisk = new CountDownLatch(proxyBucketArray.length);
+      allBucketsRecoveredFromDiskLatch = new CountDownLatch(proxyBucketArray.length);
       try {
         if(proxyBucketArray.length > 0) {
           this.redundancyLogger = new RedundancyLogger(this);
@@ -1823,7 +1823,7 @@ public class PRHARedundancyProvider
           loggingThread.start();
         }    
       } catch(RuntimeException e) {
-        allBucketsRecoveredFromDisk = null;
+        allBucketsRecoveredFromDiskLatch = null;
         throw e;
       }
       /*
@@ -1858,13 +1858,13 @@ public class PRHARedundancyProvider
               try {
                 super.run();
               } finally {
-                allBucketsRecoveredFromDisk.countDown();
+                allBucketsRecoveredFromDiskLatch.countDown();
               }
             }
 
             @Override
             public void run2() {
-                proxyBucket.recoverFromDiskRecursively();
+                proxyBucket.recoverFromDiskRecursively(allBucketsRecoveredFromDiskLatch);
             }
           };
           Thread recoveryThread = new Thread(recoveryRunnable, "Recovery thread for bucket " + proxyBucket.getName());
@@ -1884,11 +1884,11 @@ public class PRHARedundancyProvider
           proxyBucket.waitForPrimaryPersistentRecovery();
         }
         for(final ProxyBucketRegion proxyBucket : bucketsNotHostedLocally) {
-          proxyBucket.recoverFromDiskRecursively();
+          proxyBucket.recoverFromDiskRecursively(allBucketsRecoveredFromDiskLatch);
         }
       } finally {
         for(final ProxyBucketRegion proxyBucket : bucketsNotHostedLocally) {
-          allBucketsRecoveredFromDisk.countDown();
+          allBucketsRecoveredFromDiskLatch.countDown();
         }
       }
       
@@ -2109,7 +2109,7 @@ public class PRHARedundancyProvider
    * or for the region to be closed, whichever happens first.
    */
   protected void waitForPersistentBucketRecoveryOrClose() {
-    CountDownLatch recoveryLatch = allBucketsRecoveredFromDisk;
+    CountDownLatch recoveryLatch = allBucketsRecoveredFromDiskLatch;
     if(recoveryLatch != null) {
       boolean interrupted =  false;
       while (true) {
@@ -2141,7 +2141,7 @@ public class PRHARedundancyProvider
    * regardless of whether the region is currently being closed.
    */
   protected void waitForPersistentBucketRecovery() {
-    CountDownLatch recoveryLatch = allBucketsRecoveredFromDisk;
+    CountDownLatch recoveryLatch = allBucketsRecoveredFromDiskLatch;
     if(recoveryLatch != null) {
       boolean interrupted =  false;
       while (true) {
@@ -2163,8 +2163,8 @@ public class PRHARedundancyProvider
       return false;
     }
     
-    if(allBucketsRecoveredFromDisk != null
-        && allBucketsRecoveredFromDisk.getCount() > 0) {
+    if(allBucketsRecoveredFromDiskLatch != null
+        && allBucketsRecoveredFromDiskLatch.getCount() > 0) {
       return false;
     }
     
@@ -2172,8 +2172,8 @@ public class PRHARedundancyProvider
     
     for(PartitionedRegion region : colocatedRegions.values()) {
       PRHARedundancyProvider redundancyProvider = region.getRedundancyProvider();
-      if(redundancyProvider.allBucketsRecoveredFromDisk != null
-          && redundancyProvider.allBucketsRecoveredFromDisk.getCount() > 0) {
+      if(redundancyProvider.allBucketsRecoveredFromDiskLatch != null
+          && redundancyProvider.allBucketsRecoveredFromDiskLatch.getCount() > 0) {
         return false;
       }
     }
@@ -2451,6 +2451,6 @@ public class PRHARedundancyProvider
   }
 
   public CountDownLatch getAllBucketsRecoveredFromDiskLatch() {
-    return allBucketsRecoveredFromDisk;
+    return allBucketsRecoveredFromDiskLatch;
   }
 }

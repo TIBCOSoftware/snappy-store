@@ -2918,8 +2918,12 @@ public final class GemFireTransaction extends RawTransaction implements
       final TXStateInterface gemfireTx = TXManagerImpl.getCurrentSnapshotTXState();
 
       if (tx != null && tx != TXStateProxy.TX_NOT_SET && gemfireTx != tx) {
-        this.txManager.commit(tx, this.connectionID, TXManagerImpl.FULL_COMMIT,
-            null, false);
+        // don't commit as it may have reference to other one whereas gemfire tx is
+        // going to be used.
+        if (gemfireTx == null) {
+          this.txManager.commit(tx, this.connectionID, TXManagerImpl.FULL_COMMIT,
+                  null, false);
+        }
       }
       // now start tx for every operation.
       if (isolationLevel != IsolationLevel.NONE /*|| isSnapshotEnabled()*/) {

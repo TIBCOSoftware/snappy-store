@@ -367,7 +367,6 @@ public abstract class LauncherBase {
       vmArgs.add("-D" + EVICT_HIGH_ENTRY_COUNT_BUCKETS_FIRST_PROP + "=false");
       vmArgs.add("-D" + EVICT_HIGH_ENTRY_COUNT_BUCKETS_FIRST_FOR_EVICTOR_PROP + "=true");
     }
-    vmArgs.add("-Dorg.codehaus.janino.source_debugging.enable=true");
   }
 
   /**

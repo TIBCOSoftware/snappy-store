@@ -120,8 +120,8 @@ public class MiscTools extends ToolsBase {
           addPathOption(opts);
           addEncodingOption(opts);
           addIgnoreErrorsOption(opts);
-          addParamOption(opts);
-          addNumTimesToRun(opts);
+//          addParamOption(opts);
+//          addNumTimesToRun(opts);
         }
 
         @Override
@@ -274,5 +274,46 @@ public class MiscTools extends ToolsBase {
   @Override
   protected String getUsageString(String cmd, String cmdDescKey) {
     return LocalizedResource.getMessage("TOOLS_COMMON_DESC");
+  }
+
+  @Override
+  protected void addConnectionOptions(final Options opts) {
+    GfxdOption opt;
+
+    opt = new GfxdOptionBuilder().withArgName(LocalizedResource.getMessage(
+        "TOOLS_PORT_ARG")).hasArg().withValueSeparator('=')
+        .withDescription(LocalizedResource.getMessage(
+            "TOOLS_CLIENT_PORT_MESSAGE")).create(CLIENT_PORT);
+    opts.addOption(opt);
+
+    opt = new GfxdOptionBuilder().withArgName(LocalizedResource.getMessage(
+        "TOOLS_ADDRESS_ARG")).hasArg().withValueSeparator('=')
+        .withDescription(LocalizedResource.getMessage(
+            "TOOLS_CLIENT_ADDRESS_MESSAGE")).create(CLIENT_BIND_ADDRESS);
+    opts.addOption(opt);
+
+    opt = new GfxdOptionBuilder().withArgName(LocalizedResource.getMessage(
+        "TOOLS_AUTH_PROVIDER_ARG")).hasArg().withValueSeparator('=')
+        .withDescription(LocalizedResource.getMessage(
+            "TOOLS_AUTH_PROVIDER_MESSAGE")).create(AUTH_PROVIDER);
+    opts.addOption(opt);
+
+    opt = new GfxdOptionBuilder().withArgName(LocalizedResource.getMessage(
+        "TOOLS_USERNAME_ARG")).hasArg().withValueSeparator('=')
+        .withDescription(LocalizedResource.getMessage(
+            "TOOLS_USERNAME_MESSAGE")).create(USERNAME);
+    opts.addOption(opt);
+
+    opt = new GfxdOptionBuilder().withArgName(LocalizedResource.getMessage(
+        "TOOLS_PASSWORD_ARG")).hasOptionalArg().withValueSeparator('=')
+        .withDescription(LocalizedResource.getMessage(
+            "TOOLS_PASSWORD_MESSAGE")).create(PASSWORD);
+    opts.addOption(opt);
+
+    opt = new GfxdOptionBuilder().withArgName(LocalizedResource.getMessage(
+        "TOOLS_EXTRA_CONN_PROPS_ARG")).hasArg().withValueSeparator('=')
+        .withDescription(LocalizedResource.getMessage(
+            "TOOLS_EXTRA_CONN_PROPS_MESSAGE")).create(EXTRA_CONN_PROPS);
+    opts.addOption(opt);
   }
 }

@@ -37,6 +37,9 @@ public class SnappyRegionStats implements VersionedDataSerializable {
   private long totalSize = 0;
   private boolean isReplicatedTable = false;
   private int bucketCount;
+  private int redundancy = 0;
+  private boolean isRedundancyImpaired = false;
+  private boolean isAnyBucketLost = false;
 
   public SnappyRegionStats() {
   }
@@ -123,6 +126,30 @@ public class SnappyRegionStats implements VersionedDataSerializable {
     this.bucketCount = bucketCount;
   }
 
+  public int getRedundancy() {
+    return redundancy;
+  }
+
+  public void setRedundancy(int redundancy) {
+    this.redundancy = redundancy;
+  }
+
+  public boolean isRedundancyImpaired() {
+    return isRedundancyImpaired;
+  }
+
+  public void setRedundancyImpaired(boolean redundancyImpaired) {
+    isRedundancyImpaired = redundancyImpaired;
+  }
+
+  public boolean isAnyBucketLost() {
+    return isAnyBucketLost;
+  }
+
+  public void setAnyBucketLost(boolean anyBucketLost) {
+    isAnyBucketLost = anyBucketLost;
+  }
+
   public SnappyRegionStats getCombinedStats(SnappyRegionStats stats) {
     String tableName = this.isColumnTable ? stats.tableName : this.tableName;
     SnappyRegionStats combinedStats = new SnappyRegionStats(tableName);
@@ -139,6 +166,9 @@ public class SnappyRegionStats implements VersionedDataSerializable {
     combinedStats.setColumnTable(this.isColumnTable || stats.isColumnTable);
     combinedStats.setReplicatedTable(this.isReplicatedTable());
     combinedStats.setBucketCount(this.bucketCount);
+    combinedStats.setRedundancy(this.redundancy);
+    combinedStats.setRedundancyImpaired(this.isRedundancyImpaired);
+    combinedStats.setAnyBucketLost(this.isAnyBucketLost);
     return combinedStats;
   }
 
@@ -163,6 +193,9 @@ public class SnappyRegionStats implements VersionedDataSerializable {
     toDataPre_STORE_1_6_2_0(out);
     out.writeInt(bucketCount);
     out.writeLong(sizeSpillToDisk);
+    out.writeInt(redundancy);
+    out.writeBoolean(isRedundancyImpaired);
+    out.writeBoolean(isAnyBucketLost);
   }
 
   public void fromDataPre_STORE_1_6_2_0(DataInput in) throws IOException {
@@ -179,6 +212,9 @@ public class SnappyRegionStats implements VersionedDataSerializable {
     fromDataPre_STORE_1_6_2_0(in);
     this.bucketCount = in.readInt();
     this.sizeSpillToDisk = in.readLong();
+    this.redundancy = in.readInt();
+    this.isRedundancyImpaired = in.readBoolean();
+    this.isAnyBucketLost = in.readBoolean();
   }
 
   @Override
@@ -186,6 +222,7 @@ public class SnappyRegionStats implements VersionedDataSerializable {
     return "RegionStats for " + tableName + ": totalSize=" + totalSize +
         " sizeInMemory=" + sizeInMemory + " sizeSpillToDisk=" + sizeSpillToDisk +
         " rowCount=" + rowCount + " isColumnTable=" + isColumnTable + " isReplicatedTable=" +
-        isReplicatedTable + " bucketCount=" + bucketCount;
+        isReplicatedTable + " bucketCount=" + bucketCount + " redundancy=" + redundancy
+        + " isRedundancyImpaired=" + isRedundancyImpaired + " isAnyBucketLost=" + isAnyBucketLost;
   }
 }

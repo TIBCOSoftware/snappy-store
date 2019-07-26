@@ -46,323 +46,363 @@
 using namespace apache::thrift;
 
 namespace apache {
-namespace thrift {
-  namespace transport {
-    class TSocket;
+  namespace thrift {
+    namespace transport {
+      class TSocket;
+    }
+    namespace protocol {
+      class TProtocol;
+    }
   }
-  namespace protocol {
-    class TProtocol;
-  }
-}
 }
 
 namespace io {
-namespace snappydata {
-namespace client {
-namespace impl {
-
-  class ClientTransport;
-  class ControlConnection;
+  namespace snappydata {
+    namespace client {
+      namespace impl {
+
+        class ClientTransport;
+        class ControlConnection;
+
+        class SnappyDataClient : public thrift::SnappyDataServiceClient {
+        public:
+          SnappyDataClient(protocol::TProtocol* prot) :
+              thrift::SnappyDataServiceClient(
+                  boost::shared_ptr<protocol::TProtocol>(prot)) {
+          }
+
+          inline protocol::TProtocol* getProtocol() const noexcept {
+            return iprot_;
+          }
+
+        private:
+          void resetProtocols(
+              const boost::shared_ptr<protocol::TProtocol>& iprot,
+              const boost::shared_ptr<protocol::TProtocol>& oprot) {
+            piprot_ = iprot;
+            poprot_ = oprot;
+            iprot_ = iprot.get();
+            oprot_ = oprot.get();
+          }
+
+          friend class ClientService;
+        };
+
+        class ClientService {
+        private:
+          const thrift::OpenConnectionArgs m_connArgs;
+          bool m_loadBalance;
+          thrift::ServerType::type m_reqdServerType;
+          bool m_useFramedTransport;
+          std::set<std::string> m_serverGroups;
+
+          boost::shared_ptr<ClientTransport> m_transport;
+          SnappyDataClient m_client;
+
+          thrift::HostAddress m_currentHostAddr;
+          std::vector<thrift::HostAddress> m_connHosts;
+          int64_t m_connId;
+          std::string m_token;
+          bool m_isOpen;
+
+          std::map<thrift::TransactionAttribute::type, bool> m_pendingTXAttrs;
+          bool m_hasPendingTXAttrs;
+          IsolationLevel m_isolationLevel;
+          std::map<thrift::TransactionAttribute::type, bool> m_currentTXAttrs;
+
+          // using boost::mutex and not std::mutex due to superior implementation on
+          // Windows compared to that provided by VS (which always does kernel call)
+          boost::mutex m_lock;
+
+          // no copy constructor or assignment operator due to obvious issues
+          // with usage of same connection by multiple threads concurrently
+          ClientService(const ClientService&) = delete;
+          ClientService& operator=(const ClientService&) = delete;
+
+          void clearPendingTransactionAttrs();
+
+          static thrift::OpenConnectionArgs& initConnectionArgs(
+              thrift::OpenConnectionArgs& connArgs);
+
+          static protocol::TProtocol* createDummyProtocol();
+
+          static protocol::TProtocol* createProtocol(
+              thrift::HostAddress& hostAddr,
+              const thrift::ServerType::type serverType,
+              const bool useFramedTransport,
+              //const SSLSocketParameters& sslParams,
+              boost::shared_ptr<ClientTransport>& returnTransport);
+
+          void updateFailedServersForCurrent(
+              std::set<thrift::HostAddress>& failedServers,
+              bool checkAllFailed, const std::exception& failure);
+
+        protected:
+          virtual void checkConnection(const char* op);
+
+          virtual void handleSnappyException(const char* op, bool tryFailOver,
+              bool ignoreNodeFailure, bool createNewConnection,
+              std::set<thrift::HostAddress>& failedServers,
+              const thrift::SnappyException& se);
+
+          virtual void handleStdException(const char* op,
+              const std::exception& stde);
+
+          virtual void handleTTransportException(const char* op,
+              bool tryFailover, bool ignoreNodeFailure,
+              bool createNewConnection,
+              std::set<thrift::HostAddress>& failedServers,
+              const transport::TTransportException& tte);
+
+          virtual void handleTProtocolException(const char* op,
+              bool tryFailover, bool ignoreNodeFailure,
+              bool createNewConnection,
+              std::set<thrift::HostAddress>& failedServers,
+              const protocol::TProtocolException& tpe);
 
-  class SnappyDataClient : public thrift::SnappyDataServiceClient {
-  public:
-    SnappyDataClient(protocol::TProtocol* prot) :
-        thrift::SnappyDataServiceClient(
-            boost::shared_ptr < protocol::TProtocol > (prot)) {
-    }
+          virtual void handleTException(const char* op, bool tryFailover,
+              bool ignoreNodeFailure, bool createNewConnection,
+              std::set<thrift::HostAddress>& failedServers,
+              const TException& te);
 
-    inline protocol::TProtocol* getProtocol() const noexcept {
-      return iprot_;
-    }
+          virtual void handleUnknownException(const char* op);
 
-  private:
-    void resetProtocols(
-        const boost::shared_ptr<protocol::TProtocol>& iprot,
-        const boost::shared_ptr<protocol::TProtocol>& oprot) {
-      piprot_ = iprot;
-      poprot_ = oprot;
-      iprot_ = iprot.get();
-      oprot_ = oprot.get();
-    }
+          BOOST_NORETURN void throwSQLExceptionForNodeFailure(const char* op,
+              const std::exception& se);
 
-    friend class ClientService;
-  };
+          void openConnection(thrift::HostAddress& hostAddr,
+              std::set<thrift::HostAddress>& failedServers,
+              const std::exception& te);
 
-  class ClientService {
-  private:
-    const thrift::OpenConnectionArgs m_connArgs;
-    bool m_loadBalance;
-    thrift::ServerType::type m_reqdServerType;
-    bool m_useFramedTransport;
-    //const SSLSocketParameters m_sslParams;
-    std::set<std::string> m_serverGroups;
+          void flushPendingTransactionAttrs();
 
-    boost::shared_ptr<ClientTransport> m_transport;
-    SnappyDataClient m_client;
+          void setPendingTransactionAttrs(thrift::StatementAttrs& stmtAttrs);
 
-    thrift::HostAddress m_currentHostAddr;
-    std::vector<thrift::HostAddress> m_connHosts;
-    int64_t m_connId;
-    std::string m_token;
-    bool m_isOpen;
+          void getTransactionAttributesNoLock(
+              std::map<thrift::TransactionAttribute::type, bool>& result);
 
-    std::map<thrift::TransactionAttribute::type, bool> m_pendingTXAttrs;
-    bool m_hasPendingTXAttrs;
-    IsolationLevel m_isolationLevel;
-    std::map<thrift::TransactionAttribute::type, bool> m_currentTXAttrs;
+          void destroyTransport() noexcept;
 
-    // using boost::mutex and not std::mutex due to superior implementation on
-    // Windows compared to that provided by VS (which always does kernel call)
-    boost::mutex m_lock;
+          void newSnappyExceptionForConnectionClose(
+              const thrift::HostAddress source,
+              std::set<thrift::HostAddress>& failedServers,
+              bool createNewConnection, const thrift::SnappyException& te);
 
-    // no copy constructor or assignment operator due to obvious issues
-    // with usage of same connection by multiple threads concurrently
-    ClientService(const ClientService&) = delete;
-    ClientService& operator=(const ClientService&) = delete;
+          void newSnappyExceptionForConnectionClose(
+              const thrift::HostAddress& source);
 
-    void clearPendingTransactionAttrs();
+          void tryCreateNewConnection(thrift::HostAddress source,
+              std::set<thrift::HostAddress>& failedServers,
+              const thrift::SnappyException& te);
 
-    static thrift::OpenConnectionArgs& initConnectionArgs(
-        thrift::OpenConnectionArgs& connArgs);
+          BOOST_NORETURN void throwSnappyExceptionForNodeFailure(
+              thrift::HostAddress source, const char* op,
+              std::set<thrift::HostAddress>& failedServers,
+              bool createNewConnection, const thrift::SnappyException& te);
 
-    static protocol::TProtocol* createDummyProtocol();
+          BOOST_NORETURN void throwSnappyExceptionForNodeFailure(
+              thrift::HostAddress source, const char* op,
+              std::set<thrift::HostAddress>& failedServers,
+              bool createNewConnection, const std::exception& se);
 
-    static protocol::TProtocol* createProtocol(
-        thrift::HostAddress& hostAddr,
-        const thrift::ServerType::type serverType,
-        const bool useFramedTransport,
-        //const SSLSocketParameters& sslParams,
-        boost::shared_ptr<ClientTransport>& returnTransport);
+          virtual bool handleException(const char* op, bool tryFailover,
+                        bool ignoreNodeFailure, bool createNewConnection,
+                        std::set<thrift::HostAddress>& failedServers,
+                        const TException& te);
 
-    void updateFailedServersForCurrent(std::set<thrift::HostAddress>& failedServers,
-        bool checkAllFailed, std::exception* failure);
 
-  protected:
-    virtual void checkConnection(const char* op);
+        private:
+          // the static hostName and hostId used by all connections
+          static std::string s_hostName;
+          static std::string s_hostId;
+          static boost::mutex s_globalLock;
+          static bool s_initialized;
 
-    virtual void handleSnappyException(const thrift::SnappyException& se);
+          /**
+           * Global initialization that is done only once.
+           * The s_globalLock must be held in the invocation.
+           */
+          static bool globalInitialize();
 
-    virtual void handleStdException(const char* op,
-        const std::exception& stde);
+        public:
+          ClientService(const std::string& host, const int port,
+              thrift::OpenConnectionArgs& arguments);
 
-    virtual void handleTTransportException(const char* op,
-        const transport::TTransportException& tte);
+          virtual ~ClientService();
 
-    virtual void handleTProtocolException(const char* op,
-        const protocol::TProtocolException& tpe);
+          static void staticInitialize();
 
-    virtual void handleTException(const char* op, const TException& te);
+          static void staticInitialize(
+              std::map<std::string, std::string>& props);
 
-    virtual void handleUnknownException(const char* op);
+          static thrift::ServerType::type getServerType(bool isServer,
+              bool useBinaryProtocol, bool useSSL);
 
-    BOOST_NORETURN void throwSQLExceptionForNodeFailure(const char* op,
-        const std::exception& se);
+          inline bool isOpen() const noexcept {
+            return m_isOpen;
+          }
 
-    void openConnection(thrift::HostAddress& hostAddr,
-        std::set<thrift::HostAddress>& failedServers);
+          inline const boost::shared_ptr<ClientTransport>& getTransport() const
+              noexcept {
+            return m_transport;
+          }
 
-    void flushPendingTransactionAttrs();
+          const char* getTokenStr() const noexcept {
+            return m_token.empty() ? NULL : m_token.c_str();
+          }
 
-    void setPendingTransactionAttrs(thrift::StatementAttrs& stmtAttrs);
+          const thrift::HostAddress& getCurrentHostAddress() const noexcept {
+            return m_currentHostAddr;
+          }
 
-    void getTransactionAttributesNoLock(
-        std::map<thrift::TransactionAttribute::type, bool>& result);
+          const thrift::OpenConnectionArgs& getConnectionArgs() const
+              noexcept {
+            return m_connArgs;
+          }
 
-    void destroyTransport() noexcept;
+          IsolationLevel getCurrentIsolationLevel() const noexcept {
+            return m_isolationLevel;
+          }
 
-//    void handleException(const TException* te,
-//        const std::set<thrift::HostAddress>& failedServers, bool tryFailover, bool ignoreFailOver,
-//        bool createNewConnection, const std::string& op);
+          void execute(thrift::StatementResult& result,
+              const std::string& sql,
+              const std::map<int32_t, thrift::OutputParameter>& outputParams,
+              const thrift::StatementAttrs& attrs);
 
-  private:
-    // the static hostName and hostId used by all connections
-    static std::string s_hostName;
-    static std::string s_hostId;
-    static boost::mutex s_globalLock;
-    static bool s_initialized;
+          void executeUpdate(thrift::UpdateResult& result,
+              const std::vector<std::string>& sqls,
+              const thrift::StatementAttrs& attrs);
 
-    /**
-     * Global initialization that is done only once.
-     * The s_globalLock must be held in the invocation.
-     */
-    static bool globalInitialize();
+          void executeQuery(thrift::RowSet& result, const std::string& sql,
+              const thrift::StatementAttrs& attrs);
 
-  public:
-    ClientService(const std::string& host, const int port,
-        thrift::OpenConnectionArgs& arguments);
+          void prepareStatement(thrift::PrepareResult& result,
+              const std::string& sql,
+              const std::map<int32_t, thrift::OutputParameter>& outputParams,
+              const thrift::StatementAttrs& attrs);
 
-    virtual ~ClientService();
+          void executePrepared(thrift::StatementResult& result,
+              thrift::PrepareResult& prepResult, const thrift::Row& params,
+              const std::map<int32_t, thrift::OutputParameter>& outputParams,
+              const thrift::StatementAttrs& attrs);
 
-    static void staticInitialize();
+          void executePreparedUpdate(thrift::UpdateResult& result,
+              thrift::PrepareResult& prepResult, const thrift::Row& params,
+              const thrift::StatementAttrs& attrs);
 
-    static void staticInitialize(
-        std::map<std::string, std::string>& props);
+          void executePreparedQuery(thrift::RowSet& result,
+              thrift::PrepareResult& prepResult, const thrift::Row& params,
+              const thrift::StatementAttrs& attrs);
 
-    static thrift::ServerType::type getServerType(bool isServer,
-        bool useBinaryProtocol, bool useSSL);
+          void executePreparedBatch(thrift::UpdateResult& result,
+              thrift::PrepareResult& prepResult,
+              const std::vector<thrift::Row>& paramsBatch,
+              const thrift::StatementAttrs& attrs);
 
-    inline bool isOpen() const noexcept {
-      return m_isOpen;
-    }
+          void prepareAndExecute(thrift::StatementResult& result,
+              const std::string& sql,
+              const std::vector<thrift::Row>& paramsBatch,
+              const std::map<int32_t, thrift::OutputParameter>& outputParams,
+              const thrift::StatementAttrs& attrs);
 
-    inline const boost::shared_ptr<ClientTransport>& getTransport()
-        const noexcept {
-      return m_transport;
-    }
+          void getNextResultSet(thrift::RowSet& result,
+              const int64_t cursorId, const int8_t otherResultSetBehaviour);
 
-    const char* getTokenStr() const noexcept {
-      return m_token.empty() ? NULL : m_token.c_str();
-    }
+          void getBlobChunk(thrift::BlobChunk& result, const int32_t lobId,
+              const int64_t offset, const int32_t size,
+              const bool freeLobAtEnd);
 
-    const thrift::HostAddress& getCurrentHostAddress() const noexcept {
-      return m_currentHostAddr;
-    }
+          void getClobChunk(thrift::ClobChunk& result, const int32_t lobId,
+              const int64_t offset, const int32_t size,
+              const bool freeLobAtEnd);
 
-    const thrift::OpenConnectionArgs& getConnectionArgs() const noexcept {
-      return m_connArgs;
-    }
+          int64_t sendBlobChunk(thrift::BlobChunk& chunk);
 
-    IsolationLevel getCurrentIsolationLevel() const noexcept {
-      return m_isolationLevel;
-    }
+          int64_t sendClobChunk(thrift::ClobChunk& chunk);
 
-    void execute(thrift::StatementResult& result,
-        const std::string& sql,
-        const std::map<int32_t, thrift::OutputParameter>& outputParams,
-        const thrift::StatementAttrs& attrs);
+          void freeLob(const int32_t lobId);
 
-    void executeUpdate(thrift::UpdateResult& result,
-        const std::vector<std::string>& sqls,
-        const thrift::StatementAttrs& attrs);
+          void scrollCursor(thrift::RowSet& result, const int64_t cursorId,
+              const int32_t offset, const bool offsetIsAbsolute,
+              const bool fetchReverse, const int32_t fetchSize);
 
-    void executeQuery(thrift::RowSet& result, const std::string& sql,
-        const thrift::StatementAttrs& attrs);
+          void executeCursorUpdate(const int64_t cursorId,
+              const thrift::CursorUpdateOperation::type operation,
+              const thrift::Row& changedRow,
+              const std::vector<int32_t>& changedColumns,
+              const int32_t changedRowIndex);
 
-    void prepareStatement(thrift::PrepareResult& result,
-        const std::string& sql,
-        const std::map<int32_t, thrift::OutputParameter>& outputParams,
-        const thrift::StatementAttrs& attrs);
+          void executeBatchCursorUpdate(const int64_t cursorId,
+              const std::vector<thrift::CursorUpdateOperation::type>& operations,
+              const std::vector<thrift::Row>& changedRows,
+              const std::vector<std::vector<int32_t> >& changedColumnsList,
+              const std::vector<int32_t>& changedRowIndexes);
 
-    void executePrepared(thrift::StatementResult& result,
-        thrift::PrepareResult& prepResult, const thrift::Row& params,
-        const std::map<int32_t, thrift::OutputParameter>& outputParams,
-        const thrift::StatementAttrs& attrs);
+          void beginTransaction(const IsolationLevel isolationLevel);
 
-    void executePreparedUpdate(thrift::UpdateResult& result,
-        thrift::PrepareResult& prepResult, const thrift::Row& params,
-        const thrift::StatementAttrs& attrs);
+          void setTransactionAttribute(const TransactionAttribute flag,
+              bool isTrue);
 
-    void executePreparedQuery(thrift::RowSet& result,
-        thrift::PrepareResult& prepResult, const thrift::Row& params,
-        const thrift::StatementAttrs& attrs);
+          bool getTransactionAttribute(const TransactionAttribute flag);
 
-    void executePreparedBatch(thrift::UpdateResult& result,
-        thrift::PrepareResult& prepResult,
-        const std::vector<thrift::Row>& paramsBatch,
-        const thrift::StatementAttrs& attrs);
+          void getTransactionAttributes(
+              std::map<thrift::TransactionAttribute::type, bool>& result);
 
-    void prepareAndExecute(thrift::StatementResult& result,
-        const std::string& sql,
-        const std::vector<thrift::Row>& paramsBatch,
-        const std::map<int32_t, thrift::OutputParameter>& outputParams,
-        const thrift::StatementAttrs& attrs);
+          void commitTransaction(const bool startNewTransaction);
 
-    void getNextResultSet(thrift::RowSet& result,
-        const int64_t cursorId, const int8_t otherResultSetBehaviour);
+          void rollbackTransaction(const bool startNewTransaction);
 
-    void getBlobChunk(thrift::BlobChunk& result, const int32_t lobId,
-        const int64_t offset, const int32_t size,
-        const bool freeLobAtEnd);
+          void fetchActiveConnections(
+              std::vector<thrift::ConnectionProperties>& result);
 
-    void getClobChunk(thrift::ClobChunk& result, const int32_t lobId,
-        const int64_t offset, const int32_t size,
-        const bool freeLobAtEnd);
+          void fetchActiveStatements(std::map<int64_t, std::string>& result);
 
-    int64_t sendBlobChunk(thrift::BlobChunk& chunk);
+          void getServiceMetaData(thrift::ServiceMetaData& result);
 
-    int64_t sendClobChunk(thrift::ClobChunk& chunk);
+          void getSchemaMetaData(thrift::RowSet& result,
+              const thrift::ServiceMetaDataCall::type schemaCall,
+              thrift::ServiceMetaDataArgs& metadataArgs);
 
-    void freeLob(const int32_t lobId);
+          void getIndexInfo(thrift::RowSet& result,
+              thrift::ServiceMetaDataArgs& metadataArgs, const bool unique,
+              const bool approximate);
 
-    void scrollCursor(thrift::RowSet& result, const int64_t cursorId,
-        const int32_t offset, const bool offsetIsAbsolute,
-        const bool fetchReverse, const int32_t fetchSize);
+          void getUDTs(thrift::RowSet& result,
+              thrift::ServiceMetaDataArgs& metadataArgs,
+              const std::vector<thrift::SnappyType::type>& types);
 
-    void executeCursorUpdate(const int64_t cursorId,
-        const thrift::CursorUpdateOperation::type operation,
-        const thrift::Row& changedRow,
-        const std::vector<int32_t>& changedColumns,
-        const int32_t changedRowIndex);
+          void getBestRowIdentifier(thrift::RowSet& result,
+              thrift::ServiceMetaDataArgs& metadataArgs, const int32_t scope,
+              const bool nullable);
 
-    void executeBatchCursorUpdate(const int64_t cursorId,
-        const std::vector<thrift::CursorUpdateOperation::type>& operations,
-        const std::vector<thrift::Row>& changedRows,
-        const std::vector<std::vector<int32_t> >& changedColumnsList,
-        const std::vector<int32_t>& changedRowIndexes);
+          void closeResultSet(const int64_t cursorId);
 
-    void beginTransaction(const IsolationLevel isolationLevel);
+          void cancelStatement(const int64_t stmtId);
 
-    void setTransactionAttribute(const TransactionAttribute flag, bool isTrue);
+          void closeStatement(const int64_t stmtId);
 
-    bool getTransactionAttribute(const TransactionAttribute flag);
+          void bulkClose(const std::vector<thrift::EntityId>& entities);
 
-    void getTransactionAttributes(std::map<thrift::TransactionAttribute::type,
-        bool>& result);
+          void close();
 
-    void commitTransaction(const bool startNewTransaction);
+          const std::vector<thrift::HostAddress>& getLocators() const
+              noexcept {
+            return m_connHosts;
+          }
 
-    void rollbackTransaction(const bool startNewTransaction);
+          const std::set<std::string>& getServerGrps() const noexcept {
+            return m_serverGroups;
+          }
 
-    void fetchActiveConnections(
-        std::vector<thrift::ConnectionProperties>& result);
+          inline bool isFrameTransport() const noexcept {
+            return m_useFramedTransport;
+          }
 
-    void fetchActiveStatements(std::map<int64_t, std::string>& result);
+        };
 
-    void getServiceMetaData(thrift::ServiceMetaData& result);
-
-    void getSchemaMetaData(thrift::RowSet& result,
-        const thrift::ServiceMetaDataCall::type schemaCall,
-        thrift::ServiceMetaDataArgs& metadataArgs);
-
-    void getIndexInfo(thrift::RowSet& result,
-        thrift::ServiceMetaDataArgs& metadataArgs, const bool unique,
-        const bool approximate);
-
-    void getUDTs(thrift::RowSet& result,
-        thrift::ServiceMetaDataArgs& metadataArgs,
-        const std::vector<thrift::SnappyType::type>& types);
-
-    void getBestRowIdentifier(thrift::RowSet& result,
-        thrift::ServiceMetaDataArgs& metadataArgs, const int32_t scope,
-        const bool nullable);
-
-    void closeResultSet(const int64_t cursorId);
-
-    void cancelStatement(const int64_t stmtId);
-
-    void closeStatement(const int64_t stmtId);
-
-    void bulkClose(const std::vector<thrift::EntityId>& entities);
-
-    void close();
-
-    const std::vector<thrift::HostAddress>& getLocators() const noexcept{
-    	return m_connHosts;
-    }
-
-    const std::set<std::string>& getServerGrps() const noexcept{
-        	return m_serverGroups;
-        }
-
-    inline bool isFrameTransport() const noexcept {
-          return m_useFramedTransport;
-        }
-
-  };
-
-} /* namespace impl */
-} /* namespace client */
-} /* namespace snappydata */
+      } /* namespace impl */
+    } /* namespace client */
+  } /* namespace snappydata */
 } /* namespace io */
 
 #endif /* CLIENTSERVICE_H_ */
