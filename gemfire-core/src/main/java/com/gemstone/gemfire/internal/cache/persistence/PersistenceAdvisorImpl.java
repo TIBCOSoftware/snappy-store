@@ -1274,6 +1274,8 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
         try {
           setWaitingOnMembers(allMembersToWaitFor, offlineMembersToWaitFor);
           while(!membershipChanged && !isClosed && !doNotWait) {
+            // In case bucket is not hosted here, persistent id will be null
+            // if unblock is executed by user then don't wait
             if (getPersistentID() == null) {
               if (memberManager.unblockNonHostingBuckets())
                 doNotWait = true;

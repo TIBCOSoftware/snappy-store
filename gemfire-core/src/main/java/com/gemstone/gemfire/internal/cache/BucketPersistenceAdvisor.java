@@ -229,7 +229,7 @@ public class BucketPersistenceAdvisor extends PersistenceAdvisorImpl {
         if(!membersToWaitFor.isEmpty()) {
           try {
             listener.waitForChange(membersToWaitFor, membersToWaitFor);
-
+            // for non redundant case, if unblock is executed by user then don't wait
             if (memberManager.unblockNonHostingBuckets()) {
               break;
             }
