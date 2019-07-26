@@ -17,6 +17,7 @@
 package com.gemstone.gemfire.internal.cache;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class ExternalTableMetaData {
 
@@ -64,6 +65,15 @@ public class ExternalTableMetaData {
   public String viewText;
   // columns for metadata queries
   public List<Column> columns;
+
+  @Override
+  public String toString() {
+    return "ObjectMetadata(name=" + this.entityName + ", schema=" + this.schema +
+        ", type=" + this.tableType + ", provider=" + this.provider +
+        ", path=" + this.dataSourcePath + ", driver=" + this.driverClass +
+        ") Columns(" + this.columns.stream().map(c -> c.name + ':' + c.typeName).collect(
+            Collectors.joining(", ")) + ')';
+  }
 
   public static final class Column {
     public final String name;

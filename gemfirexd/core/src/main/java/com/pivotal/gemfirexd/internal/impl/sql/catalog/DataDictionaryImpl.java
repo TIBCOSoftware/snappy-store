@@ -45,7 +45,6 @@ import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.Map;
 import java.util.Properties;
 import java.util.Vector;
 
@@ -57,7 +56,6 @@ import java.util.Enumeration;
 import java.io.InputStream;
 import java.io.IOException;
 
-import java.sql.SQLException;
 import java.sql.Types;
 
 // LOBStoredProcedure is imported only to get hold of a constant.
@@ -151,8 +149,6 @@ import com.pivotal.gemfirexd.internal.iapi.store.access.Qualifier;
 import com.pivotal.gemfirexd.internal.iapi.store.access.RowUtil;
 import com.pivotal.gemfirexd.internal.iapi.store.access.ScanController;
 import com.pivotal.gemfirexd.internal.iapi.store.access.TransactionController;
-import com.pivotal.gemfirexd.internal.iapi.store.access.conglomerate.TransactionManager;
-import com.pivotal.gemfirexd.internal.iapi.types.DataType;
 import com.pivotal.gemfirexd.internal.iapi.types.DataTypeDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueFactory;
@@ -160,7 +156,6 @@ import com.pivotal.gemfirexd.internal.iapi.types.NumberDataValue;
 import com.pivotal.gemfirexd.internal.iapi.types.Orderable;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.iapi.types.SQLChar;
-import com.pivotal.gemfirexd.internal.iapi.types.SQLInteger;
 import com.pivotal.gemfirexd.internal.iapi.types.SQLVarchar;
 import com.pivotal.gemfirexd.internal.iapi.types.StringDataValue;
 import com.pivotal.gemfirexd.internal.iapi.util.IdUtil;
@@ -7080,6 +7075,12 @@ public abstract class DataDictionaryImpl
         addSystemSchema(
             SchemaDescriptor.STD_SYSTEM_UTIL_SCHEMA_NAME,
             SchemaDescriptor.SYSCS_UTIL_SCHEMA_UUID, tc);
+
+        // Add the DEFAULT schema for hive catalog
+        SchemaDescriptor defaultHiveSchemaDesc = new SchemaDescriptor(this,
+            SchemaDescriptor.STD_DEFAULT_HIVE_SCHEMA, SchemaDescriptor.DEFAULT_USER_NAME,
+            uuidFactory.recreateUUID(SchemaDescriptor.DEFAULT_HIVE_SCHEMA_UUID), false);
+        addDescriptor(defaultHiveSchemaDesc, null, SYSSCHEMAS_CATALOG_NUM, false, tc);
 
   		//Add the APP schema
   		SchemaDescriptor appSchemaDesc = new SchemaDescriptor(this,

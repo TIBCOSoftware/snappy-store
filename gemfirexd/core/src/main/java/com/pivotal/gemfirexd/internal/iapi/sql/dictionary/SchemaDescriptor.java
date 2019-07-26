@@ -127,6 +127,10 @@ public final class SchemaDescriptor extends TupleDescriptor
      */
     public	static	final	String	STD_DEFAULT_SCHEMA_NAME = Property.DEFAULT_USER_NAME;
 
+    /**
+     * The default schema name used by hive metastore.
+     */
+    public static final String STD_DEFAULT_HIVE_SCHEMA = "DEFAULT";
 
     /**
      * UUID's used as key's in the SYSSCHEMA catalog for the system schema's
@@ -147,6 +151,8 @@ public final class SchemaDescriptor extends TupleDescriptor
         "c013800d-00fb-2647-07ec-000000134f30";
     public static final String SQLJ_SCHEMA_UUID  =  
         "c013800d-00fb-2648-07ec-000000134f30";
+    public static final String DEFAULT_HIVE_SCHEMA_UUID =
+        "c013800d-00fb-2650-07ec-000000134f30";
 	public static final	String SYSTEM_SCHEMA_UUID =  
         "8000000d-00d0-fd77-3ed8-000a0a0b1900";
 	public static final	String SYSIBM_SCHEMA_UUID =  

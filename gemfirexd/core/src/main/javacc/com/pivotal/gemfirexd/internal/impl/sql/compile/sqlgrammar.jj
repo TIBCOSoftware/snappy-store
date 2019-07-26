@@ -15663,6 +15663,15 @@ setSchemaValues() throws StandardException :
 								getContextManager());
 	}
 |
+	<_DEFAULT>
+	{
+		return (StatementNode) nodeFactory.getNode(
+								C_NodeTypes.SET_SCHEMA_NODE,
+								"DEFAULT",
+								null,
+								getContextManager());
+	}
+|
 	<USER>
 	{
 		return (StatementNode) nodeFactory.getNode(

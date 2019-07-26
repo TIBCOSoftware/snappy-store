@@ -1848,7 +1848,7 @@ public class SystemAdmin {
 
   protected void initUsageMap() {
     usageMap.put("gemfire", "gemfire [-debug] [-h[elp]] [-q] [-J<vmOpt>]*");
-    usageMap.put("version", "version");
+    usageMap.put("version", "version [full]");
     usageMap.put("help", "help [" + join(helpTopics, " | ") + "]");
     usageMap.put("stats", "stats ([<instanceId>][:<typeId>][.<statId>])* [-details] [-nofilter|-persec|-persample] [-prunezeros] [-starttime=<time>] [-endtime=<time>] -archive=<statFile>");
     usageMap.put("start-locator", "start-locator [-port=<port>] [-address=<ipAddr>] [-dir=<locatorDir>] [-properties=<gemfire.properties>] [-peer=<true|false>] [-server=<true|false>] [-hostname-for-clients=<ipAddr>] [-D<system.property>=<value>] [-X<vm-setting>]");
