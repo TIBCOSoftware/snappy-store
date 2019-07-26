@@ -2016,6 +2016,19 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
           arg_names, arg_types, 0, 1, RoutineAliasInfo.READS_SQL_DATA, null,
           newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
     }
+
+    {
+      // REMOVE_METASTORE_ENTRY(String)
+      // Note: policies and base tables are not dropped
+      String[] arg_name = new String[] {"FQTN", "FORCE_DROP"};
+      TypeDescriptor[] arg_types = new TypeDescriptor[] {
+          DataTypeDescriptor.getCatalogType(Types.VARCHAR),
+          DataTypeDescriptor.getCatalogType(Types.BOOLEAN)
+      };
+      super.createSystemProcedureOrFunction("REMOVE_METASTORE_ENTRY", sysUUID,
+          arg_name, arg_types, 0, 0, RoutineAliasInfo.READS_SQL_DATA, null,
+          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
+    }
   }
 
   @SuppressWarnings({ "unchecked", "rawtypes" })
