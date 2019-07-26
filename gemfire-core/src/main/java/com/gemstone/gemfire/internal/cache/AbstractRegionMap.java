@@ -2834,6 +2834,7 @@ RETRY_LOOP:
       // Moreover for non tx threads this exception is not expected, for Tx threads let this exception
       // cause rollback
      // this._getOwner().handleDiskAccessException(dae, true/* stop bridge servers*/);
+      assert noTxn;
       throw dae;
     } finally {
       releaseCacheModificationLock(owner, event);
@@ -2941,6 +2942,7 @@ RETRY_LOOP:
       // Moreover for non tx threads this exception is not expected, for Tx threads let this exception
       // cause rollback
       //this._getOwner().handleDiskAccessException(dae, true/* stop bridge servers*/);
+      assert noTxn;
       throw dae;
     } finally {
       releaseCacheModificationLock(owner, event);
@@ -4128,6 +4130,7 @@ RETRY_LOOP:
       // No need here to close the region etc, the asynch shutdown thread spawned in diskstore will do
       // Moreover for non tx threads this exception is not expected, for Tx threads let this exception
       // cause rollback
+      assert noTxn;
       result = null;
       //owner.handleDiskAccessException(dae, true/* stop bridge servers*/);
       throw dae;

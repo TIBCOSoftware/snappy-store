@@ -5381,6 +5381,24 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
       @Override
       public void run() {
 
+        /**
+         * Each DiskStore at the time of creation , also creates files to be used as standby oplog.
+         * Once the standby oplog is switched by any thread , an asynch thread is started in the diskstore whose
+         * task is to shut down the diskstore & the regions using diskstore, after taking a write lock.
+         * This will ensure that any non tx thread is done using disk store & once the write lock is taken by
+         * the closing asynch thread, no new non tx threads can come.
+         * The asynch thread code, waits for 5 minutes, to allow any transactions to get over before shutting down
+         * the diskstore. The ideal way would have been for tx thread to take diskstore read lock at the start of
+         * transaction & release it on commit. But I don't think that is possible as gfxd transactions
+         * are distributed , with different threads doing transactions.
+         * Also the asynch thread keeps acquiring & releasing the write lock for a while because
+         * it was seen that even tx thread , when generating UUID was doing it out without tx state set,
+         * as result that operation is deemed as non tx & it tries to acquire readlock in AbstractRegionMap.
+         * So if the asynch thread does not release the write lock periodically,
+         * the tx thread gets indirectly blocked at the UUID generation path,
+         * causing shutdown to happen after 5 minutes, with transaction uncompleted.
+         */
+
         // wait in a loop for Transactions to be empty
         TXManagerImpl txManager = DiskStoreImpl.this.cache.getTxManager();
         // wait for 5 minutes for tx to be empty , then just close?
