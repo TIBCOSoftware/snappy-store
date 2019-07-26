@@ -67,6 +67,12 @@ public interface ExternalCatalog {
   void removeTableIfExists(String schema, String table, boolean skipLocks);
 
   /**
+   * Removes a table from the external catalog. doesn't drop policies
+   * or base tables
+   */
+  void removeTableUnsafeIfExists(String schema, String table, boolean forceDrop);
+
+  /**
    * Returns the schema in which this catalog is created
    */
   String catalogSchemaName();

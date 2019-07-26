@@ -1639,6 +1639,27 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
   }
 
+  public static void REMOVE_METASTORE_ENTRY(String fqtn, Boolean forceDrop) throws SQLException {
+    String schema;
+    String table;
+    int dotIndex;
+    // NULL table name is illegal
+    if (fqtn == null) {
+      throw Util.generateCsSQLException(SQLState.ENTITY_NAME_MISSING);
+    }
+
+    if ((dotIndex = fqtn.indexOf('.')) >= 0) {
+      schema = fqtn.substring(0, dotIndex);
+      table = fqtn.substring(dotIndex + 1);
+    } else {
+      schema = Misc.getDefaultSchemaName(ConnectionUtil.getCurrentLCC());
+      table = fqtn;
+    }
+    ExternalCatalog catalog = Misc.getMemStore().getExistingExternalCatalog();
+    catalog.removeTableUnsafeIfExists(schema, table, forceDrop);
+    CallbackFactoryProvider.getStoreCallbacks().registerCatalogSchemaChange();
+  }
+
   private static void assignBucketsToPartitions(final PartitionedRegion pr) {
     ExecutorService executor = pr.getCache().getDistributionManager()
         .getFunctionExcecutor();
