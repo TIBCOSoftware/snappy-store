@@ -196,8 +196,10 @@ public abstract class BufferAllocator implements Closeable {
   protected static int expandedSize(int currentUsed, int required) {
     final long minRequired = (long)currentUsed + required;
     // increase the size by 50%
+    //// max word boundary: 2147483640
+    int maxSize = ((Integer.MAX_VALUE - 7) >>> 3) << 3;
     final int newLength = (int)Math.min(Math.max((currentUsed * 3) >>> 1L,
-        minRequired), Integer.MAX_VALUE - 1);
+        minRequired), maxSize);
     if (newLength >= minRequired) {
       return newLength;
     } else {

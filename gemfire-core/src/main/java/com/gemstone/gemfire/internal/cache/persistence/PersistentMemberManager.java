@@ -30,8 +30,10 @@ import com.gemstone.gemfire.distributed.internal.MembershipListener;
 import com.gemstone.gemfire.distributed.internal.ProfileListener;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.util.TransformUtils;
+import jdk.nashorn.internal.runtime.linker.LinkerCallSite;
 
 /**
  * @author dsmith
@@ -44,7 +46,10 @@ public class PersistentMemberManager {
   private final LogWriterI18n logger;
   private Map<PersistentMemberPattern, PendingRevokeListener> pendingRevokes 
       = new HashMap<PersistentMemberPattern, PendingRevokeListener>();
-  
+
+  private final Set<PersistentMemberPattern> doNotWait = new HashSet();
+  private volatile boolean unblockNonHostingBuckets = false;
+
   private static final Object TOKEN = new Object();
   
   public PersistentMemberManager(LogWriterI18n logger) {
@@ -63,6 +68,16 @@ public class PersistentMemberManager {
     }
   }
 
+  public boolean doNotWaitOnMember(PersistentMemberID id) {
+    synchronized (this) {
+      for (PersistentMemberPattern p : this.doNotWait) {
+        if (p.matches(id))
+          return true;
+      }
+    }
+    return false;
+  }
+
   public void unblockMemberForPattern(PersistentMemberPattern pattern) {
     synchronized (this) {
       for (MemberRevocationListener listener : revocationListeners) {
@@ -70,7 +85,15 @@ public class PersistentMemberManager {
           listener.unblock();
         }
       }
+      if (pattern != null)
+        this.doNotWait.add(pattern);
+
+      this.unblockNonHostingBuckets = true;
     }
+  }
+
+  public boolean unblockNonHostingBuckets() {
+    return this.unblockNonHostingBuckets;
   }
 
   /**
@@ -124,6 +147,7 @@ public class PersistentMemberManager {
   public Map<String, Set<PersistentMemberID>> getWaitingRegions() {
     synchronized(this) {
       Map<String, Set<PersistentMemberID>> missingMemberIds = new HashMap<String, Set<PersistentMemberID>>();
+
       for(MemberRevocationListener listener : revocationListeners) {
         String regionPath = listener.getRegionPath();
         Set<PersistentMemberID> ids = listener.getMissingMemberIds();
@@ -170,6 +194,15 @@ public class PersistentMemberManager {
   
   public boolean isRevoked(String regionPath, PersistentMemberID id) {
     for(PersistentMemberPattern member : revokedMembers.keySet()) {
+      if(member.matches(id)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public boolean isUnblocked(PersistentMemberID id) {
+    for(PersistentMemberPattern member : doNotWait) {
       if(member.matches(id)) {
         return true;
       }

@@ -196,7 +196,9 @@ public final class TXState implements TXStateInterface {
    * Denotes the state of this TXState.
    */
   static enum State {
-    OPEN,
+    OPEN {
+      public boolean isOpen() { return true;}
+    },
     FINISH_STARTED,
     COMMIT_PHASE1_DONE {
       @Override
@@ -231,6 +233,10 @@ public final class TXState implements TXStateInterface {
     }
 
     public boolean isClosed() {
+      return false;
+    }
+
+    public boolean isOpen() {
       return false;
     }
   }
@@ -710,6 +716,10 @@ public final class TXState implements TXStateInterface {
   @Override
   public final boolean isInProgress() {
     return !this.state.isClosed();
+  }
+
+  public final boolean isOpen() {
+    return this.state.isOpen();
   }
 
   @Override

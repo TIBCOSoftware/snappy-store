@@ -2019,6 +2019,8 @@ public final class TXManagerImpl implements CacheTransactionManager,
     return this.hostedTXStates.containsKey(txId);
   }
 
+  public boolean hasHostedTransactions() {return !this.hostedTXStates.isEmpty();}
+
   public TXStateProxy getHostedTXState(TXId txId) {
     return this.hostedTXStates.get(txId);
   }

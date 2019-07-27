@@ -70,7 +70,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
   private volatile Set<PersistentStateListener> listeners = Collections.emptySet();
   protected final LogWriterI18n logger;
   private DiskRegionStats stats;
-  private PersistentMemberManager memberManager;
+  protected PersistentMemberManager memberManager;
   private ProfileChangeListener listener;
   private volatile boolean initialized;
   private volatile boolean shouldUpdatePersistentView;
@@ -88,6 +88,9 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
 
   private boolean DISALLOW_CLUSTER_RESTART_CHECK = Boolean.getBoolean(
       "gemfire.DISALLOW_CLUSTER_RESTART_CHECK");
+
+  private boolean IGNORE_CONFLICTING_PERSISTENT_DISK_STORE_CHECK = Boolean.getBoolean(
+          "gemfire.IGNORE_CONFLICTING_PERSISTENT_DISK_STORES");
 
   public static final boolean TRACE = Boolean.getBoolean("gemfire.TRACE_PERSISTENCE_ADVISOR");
   
@@ -134,9 +137,8 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
     }
     
     advisor.addProfileChangeListener(listener);
-    
     Set<PersistentMemberPattern> revokedMembers = this.memberManager.addRevocationListener(listener, storage.getRevokedMembers());
-    
+
     for(PersistentMemberPattern pattern : revokedMembers) {
       memberRevoked(pattern);
     }
@@ -763,18 +765,22 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
       }
 
       if(myId != null && stateOnPeer == null) {
+
         // This can be made as a property to make sure doesn't happen always
-        if (true) {
+        if (IGNORE_CONFLICTING_PERSISTENT_DISK_STORE_CHECK) {
           // There is nothign on remote or remote has same diskId.
           if (remoteId == null || (remoteId.diskStoreId == myId.diskStoreId)) {
             // continue..
             advisor.getLogWriter().info(LocalizedStrings.DEBUG,
                 "Continuing as my DiskStoreId is same as remoteID" + member + " remoteID " + remoteId);
           } else {
-            String message = LocalizedStrings.CreatePersistentRegionProcessor_SPLIT_DISTRIBUTED_SYSTEM
+            return false;
+          }
+        }
+        else {
+          String message = LocalizedStrings.CreatePersistentRegionProcessor_SPLIT_DISTRIBUTED_SYSTEM
                 .toLocalizedString(regionPath, member, remoteId, myId);
             throw new ConflictingPersistentDataException(message);
-          }
         }
       }
       if(myId != null && stateOnPeer == PersistentMemberState.EQUAL) {
@@ -783,7 +789,7 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
       
       //TODO prpersist - This check might not help much. The other member changes it's ID when it
       //comes back online.
-      if(remoteId != null) {
+      if(remoteId != null && !IGNORE_CONFLICTING_PERSISTENT_DISK_STORE_CHECK) {
         PersistentMemberState remoteState = getPersistedStateOfMember(remoteId);
         if(remoteState == PersistentMemberState.OFFLINE) {
           String message = LocalizedStrings.CreatePersistentRegionProcessor_INITIALIZING_FROM_OLD_DATA
@@ -1268,6 +1274,16 @@ public class PersistenceAdvisorImpl implements PersistenceAdvisor {
         try {
           setWaitingOnMembers(allMembersToWaitFor, offlineMembersToWaitFor);
           while(!membershipChanged && !isClosed && !doNotWait) {
+            // In case bucket is not hosted here, persistent id will be null
+            // if unblock is executed by user then don't wait
+            if (getPersistentID() == null) {
+              if (memberManager.unblockNonHostingBuckets())
+                doNotWait = true;
+            } else {
+              if (memberManager.doNotWaitOnMember(getPersistentID()))
+                doNotWait = true;
+            }
+
             checkInterruptedByShutdownAll();
             advisor.getAdvisee().getCancelCriterion().checkCancelInProgress(null);
             this.wait(100);

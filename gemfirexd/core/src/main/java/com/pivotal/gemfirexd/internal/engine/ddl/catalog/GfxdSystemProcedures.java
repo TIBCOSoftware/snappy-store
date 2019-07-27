@@ -2742,7 +2742,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     context.setSnapshotTXState(state);
     tc.setActiveTXState(state, false);
     // If already then throw exception?
-    if (GemFireXDUtils.TraceProcedureExecution) {
+    if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
           "In useSnapshotTXId() for txid " + txId1 +
               " txState : " + state + " connId" + tc.getConnectionID());

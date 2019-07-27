@@ -62,6 +62,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.GemFireIOException;
+import com.gemstone.gemfire.InternalGemFireException;
 import com.gemstone.gemfire.StatisticsFactory;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.Cache;
@@ -77,6 +78,7 @@ import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.FileUtil;
+import com.gemstone.gemfire.internal.InsufficientDiskSpaceException;
 import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.NanoTimer;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl.StaticSystemCallbacks;
@@ -102,9 +104,12 @@ import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.OffHeapHelper;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
+import com.gemstone.gemfire.internal.shared.NativeCalls;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gnu.trove.THashMap;
 import com.gemstone.gnu.trove.THashSet;
+import com.gemstone.org.jgroups.oswego.concurrent.ReadWriteLock;
+import com.gemstone.org.jgroups.oswego.concurrent.WriterPreferenceReadWriteLock;
 import org.eclipse.collections.impl.set.mutable.primitive.IntHashSet;
 import org.eclipse.collections.impl.set.mutable.primitive.LongHashSet;
 
@@ -268,6 +273,11 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
   // /** delay for slowing down recovery, for testing purposes only */
   // public static volatile int recoverDelay = 0;
 
+  // extra reserved space to be freed when standby oplog is in use,
+  // so that renaming of standby oplog, & creation of krf idxkrf etc is successful
+  // This is to be specified in MB & default is 1 GB , i.e 1024 MB
+  private static int extraReservedSpace = Integer.getInteger("gemfire.EXTRA_RESERVED_SPACE", 1024);
+
   // //////////////////// Instance Fields ///////////////////////
 
   private final GemFireCacheImpl cache;
@@ -329,7 +339,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
    * disk store from multiple threads, but I think at some point we should use
    * this to prevent any other ops from completing during the close operation.
    */
-  private final AtomicReference<DiskAccessException> diskException = new AtomicReference<DiskAccessException>();
+  // private final AtomicReference<DiskAccessException> diskException = new AtomicReference<DiskAccessException>();
 
   private boolean isForInternalUse;
 
@@ -347,6 +357,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
   private static final int INDEXRECOVERY_DONE = 3;
   private final int[] indexRecoveryState;
   private final AtomicReference<Throwable> indexRecoveryFailure;
+  private final ReadWriteLock diskStoreLock = new WriterPreferenceReadWriteLock();
 
   // private boolean isThreadWaitingForSpace = false;
 
@@ -406,6 +417,14 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
    * and a new current sorter will be created.
    */
   private final DiskBlockSortManager sortManager;
+
+  final long standbyCrfSize;
+  final long standbyDrfSize;
+  final Oplog.OplogFile standByCrf;
+  final Oplog.OplogFile standByDrf;
+  final Oplog.OplogFile extraSpaceReservedFile;
+  final static String standByFileName = "StandByOplog";
+  final static String extraReservedSpaceFileName = "standByReserve";
 
   // ///////////////////// Constructors /////////////////////////
 
@@ -503,6 +522,38 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     }
 
     File[] dirs = getDiskDirs();
+    // first delete any existing stand by oplog file in any of the disk dirs.
+    for (File dir: dirs) {
+      if (dir.exists()) {
+        File []  standByOplogFiles = dir.listFiles((File parent, String fileName) ->
+          fileName.equals(standByFileName + ".crf")
+            || fileName.equals(standByFileName + ".drf")
+            || fileName.equals(extraReservedSpaceFileName + ".oplog"));
+        for ( File f: standByOplogFiles) {
+          f.delete();
+        }
+      }
+    }
+
+    int crfPct = Integer.getInteger("gemfire.CRF_MAX_PERCENTAGE", 90);
+    if (crfPct > 100 || crfPct < 0) {
+      crfPct = 90;
+    }
+
+    this.standbyCrfSize = (long)(maxOplogSizeInBytes * (crfPct / 100.0)) ;
+    this.standbyDrfSize = maxOplogSizeInBytes - this.standbyCrfSize;
+    // now create the stand by oplog file space in the 0th directory
+    this.extraSpaceReservedFile = new Oplog.OplogFile();
+    this.standByCrf = new Oplog.OplogFile();
+    this.standByDrf = new Oplog.OplogFile();
+    File crfFile = new File(dirs[0], standByFileName +".crf");
+    File drfFile = new File(dirs[0], standByFileName +".drf");
+    File extraSpaceFile = new File(dirs[0], extraReservedSpaceFileName +".oplog");
+
+    // preblow the file
+    this.standByCrf.f = crfFile;
+    this.standByDrf.f = drfFile;
+    this.extraSpaceReservedFile.f = extraSpaceFile;
     int[] dirSizes = getDiskDirSizes();
     int length = dirs.length;
     this.directories = new DirectoryHolder[length];
@@ -517,6 +568,14 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
         tempMaxDirSize = dirSizes[i];
       }
     }
+    try {
+      this.preblow(this.standByCrf, this.standbyCrfSize, directories[0]);
+      this.preblow(this.standByDrf, this.standbyDrfSize, directories[0]);
+      this.preblow(this.extraSpaceReservedFile, extraReservedSpace * 1024 * 1024, directories[0]);
+    } catch (IOException ioe) {
+      throw new IllegalStateException("Unable to reserve space for stand by oplogs");
+    }
+
     // stored in bytes
     this.maxDirSize = tempMaxDirSize * 1024 * 1024;
     this.infoFileDirIndex = 0;
@@ -568,6 +627,94 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
   }
 
   ////////////////////// Instance Methods //////////////////////
+
+  void preblow(Oplog.OplogFile olf, long maxSize, DirectoryHolder dirHolder) throws IOException {
+    GemFireCacheImpl.StaticSystemCallbacks ssc = GemFireCacheImpl.getInternalProductCallbacks();
+    if (!this.isOfflineCompacting() && ssc != null && ssc.isSnappyStore() && ssc.isAccessor()
+      && this.getName().equals(GemFireCacheImpl.getDefaultDiskStoreName())) {
+      logger.warning(LocalizedStrings.SHOULDNT_INVOKE, "Pre blow is invoked on Accessor Node.");
+      return;
+    }
+
+//     logger.info(LocalizedStrings.DEBUG, "DEBUG preblow(" + maxSize + ")  dirAvailSpace=" + this.dirHolder.getAvailableSpace());
+    long availableSpace = dirHolder.getAvailableSpace();
+    if (availableSpace >= maxSize) {
+      try {
+        NativeCalls.getInstance().preBlow(olf.f.getAbsolutePath(), maxSize,
+          (DiskStoreImpl.PREALLOCATE_OPLOGS && !DiskStoreImpl.SET_IGNORE_PREALLOCATE));
+      }
+      catch (IOException ioe) {
+        logger.warning(LocalizedStrings.DEBUG, "Could not pregrow oplog to " + maxSize + " because: " + ioe);
+//         if (this.logger.warningEnabled()) {
+//           this.logger.warning(
+//               LocalizedStrings.Oplog_OPLOGCREATEOPLOGEXCEPTION_IN_PREBLOWING_THE_FILE_A_NEW_RAF_OBJECT_FOR_THE_OPLOG_FILE_WILL_BE_CREATED_WILL_NOT_BE_PREBLOWNEXCEPTION_STRING_IS_0,
+//               ioe, null);
+//         }
+        // I don't think I need any of this. If setLength throws then
+        // the file is still ok.
+        // I need this on windows. I'm seeing this in testPreblowErrorCondition:
+// Caused by: java.io.IOException: The parameter is incorrect
+// 	at sun.nio.ch.FileDispatcher.write0(Native Method)
+// 	at sun.nio.ch.FileDispatcher.write(FileDispatcher.java:44)
+// 	at sun.nio.ch.IOUtil.writeFromNativeBuffer(IOUtil.java:104)
+// 	at sun.nio.ch.IOUtil.write(IOUtil.java:60)
+// 	at sun.nio.ch.FileChannelImpl.write(FileChannelImpl.java:206)
+// 	at com.gemstone.gemfire.internal.cache.Oplog.flush(Oplog.java:3377)
+// 	at com.gemstone.gemfire.internal.cache.Oplog.flushAll(Oplog.java:3419)
+        /*
+        {
+          String os = System.getProperty("os.name");
+          if (os != null) {
+	    if (os.indexOf("Windows") != -1) {
+              olf.raf.close();
+              olf.RAFClosed = true;
+              if (!olf.f.delete() && olf.f.exists()) {
+                throw new DiskAccessException(LocalizedStrings.Oplog_COULD_NOT_DELETE__0_.toLocalizedString(olf.f.getAbsolutePath()), getParent());
+              }
+              if (logger.fineEnabled()) {
+                logger.fine("recreating operation log file " + olf.f);
+              }
+              olf.raf = new RandomAccessFile(olf.f, SYNC_WRITES ? "rwd" : "rw");
+              olf.RAFClosed = false;
+            }
+          }
+        }
+        */
+        closeAndDeleteAfterEx(ioe, olf);
+        throw new InsufficientDiskSpaceException(
+          LocalizedStrings.Oplog_PreAllocate_Failure.toLocalizedString(
+            olf.f.getAbsolutePath(), maxSize), ioe, this);
+      }
+    }
+    // TODO: Perhaps the test flag is not requierd here. Will re-visit.
+    else if (DiskStoreImpl.PREALLOCATE_OPLOGS && !DiskStoreImpl.SET_IGNORE_PREALLOCATE) {
+      throw new InsufficientDiskSpaceException(
+        LocalizedStrings.Oplog_PreAllocate_Failure.toLocalizedString(
+          olf.f.getAbsolutePath(), maxSize), new IOException(
+        "not enough space left to pre-blow, available=" + availableSpace
+          + ", required=" + maxSize), this);
+    }
+  }
+
+  void closeAndDeleteAfterEx(IOException ex, Oplog.OplogFile olf) {
+    if (olf == null) {
+      return;
+    }
+
+    if (olf.raf != null) {
+      try {
+        olf.raf.close();
+      } catch (IOException e) {
+        logger.warning(LocalizedStrings.Oplog_Close_Failed, olf.f.getAbsolutePath(), e);
+      }
+    }
+    olf.RAFClosed = true;
+    if (!olf.f.delete() && olf.f.exists()) {
+      throw new DiskAccessException(
+        LocalizedStrings.Oplog_COULD_NOT_DELETE__0_.toLocalizedString(olf.f
+          .getAbsolutePath()), ex, this);
+    }
+  }
 
   public void setUsedForInternalUse() {
     this.isForInternalUse = true;
@@ -1821,7 +1968,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     }
 
     public void run() {
-      DiskAccessException fatalDae = null;
+
       // logger.info(LocalizedStrings.DEBUG, "DEBUG maxAsyncItems=" +
       // maxAsyncItems
       // + " asyncTime=" + getTimeInterval());
@@ -1914,9 +2061,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
       } catch (DiskAccessException dae) {
         // logger.info(LocalizedStrings.DEBUG, "DEBUG: dae", dae);
         boolean okToIgnore = dae.getCause() instanceof ClosedByInterruptException;
-        if (!okToIgnore || !stopFlusher) {
-          fatalDae = dae;
-        }
+
       } catch (CancelException ignore) {
         // logger.info(LocalizedStrings.DEBUG, "DEBUG", ignore);
         // the above checkCancelInProgress will throw a CancelException
@@ -1928,7 +2073,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
           throw new GemFireIOException("Exception encountered in flusher thread: " + t.getMessage(), t);
         }
         logger.severe(LocalizedStrings.DiskStoreImpl_FATAL_ERROR_ON_FLUSH, t);
-        fatalDae = new DiskAccessException(LocalizedStrings.DiskStoreImpl_FATAL_ERROR_ON_FLUSH.toLocalizedString(), t, DiskStoreImpl.this);
+
       } finally {
         // logger.info(LocalizedStrings.DEBUG,
         // "DEBUG: Async writer thread stopped stopFlusher=" + stopFlusher);
@@ -1940,9 +2085,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
           flusherThreadTerminated = true;
           stopFlusher = true; // set this before calling handleDiskAccessException
           // or it will hang
-          if (fatalDae != null) {
-            handleDiskAccessException(fatalDae, true);
-          }
+
         }
       }
     }
@@ -3320,7 +3463,6 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
                 new Object[] { getName(), ids });
           }
         } catch (DiskAccessException dae) {
-          handleDiskAccessException(dae, true);
           throw dae;
         } catch (KillCompactorException ex) {
           if (logger.fineEnabled()) {
@@ -3773,68 +3915,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     this.drMap.remove(regionId);
   }
 
-  void handleDiskAccessException(final DiskAccessException dae,
-      final boolean stopBridgeServers) {
-    boolean causedByRDE = LocalRegion.causedByRDE(dae);
 
-    // @todo is it ok for flusher and compactor to call this method if RDE?
-    // I think they need to keep working (for other regions) in this case.
-    if (causedByRDE) {
-      return;
-    }
-
-    // If another thread has already hit a DAE and is cleaning up, do nothing
-    if (!diskException.compareAndSet(null, dae)) {
-      return;
-    }
-
-    final ThreadGroup exceptionHandlingGroup = LogWriterImpl.createThreadGroup(
-        "Disk Store Exception Handling Group", cache.getLoggerI18n());
-
-    // Shutdown the regions and bridge servers in another thread, to make sure
-    // that we don't cause a deadlock because this thread is holding some lock
-    Thread thread = new Thread(exceptionHandlingGroup,
-        "Disk store exception handler") {
-      @Override
-      public void run() {
-        // first ask each region to handle the exception.
-        for (DiskRegion dr : DiskStoreImpl.this.drMap.values()) {
-          DiskExceptionHandler lr = dr.getExceptionHandler();
-          lr.handleDiskAccessException(dae, false);
-        }
-
-        // then stop the bridge server if needed
-        if (stopBridgeServers) {
-          LogWriterI18n logger = getCache().getLoggerI18n();
-          logger
-              .info(LocalizedStrings.LocalRegion_ATTEMPTING_TO_CLOSE_THE_BRIDGESERVERS_TO_INDUCE_FAILOVER_OF_THE_CLIENTS);
-          try {
-            getCache().stopServers();
-            // also close GemFireXD network servers to induce failover (#45651)
-            final StaticSystemCallbacks sysCb =
-              GemFireCacheImpl.FactoryStatics.systemCallbacks;
-            if (sysCb != null) {
-              sysCb.stopNetworkServers();
-            }
-            logger.info(LocalizedStrings
-                .LocalRegion_BRIDGESERVERS_STOPPED_SUCCESSFULLY);
-          } catch (Exception e) {
-            logger.error(LocalizedStrings
-                .LocalRegion_THE_WAS_A_PROBLEM_IN_STOPPING_BRIDGESERVERS_FAILOVER_OF_CLIENTS_IS_SUSPECT, e);
-          }
-        }
-
-        logger.error(LocalizedStrings
-            .LocalRegion_A_DISKACCESSEXCEPTION_HAS_OCCURED_WHILE_WRITING_TO_THE_DISK_FOR_DISKSTORE_0_THE_DISKSTORE_WILL_BE_CLOSED,
-                DiskStoreImpl.this.getName(), dae);
-
-        // then close this disk store
-        onClose();
-        close();
-      }
-    };
-    thread.start();
-  }
 
   private final String name;
   private final boolean autoCompact;
@@ -5260,4 +5341,128 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
       resetAsyncQueueCapacity();
     }
   }
+
+  public void acquireDiskStoreReadLock() {
+    try {
+      this.diskStoreLock.readLock().acquire();
+    } catch(InterruptedException ie) {
+      this.stopper.checkCancelInProgress(ie);
+      Thread.currentThread().interrupt();
+      throw new InternalGemFireException(ie);
+    }
+  }
+
+  public void releaseDiskStoreReadLock() {
+    this.diskStoreLock.readLock().release();
+  }
+
+  public void acquireDiskStoreWriteLock() {
+    try {
+      this.diskStoreLock.writeLock().acquire();
+    } catch (InterruptedException ie) {
+      this.stopper.checkCancelInProgress(ie);
+      Thread.currentThread().interrupt();
+      throw new InternalGemFireException(ie);
+    }
+  }
+
+  public void releaseDiskStoreWriteLock() {
+    this.diskStoreLock.writeLock().release();
+  }
+
+  void shutdownDiskStoreAndAffiliatedRegions(DiskAccessException dae) {
+    final ThreadGroup exceptionHandlingGroup = LogWriterImpl.createThreadGroup(
+      "Disk Store Exception Handling Group", cache.getLoggerI18n());
+
+    // Shutdown the regions and bridge servers in another thread, to make sure
+    // that we don't cause a deadlock because this thread is holding some lock
+    Thread thread = new Thread(exceptionHandlingGroup,
+      "Disk store exception handler") {
+      @Override
+      public void run() {
+
+        /**
+         * Each DiskStore at the time of creation , also creates files to be used as standby oplog.
+         * Once the standby oplog is switched by any thread , an asynch thread is started in the diskstore whose
+         * task is to shut down the diskstore & the regions using diskstore, after taking a write lock.
+         * This will ensure that any non tx thread is done using disk store & once the write lock is taken by
+         * the closing asynch thread, no new non tx threads can come.
+         * The asynch thread code, waits for 5 minutes, to allow any transactions to get over before shutting down
+         * the diskstore. The ideal way would have been for tx thread to take diskstore read lock at the start of
+         * transaction & release it on commit. But I don't think that is possible as gfxd transactions
+         * are distributed , with different threads doing transactions.
+         * Also the asynch thread keeps acquiring & releasing the write lock for a while because
+         * it was seen that even tx thread , when generating UUID was doing it out without tx state set,
+         * as result that operation is deemed as non tx & it tries to acquire readlock in AbstractRegionMap.
+         * So if the asynch thread does not release the write lock periodically,
+         * the tx thread gets indirectly blocked at the UUID generation path,
+         * causing shutdown to happen after 5 minutes, with transaction uncompleted.
+         */
+
+        // wait in a loop for Transactions to be empty
+        TXManagerImpl txManager = DiskStoreImpl.this.cache.getTxManager();
+        // wait for 5 minutes for tx to be empty , then just close?
+        int count = 0;
+        DiskStoreImpl.this.acquireDiskStoreWriteLock();
+        while(txManager.hasHostedTransactions()) {
+          DiskStoreImpl.this.releaseDiskStoreWriteLock();
+          try {
+            Thread.sleep(20000);
+            ++count;
+            if (count == 15) {
+              // just proceed to close!!?
+              DiskStoreImpl.this.acquireDiskStoreWriteLock();
+              break;
+            }
+          } catch (InterruptedException ie) {
+            DiskStoreImpl.this.acquireDiskStoreWriteLock();
+            // just proceed to close!!?
+            break;
+          }
+          DiskStoreImpl.this.acquireDiskStoreWriteLock();
+        }
+        try {
+        // first ask each region to handle the exception.
+        for (DiskRegion dr : DiskStoreImpl.this.drMap.values()) {
+          DiskExceptionHandler lr = dr.getExceptionHandler();
+          lr.handleDiskAccessException(dae, false);
+        }
+
+        // then stop the bridge server if needed
+
+          LogWriterI18n logger = getCache().getLoggerI18n();
+          logger
+            .info(LocalizedStrings.LocalRegion_ATTEMPTING_TO_CLOSE_THE_BRIDGESERVERS_TO_INDUCE_FAILOVER_OF_THE_CLIENTS);
+          try {
+            getCache().stopServers();
+            // also close GemFireXD network servers to induce failover (#45651)
+            final StaticSystemCallbacks sysCb =
+              GemFireCacheImpl.FactoryStatics.systemCallbacks;
+            if (sysCb != null) {
+              sysCb.stopNetworkServers();
+            }
+            logger.info(LocalizedStrings
+              .LocalRegion_BRIDGESERVERS_STOPPED_SUCCESSFULLY);
+          } catch (Exception e) {
+            logger.error(LocalizedStrings
+              .LocalRegion_THE_WAS_A_PROBLEM_IN_STOPPING_BRIDGESERVERS_FAILOVER_OF_CLIENTS_IS_SUSPECT, e);
+          }
+
+
+        logger.error(LocalizedStrings
+            .LocalRegion_A_DISKACCESSEXCEPTION_HAS_OCCURED_WHILE_WRITING_TO_THE_DISK_FOR_DISKSTORE_0_THE_DISKSTORE_WILL_BE_CLOSED,
+          DiskStoreImpl.this.getName(), dae);
+
+        // then close this disk store
+        onClose();
+        close();
+      } finally {
+          DiskStoreImpl.this.releaseDiskStoreWriteLock();
+        }
+     }
+    };
+    thread.start();
+
+  }
+
 }
