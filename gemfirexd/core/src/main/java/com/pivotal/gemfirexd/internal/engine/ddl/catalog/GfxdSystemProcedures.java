@@ -2391,6 +2391,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     Region region = Misc.getRegionForTable(tableName, true);
     lcc.setExecuteLocally(bucketSet, region, false, null);
     lcc.setBucketRetentionForLocalExecution(retain);
+
   }
 
   /**
@@ -2464,6 +2465,40 @@ public class GfxdSystemProcedures extends SystemProcedures {
         }
       }
     }
+  }
+
+  public static Boolean ACQUIRE_REGION_LOCK(String lockName)
+          throws SQLException {
+    LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+    GemFireTransaction tr = (GemFireTransaction) lcc.getTransactionExecute();
+    PartitionedRegion.RegionLock lock = PartitionedRegion.getRegionLock
+            (lockName, GemFireCacheImpl.getExisting());
+    try {
+      lock.lock();
+    } catch (Throwable t) {
+      throw TransactionResourceImpl.wrapInSQLException(t);
+    }
+    if (lock != null)
+      tr.addTableLock(lock);
+
+    return true;
+  }
+
+  public static Boolean RELEASE_REGION_LOCK(String lockName)
+      throws SQLException {
+    LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+    GemFireTransaction tr = (GemFireTransaction) lcc.getTransactionExecute();
+    PartitionedRegion.RegionLock lock = tr.getRegionLock(lockName);
+    if (lock != null) {
+      try {
+        lock.unlock();
+      } catch (Throwable t) {
+        throw TransactionResourceImpl.wrapInSQLException(t);
+      }
+      tr.removeTableLock(lock);
+    }
+    // we should ignore exceptions.
+    return true;
   }
 
   public static void COMMIT_SNAPSHOT_TXID(String txId, String rolloverTable)
@@ -2707,7 +2742,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
     context.setSnapshotTXState(state);
     tc.setActiveTXState(state, false);
     // If already then throw exception?
-    if (GemFireXDUtils.TraceProcedureExecution) {
+    if (GemFireXDUtils.TraceExecution) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
           "In useSnapshotTXId() for txid " + txId1 +
               " txState : " + state + " connId" + tc.getConnectionID());

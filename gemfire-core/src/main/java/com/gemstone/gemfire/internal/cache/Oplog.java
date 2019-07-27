@@ -138,8 +138,8 @@ public final class Oplog implements CompactableOplog {
   /** boolean marked true when this oplog is closed * */
   private volatile boolean closed;
 
-  private final OplogFile crf = new OplogFile();
-  private final OplogFile drf = new OplogFile();
+  private final OplogFile crf;
+  private final OplogFile drf;
   private final KRFile krf = new KRFile();
   private final OplogIndex idxkrf;
   final ConcurrentTHashSet<SortedIndexContainer> indexesWritten =
@@ -157,6 +157,8 @@ public final class Oplog implements CompactableOplog {
    * The oplog set this oplog is part of 
    */
   private final PersistentOplogSet oplogSet;
+
+  private final boolean isStandByOplog;
 
   /** oplog id * */
   protected final long oplogId;
@@ -675,6 +677,22 @@ public final class Oplog implements CompactableOplog {
   static final int LARGE_BUFFER_SIZE = 128 * 1024;
 
   // ///////////////////// Constructors ////////////////////////
+
+  /**
+   * Creates new <code>Oplog</code> for the given region.
+   *
+   * @param oplogId
+   *          int identifying the new oplog
+   * @param dirHolder
+   *          The directory in which to create new Oplog
+   *
+   * @throws DiskAccessException
+   *           if the disk files can not be initialized
+   */
+  Oplog(long oplogId, PersistentOplogSet parent, DirectoryHolder dirHolder) {
+    this(oplogId, parent, dirHolder, null);
+  }
+
   /**
    * Creates new <code>Oplog</code> for the given region.
    * 
@@ -686,10 +704,13 @@ public final class Oplog implements CompactableOplog {
    * @throws DiskAccessException
    *           if the disk files can not be initialized
    */
-  Oplog(long oplogId, PersistentOplogSet parent, DirectoryHolder dirHolder) {
+  private Oplog(long oplogId, PersistentOplogSet parent, DirectoryHolder dirHolder, Version dataVersion) {
     if (oplogId > DiskId.MAX_OPLOG_ID) {
       throw new IllegalStateException("Too many oplogs. The oplog id can not exceed " + DiskId.MAX_OPLOG_ID);
     }
+    this.drf = new OplogFile();
+    this.crf = new OplogFile();
+    this.isStandByOplog = false;
     this.oplogId = oplogId;
     this.oplogSet = parent;
     this.parent = parent.getParent();
@@ -697,10 +718,33 @@ public final class Oplog implements CompactableOplog {
     // Pretend we have already seen the first record.
     // This will cause a large initial record to force a switch
     // which allows the maxDirSize to be checked.
-    this.firstRecord = false; 
+    this.firstRecord = false;
+    this.dataVersion = dataVersion;
     this.logger = getParent().getCache().getLoggerI18n();
     this.opState = new OpState();
-    long maxOplogSizeParam = getParent().getMaxOplogSizeInBytes();
+    try {
+    // Minimum Required Ops to be logged into oplog
+    OpState commonDiskRecordOp = createDiskStoreRecordOp();
+    OpState[] commonGFEVersionRecordOp = createGemfireVersionRecordOp();
+    OpState drfRVVRecordOp = createRVVRecordOp(true);
+    OpState crfRVVRecordOp = createRVVRecordOp(false);
+
+    OpState [] allOps = new OpState[2 + commonGFEVersionRecordOp.length];
+    allOps[0] = commonDiskRecordOp;
+    for (int i = 1; i < 1 + commonGFEVersionRecordOp.length; ++i) {
+      allOps[i] = commonGFEVersionRecordOp[i - 1];
+    }
+
+    long commonMinSize = commonDiskRecordOp.size;
+    for(OpState op : commonGFEVersionRecordOp) {
+      commonMinSize += op.size;
+    }
+    long minDrfSize = commonMinSize + drfRVVRecordOp.size;
+    long minCrfSize = commonMinSize + crfRVVRecordOp.size;
+
+
+    long maxOplogSizeParam = getParent().getMaxOplogSizeInBytes() + minCrfSize + minDrfSize;
+
     long availableSpace = this.dirHolder.getAvailableSpace();
     if (availableSpace < maxOplogSizeParam) {
       if (DiskStoreImpl.PREALLOCATE_OPLOGS && !DiskStoreImpl.SET_IGNORE_PREALLOCATE) {
@@ -730,7 +774,7 @@ public final class Oplog implements CompactableOplog {
       }
       this.maxOplogSize = maxOplogSizeParam;
     }
-    setMaxCrfDrfSize();
+    setMaxCrfDrfSize(minCrfSize, minDrfSize);
     this.stats = getParent().getStats();
     this.compactOplogs = getParent().getAutoCompact();
 
@@ -740,9 +784,11 @@ public final class Oplog implements CompactableOplog {
                              oplogSet.getPrefix()
                              + n + "_" + oplogId);
     this.idxkrf = new OplogIndex(this);
-    try {
-      createDrf(null);
-      createCrf(null);
+
+      allOps[allOps.length -1] = drfRVVRecordOp;
+      createDrf(null, allOps);
+      allOps[allOps.length -1] = crfRVVRecordOp;
+      createCrf(null, allOps);
       // open krf for offline compaction
       if (getParent().isOfflineCompacting()) {
         krfFileCreate();
@@ -759,11 +805,12 @@ public final class Oplog implements CompactableOplog {
     }
   }
 
+
   /**
    * Asif: A copy constructor used for creating a new oplog based on the
    * previous Oplog. This constructor is invoked only from the function
    * switchOplog
-   * 
+   *
    * @param oplogId
    *          integer identifying the new oplog
    * @param dirHolder
@@ -772,61 +819,94 @@ public final class Oplog implements CompactableOplog {
    *          The previous oplog
    */
   private Oplog(long oplogId, DirectoryHolder dirHolder, Oplog prevOplog) {
+    this(oplogId, prevOplog.oplogSet, dirHolder, prevOplog.getDataVersionIfOld());
+  }
+
+
+  // Asif: StandBy oplog to be used in case of disk full, to allow
+  //  rollback logging etc.
+  // When this oplog is used, it is assumed that before the switch to
+  // this oplog, the compactor thread will be stopped. This means that
+  // it is guaranteed that previous oplog will not be compacted
+  //( as the compactor is stopped while the previous oplog is not yet
+  // added for compaction. This means that fixed data like RVV etc
+  //  need not be added to standby oplog (atleast that is my understanding))
+  private Oplog(long oplogId, DirectoryHolder dirHolder, Oplog prevOplog, boolean forOverloading) {
+    this.isStandByOplog = true;
     if (oplogId > DiskId.MAX_OPLOG_ID) {
       throw new IllegalStateException("Too many oplogs. The oplog id can not exceed " + DiskId.MAX_OPLOG_ID);
     }
+
     this.oplogId = oplogId;
     this.parent = prevOplog.parent;
     this.oplogSet = prevOplog.oplogSet;
     this.dirHolder = dirHolder;
     this.opState = new OpState();
     this.logger = prevOplog.logger;
-    long maxOplogSizeParam = getParent().getMaxOplogSizeInBytes();
-    long availableSpace = this.dirHolder.getAvailableSpace();
-    if (prevOplog.compactOplogs) {
-      this.maxOplogSize = maxOplogSizeParam;
-    } else {
-      if (availableSpace < maxOplogSizeParam) {
-        this.maxOplogSize = availableSpace;
-        if (this.logger.warningEnabled()) {
-          logger.warning(LocalizedStrings.DEBUG, "Reducing maxOplogSize to " + availableSpace + " because that is all the room remaining in the directory.");
-        }
-      } else {
-        this.maxOplogSize = maxOplogSizeParam;
-      }
-    }
-    setMaxCrfDrfSize();
+    this.maxCrfSize = this.getParent().standbyCrfSize;
+    this.maxDrfSize = this.getParent().standbyDrfSize;
+    this.maxOplogSize = this.getParent().getMaxOplogSizeInBytes();
     this.stats = prevOplog.stats;
     this.compactOplogs = prevOplog.compactOplogs;
     // copy over the previous Oplog's data version since data is not being
     // transformed at this point
     this.dataVersion = prevOplog.getDataVersionIfOld();
-
     this.closed = false;
+    // release the extra reserved space to allow room for renaming file & creation of krf,
+    // idxkrf files.
+    this.parent.closeAndDeleteAfterEx(null, this.parent.extraSpaceReservedFile);
     String n = getParent().getName();
     this.diskFile = new File(this.dirHolder.getDir(),
-                             oplogSet.getPrefix()
-                             + n + "_" + oplogId);
+      oplogSet.getPrefix()
+        + n + "_" + oplogId);
     this.idxkrf = new OplogIndex(this);
     try {
-      createDrf(prevOplog);
-      createCrf(prevOplog);
-      // open krf for offline compaction
-      if (getParent().isOfflineCompacting()) {
-        krfFileCreate();
+      String drfFilePath = this.diskFile.getPath() + DRF_FILE_EXT;
+      File f = new File(drfFilePath);
+      this.parent.standByDrf.f.renameTo(f);
+      this.drf = this.parent.standByDrf;
+      this.drf.raf = new RandomAccessFile(f,
+        getParent().getSyncWrites() ? "rwd" : "rw");
+      this.drf.RAFClosed = false;
+      this.drf.channel = this.drf.raf.getChannel();
+      // assuming that the logic ogf compaction & preblow will ensure that if file will not cause
+      // disk access exception as it is kept compacted & preblown
+      this.oplogSet.drfCreate(this.oplogId);
+      this.drf.outputStream = createOutputStream(prevOplog,
+        prevOplog != null ? prevOplog.drf : null, this.drf);
+
+      String crfFilePath = this.diskFile.getPath() + CRF_FILE_EXT;
+      f = new File(crfFilePath);
+      this.parent.standByCrf.f.renameTo(f);
+      this.crf = this.parent.standByCrf;
+      this.crf.raf = new RandomAccessFile(f,
+        getParent().getSyncWrites() ? "rwd" : "rw");
+      this.crf.RAFClosed = false;
+      this.crf.channel = this.crf.raf.getChannel();
+      oplogSet.crfCreate(this.oplogId);
+      if (this.crf.outputStream != null) {
+        this.crf.outputStream.close();
       }
-    }
-    catch (Exception ex) {
+      this.crf.outputStream = createOutputStream(prevOplog,
+        prevOplog != null ? prevOplog.crf : null, this.crf);
+
+
+      this.stats.incOpenOplogs();
+    }catch (Exception ex) {
       close();
-      
       getParent().getCancelCriterion().checkCancelInProgress(ex);
       if (ex instanceof DiskAccessException) {
         throw (DiskAccessException) ex;
       }
-      logger.warning(LocalizedStrings.Oplog_FAILED_CREATING_OPERATION_LOG_BECAUSE_0, ex);
       throw new DiskAccessException(LocalizedStrings.Oplog_FAILED_CREATING_OPERATION_LOG_BECAUSE_0.toLocalizedString(ex), getParent());
     }
+
   }
+
+
+
+
+
   
   public void replaceIncompatibleEntry(DiskRegionView dr, DiskEntry old, DiskEntry repl) {
     boolean useNextOplog = false;
@@ -875,12 +955,45 @@ public final class Oplog implements CompactableOplog {
     return Collections.unmodifiableCollection(this.regionMap.values());
   }
 
+  private OpState createDiskStoreRecordOp() {
+    OpState op = new OpState();
+    op.initialize(getParent().getDiskStoreID());
+    return op;
+  }
+
+
   private void writeDiskStoreRecord(OplogFile olf) throws IOException {
     this.opState = new OpState();
     this.opState.initialize(getParent().getDiskStoreID());
     writeOpLogBytes(olf, false, true); // fix for bug 41928
     olf.currSize += getOpStateSize();
     this.dirHolder.incrementTotalOplogSize(getOpStateSize());
+  }
+
+  private OpState[] createGemfireVersionRecordOp() {
+    if (this.gfversion == null) {
+      this.gfversion = Version.CURRENT;
+    }
+    Version dataVersion = getDataVersionIfOld();
+    if (dataVersion == null) {
+      dataVersion = Version.CURRENT;
+    }
+    // if gfversion and dataVersion are not same, then write a special token
+    // version and then write both, else write gfversion as before
+    // this is for backward compatibility with 7.0
+
+    if (this.gfversion == dataVersion) {
+      OpState op = new OpState();
+      op.initialize(this.gfversion.ordinal());
+      return new OpState[]{op};
+    }
+    else {
+      OpState[] ops = new OpState[]{new OpState(), new OpState(), new OpState()};
+      ops[0].initialize(Version.TOKEN.ordinal());
+      ops[1].initialize(this.gfversion.ordinal());
+      ops[2].initialize(dataVersion.ordinal());
+      return ops;
+    }
   }
 
   private void writeGemfireVersionRecord(OplogFile olf) throws IOException {
@@ -917,6 +1030,12 @@ public final class Oplog implements CompactableOplog {
 
   public final Version currentRecoveredGFVersion() {
     return this.gfversion;
+  }
+
+  private OpState createRVVRecordOp(boolean writeGCRVV) throws  IOException {
+    OpState op = new OpState();
+    op.initialize(getParent().getAllDiskRegions(), writeGCRVV);
+    return op;
   }
   
   /**
@@ -989,6 +1108,9 @@ public final class Oplog implements CompactableOplog {
     if (oplogId > DiskId.MAX_OPLOG_ID) {
       throw new IllegalStateException("Too many oplogs. The oplog id can not exceed " + DiskId.MAX_OPLOG_ID);
     }
+    this.drf = new OplogFile();
+    this.crf = new OplogFile();
+    this.isStandByOplog = false;
     this.isRecovering = true;
     this.oplogId = oplogId;
     this.parent = parent.getParent();
@@ -997,7 +1119,7 @@ public final class Oplog implements CompactableOplog {
     this.opState = new OpState();
     long maxOplogSizeParam = getParent().getMaxOplogSizeInBytes();
     this.maxOplogSize = maxOplogSizeParam;
-    setMaxCrfDrfSize();
+    setMaxCrfDrfSize(0,0);
     this.stats = getParent().getStats();
     this.compactOplogs = getParent().getAutoCompact();
     this.closed = true;
@@ -1147,93 +1269,9 @@ public final class Oplog implements CompactableOplog {
     this.hasDeletes.set(v);
   }
 
-  private void closeAndDeleteAfterEx(IOException ex, OplogFile olf) {
-    if (olf == null) {
-      return;
-    }
-    
-    if (olf.raf != null) {
-      try {
-        olf.raf.close();
-      } catch (IOException e) {
-        logger.warning(LocalizedStrings.Oplog_Close_Failed, olf.f.getAbsolutePath(), e);
-      }
-    }
-    olf.RAFClosed = true;
-    if (!olf.f.delete() && olf.f.exists()) {
-      throw new DiskAccessException(
-          LocalizedStrings.Oplog_COULD_NOT_DELETE__0_.toLocalizedString(olf.f
-              .getAbsolutePath()), ex, getParent());
-    }
-  }
-  
-  private void preblow(OplogFile olf, long maxSize) throws IOException {
-    GemFireCacheImpl.StaticSystemCallbacks ssc = GemFireCacheImpl.getInternalProductCallbacks();
-    if (!getParent().isOfflineCompacting() && ssc != null && ssc.isSnappyStore() && ssc.isAccessor()
-        && this.getParent().getName().equals(GemFireCacheImpl.getDefaultDiskStoreName())) {
-      logger.warning(LocalizedStrings.SHOULDNT_INVOKE, "Pre blow is invoked on Accessor Node.");
-      return;
-    }
 
-//     logger.info(LocalizedStrings.DEBUG, "DEBUG preblow(" + maxSize + ")  dirAvailSpace=" + this.dirHolder.getAvailableSpace());
-    long availableSpace = this.dirHolder.getAvailableSpace();
-    if (availableSpace >= maxSize) {
-      try {
-        NativeCalls.getInstance().preBlow(olf.f.getAbsolutePath(), maxSize,
-            (DiskStoreImpl.PREALLOCATE_OPLOGS && !DiskStoreImpl.SET_IGNORE_PREALLOCATE));
-      }
-      catch (IOException ioe) {
-        logger.warning(LocalizedStrings.DEBUG, "Could not pregrow oplog to " + maxSize + " because: " + ioe);
-//         if (this.logger.warningEnabled()) {
-//           this.logger.warning(
-//               LocalizedStrings.Oplog_OPLOGCREATEOPLOGEXCEPTION_IN_PREBLOWING_THE_FILE_A_NEW_RAF_OBJECT_FOR_THE_OPLOG_FILE_WILL_BE_CREATED_WILL_NOT_BE_PREBLOWNEXCEPTION_STRING_IS_0,
-//               ioe, null);
-//         }
-        // I don't think I need any of this. If setLength throws then
-        // the file is still ok.
-        // I need this on windows. I'm seeing this in testPreblowErrorCondition:
-// Caused by: java.io.IOException: The parameter is incorrect
-// 	at sun.nio.ch.FileDispatcher.write0(Native Method)
-// 	at sun.nio.ch.FileDispatcher.write(FileDispatcher.java:44)
-// 	at sun.nio.ch.IOUtil.writeFromNativeBuffer(IOUtil.java:104)
-// 	at sun.nio.ch.IOUtil.write(IOUtil.java:60)
-// 	at sun.nio.ch.FileChannelImpl.write(FileChannelImpl.java:206)
-// 	at com.gemstone.gemfire.internal.cache.Oplog.flush(Oplog.java:3377)
-// 	at com.gemstone.gemfire.internal.cache.Oplog.flushAll(Oplog.java:3419)
-        /*
-        {
-          String os = System.getProperty("os.name");
-          if (os != null) {
-	    if (os.indexOf("Windows") != -1) {
-              olf.raf.close();
-              olf.RAFClosed = true;
-              if (!olf.f.delete() && olf.f.exists()) {
-                throw new DiskAccessException(LocalizedStrings.Oplog_COULD_NOT_DELETE__0_.toLocalizedString(olf.f.getAbsolutePath()), getParent());
-              }
-              if (logger.fineEnabled()) {
-                logger.fine("recreating operation log file " + olf.f);
-              }
-              olf.raf = new RandomAccessFile(olf.f, SYNC_WRITES ? "rwd" : "rw");
-              olf.RAFClosed = false;
-            }
-          }
-        }
-        */
-        closeAndDeleteAfterEx(ioe, olf);
-        throw new InsufficientDiskSpaceException(
-            LocalizedStrings.Oplog_PreAllocate_Failure.toLocalizedString(
-                olf.f.getAbsolutePath(), maxSize), ioe, getParent());
-      }
-    }
-    // TODO: Perhaps the test flag is not requierd here. Will re-visit.
-    else if (DiskStoreImpl.PREALLOCATE_OPLOGS && !DiskStoreImpl.SET_IGNORE_PREALLOCATE) {
-      throw new InsufficientDiskSpaceException(
-          LocalizedStrings.Oplog_PreAllocate_Failure.toLocalizedString(
-              olf.f.getAbsolutePath(), maxSize), new IOException(
-              "not enough space left to pre-blow, available=" + availableSpace
-                  + ", required=" + maxSize), getParent());
-    }
-  }
+  
+
 
   private void unpreblow(OplogFile olf, long maxSize) {
     synchronized (/*olf*/this.lock) {
@@ -1260,14 +1298,14 @@ public final class Oplog implements CompactableOplog {
    * 
    * @throws IOException
    */
-  private void createCrf(Oplog prevOplog) throws IOException
+  private void createCrf(Oplog prevOplog, OpState[] fixedOps) throws IOException
   {
     File f = new File(this.diskFile.getPath() + CRF_FILE_EXT);
     if (logger.fineEnabled()) {
       logger.fine("Creating operation log file " + f);
     }
     this.crf.f = f;
-    preblow(this.crf, getMaxCrfSize());
+    this.parent.preblow(this.crf, getMaxCrfSize(), this.dirHolder);
     this.crf.raf = new RandomAccessFile(f,
         getParent().getSyncWrites() ? "rwd" : "rw");
     this.crf.RAFClosed = false;
@@ -1287,6 +1325,14 @@ public final class Oplog implements CompactableOplog {
     }
 
     this.stats.incOpenOplogs();
+    for(OpState op : fixedOps) {
+      this.opState = op;
+      writeOpLogBytes(this.crf, false, true); // fix for bug 41928
+      this.crf.currSize += getOpStateSize();
+      this.dirHolder.incrementTotalOplogSize(getOpStateSize());
+    }
+    this.opState.reset();
+    /*
     writeDiskStoreRecord(this.crf);
     writeGemfireVersionRecord(this.crf);    
     writeRVVRecord(this.crf, false);
@@ -1296,6 +1342,7 @@ public final class Oplog implements CompactableOplog {
     //even if we have a large RVV, we can still write up to
     //max-oplog-size bytes to this oplog.
     this.maxCrfSize += this.crf.currSize;
+    */
   }
 
   private static OplogFile.FileChannelOutputStream createOutputStream(
@@ -1320,7 +1367,7 @@ public final class Oplog implements CompactableOplog {
    * 
    * @throws IOException
    */
-  private void createDrf(Oplog prevOplog) throws IOException
+  private void createDrf(Oplog prevOplog, OpState[] fixedOps) throws IOException
   {
     String drfFilePath = this.diskFile.getPath() + DRF_FILE_EXT;
     File f = new File(drfFilePath);
@@ -1328,7 +1375,7 @@ public final class Oplog implements CompactableOplog {
     if (logger.fineEnabled()) {
       logger.fine("Creating operation log file " + f);
     }
-    preblow(this.drf, getMaxDrfSize());
+    this.parent.preblow(this.drf, getMaxDrfSize(), this.dirHolder);
     this.drf.raf = new RandomAccessFile(f,
         getParent().getSyncWrites() ? "rwd" : "rw");
     this.drf.RAFClosed = false;
@@ -1342,10 +1389,21 @@ public final class Oplog implements CompactableOplog {
                                 getFileType(this.drf),
                                 getParent().getName()});
     }
+    for(OpState op : fixedOps) {
+      this.opState = op;
+      writeOpLogBytes(this.drf, false, true); // fix for bug 41928
+      this.drf.currSize += getOpStateSize();
+      this.dirHolder.incrementTotalOplogSize(getOpStateSize());
+    }
+    this.opState.reset();
+    /*
     writeDiskStoreRecord(this.drf);
     writeGemfireVersionRecord(this.drf);
     writeRVVRecord(this.drf, true);
+    */
   }
+
+
   
   /**
    * Returns the <code>DiskStoreStats</code> for this oplog
@@ -4202,6 +4260,7 @@ public final class Oplog implements CompactableOplog {
       System.out.println("basicCreate KRF_DEBUG");
       Thread.sleep(1000);
     }
+    InsufficientDiskSpaceException idse = null;
     synchronized (this.lock) { // TODO soplog perf analysis shows this as a contention point
       //synchronized (this.crf) {
       final int valueLength = value.size();
@@ -4219,12 +4278,22 @@ public final class Oplog implements CompactableOplog {
         useNextOplog = true;
       }
       else if (temp > getMaxCrfSize() && !isFirstRecord()) {
-        switchOpLog(dr, getOpStateSize(), entry, false);
+        if (this.isStandByOplog) {
+              // throw DiskAccessException to initiate rollback
+         throw new InsufficientDiskSpaceException("Even Standby Oplog cannot accomodate this operation!!",
+                null, this.getParent());
+        }
+        try {
+          switchOpLog(dr, getOpStateSize(), entry, false);
+        } catch (InsufficientDiskSpaceException idseTemp) {
+          idse = idseTemp;
+        }
         // reset the OpState without releasing the value
         this.opState.reset();
         useNextOplog = true;
       }
       else {
+        throwExceptionIfStandByOplogInOpenTx();
         if (this.lockedForKRFcreate) {
           throw new CacheClosedException("The disk store is closed.");
         }
@@ -4235,12 +4304,18 @@ public final class Oplog implements CompactableOplog {
         // are written in the same order as they are created.
         // This allows us to not encode the oplogEntryId explicitly in the record
         long createOplogEntryId = getOplogSet().newOplogEntryId();
-        id.setKeyId(createOplogEntryId);
+
 
         // startPosForSynchOp = this.crf.currSize;
         // Asif: Allow it to be added to the OpLOg so increase the
         // size of currenstartPosForSynchOpt oplog
         int dataLength = getOpStateSize();
+
+        // do the io while holding lock so that switch can set doneAppending
+        // Write the data to the opLog for the synch mode
+        startPosForSynchOp = writeOpLogBytes(this.crf, async, true);
+        // set the entry id & oplog Id after successfully writing the create to oplog
+        id.setKeyId(createOplogEntryId);
         // Asif: It is necessary that we set the
         // Oplog ID here without releasing the lock on object as we are
         // writing to the file after releasing the lock. This can cause
@@ -4251,7 +4326,7 @@ public final class Oplog implements CompactableOplog {
         // This is because a compactor thread will iterate over the entries &
         // use only those which have OplogID equal to that of Oplog being
         // compacted without taking any lock. A lock is taken only if the
-        // entry is a potential candidate. 
+        // entry is a potential candidate.
         // Further the compactor may delete the file as a compactor thread does
         // not require to take any shared/exclusive lock at DiskStoreImpl
         // or Oplog level.
@@ -4264,9 +4339,6 @@ public final class Oplog implements CompactableOplog {
         // writer of previous
         // oplog can interfere with the current oplog.
         id.setOplogId(getOplogId());
-        // do the io while holding lock so that switch can set doneAppending
-        // Write the data to the opLog for the synch mode
-        startPosForSynchOp = writeOpLogBytes(this.crf, async, true);
 //         if (this.crf.currSize != startPosForSynchOp) {
 //           LogWriterI18n l = parent.getOwner().getCache().getLoggerI18n();
 //            logger.info(LocalizedStrings.DEBUG, "currSize=" + this.crf.currSize
@@ -4361,11 +4433,30 @@ public final class Oplog implements CompactableOplog {
       }
       Assert.assertTrue(this != getOplogSet().getChild());
       getOplogSet().getChild().basicCreate(dr, entry, value, userBits, async);
+      if (idse != null) {
+        this.parent.closeCompactor(false);
+        this.parent.stopAsyncFlusher();
+        throw idse;
+      }
     }
     else {
       if (LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER) {
         CacheObserverHolder.getInstance()
           .afterSettingOplogOffSet(startPosForSynchOp);
+      }
+    }
+  }
+
+  private void throwExceptionIfStandByOplogInOpenTx() {
+    if (this.isStandByOplog) {
+      TXManagerImpl txMgr = (TXManagerImpl)this.getParent().getCache().getCacheTransactionManager();
+      if (txMgr != null) {
+        TXStateInterface tsi = txMgr.getTXState();
+        if (tsi != null && tsi.isOpen()) {
+          // throw DiskAccessException to initiate rollback
+          throw new InsufficientDiskSpaceException("Standby Oplog is in use, transaction should be rolled back",
+            null, this.getParent());
+        }
       }
     }
   }
@@ -4475,23 +4566,32 @@ public final class Oplog implements CompactableOplog {
     } else {
       getOplogSet().addInactive(this);
     }
-
+    InsufficientDiskSpaceException idse = null;
     try {
-      DirectoryHolder nextDirHolder = getOplogSet().getNextDir(
-          lengthOfOperationCausingSwitch);
-      Oplog newOplog = new Oplog(this.oplogId + 1, nextDirHolder, this);
-      newOplog.firstRecord = true;
-      getOplogSet().setChild(newOplog);
 
-      finishedAppending();
-      
-      //Defer the unpreblow and close of the RAF. We saw pauses in testing from
-      //unpreblow of the drf, maybe because it is freeing pages that were
-      //preallocated. Close can pause if another thread is calling force on the
-      //file channel - see 50254. These operations should be safe to defer,
-      //a concurrent read will synchronize on the oplog and use or reopen the RAF
-      //as needed.
-      getParent().executeDelayedExpensiveWrite(new Runnable() {
+      try {
+        DirectoryHolder nextDirHolder = getOplogSet().getNextDir(
+          lengthOfOperationCausingSwitch);
+        Oplog newOplog = new Oplog(this.oplogId + 1, nextDirHolder, this);
+        newOplog.firstRecord = true;
+        getOplogSet().setChild(newOplog);
+
+        finishedAppending();
+      } catch (InsufficientDiskSpaceException temp) {
+        idse = temp;
+        if (this.isStandByOplog) {
+          throw new DiskAccessException("Even stand by oplog exhausted !!!?. handle it later");
+        }
+        DirectoryHolder standByHolder = this.getParent().directories[0];
+        Oplog newOplog = new Oplog(this.oplogId + 1, standByHolder, this, true);
+        newOplog.firstRecord = true;
+        this.doneAppending = true;
+        getOplogSet().setChild(newOplog);
+        // start the asynch thread to shut down the system
+        this.parent.shutdownDiskStoreAndAffiliatedRegions(temp);
+      }
+
+      Runnable delayedExpensiveWriter = new Runnable() {
         public void run() {
           // need to truncate crf and drf if their actual size is less than their pregrow size
           unpreblow(Oplog.this.crf, getMaxCrfSize());
@@ -4518,9 +4618,21 @@ public final class Oplog implements CompactableOplog {
               Oplog.this.drf.RAFClosed = true;
             }
           }
-          
+
         }
-      });
+      };
+      
+      //Defer the unpreblow and close of the RAF. We saw pauses in testing from
+      //unpreblow of the drf, maybe because it is freeing pages that were
+      //preallocated. Close can pause if another thread is calling force on the
+      //file channel - see 50254. These operations should be safe to defer,
+      //a concurrent read will synchronize on the oplog and use or reopen the RAF
+      //as needed.
+      if (idse != null) {
+        delayedExpensiveWriter.run();
+      } else {
+        getParent().executeDelayedExpensiveWrite(delayedExpensiveWriter);
+      }
 
       
       // offline compaction will not execute create Krf in the task, becasue
@@ -4528,11 +4640,12 @@ public final class Oplog implements CompactableOplog {
       if (getParent().isOfflineCompacting()) {
         krfClose(true, false);
       } else {
-        if (blocking) {
-          createKrf(false);
-        }
-        else {
-          createKrfAsync();
+        if (idse == null) {
+          if (blocking) {
+            createKrf(false);
+          } else {
+            createKrfAsync();
+          }
         }
       }
     }
@@ -4546,7 +4659,7 @@ public final class Oplog implements CompactableOplog {
       // ensure that the Oplog has been compacted or not.
       getOplogSet().removeOplog(this.oplogId) ;
       throw dae;
-    }    
+    }
   }
 
   /**
@@ -5437,6 +5550,11 @@ public final class Oplog implements CompactableOplog {
         // Compactor always says to do an async basicModify so that its writes
         // will be grouped. This is not a true async write; just a grouped one.
         basicModify(dr, entry, value, userBits, true, true);
+        if (getOplogSet().child.isStandByOplog) {
+          throw new InsufficientDiskSpaceException("Terminating compactor immediately. Abort rolling", null,
+            getParent());
+        }
+
       }
       catch (IOException ex) {
         exceptionOccured = true;
@@ -5483,6 +5601,7 @@ public final class Oplog implements CompactableOplog {
       System.out.println("basicModify KRF_DEBUG");
       Thread.sleep(1000);
     }
+    InsufficientDiskSpaceException idse = null;
     synchronized (this.lock) {
 //     synchronized (this.crf) {
       if (getOplogSet().getChild() != this) {
@@ -5497,13 +5616,23 @@ public final class Oplog implements CompactableOplog {
         assert adjustment > 0;
         long temp = (this.crf.currSize + adjustment);
         if (temp > getMaxCrfSize() && !isFirstRecord()) {
-          switchOpLog(dr, adjustment, entry, false);
+          if (this.isStandByOplog) {
+            // throw DiskAccessException to initiate rollback
+            throw new InsufficientDiskSpaceException("Even Standby Oplog cannot accomodate this operation!!",
+              null, this.getParent());
+          }
+          try {
+            switchOpLog(dr, adjustment, entry, false);
+          } catch (InsufficientDiskSpaceException idseTemp) {
+            idse = idseTemp;
+          }
           // reset the OpState without releasing the value
           this.opState.reset();
           // we can't reuse it since it contains variable length data
           useNextOplog = true;
         }
         else {
+          throwExceptionIfStandByOplogInOpenTx();
           if (this.lockedForKRFcreate) {
             throw new CacheClosedException("The disk store is closed.");
           }
@@ -5633,6 +5762,10 @@ public final class Oplog implements CompactableOplog {
       Assert.assertTrue(getOplogSet().getChild() != this);
       getOplogSet().getChild().basicModify(dr, entry, value, userBits, async,
                                          calledByCompactor);
+      if (idse != null) {
+        this.parent.closeCompactor(false);
+        this.parent.stopAsyncFlusher();
+      }
     }
     else {
       if (LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER) {
@@ -5963,13 +6096,15 @@ public final class Oplog implements CompactableOplog {
   private long getMaxDrfSize() {
     return this.maxDrfSize;
   }
-  private void setMaxCrfDrfSize() {
+  private void setMaxCrfDrfSize(long minCrfSize, long minDrfSize) {
     int crfPct = Integer.getInteger("gemfire.CRF_MAX_PERCENTAGE", 90);
     if (crfPct > 100 || crfPct < 0) {
       crfPct = 90;
     }
-    this.maxCrfSize = (long)(this.maxOplogSize * (crfPct / 100.0));
+    long variableAvailable = this.maxOplogSize - (minCrfSize + minDrfSize);
+    this.maxCrfSize = (long)(variableAvailable * (crfPct / 100.0)) + minCrfSize;
     this.maxDrfSize = this.maxOplogSize - this.maxCrfSize;
+    assert this.maxDrfSize > minDrfSize;
   }
   /**
    * 
@@ -5997,14 +6132,25 @@ public final class Oplog implements CompactableOplog {
       System.out.println("basicRemove KRF_DEBUG");
       Thread.sleep(1000);
     }
+    InsufficientDiskSpaceException idse = null;
     synchronized (this.lock) {
       if (getOplogSet().getChild() != this) {
         useNextOplog = true;
       } else if ((this.drf.currSize + MAX_DELETE_ENTRY_RECORD_BYTES)
                  > getMaxDrfSize() && !isFirstRecord()) {
-        switchOpLog(dr, MAX_DELETE_ENTRY_RECORD_BYTES, entry, false);
+        if (this.isStandByOplog) {
+          // throw DiskAccessException to initiate rollback
+          throw new InsufficientDiskSpaceException("Even Standby Oplog cannot accomodate this operation!!",
+            null, this.getParent());
+        }
+        try {
+          switchOpLog(dr, MAX_DELETE_ENTRY_RECORD_BYTES, entry, false);
+        } catch (InsufficientDiskSpaceException idseTemp) {
+          idse = idseTemp;
+        }
         useNextOplog = true;
       } else {
+        throwExceptionIfStandByOplogInOpenTx();
         if (this.lockedForKRFcreate) {
           throw new CacheClosedException("The disk store is closed.");
         }
@@ -6094,6 +6240,10 @@ public final class Oplog implements CompactableOplog {
       }
       Assert.assertTrue(getOplogSet().getChild() != this);
       getOplogSet().getChild().basicRemove(dr, entry, async, isClear);
+      if (idse != null) {
+        this.parent.closeCompactor(false);
+        this.parent.stopAsyncFlusher();
+      }
     } else {
       if (LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER) {
         CacheObserverHolder.getInstance()

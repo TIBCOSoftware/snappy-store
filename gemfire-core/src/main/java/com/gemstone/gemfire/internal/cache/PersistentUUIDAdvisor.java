@@ -32,6 +32,7 @@ import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.Assert;
+import com.gemstone.gemfire.internal.InsufficientDiskSpaceException;
 
 /**
  * Persistent version of {@link VMIdAdvisor} that will persist UUIDs
@@ -84,6 +85,7 @@ public class PersistentUUIDAdvisor extends VMIdAdvisor {
   private volatile boolean persistingShortUUID;
   private final Object uuidLock = new Object();
   private final Object shortUUIDLock = new Object();
+  private boolean insufficientDiskSpace = false;
 
   protected PersistentUUIDAdvisor(InternalDistributedSystem sys,
       String fullPath, int uuidRecordInterval, LocalRegion forRegion) {
@@ -305,6 +307,9 @@ public class PersistentUUIDAdvisor extends VMIdAdvisor {
       // if UUID is being persisted then wait for it to be done first
       while (this.persistingUUID) {
         synchronized (this.uuidLock) {
+          if (this.insufficientDiskSpace) {
+            throw new InternalGemFireException("standby oplog in use, transaction needs to be aborted");
+          }
           if (!this.persistingUUID) {
             break;
           }
@@ -334,10 +339,17 @@ public class PersistentUUIDAdvisor extends VMIdAdvisor {
               getLogWriter().fine(
                   toString() + ": Persisting generated local UUID=" + update);
             }
-            getUUIDPersistentRegion().put(getFullPath() + UUID_KEY_SUFFIX,
+            try {
+              getUUIDPersistentRegion().put(getFullPath() + UUID_KEY_SUFFIX,
                 update);
-            this.persistingUUID = false;
-            this.uuidLock.notifyAll();
+            } catch (InsufficientDiskSpaceException idse) {
+              this.insufficientDiskSpace = true;
+              super.compareAndSetSequenceId(update, expect, reset);
+              throw idse;
+            } finally {
+              this.persistingUUID = false;
+              this.uuidLock.notifyAll();
+            }
             return true;
           }
           else {

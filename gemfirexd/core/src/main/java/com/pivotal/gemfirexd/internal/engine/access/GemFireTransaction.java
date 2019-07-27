@@ -38,14 +38,11 @@ import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.GemFireException;
 import com.gemstone.gemfire.cache.IsolationLevel;
 import com.gemstone.gemfire.cache.TransactionFlag;
-import com.gemstone.gemfire.internal.cache.Checkpoint;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion.RecoveryLock;
-import com.gemstone.gemfire.internal.cache.TXId;
-import com.gemstone.gemfire.internal.cache.TXManagerImpl;
 import com.gemstone.gemfire.internal.cache.TXManagerImpl.TXContext;
-import com.gemstone.gemfire.internal.cache.TXStateInterface;
-import com.gemstone.gemfire.internal.cache.TXStateProxy;
 import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
@@ -115,6 +112,7 @@ import com.pivotal.gemfirexd.internal.iapi.types.DataValueFactory;
 import com.pivotal.gemfirexd.internal.iapi.util.ByteArray;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnectionContext;
+import com.pivotal.gemfirexd.internal.impl.jdbc.TransactionResourceImpl;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
 import com.pivotal.gemfirexd.internal.impl.store.access.conglomerate.ConglomerateUtil;
 import com.pivotal.gemfirexd.internal.impl.store.access.sort.ArraySorter;
@@ -153,6 +151,9 @@ public final class GemFireTransaction extends RawTransaction implements
 
   /** {@link GfxdLockSet} used for locking in this transaction */
   private final GfxdLockSet lockSet;
+
+  /** Used for table locking while doing write ops on column table in smart-conn mode.*/
+  private final Set<PartitionedRegion.RegionLock> tableLocks;
 
   /** {@link LogFactory} used to create {@link Logger}s for undo/redo logs */
   private final LogFactory logFactory;
@@ -362,6 +363,9 @@ public final class GemFireTransaction extends RawTransaction implements
     else {
       this.lockSet = compatibilitySpace;
     }
+
+    this.tableLocks = new HashSet();
+
     this.skipLocks = skipLocks;
     if (isTxExecute) {
       this.txManager = Misc.getGemFireCache().getCacheTransactionManager();
@@ -2873,6 +2877,9 @@ public final class GemFireTransaction extends RawTransaction implements
     releaseRegionLock();
     waitForPendingRC();
     releaseAllLocksOnly(force, removeRef);
+
+    if (force && removeRef)
+      releaseAllTableLocks();
   }
 
   private void waitForPendingRC() {
@@ -2891,6 +2898,26 @@ public final class GemFireTransaction extends RawTransaction implements
       if (lockSet.unlockAll(force, removeRef)) {
         // free any distributed lock resources after container drop
         lockSet.freeLockResources();
+      }
+    }
+
+    if (force && removeRef) {
+      releaseAllTableLocks();
+    }
+
+  }
+
+  private void releaseAllTableLocks() {
+    for (PartitionedRegion.RegionLock lock : this.tableLocks) {
+      if (GemFireXDUtils.TraceLock) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_LOCK,
+                "GemFireTransaction: releasing the table lock " + lock);
+      }
+      try {
+        lock.unlock();
+      } catch (Exception e) {
+        SanityManager.DEBUG_PRINT("warning: TableLock ", "Got exception while" +
+                " unlocking the table lock " + lock, e);
       }
     }
   }
@@ -2918,8 +2945,12 @@ public final class GemFireTransaction extends RawTransaction implements
       final TXStateInterface gemfireTx = TXManagerImpl.getCurrentSnapshotTXState();
 
       if (tx != null && tx != TXStateProxy.TX_NOT_SET && gemfireTx != tx) {
-        this.txManager.commit(tx, this.connectionID, TXManagerImpl.FULL_COMMIT,
-            null, false);
+        // don't commit as it may have reference to other one whereas gemfire tx is
+        // going to be used.
+        if (gemfireTx == null) {
+          this.txManager.commit(tx, this.connectionID, TXManagerImpl.FULL_COMMIT,
+                  null, false);
+        }
       }
       // now start tx for every operation.
       if (isolationLevel != IsolationLevel.NONE /*|| isSnapshotEnabled()*/) {
@@ -4103,6 +4134,27 @@ public final class GemFireTransaction extends RawTransaction implements
     }
     return null;
   }
+
+  public void addTableLock(PartitionedRegion.RegionLock lock) {
+    this.tableLocks.add(lock);
+  }
+
+  public PartitionedRegion.RegionLock getRegionLock(String lockName) {
+    for (PartitionedRegion.RegionLock lock : tableLocks) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_LOCK,
+              "The locks is " + lock + " and" +
+                      " the lockname is " + lock.getLockName());
+      if (lock.getLockName().equals(lockName)) {
+        return lock;
+      }
+    }
+    return null;
+  }
+
+  public void removeTableLock(PartitionedRegion.RegionLock lock) {
+    this.tableLocks.remove(lock);
+  }
+
   // ------------------------ Methods below are not yet used in GemFireXD
 
   public boolean anyoneBlocked() {

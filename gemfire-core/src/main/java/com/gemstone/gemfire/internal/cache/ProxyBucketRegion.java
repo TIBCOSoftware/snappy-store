@@ -22,6 +22,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.gemstone.gemfire.CancelCriterion;
@@ -421,8 +422,8 @@ public final class ProxyBucketRegion implements Bucket {
     }
   }
   
-  public void recoverFromDiskRecursively() {
-    recoverFromDisk();
+  public void recoverFromDiskRecursively(CountDownLatch bucketReceoverLatch) {
+    recoverFromDisk(bucketReceoverLatch);
     
     List<PartitionedRegion> colocatedWithList = ColocationHelper.getColocatedChildRegions(partitionedRegion);
     for(PartitionedRegion childPR : colocatedWithList) {
@@ -430,13 +431,13 @@ public final class ProxyBucketRegion implements Bucket {
         ProxyBucketRegion[] childBucketArray = childPR.getRegionAdvisor().getProxyBucketArray();
         if(childBucketArray != null) {
           ProxyBucketRegion childBucket = childBucketArray[getBucketId()];
-          childBucket.recoverFromDisk();
+          childBucket.recoverFromDisk(bucketReceoverLatch);
         }
       }
     }
   }
 
-  public void recoverFromDisk() {
+  public void recoverFromDisk(CountDownLatch bucketReceoverLatch) {
     LogWriterI18n logger = partitionedRegion.getLogWriterI18n();
     RuntimeException exception = null;
     if(logger.fineEnabled()) {
@@ -504,6 +505,10 @@ public final class ProxyBucketRegion implements Bucket {
       
       persistenceAdvisor.initializeMembershipView();
     } catch (DiskAccessException dae) {
+      // count down to make sure that if region is destroyed
+      // it doesn't wait for bucket recovery to finish.
+      bucketReceoverLatch.countDown();
+      // we will be closing this region and cache.
       this.partitionedRegion.handleDiskAccessException(dae, true);
       throw dae;
     }

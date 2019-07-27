@@ -1009,7 +1009,7 @@ public class PartitionedRegion extends LocalRegion implements
           Object[] prms = new Object[] { this.getFullPath(), colocatedWith,
               config.getColocatedWith() };
           DiskAccessException dae = new DiskAccessException(LocalizedStrings.LocalRegion_A_DISKACCESSEXCEPTION_HAS_OCCURED_WHILE_WRITING_TO_THE_DISK_FOR_REGION_0_THE_REGION_WILL_BE_CLOSED.toLocalizedString(this.getFullPath()), null, dsi);
-          dsi.handleDiskAccessException(dae, false);
+          dsi.shutdownDiskStoreAndAffiliatedRegions(dae);
           IllegalStateException ise = new IllegalStateException(
               LocalizedStrings.PartitionedRegion_FOR_REGION_0_ColocatedWith_1_SHOULD_NOT_BE_CHANGED_Previous_Configured_2.toString(prms));
           throw ise;
@@ -8097,6 +8097,10 @@ public class PartitionedRegion extends LocalRegion implements
       this.cache = cache;
       this.lockName = lockName;
       this.enableAlerts = enableAlerts;
+    }
+
+    public String getLockName() {
+      return this.lockName;
     }
 
     /**
