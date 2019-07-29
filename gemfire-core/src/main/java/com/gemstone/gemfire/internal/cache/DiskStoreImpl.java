@@ -576,8 +576,6 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
         throw new IllegalStateException("Unable to reserve space for stand by oplogs");
       }
     }
-
-
     // stored in bytes
     this.maxDirSize = tempMaxDirSize * 1024 * 1024;
     this.infoFileDirIndex = 0;
