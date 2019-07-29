@@ -431,10 +431,16 @@ public class TradeSecuritiesDMLStmt extends AbstractDMLStmt {
         if (se.getSQLState().equals("42502") && SQLTest.testSecurity) {
           Log.getLogWriter().info("Got expected no SELECT permission, continuing test");
           return;
+        } else if(SQLTest.isSnappyMode) {
+          if (alterTableDropColumn && se.getSQLState().equals("38000")) {
+            Log.getLogWriter().info(se.getMessage());
+            Log.getLogWriter().info("Got expected column not found exception, continuing test");
+            return;
         } else if (alterTableDropColumn && se.getSQLState().equals("42X04")) {
-          Log.getLogWriter().info("Got expected column not found exception, continuing test");
-          return;
+            Log.getLogWriter().info("Got expected column not found exception, continuing test");
+            return;
         } else SQLHelper.handleSQLException(se);
+        }
       }
       
       if (gfeRS != null)

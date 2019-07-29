@@ -1487,8 +1487,9 @@ public class TradeCustomersDMLStmt extends AbstractDMLStmt {
     for (int i=0 ; i<size ; i++) {
     try {
       stmt.addBatch((isPut ? "put" : "insert")  + " into trade.customers (cid, cust_name, since, addr, tid) values (" 
-          + cid[i] + ", '" + cust_name[i] + "' , '" + since[i]
-          + "' , '" + addr[i] + "'," + tid + ")");
+          + cid[i] + ", '" + cust_name[i] + "' , '" + since[i] + "' , " +
+          ((SQLPrms.isSnappyMode() && addr[i] == null) ? null : ("'" + addr[i] + "'")) +
+          "," + tid + ")");
         Log.getLogWriter().info("gemfire - batch " + (isPut ? "Putting" : "Inserting") + " into trade.customers CID:" + cid[i] + ",CUST_NAME:" + cust_name[i] +
               ",SINCE:" + since[i] + ",ADDR:" + addr[i] + ",TID:" + tid);
       }  catch (SQLException se) {

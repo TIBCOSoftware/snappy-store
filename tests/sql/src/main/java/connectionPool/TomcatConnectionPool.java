@@ -73,6 +73,8 @@ public class TomcatConnectionPool {
     catch(Exception e) {
       Log.getLogWriter().info("Got exception while getting connection using tomcat connection " +
           "pool");
+      throw new TestException("Got exception while getting connection using tomcat connection " +
+          "pool", e);
     }
     return conn;
   }

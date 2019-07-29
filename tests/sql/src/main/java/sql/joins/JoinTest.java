@@ -34,10 +34,10 @@ public class JoinTest extends SQLTest {
 		if (joinTest == null) {
 			joinTest = new JoinTest();
 			sqlTest = new SQLTest();
-			
-			PRObserver.installObserverHook();
-			PRObserver.initialize(RemoteTestModule.getMyVmid());
-		    
+			if(!SQLPrms.isSnappyMode()) {
+				PRObserver.installObserverHook();
+				PRObserver.initialize(RemoteTestModule.getMyVmid());
+			}
 		  joinTest.initialize();
 		}
   }
@@ -72,7 +72,7 @@ public class JoinTest extends SQLTest {
     
     //perform the opeartions
     new MultiTablesJoinStmt().query(dConn, gConn);
-
+    closeGFEConnection(gConn);
   }
 	
 	protected void createViews() {		

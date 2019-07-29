@@ -6917,7 +6917,11 @@ public class SQLTest {
     try {
       rs = gConn.createStatement().executeQuery(sql);
     } catch (SQLException se) {
-      if (se.getSQLState().equalsIgnoreCase("42X04") && alterTableDropColumn)
+      if(SQLTest.isSnappyMode){
+        if (se.getSQLState().equalsIgnoreCase("42000") && alterTableDropColumn)
+          log().info(se.getMessage());
+          log().info("Got expected exception for dropped column");
+      } else if (se.getSQLState().equalsIgnoreCase("42X04") && alterTableDropColumn)
         log().info("Got expected exception for dropped column");
       else
         SQLHelper.handleSQLException(se);
