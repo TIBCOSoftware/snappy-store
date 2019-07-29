@@ -778,7 +778,7 @@ public abstract class ResolverUtils extends ClientResolverUtils {
           + " consult documentation on upgrade path to use new hashing"
           + " scheme consistently for optimal performance.");
     }
-    Logger logger = ClientSharedUtils.getLogger();
+    Logger logger = ClientSharedUtils.getLogger(ResolverUtils.class);
     if (logger != null) {
     logger.warn("Using non-optimal pre 1.3.0.2 hashing scheme "
         + "due to old members or data files in the distributed system (#51381)."

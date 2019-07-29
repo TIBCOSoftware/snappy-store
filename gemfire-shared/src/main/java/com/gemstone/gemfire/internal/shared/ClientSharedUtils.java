@@ -1591,8 +1591,12 @@ public abstract class ClientSharedUtils {
     return log != null && log != DEFAULT_LOGGER();
   }
 
-  public static Logger getLogger() {
-    return LoggerFactory.getLogger(ClientSharedUtils.class);
+  public static Logger getLogger(Class<?> c) {
+    return LoggerFactory.getLogger(c);
+  }
+
+  private static Logger getLogger() {
+    return getLogger(ClientSharedUtils.class);
   }
 
   public static final long MAG_MASK = 0xFFFFFFFFL;
