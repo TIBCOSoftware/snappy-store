@@ -854,7 +854,9 @@ public final class Oplog implements CompactableOplog {
     this.closed = false;
     // release the extra reserved space to allow room for renaming file & creation of krf,
     // idxkrf files.
-    this.parent.closeAndDeleteAfterEx(null, this.parent.extraSpaceReservedFile);
+    if (this.parent.extraSpaceReservedFile != null) {
+      this.parent.closeAndDeleteAfterEx(null, this.parent.extraSpaceReservedFile);
+    }
     String n = getParent().getName();
     this.diskFile = new File(this.dirHolder.getDir(),
       oplogSet.getPrefix()
@@ -4578,17 +4580,21 @@ public final class Oplog implements CompactableOplog {
 
         finishedAppending();
       } catch (InsufficientDiskSpaceException temp) {
-        idse = temp;
-        if (this.isStandByOplog) {
-          throw new DiskAccessException("Even stand by oplog exhausted !!!?. handle it later");
+        if (DiskStoreImpl.reserveSpace) {
+          idse = temp;
+          if (this.isStandByOplog) {
+            throw new DiskAccessException("Even stand by oplog exhausted !!!?. handle it later");
+          }
+          DirectoryHolder standByHolder = this.getParent().directories[0];
+          Oplog newOplog = new Oplog(this.oplogId + 1, standByHolder, this, true);
+          newOplog.firstRecord = true;
+          this.doneAppending = true;
+          getOplogSet().setChild(newOplog);
+          // start the asynch thread to shut down the system
+          this.parent.shutdownDiskStoreAndAffiliatedRegions(temp);
+        } else {
+          throw temp;
         }
-        DirectoryHolder standByHolder = this.getParent().directories[0];
-        Oplog newOplog = new Oplog(this.oplogId + 1, standByHolder, this, true);
-        newOplog.firstRecord = true;
-        this.doneAppending = true;
-        getOplogSet().setChild(newOplog);
-        // start the asynch thread to shut down the system
-        this.parent.shutdownDiskStoreAndAffiliatedRegions(temp);
       }
 
       Runnable delayedExpensiveWriter = new Runnable() {
