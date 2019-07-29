@@ -37,8 +37,6 @@ package com.gemstone.gemfire.internal.shared.jna;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
@@ -47,6 +45,7 @@ import com.sun.jna.LastErrorException;
 import com.sun.jna.Native;
 import com.sun.jna.Platform;
 import com.sun.jna.Structure;
+import org.slf4j.Logger;
 
 /**
  * Implementation of {@link NativeCalls} for Linux platform.
@@ -474,8 +473,8 @@ final class LinuxNativeCalls extends POSIXNativeCalls {
       } catch (LastErrorException le) {
         // ignoring it as NFS mounted can give this exception
         // and we just want to retry to remove transient problem.
-        if (logger != null && logger.isLoggable(Level.FINE)) {
-          logger.fine("DEBUG isOnLocalFileSystem got ex = " + le + " msg = "
+        if (logger.isDebugEnabled()) {
+          logger.debug("DEBUG isOnLocalFileSystem got ex = " + le + " msg = "
               + le.getMessage());
         }
       }

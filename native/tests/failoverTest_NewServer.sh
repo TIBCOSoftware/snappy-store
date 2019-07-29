@@ -15,7 +15,7 @@ thrftLibPath=${distDir}/thrift-${THRIFT_VERSION}/lin64/lib
 boostLibPath=${distDir}/boost-${BOOST_VERSION}/lin64/lib
 snappClientLibPath=${_snappyNativeDir}/build-artifacts/lin/snappyclient/lin64/lib/debug
 
-LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${thrftLibPath}:${boostLibPath}:${snappClientLibPath}:${_snappyNativeDir}/Debug#!/bin/sh
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${thrftLibPath}:${boostLibPath}:${snappClientLibPath}:${_snappyNativeDir}/Debug
 
 export LD_LIBRARY_PATH
 

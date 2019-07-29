@@ -332,8 +332,8 @@ public abstract class LauncherBase {
             evictHeapStr.indexOf('=') + 1).trim());
       }
     }
-    if (jvmVendor != null &&
-        (jvmVendor.contains("Sun") || jvmVendor.contains("Oracle"))) {
+    if (jvmVendor != null && (jvmVendor.contains("Sun") ||
+        jvmVendor.contains("Oracle") || jvmVendor.contains("OpenJDK"))) {
       vmArgs.add("-XX:+UseParNewGC");
       vmArgs.add("-XX:+UseConcMarkSweepGC");
       vmArgs.add("-XX:CMSInitiatingOccupancyFraction=50");
