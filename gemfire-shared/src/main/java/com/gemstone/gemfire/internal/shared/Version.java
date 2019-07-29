@@ -276,7 +276,7 @@ public final class Version implements Comparable<Version> {
     } catch (ClassNotFoundException ignore) {
       // this is expected for clients so ignore
     } catch (Exception e) {
-      ClientSharedUtils.getLogger().warn(
+      ClientSharedUtils.getLogger(Version.class).warn(
           "Failed to set JGroupsVersion.CURRENT_ORDINAL: " + e);
     }
 

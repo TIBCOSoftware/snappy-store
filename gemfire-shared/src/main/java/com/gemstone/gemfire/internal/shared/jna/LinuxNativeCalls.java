@@ -452,7 +452,7 @@ final class LinuxNativeCalls extends POSIXNativeCalls {
    * return false even if it on local file system for now.
    */
   public synchronized boolean isOnLocalFileSystem(final String path) {
-    final Logger logger = ClientSharedUtils.getLogger();
+    final Logger logger = ClientSharedUtils.getLogger(getClass());
     if (!isStatFSEnabled) {
       return false;
     }

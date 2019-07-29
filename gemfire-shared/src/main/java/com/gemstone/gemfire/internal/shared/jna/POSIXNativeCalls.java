@@ -322,7 +322,7 @@ class POSIXNativeCalls extends NativeCalls {
   @Override
   public void preBlow(String path, long maxSize, boolean preAllocate)
       throws IOException {
-    final Logger logger = ClientSharedUtils.getLogger();
+    final Logger logger = ClientSharedUtils.getLogger(getClass());
     if (logger.isDebugEnabled()) {
       logger.debug("DEBUG preBlow called for path = " + path);
     }

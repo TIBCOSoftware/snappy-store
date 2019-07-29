@@ -173,7 +173,7 @@ public final class FinalizeHolder {
     } catch (Throwable t) {
       // since the exception is for a previous object, just log the
       // exception and move on
-      ClientSharedUtils.getLogger().warn(
+      ClientSharedUtils.getLogger(getClass()).warn(
           "FinalizeHolder: unexpected exception while invoking finalizer " + t, t);
       // clear it neverthless
       obj.clearThis();
