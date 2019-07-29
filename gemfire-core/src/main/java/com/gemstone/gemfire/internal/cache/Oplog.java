@@ -4580,21 +4580,17 @@ public final class Oplog implements CompactableOplog {
 
         finishedAppending();
       } catch (InsufficientDiskSpaceException temp) {
-        if (DiskStoreImpl.reserveSpace) {
-          idse = temp;
-          if (this.isStandByOplog) {
-            throw new DiskAccessException("Even stand by oplog exhausted !!!?. handle it later");
-          }
-          DirectoryHolder standByHolder = this.getParent().directories[0];
-          Oplog newOplog = new Oplog(this.oplogId + 1, standByHolder, this, true);
-          newOplog.firstRecord = true;
-          this.doneAppending = true;
-          getOplogSet().setChild(newOplog);
-          // start the asynch thread to shut down the system
-          this.parent.shutdownDiskStoreAndAffiliatedRegions(temp);
-        } else {
-          throw temp;
+        idse = temp;
+        if (this.isStandByOplog) {
+          throw new DiskAccessException("Even stand by oplog exhausted !!!?. handle it later");
         }
+        DirectoryHolder standByHolder = this.getParent().directories[0];
+        Oplog newOplog = new Oplog(this.oplogId + 1, standByHolder, this, true);
+        newOplog.firstRecord = true;
+        this.doneAppending = true;
+        getOplogSet().setChild(newOplog);
+        // start the asynch thread to shut down the system
+        this.parent.shutdownDiskStoreAndAffiliatedRegions(temp);
       }
 
       Runnable delayedExpensiveWriter = new Runnable() {
