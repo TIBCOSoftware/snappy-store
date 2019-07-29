@@ -123,13 +123,15 @@ sql/sqlDisk/randomPartitionReplIndexCrashRecovery.conf
    A=datastore datastoreHosts=1 datastoreVMsPerHost= 6 datastoreThreadsPerVM=1
    B=accessor accessorHosts=2 accessorVMsPerHost=3 accessorThreadsPerVM=10
    dropIndex = true  redundantCopies=2 forceCompaction=true
-   
+
+/*
 sql/sqlDisk/randomPartitionReplIndexRecoveryOffheap.conf
    locatorHosts = 1 locatorVMsPerHost = 1 locatorThreadsPerVM = 1
    A=datastore datastoreHosts=1 datastoreVMsPerHost= 6 datastoreThreadsPerVM=1
    B=accessor accessorHosts=2 accessorVMsPerHost=3 accessorThreadsPerVM=10
    dropIndex = true redundantCopies=2 forceCompaction=true
-   
+*/
+
 sql/sqlDisk/indexNormalRecoverySingleDiskstore.conf
     locatorHosts = 1 locatorVMsPerHost = 1 locatorThreadsPerVM = 1
     A=datastore datastoreHosts=1 datastoreVMsPerHost= 4 datastoreThreadsPerVM=1
