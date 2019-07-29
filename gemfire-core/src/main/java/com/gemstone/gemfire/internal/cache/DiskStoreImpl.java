@@ -275,7 +275,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
 
   // extra reserved space to be freed when standby oplog is in use,
   // so that renaming of standby oplog, & creation of krf idxkrf etc is successful
-  // This is to be specified in MB & default is 1 GB , i.e 1024 MB
+  // This is to be specified in MB & default is 256 , i.e 256 MB
   private static int extraReservedSpace = Integer.getInteger("gemfire.EXTRA_RESERVED_SPACE", 256);
 
   // Property to switch off reserving space in unit tests and hydra

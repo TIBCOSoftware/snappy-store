@@ -76,7 +76,6 @@ public class JdbcTestBase extends TestUtil implements UnitTest {
     //System.setProperty("gemfirexd.TEST_FLAG_OFFHEAP_ENABLE","true");
     GemFireXDUtils.IS_TEST_MODE = true;
     System.setProperty(HDFSStoreImpl.ALLOW_STANDALONE_HDFS_FILESYSTEM_PROP, "true");
-    System.setProperty("gemfire.DISALLOW_RESERVE_SPACE", "true");
     clearTestSpecificDirectoriesForDeletion();
     super.setUp();
     loadDriver();

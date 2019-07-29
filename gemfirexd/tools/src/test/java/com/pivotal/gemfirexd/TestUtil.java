@@ -575,6 +575,8 @@ public class TestUtil extends TestCase {
     //Allow HDFS tests to create a standalone file system
     System.setProperty(HDFSStoreImpl.ALLOW_STANDALONE_HDFS_FILESYSTEM_PROP, "true");
 
+    // Do not create extra space for failure handling scenario in tests.
+    System.setProperty("gemfire.DISALLOW_RESERVE_SPACE", "true");
     /*
     boolean nonTXTestMode = Boolean.getBoolean(SanityManager.TEST_MODE_NON_TX)
         || Boolean.parseBoolean(System.getenv(SanityManager.TEST_MODE_NON_TX)); 
