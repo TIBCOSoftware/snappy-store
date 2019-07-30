@@ -2078,6 +2078,8 @@ public abstract class EmbedConnection implements EngineConnection
 
 		LanguageConnectionContext lcc = getLanguageConnection();
 		if (lcc.isAllowExplicitCommitTrue()) {
+			// always set autoCommit to true if "allow-explicit-commit"
+			// connection property is true
 			this.autoCommit = true;
 		} else {
 			this.autoCommit = autoCommit;
