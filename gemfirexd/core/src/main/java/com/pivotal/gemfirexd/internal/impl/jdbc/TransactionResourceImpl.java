@@ -79,6 +79,8 @@ import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.util.IdUtil;
 import com.pivotal.gemfirexd.internal.jdbc.InternalDriver;
 
+import static com.pivotal.gemfirexd.internal.engine.GfxdConstants.ALLOW_EXPLICIT_COMMIT;
+
 /** 
  *	An instance of a TransactionResourceImpl is a bundle of things that
  *	connects a connection to the database - it is the transaction "context" in
@@ -273,6 +275,8 @@ public final class TransactionResourceImpl
 		    GfxdConstants.GFXD_ROUTE_QUERY, info, false);
 		this.snappyInternalConnection = getPropertyValue(Attribute.INTERNAL_CONNECTION,
 				GfxdConstants.INTERNAL_CONNECTION, info, false);
+		this.allowExplicitCommit = getPropertyValue(Attribute.ALLOW_EXPLICIT_COMMIT,
+				GfxdConstants.ALLOW_EXPLICIT_COMMIT, info, false);
 		this.defaultPersistent = getPropertyValue(
 		    Attribute.DEFAULT_PERSISTENT, GfxdConstants.GFXD_PREFIX
 			+ Attribute.DEFAULT_PERSISTENT, info, false);
@@ -345,6 +349,8 @@ public final class TransactionResourceImpl
 
 	private final boolean snappyInternalConnection;
 
+	private final boolean allowExplicitCommit;
+
 	private final boolean defaultPersistent;
 
 	private final boolean skipConstraintChecks;
@@ -409,6 +415,7 @@ public final class TransactionResourceImpl
 		this.lcc.setQueryHDFS(this.queryHDFS);
 		this.lcc.setQueryRoutingFlag(this.routeQuery);
 		this.lcc.setSnappyInternalConnection(this.snappyInternalConnection);
+		this.lcc.setAllowExplicitCommit(this.allowExplicitCommit);
 		this.lcc.setDefaultPersistent(this.defaultPersistent);
 		this.lcc.setEnableBulkFkChecks(this.enableBulkFkChecks);
 		this.lcc.setSkipConstraintChecks(this.skipConstraintChecks);

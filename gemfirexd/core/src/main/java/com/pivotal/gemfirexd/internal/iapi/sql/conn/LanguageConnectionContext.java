@@ -1511,6 +1511,10 @@ public interface LanguageConnectionContext extends Context {
 
    boolean isSnappyInternalConnection();
 
+   void setAllowExplicitCommit(boolean allowExplicitCommit);
+
+   boolean isAllowExplicitCommitTrue();
+
 	/**
 	 * If set then all tables created on this connection will be PERSISTENT
 	 * by default even if not specified in the DDL.

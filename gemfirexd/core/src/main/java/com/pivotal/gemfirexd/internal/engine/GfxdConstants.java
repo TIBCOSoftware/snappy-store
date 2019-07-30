@@ -770,6 +770,8 @@ public interface GfxdConstants {
   final String GFXD_ROUTE_QUERY = GFXD_PREFIX + Attribute.ROUTE_QUERY;
 
   final String INTERNAL_CONNECTION = GFXD_PREFIX + Attribute.INTERNAL_CONNECTION;
+
+  final String ALLOW_EXPLICIT_COMMIT = GFXD_PREFIX + Attribute.ALLOW_EXPLICIT_COMMIT;
   /*
    * @see Attribute.NCJ_BATCH_SIZE
    */

@@ -466,6 +466,12 @@ public interface Attribute {
   String INTERNAL_CONNECTION = "internal-connection";
 
   /**
+   * Connection property to implicitly autocommit transactions even in
+   * SnappyData irrespective of autocommit setting
+   */
+  String ALLOW_EXPLICIT_COMMIT = "allow-explicit-commit";
+
+  /**
    * Embedded connection property to create tables as persistent by default
    * for the connection.
    */
