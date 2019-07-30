@@ -152,9 +152,6 @@ public class GenericStatement
                 "RESET|STREAMING|TRUNCATE|UNCACHE|UNDEPLOY)";
         private static final String TABLE_DML_SELECT_PATTERN =
             "((((INSERT|PUT)\\s+INTO)|(DELETE\\s+FROM))\\s+(TABLE)?.*\\s+SELECT)";
-	      private static final String CREATE_OR_DROP_PATTERN = "(FUNCTION|POLICY|SCHEMA)";
-	      private static final String ALTER_TABLE_PREFIX = "ALTER\\s+(TABLE)?\\s+.*\\s+";
-	      private static final String ALTER_TABLE_COMMANDS = "(ADD|DROP|ENABLE|DISABLE)";
 
 	      // final patterns combining the above patterns and also adding EXPLAIN
         private static final String ROUTED_QUERY_BASE_PATTERN =
