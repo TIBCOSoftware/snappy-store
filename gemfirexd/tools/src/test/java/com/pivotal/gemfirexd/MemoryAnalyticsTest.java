@@ -30,15 +30,12 @@ import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.regex.Pattern;
 
-import junit.framework.TestSuite;
-import junit.textui.TestRunner;
-
 import com.gemstone.gemfire.cache.wan.GatewaySender;
 import com.gemstone.gemfire.internal.cache.wan.AbstractGatewaySender;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverAdapter;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.diag.MemoryAnalyticsVTI;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.sql.catalog.DistributionDescriptor;
@@ -51,6 +48,8 @@ import com.pivotal.gemfirexd.internal.impl.sql.execute.ProjectRestrictResultSet;
 import com.pivotal.gemfirexd.internal.impl.sql.execute.VTIResultSet;
 import com.pivotal.gemfirexd.internal.vti.IQualifyable;
 import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
+import junit.framework.TestSuite;
+import junit.textui.TestRunner;
 
 public class MemoryAnalyticsTest extends JdbcTestBase {
 
@@ -78,8 +77,8 @@ public class MemoryAnalyticsTest extends JdbcTestBase {
     super(name);
   }
   
-  boolean generateComparisonValues = false;
-  boolean testSimpleQueryCalledAgain = false;
+  private boolean generateComparisonValues = false;
+  private boolean testSimpleQueryCalledAgain = false;
   
   public void testSimpleQuerying() throws Exception {
     Properties props = new Properties();
@@ -160,18 +159,18 @@ public class MemoryAnalyticsTest extends JdbcTestBase {
         "APP.TF_EQRMS_PAA null null 1.952 0.0 0.0 0.0 0.0 0 0 0 0 1.952 ",
         "APP.TF_EDEALER_PAA null null 1.952 0.0 0.0 0.0 0.0 0 0 0 0 1.952 ",
         "APP.TX_PL_USER_POSN_MAP null null 1.952 12.0 2.4 109.456 0.0 100 100 100 0 125.808 ",
-        "APP.TL_SOURCE_SYSTEM null null 1.824 9.6 2.4 21.088 0.0 100 100 100 0 34.912 ",
-        "APP.TL_REGION null null 1.824 0.0 0.0 0.0 0.0 0 0 0 0 1.824 ",
-        "APP.TL_CURRENCY null null 1.824 0.0 0.0 0.0 0.0 0 0 0 0 1.824 ",
+        "APP.TL_SOURCE_SYSTEM null null 1.832 9.6 2.4 21.088 0.0 100 100 100 0 34.92 ",
+        "APP.TL_REGION null null 1.832 0.0 0.0 0.0 0.0 0 0 0 0 1.832 ",
+        "APP.TL_CURRENCY null null 1.832 0.0 0.0 0.0 0.0 0 0 0 0 1.832 ",
         "APP.TF_PL_POSITION_YTD null null 1.952 12.0 2.4 626.912 0.0 100 100 100 0 643.264 ",
         "APP.TF_PL_POSITION_PTD null null 1.952 12.0 2.4 299.88 0.0 100 100 100 0 316.232 ",
         "APP.TF_PL_POSITION_FUNC null null 1.952 0.0 0.0 0.0 0.0 0 0 0 0 1.952 ",
         "APP.TF_PL_ADJ_REPORT null null 1.952 12.0 2.4 622.6 0.0 100 100 100 0 638.952 ",
-        "APP.TD_TRADER_SCD null null 1.824 9.6 2.4 217.448 0.0 100 100 100 0 231.272 ",
-        "APP.TD_POSN_EXTENDED_KEY null null 1.824 9.6 2.4 25.472 0.0 100 100 100 0 39.296 ",
-        "APP.TD_PL_POSITION_INDICATIVE null null 1.824 0.0 0.0 0.0 0.0 0 0 0 0 1.824 ",
-        "APP.TD_INSTRUMENT_SCD null null 1.824 9.6 2.4 96.288 0.0 100 100 100 0 110.112 ",
-        "APP.TD_FIRM_ACCOUNT_SCD null null 1.824 0.0 0.0 0.0 0.0 0 0 0 0 1.824 ",
+        "APP.TD_TRADER_SCD null null 1.832 9.6 2.4 217.448 0.0 100 100 100 0 231.28 ",
+        "APP.TD_POSN_EXTENDED_KEY null null 1.832 9.6 2.4 25.472 0.0 100 100 100 0 39.304 ",
+        "APP.TD_PL_POSITION_INDICATIVE null null 1.832 0.0 0.0 0.0 0.0 0 0 0 0 1.832 ",
+        "APP.TD_INSTRUMENT_SCD null null 1.832 9.6 2.4 96.288 0.0 100 100 100 0 110.12 ",
+        "APP.TD_FIRM_ACCOUNT_SCD null null 1.832 0.0 0.0 0.0 0.0 0 0 0 0 1.832 ",
         /*--eclipse output
         "APP.TF_EDEALER_PAA null null 2.578125 0.0 0.0 0.0 0.0 0 0 0 0 2.578125 ",
         "APP.TF_PL_POSITION_YTD null null 2.578125 15.625 2.34375 611.0762 0.0 100 100 100 0 631.62305 ",

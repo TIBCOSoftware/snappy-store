@@ -141,7 +141,7 @@ public final class HeapMemoryMonitor implements NotificationListener,
   public static final int memoryStateChangeTolerance;
   static {
     String vendor = System.getProperty("java.vendor");
-    if (vendor.contains("Sun") || vendor.contains("Oracle")) {
+    if (vendor.contains("Sun") || vendor.contains("Oracle") || vendor.contains("OpenJDK")) {
       memoryStateChangeTolerance = Integer.getInteger("gemfire.memoryEventTolerance",1);
     } else {
       memoryStateChangeTolerance = Integer.getInteger("gemfire.memoryEventTolerance",5);

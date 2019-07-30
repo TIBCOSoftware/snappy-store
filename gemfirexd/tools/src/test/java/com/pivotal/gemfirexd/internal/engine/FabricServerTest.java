@@ -230,11 +230,11 @@ public class FabricServerTest extends TestUtil implements UnitTest {
 
       @SuppressWarnings("unchecked")
       final List<String> vmargs = (List<String>)m.get("vmArgs");
-      assertTrue("expected UseParNewGC definition ",
+      assertTrue("expected UseParNewGC definition in " + vmargs,
           vmargs.contains("-XX:+UseParNewGC"));
-      assertTrue("expected UseConcMarkSweepGC definition ",
+      assertTrue("expected UseConcMarkSweepGC definition in " + vmargs,
           vmargs.contains("-XX:+UseConcMarkSweepGC"));
-      assertTrue("expected CMSInitiatingOccupancyFraction definition",
+      assertTrue("expected CMSInitiatingOccupancyFraction definition in " + vmargs,
           vmargs.contains("-XX:CMSInitiatingOccupancyFraction=50"));
 
       GfxdUtilLauncher.main(cmd);

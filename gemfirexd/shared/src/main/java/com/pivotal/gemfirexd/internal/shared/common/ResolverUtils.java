@@ -42,12 +42,11 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Comparator;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import com.gemstone.gemfire.internal.shared.ClientResolverUtils;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
+import org.slf4j.Logger;
 
 /**
  * Keeping here the core logic for resolvers and hashcode and computehashcode
@@ -779,9 +778,9 @@ public abstract class ResolverUtils extends ClientResolverUtils {
           + " consult documentation on upgrade path to use new hashing"
           + " scheme consistently for optimal performance.");
     }
-    Logger logger = ClientSharedUtils.getLogger();
+    Logger logger = ClientSharedUtils.getLogger(ResolverUtils.class);
     if (logger != null) {
-    logger.log(Level.WARNING,"Using non-optimal pre 1.3.0.2 hashing scheme "
+    logger.warn("Using non-optimal pre 1.3.0.2 hashing scheme "
         + "due to old members or data files in the distributed system (#51381)."
         + " Consult documentation on upgrade path for optimal performance.");
     }

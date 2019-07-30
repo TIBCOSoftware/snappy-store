@@ -137,6 +137,7 @@ public class SnappyTest implements Serializable {
   }
 
   public static synchronized void HydraTask_initializeSnappyTest() {
+    System.setProperty("gemfire.DISALLOW_RESERVE_SPACE", "true");
     if (snappyTest == null) {
       snappyTest = new SnappyTest();
       snappyTest.getClientHostDescription();

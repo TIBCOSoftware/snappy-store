@@ -62,8 +62,6 @@ import java.util.*;
 import java.util.concurrent.locks.LockSupport;
 import java.util.logging.Handler;
 import java.util.logging.Level;
-import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 import javax.naming.Context;
 import javax.naming.NamingEnumeration;
 import javax.naming.directory.Attribute;
@@ -77,6 +75,8 @@ import org.apache.log4j.FileAppender;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.spark.unsafe.Platform;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Some shared methods now also used by GemFireXD clients so should not have any
@@ -209,8 +209,8 @@ public abstract class ClientSharedUtils {
 
   // ------- End constants for date formatting
 
-  private static volatile Logger _DEFAULT_LOGGER;
-  private static Logger logger;
+  private static volatile java.util.logging.Logger _DEFAULT_LOGGER;
+  private static java.util.logging.Logger logger;
   private static final Properties baseLoggerProperties = new Properties();
 
   private static final Constructor<?> stringInternalConstructor;
@@ -291,12 +291,12 @@ public abstract class ClientSharedUtils {
     bigIntMagnitude = mag;
   }
 
-  private static synchronized Logger DEFAULT_LOGGER() {
-    final Logger logger = _DEFAULT_LOGGER;
+  private static synchronized java.util.logging.Logger DEFAULT_LOGGER() {
+    final java.util.logging.Logger logger = _DEFAULT_LOGGER;
     if (logger != null) {
       return logger;
     }
-    return (_DEFAULT_LOGGER = Logger.getLogger(""));
+    return (_DEFAULT_LOGGER = java.util.logging.Logger.getLogger(""));
   }
 
   private static int getShiftMultipler(char unitChar) {
@@ -598,13 +598,8 @@ public abstract class ClientSharedUtils {
       try {
         faceIsUp = face.isUp();
       } catch (SocketException se) {
-        final Logger log = getLogger();
-        if (log != null) {
-          LogRecord lr = new LogRecord(Level.INFO,
-              "Failed to check if network interface is up. Skipping " + face);
-          lr.setThrown(se);
-          log.log(lr);
-        }
+        getLogger().info(
+            "Failed to check if network interface is up. Skipping " + face, se);
       }
       if (faceIsUp) {
         Enumeration<InetAddress> addrs = face.getInetAddresses();
@@ -682,8 +677,8 @@ public abstract class ClientSharedUtils {
   public static void setKeepAliveOptions(Socket sock, InputStream sockStream,
       int keepIdle, int keepInterval, int keepCount) throws SocketException {
     final Logger log = getLogger();
-    if (log != null && log.isLoggable(Level.FINE)) {
-      log.fine("setKeepAliveOptions: setting keepIdle=" + keepIdle
+    if (log.isDebugEnabled()) {
+      log.debug("setKeepAliveOptions: setting keepIdle=" + keepIdle
           + ", keepInterval=" + keepInterval + ", keepCount=" + keepCount
           + " for " + sock);
     }
@@ -707,14 +702,10 @@ public abstract class ClientSharedUtils {
     } catch (UnsupportedOperationException e) {
       if (!socketKeepAliveIdleWarningLogged) {
         socketKeepAliveIdleWarningLogged = true;
-        if (log != null) {
-          log.warning("Failed to set options " + optValueMap + " on socket: "
-              + e);
-          if (log.isLoggable(Level.FINE)) {
-            LogRecord lr = new LogRecord(Level.FINE, "Exception trace:");
-            lr.setThrown(e);
-            log.log(lr);
-          }
+        log.warn("Failed to set options " + optValueMap + " on socket: "
+            + e);
+        if (log.isDebugEnabled()) {
+          log.debug("Exception trace", e);
         }
       }
       return;
@@ -771,24 +762,16 @@ public abstract class ClientSharedUtils {
           }
           if (doLogWarning > 0) {
             if (doLogWarning == 1) {
-              log.warning("Failed to set " + opt + " on socket: " + ex);
-            } else {
-              // just log as an information rather than warning
-              if (log != DEFAULT_LOGGER()) { // SNAP-255
-                log.info("Failed to set " + opt + " on socket: "
-                    + ex.getMessage());
-              }
+              log.warn("Failed to set " + opt + " on socket: " + ex);
             }
-            if (log.isLoggable(Level.FINE)) {
-              LogRecord lr = new LogRecord(Level.FINE, "Exception trace:");
-              lr.setThrown(ex);
-              log.log(lr);
+            if (log.isDebugEnabled()) {
+              log.debug("Exception trace", ex);
             }
           }
         }
       }
-    } else if (log != null && log.isLoggable(Level.FINE)) {
-      log.fine("setKeepAliveOptions(): successful for " + sock);
+    } else if (log.isDebugEnabled()) {
+      log.debug("setKeepAliveOptions(): successful for " + sock);
     }
   }
 
@@ -1579,7 +1562,7 @@ public abstract class ClientSharedUtils {
   public static synchronized void initLogger(String loggerName, String logFile,
       boolean initLog4j, boolean skipIfInitialized, Level level,
       final Handler handler) {
-    Logger log = logger;
+    java.util.logging.Logger log = logger;
     if (skipIfInitialized && log != null && log != DEFAULT_LOGGER()) {
       return;
     }
@@ -1591,29 +1574,29 @@ public abstract class ClientSharedUtils {
         throw newRuntimeException(ioe.getMessage(), ioe);
       }
     }
-    log = Logger.getLogger(loggerName);
+    log = java.util.logging.Logger.getLogger(loggerName);
     log.addHandler(handler);
     log.setLevel(level);
     log.setUseParentHandlers(false);
     logger = log;
   }
 
-  public static synchronized void setLogger(Logger log) {
+  public static synchronized void setLogger(java.util.logging.Logger log) {
     clearLogger();
     logger = log;
   }
 
   public static boolean isLoggerInitialized() {
-    final Logger log = logger;
+    final java.util.logging.Logger log = logger;
     return log != null && log != DEFAULT_LOGGER();
   }
 
-  public static Logger getLogger() {
-    Logger log = logger;
-    if (log == null) {
-      logger = log = DEFAULT_LOGGER();
-    }
-    return log;
+  public static Logger getLogger(Class<?> c) {
+    return LoggerFactory.getLogger(c);
+  }
+
+  private static Logger getLogger() {
+    return getLogger(ClientSharedUtils.class);
   }
 
   public static final long MAG_MASK = 0xFFFFFFFFL;
@@ -1670,7 +1653,7 @@ public abstract class ClientSharedUtils {
   }
 
   private static synchronized void clearLogger() {
-    final Logger log = logger;
+    final java.util.logging.Logger log = logger;
     if (log != null && log != DEFAULT_LOGGER()) {
       for (Handler h : log.getHandlers()) {
         log.removeHandler(h);
@@ -1780,6 +1763,28 @@ public abstract class ClientSharedUtils {
     buffer.get(bytes, 0, numBytes);
     buffer.position(initPosition);
     return bytes;
+  }
+
+  public static void deletePath(Path path, boolean throwOnError,
+      boolean logIfNotExists) throws Exception {
+    if (Files.exists(path)) {
+      final Exception[] failure = new Exception[1];
+      Files.walk(path).sorted(java.util.Collections.reverseOrder()).forEach(p -> {
+            try {
+              Files.delete(p);
+            } catch (Exception e) {
+              getLogger().error(
+                  "Failure while deleting file or directory: " + p, e);
+              failure[0] = e;
+            }
+          }
+      );
+      if (throwOnError && failure[0] != null) throw failure[0];
+    } else if (throwOnError) {
+      throw new IOException("File or directory does not exist: " + path);
+    } else if (logIfNotExists) {
+      getLogger().info("File or directory does not exist: " + path);
+    }
   }
 
   /**

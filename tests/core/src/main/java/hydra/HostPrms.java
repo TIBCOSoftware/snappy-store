@@ -216,7 +216,7 @@ public class HostPrms extends BasePrms {
         vendor = APPLE;
       } else if (vendor.contains("Oracle") && vmname.contains("JRockit")) {
         vendor = JROCKIT;
-      } else if (vendor.contains("Oracle") &&
+      } else if ((vendor.contains("Oracle") || vendor.contains("OpenJDK")) &&
           (vmname.contains("HotSpot") || vmname.contains("OpenJDK"))) {
         vendor = SUN;
       } else {

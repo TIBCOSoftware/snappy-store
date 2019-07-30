@@ -37,6 +37,8 @@ package com.pivotal.gemfirexd.ddl;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -55,6 +57,7 @@ import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.RegionAttributes;
 import com.gemstone.gemfire.distributed.DistributedSystem;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
@@ -235,7 +238,12 @@ public class CreateDiskStoreDUnit extends DistributedSQLTestBase {
         @Override
         public void run() {
           String sysDirName = getSysDirName();
-          assertTrue(new File(sysDirName, "testdir1").delete());
+          Path testDir = Paths.get(sysDirName, "testdir1");
+          try {
+            ClientSharedUtils.deletePath(testDir, true, false);
+          } catch (Exception e) {
+            fail(e.getMessage(), e);
+          }
         }
       });
     }

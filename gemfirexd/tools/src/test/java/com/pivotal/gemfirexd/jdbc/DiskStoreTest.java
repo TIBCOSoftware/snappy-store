@@ -22,28 +22,26 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
+
 import com.gemstone.gemfire.cache.DiskStore;
 import com.gemstone.gemfire.cache.EvictionAction;
 import com.gemstone.gemfire.cache.RegionAttributes;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.Misc;
-import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
-
 import junit.framework.TestSuite;
 import junit.textui.TestRunner;
 
 public class DiskStoreTest extends JdbcTestBase {
-  char fileSeparator = System.getProperty("file.separator").charAt(0);
- 
+
   public static void main(String[] args) {
     TestRunner.run(new TestSuite(CreateTableOtherAttributesTest.class));
   }
-  
+
   public DiskStoreTest(String name) {
-    super(name); 
+    super(name);
   }
-  
+
   public void testDiskStoreCreation() throws Exception {
     Connection conn = getConnection();
     Statement s = conn.createStatement();
@@ -55,7 +53,7 @@ public class DiskStoreTest extends JdbcTestBase {
     f3.mkdir();
     s.execute("create DiskStore testDiskStore maxlogsize 128 autocompact true " +
     " allowforcecompaction false compactionthreshold 80 TimeInterval 223344 " +
-    "Writebuffersize 19292393 queuesize 17374  ('dir1' 456, 'dir2', 'dir3' 55556 )"); 
+    "Writebuffersize 19292393 queuesize 17374  ('dir1' 3456, 'dir2', 'dir3' 55556 )");
     DiskStore ds = Misc.getGemFireCache().findDiskStore("TESTDISKSTORE");
     assertNotNull(ds);
     cleanUpDirs(new File[]{f1,f2,f3});

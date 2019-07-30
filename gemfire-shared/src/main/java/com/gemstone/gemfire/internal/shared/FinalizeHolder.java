@@ -19,7 +19,6 @@ package com.gemstone.gemfire.internal.shared;
 
 import java.lang.ref.ReferenceQueue;
 import java.util.ListIterator;
-import java.util.logging.Logger;
 
 import com.gemstone.gemfire.internal.shared.FinalizeObject.BatchFinalize;
 import com.gemstone.gnu.trove.TLinkedList;
@@ -174,15 +173,8 @@ public final class FinalizeHolder {
     } catch (Throwable t) {
       // since the exception is for a previous object, just log the
       // exception and move on
-      Logger logger = ClientSharedUtils.getLogger();
-      if (logger != null) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(
-            "FinalizeHolder: unexpected exception while invoking finalizer ")
-            .append(t.toString());
-        ClientSharedUtils.getStackTrace(t, sb, null);
-        logger.warning(sb.toString());
-      }
+      ClientSharedUtils.getLogger(getClass()).warn(
+          "FinalizeHolder: unexpected exception while invoking finalizer " + t, t);
       // clear it neverthless
       obj.clearThis();
     }

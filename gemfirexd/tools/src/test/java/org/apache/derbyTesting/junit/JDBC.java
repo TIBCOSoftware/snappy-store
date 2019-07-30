@@ -1966,7 +1966,10 @@ public class JDBC {
     if (ma != null) {
       List<Chunk> chunks = ma.getFreeList().getLiveChunks();
       for (Chunk chunk : chunks) {
-        Assert.assertEquals(1, chunk.getRefCount());
+        int refCount = chunk.getRefCount();
+        if (refCount > 1) {
+          Assert.fail("Expected refCount to be <= 1 but was " + refCount);
+        }
       }
     }
     GemFireCacheImpl cache = Misc.getGemFireCache();

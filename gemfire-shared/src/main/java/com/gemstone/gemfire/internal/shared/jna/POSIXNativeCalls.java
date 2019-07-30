@@ -41,8 +41,6 @@ import java.net.Socket;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.NativeCalls;
@@ -54,6 +52,7 @@ import com.sun.jna.Native;
 import com.sun.jna.Platform;
 import com.sun.jna.Structure;
 import com.sun.jna.ptr.IntByReference;
+import org.slf4j.Logger;
 
 /**
  * Implementation of {@link NativeCalls} for POSIX compatible platforms.
@@ -323,14 +322,14 @@ class POSIXNativeCalls extends NativeCalls {
   @Override
   public void preBlow(String path, long maxSize, boolean preAllocate)
       throws IOException {
-    final Logger logger = ClientSharedUtils.getLogger();
-    if (logger != null && logger.isLoggable(Level.FINE)) {
-      logger.fine("DEBUG preBlow called for path = " + path);
+    final Logger logger = ClientSharedUtils.getLogger(getClass());
+    if (logger.isDebugEnabled()) {
+      logger.debug("DEBUG preBlow called for path = " + path);
     }
     if (!preAllocate || !hasFallocate()) {
       super.preBlow(path, maxSize, preAllocate);
-      if (logger != null && logger.isLoggable(Level.FINE)) {
-        logger.fine("DEBUG preBlow super.preBlow 1 called for path = "
+      if (logger.isDebugEnabled()) {
+        logger.debug("DEBUG preBlow super.preBlow 1 called for path = "
             + path);
       }
       return;
@@ -341,8 +340,8 @@ class POSIXNativeCalls extends NativeCalls {
       fd = createFD(path, 00644);
       if (!isOnLocalFileSystem(path)) {
         super.preBlow(path, maxSize, preAllocate);
-        if (logger != null && logger.isLoggable(Level.FINE)) {
-          logger.fine("DEBUG preBlow super.preBlow 2 called as path = "
+        if (logger.isDebugEnabled()) {
+          logger.debug("DEBUG preBlow super.preBlow 2 called as path = "
               + path + " not on local file system");
         }
         if (TEST_NO_FALLOC_DIRS != null) {
@@ -354,13 +353,13 @@ class POSIXNativeCalls extends NativeCalls {
       if (TEST_CHK_FALLOC_DIRS != null) {
         TEST_CHK_FALLOC_DIRS.add(path);
       }
-      if (logger != null && logger.isLoggable(Level.FINE)) {
-        logger.fine("DEBUG preBlow posix_fallocate called for path = " + path
+      if (logger.isDebugEnabled()) {
+        logger.debug("DEBUG preBlow posix_fallocate called for path = " + path
             + " and ret = 0 maxsize = " + maxSize);
       }
     } catch (LastErrorException le) {
-      if (logger != null && logger.isLoggable(Level.FINE)) {
-        logger.fine("DEBUG preBlow posix_fallocate called for path = " + path
+      if (logger.isDebugEnabled()) {
+        logger.debug("DEBUG preBlow posix_fallocate called for path = " + path
             + " and ret = " + le.getErrorCode() + " maxsize = " + maxSize);
       }
       // check for no space left on device
@@ -380,8 +379,8 @@ class POSIXNativeCalls extends NativeCalls {
       }
       if (unknownError) {
         super.preBlow(path, maxSize, preAllocate);
-        if (logger != null && logger.isLoggable(Level.FINE)) {
-          logger.fine("DEBUG preBlow super.preBlow 3 called for path = "
+        if (logger.isDebugEnabled()) {
+          logger.debug("DEBUG preBlow super.preBlow 3 called for path = "
               + path);
         }
       }

@@ -29,20 +29,18 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
-import org.apache.derbyTesting.junit.JDBC;
-
-import junit.framework.TestSuite;
-import junit.textui.TestRunner;
-
 import com.gemstone.gemfire.cache.DiskAccessException;
 import com.gemstone.gemfire.cache.DiskStore;
 import com.gemstone.gemfire.cache.DiskStoreFactory;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.pivotal.gemfirexd.TestUtil;
-import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
+import junit.framework.TestSuite;
+import junit.textui.TestRunner;
+import org.apache.derbyTesting.junit.JDBC;
 
 /**
  * 
@@ -99,7 +97,7 @@ public class CreateDiskStoreTest extends JdbcTestBase
     s
         .execute("create DiskStore testDiskStore2 maxlogsize 448 autocompact false "
             + " allowforcecompaction true compactionthreshold 80 TimeInterval 23344 "
-            + "Writebuffersize 192923 queuesize 1734  ('dir1' 456, 'dir2', 'dir3' 55556 )");
+            + "Writebuffersize 192923 queuesize 1734  ('dir1' 3456, 'dir2', 'dir3' 55556 )");
     DiskStore ds = Misc.getGemFireCache().findDiskStore("TESTDISKSTORE2");
     assertNotNull(ds);
 
@@ -124,7 +122,7 @@ public class CreateDiskStoreTest extends JdbcTestBase
     assertTrue(files.isEmpty());
     List<Long> sizes = new ArrayList<Long>();
     int i = 0;
-    sizes.add(456l);
+    sizes.add(3456l);
     sizes.add(0l);
     sizes.add(55556l);
     for (long size : ds.getDiskDirSizes()) {
@@ -186,7 +184,7 @@ public class CreateDiskStoreTest extends JdbcTestBase
     s
         .execute("create DiskStore testDiskStore1 maxlogsize 128 autocompact false "
             + " allowforcecompaction true compactionthreshold 80 TimeInterval 23344 "
-            + "Writebuffersize 192923 queuesize 1734  ('dir1' 456, 'dir2', 'dir3' 55556 )");
+            + "Writebuffersize 192923 queuesize 1734  ('dir1' 3456, 'dir2', 'dir3' 55556 )");
 
     ResultSet rs = s.executeQuery("select * from SYS.SYSDISKSTORES where "
         + "NAME = 'TESTDISKSTORE1'");
@@ -244,7 +242,7 @@ public class CreateDiskStoreTest extends JdbcTestBase
       assertEquals(192923, rs.getInt(7));
       assertEquals(1734, rs.getInt("QUEUESIZE"));
       assertEquals(1734, rs.getInt(8));
-      String str = f1.getCanonicalPath() + "(456)," + f2.getCanonicalPath() + ","
+      String str = f1.getCanonicalPath() + "(3456)," + f2.getCanonicalPath() + ","
           + f3.getCanonicalPath() + "(55556)";
       assertEquals(str, rs.getString("DIR_PATH_SIZE"));
       assertEquals(str, rs.getString(9));
@@ -505,7 +503,8 @@ public class CreateDiskStoreTest extends JdbcTestBase
        { "CREATE DISKSTORE BADSIZE6 ('MYDIR' 2147483647)", null },
        { "CREATE DISKSTORE ML1 MAXLOGSIZE -5", "42X44" },
        //FIXME { "CREATE DISKSTORE ML1 MAXLOGSIZE 0", "42X44" },
-       { "CREATE DISKSTORE ML3 MAXLOGSIZE 2147483647", null },
+       { "CREATE DISKSTORE ML3 MAXLOGSIZE 200", null },
+       { "CREATE DISKSTORE ML3 MAXLOGSIZE 2147483647", "X0Y68" },
        { "CREATE DISKSTORE ML4 MAXLOGSIZE 'hello'", "42X01" },
        { "CREATE DISKSTORE AC1 AUTOCOMPACT true", null },
        { "CREATE DISKSTORE AC2 AUTOCOMPACT false", null },
@@ -551,11 +550,11 @@ public class CreateDiskStoreTest extends JdbcTestBase
        { "CREATE DISKSTORE DIRTEST5 ('')", "0A000" }, 
        //FIXME { "CREATE DISKSTORE DIRTEST6 ('*')", "0A000" }, 
        //FIXME { "CREATE DISKSTORE DIRTEST7 ('?')", "0A000" },    // or any other illegal character
-       { "CREATE DISKSTORE DIRTEST8 'DIR1' 700 TIMEINTERVAL 1000 'DIR2' 1000", null }, 
-       { "CREATE DISKSTORE DIRTEST9 'DIR1' 0",  "42X01" }, 
-       { "CREATE DISKSTORE EVERYTHING1 'DIR1' 700 TIMEINTERVAL 1000 AUTOCOMPACT false QUEUESIZE 75 WRITEBUFFERSIZE 32767 COMPACTIONTHRESHOLD 25 MAXLOGSIZE 699 ALLOWFORCECOMPACTION false", null }, 
-       { "CREATE DISKSTORE EVERYTHING2 TIMEINTERVAL 999 WRITEBUFFERSIZE 19776 QUEUESIZE 0 AUTOCOMPACT true COMPACTIONTHRESHOLD 55 ALLOWFORCECOMPACTION true MAXLOGSIZE 125000 ('EVERYTHING1' 500, 'EVERYTHING2' 1500, 'EVERYTHING3')", "X0Z33"},
-       { "CREATE DISKSTORE EVERYTHING2 TIMEINTERVAL 999 WRITEBUFFERSIZE 19776 QUEUESIZE 0 AUTOCOMPACT true COMPACTIONTHRESHOLD 55 ALLOWFORCECOMPACTION true MAXLOGSIZE 500 ('EVERYTHING1' 500, 'EVERYTHING2' 1500, 'EVERYTHING3')", null}
+       { "CREATE DISKSTORE DIRTEST8 'DIR1' 2700 TIMEINTERVAL 1000 'DIR2' 3000", null },
+       { "CREATE DISKSTORE DIRTEST9 'DIR1' 0",  "42X01" },
+       { "CREATE DISKSTORE EVERYTHING1 'DIR1' 2700 TIMEINTERVAL 1000 AUTOCOMPACT false QUEUESIZE 75 WRITEBUFFERSIZE 32767 COMPACTIONTHRESHOLD 25 MAXLOGSIZE 699 ALLOWFORCECOMPACTION false", null },
+       { "CREATE DISKSTORE EVERYTHING2 TIMEINTERVAL 999 WRITEBUFFERSIZE 19776 QUEUESIZE 0 AUTOCOMPACT true COMPACTIONTHRESHOLD 55 ALLOWFORCECOMPACTION true MAXLOGSIZE 125000 ('EVERYTHING1' 2500, 'EVERYTHING2' 2500, 'EVERYTHING3')", "X0Z33"},
+       { "CREATE DISKSTORE EVERYTHING2 TIMEINTERVAL 999 WRITEBUFFERSIZE 19776 QUEUESIZE 0 AUTOCOMPACT true COMPACTIONTHRESHOLD 55 ALLOWFORCECOMPACTION true MAXLOGSIZE 500 ('EVERYTHING1' 2500, 'EVERYTHING2' 2500, 'EVERYTHING3')", null}
     };
 
     Connection conn = TestUtil.getConnection();

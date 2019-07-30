@@ -131,8 +131,8 @@ public class GfxdAgentLauncher extends GfxdServerLauncher {
     }
 
     final ArrayList<String> vmArgs = new ArrayList<String>();
-    if (jvmVendor != null
-        && (jvmVendor.contains("Sun") || jvmVendor.contains("Oracle"))) {
+    if (jvmVendor != null && (jvmVendor.contains("Sun") ||
+        jvmVendor.contains("Oracle") || jvmVendor.contains("OpenJDK"))) {
       vmArgs.add("-XX:+UseParNewGC");
       vmArgs.add("-XX:+UseConcMarkSweepGC");
       vmArgs.add("-XX:CMSInitiatingOccupancyFraction=50");
