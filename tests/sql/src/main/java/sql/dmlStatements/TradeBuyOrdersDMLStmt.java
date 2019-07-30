@@ -1628,6 +1628,7 @@ public class TradeBuyOrdersDMLStmt extends AbstractDMLStmt {
     success[0] = true;
     String database = SQLHelper.isDerbyConn(conn)?"Derby - " :"gemfirexd - ";    
     String query = " QUERY: " + select[whichQuery];
+    Log.getLogWriter().info(query);
     try {
       stmt = conn.prepareStatement(sql);
       /*

@@ -6664,6 +6664,7 @@ public class SQLTest {
   throws SQLException{
     String dropColumn = "alter table trade." + tableName 
     + " drop" + (random.nextBoolean()? " column ": " ") + columnName + " RESTRICT ";
+    Log.getLogWriter().info("Executing : " + dropColumn );
     Log.getLogWriter().info("in " +
         (SQLHelper.isDerbyConn(conn)? "derby " : "gfxd ") +
         "dropping the column " + columnName + " in table " + tableName);
