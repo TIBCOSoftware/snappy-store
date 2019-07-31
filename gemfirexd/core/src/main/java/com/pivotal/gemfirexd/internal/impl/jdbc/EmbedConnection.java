@@ -2073,17 +2073,17 @@ public abstract class EmbedConnection implements EngineConnection
 				throw newSQLException(SQLState.NO_AUTO_COMMIT_ON);
 		}
 
-		if (this.autoCommit != autoCommit)
-			commit();
-
 		LanguageConnectionContext lcc = getLanguageConnection();
 		if (lcc.isAllowExplicitCommitTrue()) {
 			// always set autoCommit to true if "allow-explicit-commit"
 			// connection property is true
-			this.autoCommit = true;
-		} else {
-			this.autoCommit = autoCommit;
+			autoCommit = true;
 		}
+
+		if (this.autoCommit != autoCommit)
+			commit();
+
+		this.autoCommit = autoCommit;
 		lcc.setAutoCommit(this.autoCommit);
 	}
 	

@@ -4159,7 +4159,7 @@ public final class GenericLanguageConnectionContext
 
 	private static final int ALLOW_EXPLICIT_COMMIT = 0x40000;
 
-	private static final int FLAGS_DEFAULT = ALLOW_EXPLICIT_COMMIT;
+	private static final int FLAGS_DEFAULT = METASTORE_IN_DD;
 
   /** flags that cannot be changed via {@link #setFlags(int)} */
   private static final int FLAGS_IMMUTABLE = CONNECTION_REMOTE
