@@ -223,7 +223,7 @@ void ClientService::handleSnappyException(const char* op, bool tryFailover,
     const thrift::SnappyException& se) {
 
   if (!m_isOpen && createNewConnection) {
-    newSnappyExceptionForConnectionClose(m_currentHostAddr, failedServers,
+    newSnappyExceptionForConnectionClose(op, m_currentHostAddr, failedServers,
         createNewConnection, se);
   }
   if (!m_loadBalance || m_isolationLevel != IsolationLevel::NONE) {
@@ -315,6 +315,7 @@ void ClientService::handleTException(const char* op, bool tryFailover,
     handleStdException(op, te);
   }
 }
+
 void ClientService::throwSQLExceptionForNodeFailure(const char* op,
     const std::exception& se) {
   std::ostringstream hostAddrStr;
@@ -453,16 +454,18 @@ void ClientService::openConnection(thrift::HostAddress& hostAddr,
 
   while (true) {
     boost::lock_guard<boost::mutex> serviceGuard(m_lock);
-    if (m_loadBalance) {
-      boost::optional<ControlConnection&> controlConn =
-          ControlConnection::getOrCreateControlConnection(m_connHosts, this,
-              te);
-      // at this point query the control service for preferred server
-      controlConn->getPreferredServer(hostAddr, te, failedServers,
-          this->m_serverGroups, false);
-    }
-
     try {
+      m_currentHostAddr = hostAddr;
+      if (m_loadBalance) {
+        boost::optional<ControlConnection&> controlConn =
+            ControlConnection::getOrCreateControlConnection(m_connHosts, this,
+                te);
+        // at this point query the control service for preferred server
+        controlConn->getPreferredServer(hostAddr, te, failedServers,
+            this->m_serverGroups, false);
+        m_currentHostAddr = hostAddr;
+      }
+
       // first close any existing transport
       destroyTransport();
 
@@ -1733,21 +1736,26 @@ void ClientService::close() {
 }
 
 void ClientService::updateFailedServersForCurrent(
-    std::set<thrift::HostAddress>& failedServers, bool checkAllFailed,
-    const std::exception& failure) {
+    std::set<thrift::HostAddress> &failedServers, bool checkAllFailed,
+    const std::exception &failure) {
   thrift::HostAddress host = this->m_currentHostAddr;
 
   auto ret = failedServers.insert(host);
-  if (ret.second == false && checkAllFailed) {
-    boost::optional<ControlConnection&> controlService =
-        ControlConnection::getOrCreateControlConnection(m_connHosts, this,
-            failure);
-    thrift::HostAddress pHost;
-    controlService->searchRandomServer(failedServers, failure, pHost);
+  try {
+    if (ret.second == false && checkAllFailed) {
+      boost::optional<ControlConnection&> controlService =
+          ControlConnection::getOrCreateControlConnection(m_connHosts, this,
+              failure);
+      thrift::HostAddress pHost;
+      controlService->searchRandomServer(failedServers, failure, pHost);
+    }
+  } catch (...) {
+    // ignore any exceptions during update of failed server list
   }
 }
 
 void ClientService::newSnappyExceptionForConnectionClose(
+    const char* op,
     const thrift::HostAddress source,
     std::set<thrift::HostAddress>& failedServers, bool createNewConnection,
     const thrift::SnappyException& snappyEx) {
@@ -1758,36 +1766,23 @@ void ClientService::newSnappyExceptionForConnectionClose(
     if (createNewConnection) {
       tryCreateNewConnection(source, failedServers, snappyEx);
     }
-    throw snappyEx;
+    throw GET_SQLEXCEPTION(snappyEx);
   }
-  thrift::SnappyException *newSnappyEx = new thrift::SnappyException();
-  thrift::SnappyExceptionData snExData;
-  snExData.__set_sqlState(SQLState::NO_CURRENT_CONNECTION.getSQLState());
-  newSnappyEx->__set_exceptionData(snExData);
-  std::string port;
-  Utils::convertIntToString(source.port, port);
-  std::string ipAddr = source.ipAddress;
-  newSnappyEx->__set_serverInfo(ipAddr.append(":").append(port));
-  std::vector<thrift::SnappyExceptionData> SnappyExDataVec;
-  SnappyExDataVec.push_back(snappyEx.exceptionData);
-  newSnappyEx->__set_nextExceptions(SnappyExDataVec);
-  throw newSnappyEx;
+  std::ostringstream server;
+  Utils::toStream(server, source);
+  throw GET_SQLEXCEPTION2(SQLStateMessage::NO_CURRENT_CONNECTION_MSG2,
+      server.str().c_str(), op);
 }
 
 void ClientService::newSnappyExceptionForConnectionClose(
+    const char* op,
     const thrift::HostAddress& source) {
-
-  thrift::SnappyException *newSnappyEx = new thrift::SnappyException();
-  thrift::SnappyExceptionData snExData;
-  snExData.__set_sqlState(SQLState::NO_CURRENT_CONNECTION.getSQLState());
-  newSnappyEx->__set_exceptionData(snExData);
-  std::string port;
-  Utils::convertIntToString(source.port, port);
-  std::string ipAddr = source.ipAddress;
-  newSnappyEx->__set_serverInfo(ipAddr.append(":").append(port));
-
-  throw newSnappyEx;
+  std::ostringstream server;
+  Utils::toStream(server, source);
+  throw GET_SQLEXCEPTION2(SQLStateMessage::NO_CURRENT_CONNECTION_MSG2,
+      server.str().c_str(), op);
 }
+
 void ClientService::tryCreateNewConnection(thrift::HostAddress source,
     std::set<thrift::HostAddress>& failedServers,
     const thrift::SnappyException& te) {
@@ -1798,16 +1793,17 @@ void ClientService::tryCreateNewConnection(thrift::HostAddress source,
       openConnection(m_currentHostAddr, failedServers, te);
     }
   } catch (...) {
-    throw te;
+    throw GET_SQLEXCEPTION(te);
   }
 }
+
 void ClientService::throwSnappyExceptionForNodeFailure(
     thrift::HostAddress source, const char* op,
     std::set<thrift::HostAddress>& failedServers, bool createNewConnection,
     const thrift::SnappyException& se) {
   //why checking again?
   if (!m_isOpen) {
-    newSnappyExceptionForConnectionClose(m_currentHostAddr, failedServers,
+    newSnappyExceptionForConnectionClose(op, m_currentHostAddr, failedServers,
         createNewConnection, se);
   }
 
@@ -1819,13 +1815,14 @@ void ClientService::throwSnappyExceptionForNodeFailure(
   }
   throwSQLExceptionForNodeFailure(op, se);
 }
+
 void ClientService::throwSnappyExceptionForNodeFailure(
     thrift::HostAddress source, const char* op,
     std::set<thrift::HostAddress>& failedServers, bool createNewConnection,
     const std::exception& se) {
 
   if (!m_isOpen) {
-    newSnappyExceptionForConnectionClose(source);
+    newSnappyExceptionForConnectionClose(op, source);
   }
 
   close();
@@ -1836,12 +1833,13 @@ void ClientService::throwSnappyExceptionForNodeFailure(
   }
   throwSQLExceptionForNodeFailure(op, se);
 }
+
 bool ClientService::handleException(const char* op, bool tryFailover,
     bool ignoreNodeFailure, bool createNewConnection,
     std::set<thrift::HostAddress>& failedServers, const TException& te) {
 
   if (!m_isOpen) {
-    newSnappyExceptionForConnectionClose(m_currentHostAddr);
+    newSnappyExceptionForConnectionClose(op, m_currentHostAddr);
   }
   if (!m_loadBalance || m_isolationLevel != IsolationLevel::NONE) {
     tryFailover = false;

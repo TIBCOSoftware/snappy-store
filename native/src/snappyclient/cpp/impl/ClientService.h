@@ -184,11 +184,13 @@ namespace io {
           void destroyTransport() noexcept;
 
           void newSnappyExceptionForConnectionClose(
+              const char* op,
               const thrift::HostAddress source,
               std::set<thrift::HostAddress>& failedServers,
               bool createNewConnection, const thrift::SnappyException& te);
 
           void newSnappyExceptionForConnectionClose(
+              const char* op,
               const thrift::HostAddress& source);
 
           void tryCreateNewConnection(thrift::HostAddress source,

@@ -108,7 +108,7 @@ namespace io {
           void refreshAllHosts(
               const std::vector<thrift::HostAddress>& allHosts);
 
-          const thrift::SnappyException* unexpectedError(
+          const thrift::SnappyException unexpectedError(
               const std::exception& e, const thrift::HostAddress& host);
 
           void failoverExhausted(
