@@ -82,6 +82,7 @@ import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
 import com.pivotal.gemfirexd.internal.engine.access.index.MemIndex;
 import com.pivotal.gemfirexd.internal.engine.ddl.*;
+import com.pivotal.gemfirexd.internal.engine.ddl.catalog.GfxdSystemProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.messages.GfxdSystemProcedureMessage;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.AbstractGfxdReplayableMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdMessage;
@@ -799,6 +800,8 @@ public final class FabricDatabase implements ModuleControl,
       Map<String, List<String>> hiveDBTablesMap,
       Map<String, List<String>> gfDBTablesMap,
       ExternalCatalog externalCatalog, boolean removeInconsistentEntries, boolean removeTablesWithData) {
+    SanityManager.DEBUG_PRINT("warning:CATALOG","hiveDBTablesMap:" + hiveDBTablesMap
+        + " and gfDBTablesMap:" + gfDBTablesMap);
     // remove tables that are in Hive store but not in datadictionary
     for (Map.Entry<String, List<String>> hiveEntry : hiveDBTablesMap.entrySet()) {
       List<String> storeTableList = gfDBTablesMap.get(hiveEntry.getKey());
@@ -857,8 +860,17 @@ public final class FabricDatabase implements ModuleControl,
           // make sure that corresponding row buffer also does not contain data
           final Region<?, ?> rowBuffer =
               Misc.getRegionForTable(tableName, false);
-          boolean tableContainsData = (columnBuffer.size() != 0) || (rowBuffer != null && rowBuffer.size() != 0);
-          if (!tableContainsData || (tableContainsData && removeTablesWithData)) {
+          String reservoirRegionName = Misc.getReservoirRegionNameForSampleTable(schema, tableName);
+          Region<Object, Object> reservoirRegion = Misc.getRegionForTable(reservoirRegionName,
+              false);
+          boolean tableContainsData = (columnBuffer.size() != 0) || (rowBuffer != null && rowBuffer.size() != 0)
+              || (reservoirRegion != null && reservoirRegion.size() != 0);
+          if (!tableContainsData || removeTablesWithData) {
+            if (reservoirRegion != null) {
+              SanityManager.DEBUG_PRINT("warning:CATALOG", "Dropping reservoir region " +
+                  reservoirRegionName);
+              GfxdSystemProcedures.CREATE_OR_DROP_RESERVOIR_REGION(reservoirRegionName, tableName, true);
+            }
             SanityManager.DEBUG_PRINT("warning:CATALOG", "Dropping table " +
                 columnBatchTableName);
             embedConn.createStatement().execute(
