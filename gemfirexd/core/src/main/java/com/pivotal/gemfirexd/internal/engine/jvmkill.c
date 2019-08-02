@@ -66,7 +66,7 @@ Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
    jvmtiError err;
    jint rc = (*vm)->GetEnv(vm, (void **) &jvmti, JVMTI_VERSION);
    if (rc != JNI_OK) {
-      logMessage("ERROR: GetEnv failed: %d\n", rc);
+      logMessage(0, "ERROR: GetEnv failed: %d\n", rc);
       return JNI_ERR;
    }
 
@@ -77,14 +77,14 @@ Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
 
    err = (*jvmti)->SetEventCallbacks(jvmti, &callbacks, sizeof(callbacks));
    if (err != JVMTI_ERROR_NONE) {
-      logMessage("ERROR: SetEventCallbacks failed: %d\n", err);
+      logMessage(0, "ERROR: SetEventCallbacks failed: %d\n", err);
       return JNI_ERR;
    }
 
    err = (*jvmti)->SetEventNotificationMode(
          jvmti, JVMTI_ENABLE, JVMTI_EVENT_RESOURCE_EXHAUSTED, NULL);
    if (err != JVMTI_ERROR_NONE) {
-      logMessage("ERROR: SetEventNotificationMode failed: %d\n", err);
+      logMessage(0, "ERROR: SetEventNotificationMode failed: %d\n", err);
       return JNI_ERR;
    }
 
