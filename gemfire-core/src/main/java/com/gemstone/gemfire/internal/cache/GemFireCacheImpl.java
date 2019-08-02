@@ -1494,8 +1494,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
           if (usingDefaultMemorySize) {
             memorySize = 0;
             bufferAllocator = HeapBufferAllocator.instance();
-            // log a warning
-            getLogger().warning("DISABLED off-heap because default memory-size = " +
+            // log an error
+            getLogger().error("DISABLED off-heap because default memory-size = " +
                 memorySize + " cannot be allocated: " + oome);
           } else {
             throw new IllegalStateException("Provided memory-size = " + memorySize +

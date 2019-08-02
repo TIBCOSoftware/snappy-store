@@ -18,12 +18,19 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <jvmti.h>
 
 
 static FILE* g_logFile = NULL;
 
-void logMessage(char *format, ...) {
+int logMessage(jint flags, char *format, ...) {
+   // check if file indicating skip OOME errors exists
+   if (flags & (JVMTI_RESOURCE_EXHAUSTED_OOM_ERROR | JVMTI_RESOURCE_EXHAUSTED_JAVA_HEAP)) {
+     char fname[100];
+     sprintf(fname, "jvmkill_pid%d.skip", getpid());
+     if (access(fname, F_OK) != -1) return 0;
+   }
    FILE* logFile = g_logFile;
    if (logFile == NULL) {
      char fname[100];
@@ -36,6 +43,7 @@ void logMessage(char *format, ...) {
    vfprintf(logFile, format, args);
    va_end(args);
    fflush(logFile);
+   return 1;
 }
 
 static void JNICALL
@@ -45,8 +53,11 @@ resourceExhausted(
       jint flags,
       const void *reserved,
       const char *description) {
-   logMessage("ResourceExhausted: %s: killing current process!", description);
-   kill(getpid(), SIGKILL);
+   if (logMessage(flags, "ResourceExhausted: %s: killing current process!", description)) {
+     kill(getpid(), SIGKILL);
+   } else {
+     errno = 0;
+   }
 }
 
 JNIEXPORT jint JNICALL
