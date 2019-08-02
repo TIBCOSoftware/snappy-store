@@ -220,6 +220,9 @@ public final class SystemFailure {
    public static final String DISTRIBUTION_HALTED_MESSAGE = LocalizedStrings.SystemFailure_DISTRIBUTION_HALTED_DUE_TO_JVM_CORRUPTION.toLocalizedString();
    public static final String DISTRIBUTED_SYSTEM_DISCONNECTED_MESSAGE = LocalizedStrings.SystemFailure_DISTRIBUTED_SYSTEM_DISCONNECTED_DUE_TO_JVM_CORRUPTION.toLocalizedString();
 
+   // OOME handling is now done by native agent (jvmkill.c)
+   private static boolean disableWatchDog = true;
+
   /**
    * the underlying failure
    * 
@@ -429,6 +432,7 @@ public final class SystemFailure {
    * Start the watchdog thread, if it isn't already running.
    */
   private static void startWatchDog() {
+    if (disableWatchDog) return;
     if (failureActionCompleted) {
       // Our work is done, don't restart
       return;
@@ -448,6 +452,7 @@ public final class SystemFailure {
   }
 
   private static void stopWatchDog() {
+    if (disableWatchDog) return;
     Thread watchDogThread;
     synchronized (failureSync) {
       stopping = true;
