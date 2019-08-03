@@ -309,8 +309,8 @@ public abstract class LauncherBase {
           // calculate percent that will leave out at max 1GB
           criticalPercent = (float)(100.0 * (1.0 - oneGB / heapSize));
         } else if (heapSize >= twoGB) {
-          // leave out max 250MB
-          criticalPercent = (float)(100.0 * (1.0 - (250.0 * 1024.0 * 1024.0) / heapSize));
+          // leave out max 200MB
+          criticalPercent = (float)(100.0 * (1.0 - (200.0 * 1024.0 * 1024.0) / heapSize));
         } else {
           criticalPercent = 90.0f;
         }
