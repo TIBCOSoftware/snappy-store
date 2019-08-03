@@ -1063,7 +1063,7 @@ public final class SystemFailure {
    * @throws Error if a thread-specific AssertionError cannot be allocated.
    */
   public static void initiateFailure(Error f) throws InternalGemFireError, Error {
-    if (SKIP_OOME.get() == Boolean.TRUE) return;
+    if (f instanceof OutOfMemoryError && SKIP_OOME.get() == Boolean.TRUE) return;
     SystemFailure.setFailure(f);
     throwFailure();
   }
