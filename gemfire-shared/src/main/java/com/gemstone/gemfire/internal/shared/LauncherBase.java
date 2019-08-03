@@ -141,6 +141,7 @@ public abstract class LauncherBase {
   protected boolean waitForData;
 
   protected final String jvmVendor;
+  protected final String jvmName;
   protected String maxHeapSize;
   protected String initialHeapSize;
   @SuppressWarnings("WeakerAccess")
@@ -171,6 +172,7 @@ public abstract class LauncherBase {
     // wait for data sync by default
     this.waitForData = true;
     this.jvmVendor = System.getProperty("java.vendor");
+    this.jvmName = System.getProperty("java.vm.name");
   }
 
   protected String getBaseName(final String name) {
@@ -333,8 +335,8 @@ public abstract class LauncherBase {
             evictHeapStr.indexOf('=') + 1).trim());
       }
     }
-    if (jvmVendor != null && (jvmVendor.contains("Sun") ||
-        jvmVendor.contains("Oracle") || jvmVendor.contains("OpenJDK"))) {
+    if (jvmVendor != null && (jvmVendor.contains("Sun") || jvmVendor.contains("Oracle") ||
+        jvmVendor.contains("OpenJDK") || jvmName.contains("OpenJDK"))) {
       vmArgs.add("-XX:+UseParNewGC");
       vmArgs.add("-XX:+UseConcMarkSweepGC");
       vmArgs.add("-XX:CMSInitiatingOccupancyFraction=50");
