@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <jvmti.h>
 
+#define SKIP_FILE_PATTERN "jvmkill_pid%d.skip"
 
 static FILE* g_logFile = NULL;
 
@@ -28,8 +29,10 @@ int logMessage(jint flags, char *format, ...) {
    // check if file indicating skip OOME errors exists
    if (flags & (JVMTI_RESOURCE_EXHAUSTED_OOM_ERROR | JVMTI_RESOURCE_EXHAUSTED_JAVA_HEAP)) {
      char fname[100];
-     sprintf(fname, "jvmkill_pid%d.skip", getpid());
-     if (access(fname, F_OK) != -1) return 0;
+     sprintf(fname, SKIP_FILE_PATTERN, getpid());
+     int result = access(fname, F_OK);
+     errno = 0;
+     if (result != -1) return 0;
    }
    FILE* logFile = g_logFile;
    if (logFile == NULL) {
@@ -55,8 +58,6 @@ resourceExhausted(
       const char *description) {
    if (logMessage(flags, "ResourceExhausted: %s: killing current process!", description)) {
      kill(getpid(), SIGKILL);
-   } else {
-     errno = 0;
    }
 }
 
@@ -87,6 +88,12 @@ Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
       logMessage(0, "ERROR: SetEventNotificationMode failed: %d\n", err);
       return JNI_ERR;
    }
+
+   // remove any .skip file
+   char fname[100];
+   sprintf(fname, SKIP_FILE_PATTERN, getpid());
+   remove(fname);
+   errno = 0;
 
    return JNI_OK;
 }
