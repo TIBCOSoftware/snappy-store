@@ -75,6 +75,30 @@ public class LocalCSLMIndexTest extends JdbcTestBase {
     TestRunner.run(new TestSuite(LocalCSLMIndexTest.class));
   }
 
+  protected void cleanUp() throws Exception {
+    Connection conn = jdbcConn;
+    if (conn == null) conn = getConnection();
+    Statement stmt = conn.createStatement();
+    stmt.execute("drop index if exists i2");
+    stmt.execute("drop table if exists t1");
+    stmt.execute("drop table if exists trade.securities");
+    stmt.execute("drop table if exists table_data");
+  }
+
+  @Override
+  protected void setUp() throws Exception {
+    GemFireXDQueryObserverHolder.clearInstance();
+    super.setUp();
+    cleanUp();
+  }
+
+  @Override
+  protected void tearDown() throws Exception {
+    GemFireXDQueryObserverHolder.clearInstance();
+    cleanUp();
+    super.tearDown();
+  }
+
   /**
    * create an local index after the table is populated with data.
    * 

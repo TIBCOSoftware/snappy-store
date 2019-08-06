@@ -71,7 +71,8 @@ public class DropIfExistsTest extends JdbcTestBase {
     setupConnection();
 
     //1. Test IF EXISTS for existing empty schema
-    
+
+    sqlExecute("DROP SCHEMA IF EXISTS EMP RESTRICT", true);
     // verify that the schema region "EMP" doesn't exist
     assertNull(Misc.getRegionForTable("EMP", false));
     sqlExecute("CREATE SCHEMA EMP", true);
@@ -156,11 +157,14 @@ public class DropIfExistsTest extends JdbcTestBase {
     setupConnection(props1);
     Connection conn = TestUtil.getConnection(props1);
     Statement st = conn.createStatement();
+    st.execute("drop table if exists test");
     st.execute("create table test(col1 int not null, col2 int not null) partition by column(col2)");
 
     st.execute("drop table if exists sch.test");
     st.execute("drop table if exists sch.test");
     st.execute("drop table if exists sch.test");
+    st.execute("drop table if exists test");
+    st.execute("drop table if exists test");
     st.execute("drop table if exists test");
     try {
       st.execute("drop table test");

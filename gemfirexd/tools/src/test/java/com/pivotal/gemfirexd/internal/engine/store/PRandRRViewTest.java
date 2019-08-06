@@ -52,6 +52,7 @@ public class PRandRRViewTest extends JdbcTestBase
       conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
       conn.setAutoCommit(false);
       Statement st = conn.createStatement();
+      st.execute("drop table if exists t1");
       st.execute("Create table t1 (c1 int not null , c2 int not null, "
           + "c3 int not null, c4 int not null , c5 int not null, "
           + "primary key(c1)) replicate");
@@ -202,6 +203,7 @@ public class PRandRRViewTest extends JdbcTestBase
       String schema = TestUtil.getCurrentDefaultSchemaName();
       conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
       Statement st = conn.createStatement();
+      st.execute("drop table if exists t1");
       st
           .execute("Create table t1 (c1 int not null , c2 int not null, c3 int not null,"
               + " c4 int not null , c5 int not null ," + " primary key(c1) ) replicate ");
@@ -380,6 +382,7 @@ public class PRandRRViewTest extends JdbcTestBase
       conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
       conn.setAutoCommit(false);
       Statement st = conn.createStatement();
+      st.execute("drop table if exists t1");
       st.execute("Create table t1 (c1 int not null , c2 int not null, "
           + "c3 int not null, c4 int not null , c5 int not null ,"
           + " primary key(c1) ) ");
@@ -537,6 +540,7 @@ public class PRandRRViewTest extends JdbcTestBase
       String schema = TestUtil.getCurrentDefaultSchemaName();
       conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
       Statement st = conn.createStatement();
+      st.execute("drop table if exists t1");
       st
           .execute("Create table t1 (c1 int not null , c2 int not null, c3 int not null,"
               + " c4 int not null , c5 int not null ," + " primary key(c1) )  ");

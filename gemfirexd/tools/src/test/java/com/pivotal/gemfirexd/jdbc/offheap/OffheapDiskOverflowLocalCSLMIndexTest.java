@@ -31,10 +31,10 @@ public class OffheapDiskOverflowLocalCSLMIndexTest extends
   
   @Override
   public void setUp() throws Exception {
-    super.setUp();
     System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "500m");
     System.setProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
     System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,"true");
+    super.setUp();
   }
   
   @Override
