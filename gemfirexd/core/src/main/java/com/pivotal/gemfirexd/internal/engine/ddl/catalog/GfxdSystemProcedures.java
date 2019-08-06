@@ -1598,10 +1598,10 @@ public class GfxdSystemProcedures extends SystemProcedures {
     PartitionedRegion existingRegion = Misc.getReservoirRegionForSampleTable(
         reservoirRegionName);
     if (isDrop) {
-      if(removeSampler) {
-        CallbackFactoryProvider.getStoreCallbacks().removeSampler(resolvedBaseName);
-      }
       if (existingRegion != null) {
+        if(removeSampler) {
+          CallbackFactoryProvider.getStoreCallbacks().removeSampler(resolvedBaseName);
+        }
         existingRegion.destroyRegion(null);
         return true;
       } else {

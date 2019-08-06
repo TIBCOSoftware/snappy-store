@@ -1581,8 +1581,6 @@ public final class GfxdSystemProcedureMessage extends
         return true;
       }
 
-      //todo[vatsal] : does this need to be updated with param[3] which is added
-      // for removing sampler?
       @Override
       boolean shouldBeConflated(Object[] params) {
         return (Boolean)params[2];

@@ -800,8 +800,6 @@ public final class FabricDatabase implements ModuleControl,
       Map<String, List<String>> hiveDBTablesMap,
       Map<String, List<String>> gfDBTablesMap,
       ExternalCatalog externalCatalog, boolean removeInconsistentEntries, boolean removeTablesWithData) {
-    SanityManager.DEBUG_PRINT("warning:CATALOG","hiveDBTablesMap:" + hiveDBTablesMap
-        + " and gfDBTablesMap:" + gfDBTablesMap);
     // remove tables that are in Hive store but not in datadictionary
     for (Map.Entry<String, List<String>> hiveEntry : hiveDBTablesMap.entrySet()) {
       List<String> storeTableList = gfDBTablesMap.get(hiveEntry.getKey());
