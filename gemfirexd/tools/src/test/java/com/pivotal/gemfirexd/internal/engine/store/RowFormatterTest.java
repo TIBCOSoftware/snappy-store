@@ -1640,6 +1640,7 @@ public class RowFormatterTest extends JdbcTestBase {
     final Connection conn = getConnection();
     final Statement stmt = conn.createStatement();
     // create customers table
+    stmt.execute("drop table if exists tpcc.customer");
     stmt.execute("create table tpcc.customer ("
         + "c_w_id         integer        not null,"
         + "c_d_id         integer        not null,"

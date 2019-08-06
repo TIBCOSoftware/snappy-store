@@ -32,8 +32,10 @@ import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.RegionEvent;
 import com.gemstone.gemfire.cache.hdfs.internal.HDFSStoreImpl;
+import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.internal.FileUtil;
 import com.gemstone.gemfire.internal.cache.CacheObserver;
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.Oplog;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
 import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl;
@@ -153,21 +155,34 @@ public class JdbcTestBase extends TestUtil implements UnitTest {
     try {
       this.doEndOffHeapValidations();
     } finally {
-    try {
-      shutDown();
-      currentUserName = null;
-      currentUserPassword = null;
-    } finally {
-      super.tearDown();
-      GemFireXDUtils.IS_TEST_MODE = false;
-      final String[] dirs = testSpecificDirectoriesForDeletion();
-      if (dirs != null) {
-        for (String dir : dirs) {
-          deleteDir(new File(dir));
+      try {
+        shutDown();
+        currentUserName = null;
+        currentUserPassword = null;
+      } finally {
+        try {
+          super.tearDown();
+          GemFireXDUtils.IS_TEST_MODE = false;
+          final String[] dirs = testSpecificDirectoriesForDeletion();
+          if (dirs != null) {
+            for (String dir : dirs) {
+              deleteDir(new File(dir));
+            }
+          }
+          clearAllOplogFiles();
+        } finally {
+          GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+          if (cache != null && !cache.isClosed()) {
+            try {
+              cache.close();
+            } catch (Exception ignore) {
+            }
+          }
+          System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
+          System.clearProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
+          System.clearProperty("gemfirexd.TEST_FLAG_OFFHEAP_ENABLE");
         }
       }
-      clearAllOplogFiles();
-    }
     }
   }
 

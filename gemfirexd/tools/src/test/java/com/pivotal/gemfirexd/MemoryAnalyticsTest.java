@@ -107,6 +107,7 @@ public class MemoryAnalyticsTest extends JdbcTestBase {
     Statement stmt = conn.createStatement();
     // turn this to true for just printing out the expected results.
 
+    stmt.execute("drop table if exists tmp.t1");
     ResultSet rs = stmt
         .executeQuery("select * from sys.memoryanalytics ");
 
@@ -770,6 +771,7 @@ public class MemoryAnalyticsTest extends JdbcTestBase {
     }
     
     rs.close();
+    st.execute("drop table t1");
   }
 
   private void delete(File file) {
