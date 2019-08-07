@@ -261,29 +261,7 @@ public class Status {
   public String shortStatus() {
     final StringBuilder buffer = new StringBuilder();
     buffer.append(this.baseName).append(" pid: ").append(pid).append(" status: ");
-    switch (state) {
-      case SHUTDOWN:
-        buffer.append("stopped");
-        break;
-      case STARTING:
-        buffer.append("starting");
-        break;
-      case RUNNING:
-        buffer.append("running");
-        break;
-      case SHUTDOWN_PENDING:
-        buffer.append("stopping");
-        break;
-      case WAITING:
-        buffer.append("waiting");
-        break;
-      case STANDBY:
-        buffer.append("standby");
-        break;
-      default:
-        buffer.append("unknown");
-        break;
-    }
+    buffer.append(getStateString(state));
     if (exceptionStr != null || msg != null) {
       if (msg != null) {
         buffer.append("\n").append(msg);
@@ -295,5 +273,24 @@ public class Status {
       }
     }
     return buffer.toString();
+  }
+
+  public String getStateString(int state) {
+    switch (state) {
+      case SHUTDOWN:
+        return "stopped";
+      case STARTING:
+        return "starting";
+      case RUNNING:
+        return "running";
+      case SHUTDOWN_PENDING:
+        return "stopping";
+      case WAITING:
+        return "waiting";
+      case STANDBY:
+        return "standby";
+      default:
+        return "unknown";
+    }
   }
 }
