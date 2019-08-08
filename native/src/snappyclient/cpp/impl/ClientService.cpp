@@ -363,7 +363,7 @@ ClientService::ClientService(const std::string& host, const int port,
         thrift::ServerType::THRIFT_SNAPPY_CP), m_useFramedTransport(false), m_serverGroups(), m_transport(), m_client(
         createDummyProtocol()), m_connHosts(0), m_connId(0), m_token(), m_isOpen(
         false), m_pendingTXAttrs(), m_hasPendingTXAttrs(false), m_isolationLevel(
-        IsolationLevel::NONE), m_lock() {
+        IsolationLevel::NONE), m_lock(), m_explicitLoadBalance(true) {
   std::map<std::string, std::string>& props = connArgs.properties;
   std::map<std::string, std::string>::iterator propValue;
 
@@ -372,13 +372,23 @@ ClientService::ClientService(const std::string& host, const int port,
 
   m_connHosts.push_back(hostAddr);
 
-  if (!props.empty()) {
-    if ((propValue = props.find(ClientAttribute::LOAD_BALANCE))
-        != props.end()) {
-      m_loadBalance = !(boost::iequals("false", propValue->second));
+  {
+    // need to keep outside if (!props.empty()) as comes empty if user
+    // doesn't give any property
+    bool hasLoadBalance = ((propValue = props.find(
+        ClientAttribute::LOAD_BALANCE)) != props.end());
+    if (hasLoadBalance) {
+      bool loadBalance = !(boost::iequals("false", propValue->second));
       props.erase(propValue);
+      m_explicitLoadBalance = hasLoadBalance && loadBalance;
+    } else {
+      m_explicitLoadBalance = false;
     }
-
+    //default for load-balance is true on locators and false on servers
+    // so tentatively set as true and adjust using the ControlConnection
+    m_loadBalance = m_explicitLoadBalance || !hasLoadBalance;
+  }
+  if (!props.empty()) {
     // setup the original host list
     if ((propValue = props.find(ClientAttribute::SECONDARY_LOCATORS))
         != props.end()) {
@@ -460,9 +470,39 @@ void ClientService::openConnection(thrift::HostAddress& hostAddr,
         boost::optional<ControlConnection&> controlConn =
             ControlConnection::getOrCreateControlConnection(m_connHosts, this,
                 te);
-        // at this point query the control service for preferred server
-        controlConn->getPreferredServer(hostAddr, te, failedServers,
-            this->m_serverGroups, false);
+        //if connected to the server then disable load-balance by default
+        if (!m_explicitLoadBalance) {
+          //check the actual host type of "locators"
+          std::vector<thrift::HostAddress> locators;
+          controlConn->getLocatorsCopy(locators);
+          bool hasServer = false;
+          if (!locators.empty()) {
+            for (thrift::HostAddress address : locators) {
+              thrift::ServerType::type serverType = address.serverType;
+              if ((serverType == thrift::ServerType::type::THRIFT_SNAPPY_BP
+                  || serverType
+                      == thrift::ServerType::type::THRIFT_SNAPPY_BP_SSL
+                  || serverType == thrift::ServerType::type::THRIFT_SNAPPY_CP
+                  || serverType
+                      == thrift::ServerType::type::THRIFT_SNAPPY_CP_SSL)
+                  && !address.hostName.empty()) {
+                hasServer = true;
+                break;
+              }
+            }
+          }
+          if (hasServer) {
+            m_loadBalance = false;
+            controlConn->close(true);
+          }
+        }
+
+        if (m_loadBalance) {
+          // at this point query the control service for preferred server
+          controlConn->getPreferredServer(hostAddr, te, failedServers,
+              this->m_serverGroups, false);
+        }
+
         m_currentHostAddr = hostAddr;
       }
 
@@ -1754,8 +1794,7 @@ void ClientService::updateFailedServersForCurrent(
   }
 }
 
-void ClientService::newSnappyExceptionForConnectionClose(
-    const char* op,
+void ClientService::newSnappyExceptionForConnectionClose(const char* op,
     const thrift::HostAddress source,
     std::set<thrift::HostAddress>& failedServers, bool createNewConnection,
     const thrift::SnappyException& snappyEx) {
@@ -1774,8 +1813,7 @@ void ClientService::newSnappyExceptionForConnectionClose(
       server.str().c_str(), op);
 }
 
-void ClientService::newSnappyExceptionForConnectionClose(
-    const char* op,
+void ClientService::newSnappyExceptionForConnectionClose(const char* op,
     const thrift::HostAddress& source) {
   std::ostringstream server;
   Utils::toStream(server, source);

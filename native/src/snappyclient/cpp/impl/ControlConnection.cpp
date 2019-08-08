@@ -190,6 +190,10 @@ void ControlConnection::getPreferredServer(
         m_controlLocator->getAllServersWithPreferredServer(
             prefServerAndAllHosts, m_snappyServerTypeSet, serverGroups,
             failedServers);
+//        HostAddress _preferServer;
+//        m_controlLocator->getPreferredServer(_preferServer,
+//            m_snappyServerTypeSet, serverGroups, failedServers);
+//        prefServerAndAllHosts.push_back(_preferServer);
         if (!prefServerAndAllHosts.empty()) {
           std::vector<HostAddress> allHosts(prefServerAndAllHosts.begin() + 1,
               prefServerAndAllHosts.end());
@@ -339,7 +343,7 @@ void ControlConnection::failoverToAvailableHost(
         protocolFactory = 0;
         break;
       }
-    } catch (const TException& te) {
+    } catch (const TException&) {
       failedServers.insert(controlAddr);
       if (outTransport != nullptr) {
         outTransport->close();
@@ -403,6 +407,21 @@ void ControlConnection::refreshAllHosts(
       newLocators.push_back(host);
     }
   }
+
+  // as above foreach loop added entry of m_locators with Server ip and port
+  // if user give server ip and port to connect directly to server
+  // its kind of workaround to update the value of servertype for that entry
+  // as allHosts contains that value
+  // this updated value will get cross-check in ClientService::openConnection
+  for (HostAddress& host : newLocators) {
+    for (HostAddress alHost : allHosts) {
+      if ((!alHost.hostName.compare(host.hostName)
+          || !alHost.ipAddress.compare(host.hostName))
+          && alHost.port == host.port && host.port != 0) {
+        host.serverType = alHost.serverType;
+      }
+    }
+  }
   m_locators = newLocators;
   // refresh the new server list
 
@@ -439,4 +458,22 @@ void ControlConnection::failoverExhausted(
   snappyEx.__set_exceptionData(snappyExData);
   snappyEx.__set_serverInfo(failedServerString);
   throw snappyEx;
+}
+
+void ControlConnection::getLocatorsCopy(
+    std::vector<thrift::HostAddress>& locators) {
+  boost::lock_guard<boost::mutex> controlConnLock(this->m_lock);
+  locators = this->m_locators;
+}
+
+void ControlConnection::close(bool clearGlobal) {
+  m_controlHost = thrift::HostAddress();
+  if (m_controlLocator != nullptr) {
+    m_controlLocator->getOutputProtocol()->getTransport()->close();
+    m_controlLocator.reset(nullptr);
+  }
+  if (clearGlobal) {
+    boost::lock_guard<boost::mutex> globalGuard(s_allConnsLock);
+    s_allConnections.erase(s_allConnections.begin());
+  }
 }

@@ -137,6 +137,10 @@ namespace io {
               const std::set<thrift::HostAddress>& skipServers,
               const std::exception& failure,
               thrift::HostAddress& hostAddress);
+
+          void getLocatorsCopy(std::vector<thrift::HostAddress>& locators);
+
+          void close(bool clearGlobal);
         };
 
       } /* namespace impl */
