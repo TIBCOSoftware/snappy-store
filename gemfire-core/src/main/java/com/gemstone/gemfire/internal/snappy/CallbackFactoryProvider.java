@@ -198,10 +198,6 @@ public abstract class CallbackFactoryProvider {
     public String checkSchemaPermission(String schema, String currentUser) {
       return null;
     }
-
-    @Override
-    public void removeSampler(String sampleTableName) {
-    }
   };
 
   public static void setStoreCallbacks(StoreCallbacks cb) {

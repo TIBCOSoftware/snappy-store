@@ -1550,17 +1550,9 @@ public class GfxdSystemProcedures extends SystemProcedures {
 
   /**
    * Create or drop reservoir region for sampler.
-   *
-   * @param reservoirRegionName name of the reservoir region
-   * @param resolvedBaseName base table name with schema
-   * @param isDrop flag to indicate that the stored procedure is being invoked to drop the
-   *               reservoir region
-   * @param removeSampler flag to indicate that the cached sampler should also be removed
-   *                      along with the region. This flag will be a ignored if the `isDrop`
-   *                      flag is false.
    */
   public static void CREATE_OR_DROP_RESERVOIR_REGION(String reservoirRegionName,
-      String resolvedBaseName, Boolean isDrop, Boolean removeSampler) throws SQLException {
+      String resolvedBaseName, Boolean isDrop) throws SQLException {
     try {
       // check for permission on the sample table schema
       LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
@@ -1576,11 +1568,10 @@ public class GfxdSystemProcedures extends SystemProcedures {
           schema, currentUser);
 
       // first create/drop locally
-      if (createOrDropReservoirRegion(reservoirRegionName, resolvedBaseName, isDrop,
-          removeSampler)) {
+      if (createOrDropReservoirRegion(reservoirRegionName, resolvedBaseName, isDrop)) {
         // don't send to other nodes or persist if local operation is unsuccessful
         final Object[] args = new Object[] { reservoirRegionName,
-            resolvedBaseName, isDrop, removeSampler };
+            resolvedBaseName, isDrop };
         // send to other nodes
         publishMessage(args, false,
             GfxdSystemProcedureMessage.SysProcMethod.createOrDropReservoirRegion,
@@ -1594,14 +1585,11 @@ public class GfxdSystemProcedures extends SystemProcedures {
   }
 
   public static boolean createOrDropReservoirRegion(String reservoirRegionName,
-      String resolvedBaseName, boolean isDrop, boolean removeSampler) {
+      String resolvedBaseName, boolean isDrop) {
     PartitionedRegion existingRegion = Misc.getReservoirRegionForSampleTable(
         reservoirRegionName);
     if (isDrop) {
       if (existingRegion != null) {
-        if(removeSampler) {
-          CallbackFactoryProvider.getStoreCallbacks().removeSampler(resolvedBaseName);
-        }
         existingRegion.destroyRegion(null);
         return true;
       } else {

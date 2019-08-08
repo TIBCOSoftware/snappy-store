@@ -1543,23 +1543,20 @@ public final class GfxdSystemProcedureMessage extends
         String reservoirRegionName = (String)params[0];
         String resolvedBaseName = (String)params[1];
         Boolean isDrop = (Boolean)params[2];
-        Boolean removeSampler = (Boolean)params[3];
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
             "GfxdSystemProcedureMessage:CREATE_OR_DROP_RESERVOIR_REGION " +
                 "reservoirRegionName=" + reservoirRegionName +
-                " resolvedBaseName=" + resolvedBaseName + " isDrop=" + isDrop +
-                " removeSampler=" + removeSampler);
+                " resolvedBaseName=" + resolvedBaseName + " isDrop=" + isDrop);
         GfxdSystemProcedures.createOrDropReservoirRegion(reservoirRegionName,
-            resolvedBaseName, isDrop, removeSampler);
+            resolvedBaseName, isDrop);
       }
 
       @Override
       public Object[] readParams(DataInput in, short flags) throws IOException {
-        Object[] inParams = new Object[4];
+        Object[] inParams = new Object[3];
         inParams[0] = in.readUTF();
         inParams[1] = in.readUTF();
         inParams[2] = in.readBoolean();
-        inParams[3] = in.readBoolean();
         return inParams;
       }
 
@@ -1569,7 +1566,6 @@ public final class GfxdSystemProcedureMessage extends
         out.writeUTF((String)params[0]);
         out.writeUTF((String)params[1]);
         out.writeBoolean((Boolean)params[2]);
-        out.writeBoolean((Boolean)params[3]);
       }
 
       @Override
@@ -1599,7 +1595,7 @@ public final class GfxdSystemProcedureMessage extends
       @Override
       String getSQLStatement(Object[] params) {
         return "CALL SYS.CREATE_OR_DROP_RESERVOIR_REGION('" + params[0] +
-            "','" + params[1] + "'," + params[2] + "'," + params[3] +')';
+            "','" + params[1] + "'," + params[2] + ')';
       }
     },
 
