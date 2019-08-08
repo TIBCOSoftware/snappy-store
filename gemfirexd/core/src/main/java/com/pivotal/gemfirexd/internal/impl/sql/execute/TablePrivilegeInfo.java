@@ -40,6 +40,7 @@
 
 package com.pivotal.gemfirexd.internal.impl.sql.execute;
 
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.pivotal.gemfirexd.internal.catalog.ExternalCatalog;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
@@ -232,7 +233,7 @@ public class TablePrivilegeInfo extends PrivilegeInfo
 		GemFireStore ms = Misc.getMemStore();
 		boolean isSnappyStoreWithSecurityEnabled = ms.isSnappyStore() && Misc.isSecurityEnabled();
 		if (isSnappyStoreWithSecurityEnabled &&
-				CallbackFactoryProvider.getStoreCallbacks().isColumnTable(Misc.getFullTableName(td.getSchemaName(),
+				ClientSharedUtils.isColumnTable(Misc.getFullTableName(td.getSchemaName(),
 						td.getName(), activation.getLanguageConnectionContext()))) {
 			// do nothing for columm batch tables, they will be handled during the corresponding
 			// main table handling

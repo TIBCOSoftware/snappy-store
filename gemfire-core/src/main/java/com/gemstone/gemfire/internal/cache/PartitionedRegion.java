@@ -394,17 +394,20 @@ public class PartitionedRegion extends LocalRegion implements
 
   private volatile int shutDownAllStatus = RUNNING_MODE;
 
+  /** Number of columns if this region is a store for a column table. */
+  private volatile int numColumns = -1;
+
   /** Maximum size in bytes for ColumnBatches. */
-  private int columnBatchSize = -1;
+  private volatile int columnBatchSize = -1;
 
   /** Maximum rows to keep in the delta buffer. */
-  private int columnMaxDeltaRows = -1;
+  private volatile int columnMaxDeltaRows = -1;
 
   /** Minimum size for ColumnBatches. */
-  private int columnMinDeltaRows = SystemProperties.SNAPPY_MIN_COLUMN_DELTA_ROWS;
+  private volatile int columnMinDeltaRows = SystemProperties.SNAPPY_MIN_COLUMN_DELTA_ROWS;
 
   /** default compression used by the column store */
-  private String columnCompressionCodec;
+  private volatile String columnCompressionCodec;
 
   public void setColumnBatchSizes(int size, int maxDeltaRows,
       int minDeltaRows) {
@@ -417,17 +420,25 @@ public class PartitionedRegion extends LocalRegion implements
     final GemFireCacheImpl.StaticSystemCallbacks sysCb = GemFireCacheImpl
         .getInternalProductCallbacks();
     if (sysCb != null) {
-      ExternalTableMetaData metadata = sysCb.fetchSnappyTablesHiveMetaData(this);
-      if (this.columnBatchSize == -1) {
-        this.columnBatchSize = metadata.columnBatchSize;
-      }
-      if (this.columnMaxDeltaRows == -1) {
-        this.columnMaxDeltaRows = metadata.columnMaxDeltaRows;
-      }
-      if (this.columnCompressionCodec == null) {
-        this.columnCompressionCodec = metadata.compressionCodec;
+      synchronized (this) {
+        ExternalTableMetaData metadata = sysCb.fetchTableMetaData(this);
+        if (this.numColumns == -1) {
+          this.numColumns = metadata.numColumns;
+          this.columnBatchSize = metadata.columnBatchSize;
+          this.columnMaxDeltaRows = metadata.columnMaxDeltaRows;
+          this.columnCompressionCodec = metadata.compressionCodec;
+        }
       }
     }
+  }
+
+  public int getNumColumns() {
+    int numColumns = this.numColumns;
+    if (numColumns == -1) {
+      initFromHiveMetaData();
+      return this.numColumns;
+    }
+    return numColumns;
   }
 
   public int getColumnBatchSize() {

@@ -850,7 +850,8 @@ public abstract class AbstractDiskRegion implements DiskRegionView {
   }
 
   @Override
-  public void updateMemoryStats(Object oldValue, Object newValue) {
+  public void updateMemoryStats(Object oldValue, Object newValue,
+      AbstractRegionEntry re) {
     // only used by BucketRegion as of now
   }
 

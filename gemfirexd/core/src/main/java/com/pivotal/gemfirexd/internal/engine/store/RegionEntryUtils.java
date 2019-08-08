@@ -1615,7 +1615,7 @@ public final class RegionEntryUtils {
       }
     }
 
-    public ExternalTableMetaData fetchSnappyTablesHiveMetaData(
+    public ExternalTableMetaData fetchTableMetaData(
         PartitionedRegion region) {
       GemFireContainer container = (GemFireContainer)region.getUserAttribute();
       if (container != null) {

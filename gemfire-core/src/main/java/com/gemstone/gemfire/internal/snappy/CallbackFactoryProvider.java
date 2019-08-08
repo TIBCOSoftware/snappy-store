@@ -55,11 +55,6 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
-    public boolean isColumnTable(String qualifiedName) {
-      return false;
-    }
-
-    @Override
     public boolean skipEvictionForEntry(LRUEntry entry) {
       return false;
     }

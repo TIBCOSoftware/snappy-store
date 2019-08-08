@@ -54,5 +54,6 @@ public interface RegionEntryContext extends HasCachePerfStats {
    */
   public boolean isBackup();
 
-  public void updateMemoryStats(Object oldValue, Object newValue);
+  public void updateMemoryStats(Object oldValue, Object newValue,
+      AbstractRegionEntry re);
 }

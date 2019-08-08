@@ -16,6 +16,7 @@
  */
 package com.gemstone.gemfire.internal.cache;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,6 +26,7 @@ public class ExternalTableMetaData {
       Object schema,
       String tableType,
       Object externalStore,
+      int numColumns,
       int columnBatchSize,
       int columnMaxDeltaRows,
       String compressionCodec,
@@ -37,6 +39,7 @@ public class ExternalTableMetaData {
     this.schema = schema;
     this.tableType = tableType;
     this.externalStore = externalStore;
+    this.numColumns = numColumns;
     this.columnBatchSize = columnBatchSize;
     this.columnMaxDeltaRows = columnMaxDeltaRows;
     this.compressionCodec = compressionCodec;
@@ -45,23 +48,25 @@ public class ExternalTableMetaData {
     this.dependents = dependents;
     this.dataSourcePath = dataSourcePath;
     this.driverClass = driverClass;
+    this.columns = Collections.emptyList();
   }
 
-  public String entityName;
-  public Object schema;
-  public String tableType;
+  public final String entityName;
+  public final Object schema;
+  public final String tableType;
   // No type specified as the class is in snappy core
-  public Object externalStore;
-  public int columnBatchSize;
-  public int columnMaxDeltaRows;
-  public String compressionCodec;
-  public String baseTable;
-  public String dml;
-  public String[] dependents;
+  public final Object externalStore;
+  public final int numColumns;
+  public final int columnBatchSize;
+  public final int columnMaxDeltaRows;
+  public final String compressionCodec;
+  public final String baseTable;
+  public final String dml;
+  public final String[] dependents;
   public String provider;
   public String shortProvider;
-  public String dataSourcePath;
-  public String driverClass;
+  public final String dataSourcePath;
+  public final String driverClass;
   public String viewText;
   // columns for metadata queries
   public List<Column> columns;

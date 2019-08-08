@@ -150,6 +150,7 @@ import com.gemstone.gemfire.internal.offheap.annotations.Released;
 import com.gemstone.gemfire.internal.offheap.annotations.Retained;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
 import com.gemstone.gemfire.internal.sequencelog.EntryLogger;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.size.ReflectionObjectSizer;
@@ -680,10 +681,10 @@ public class LocalRegion extends AbstractRegion
     Assert.assertTrue(regionName != null, "regionName must not be null");
     this.sharedDataView = buildDataView();
     this.regionName = regionName;
-    this.isInternalColumnTable = regionName.toUpperCase(Locale.ENGLISH)
-        .endsWith(StoreCallbacks.SHADOW_TABLE_SUFFIX);
     this.parentRegion = parentRegion;
     this.fullPath = calcFullPath(regionName, parentRegion);
+    this.isInternalColumnTable = ClientSharedUtils.isColumnTable(
+        this.fullPath.toUpperCase(Locale.ENGLISH));
     // cannot support patterns like "..._/..." due to ambiguity in encoding
     // of bucket regions
     if (this.fullPath.contains("_/")) {
@@ -3186,7 +3187,8 @@ public class LocalRegion extends AbstractRegion
   }
 
   @Override
-  public void updateMemoryStats(Object oldValue, Object newValue) {
+  public void updateMemoryStats(Object oldValue, Object newValue,
+      AbstractRegionEntry re) {
     // only used by BucketRegion as of now
   }
 

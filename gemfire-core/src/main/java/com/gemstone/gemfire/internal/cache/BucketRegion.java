@@ -38,7 +38,12 @@ package com.gemstone.gemfire.internal.cache;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
@@ -72,6 +77,7 @@ import com.gemstone.gemfire.internal.cache.locks.LockMode;
 import com.gemstone.gemfire.internal.cache.locks.LockingPolicy.ReadEntryUnderLock;
 import com.gemstone.gemfire.internal.cache.locks.ReentrantReadWriteWriteShareLock;
 import com.gemstone.gemfire.internal.cache.partitioned.*;
+import com.gemstone.gemfire.internal.cache.store.ColumnBatchKey;
 import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
 import com.gemstone.gemfire.internal.cache.tier.sockets.CacheClientNotifier;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientTombstoneMessage;
@@ -126,6 +132,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
    * Contains size in bytes of the direct byte buffers stored in memory.
    */
   private final AtomicLong directBufferBytesInMemory = new AtomicLong();
+  private final AtomicLong numRowsInColumnTable = new AtomicLong();
   private final AtomicLong inProgressSize = new AtomicLong();
 
   public static final ReadEntryUnderLock READ_SER_VALUE = new ReadEntryUnderLock() {
@@ -2765,6 +2772,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
       prDs.updateMemoryStats(-oldMemValue);
     }
     this.directBufferBytesInMemory.set(0);
+    this.numRowsInColumnTable.set(0);
     // explicitly clear overflow counters if no diskRegion is present
     // (for latter the counters are cleared by DiskRegion.statsClear)
     if (getDiskRegion() == null) {
@@ -2982,9 +2990,16 @@ public class BucketRegion extends DistributedRegion implements Bucket {
     closeCacheCallback(getEvictionController());
   }
 
-  public long getSizeInMemory() {
-    return Math.max(this.bytesInMemory.get(), 0L) +
-        this.directBufferBytesInMemory.get();
+  public final long getSizeInMemory() {
+    return Math.max(this.bytesInMemory.get(), 0L) + getDirectBytesSizeInMemory();
+  }
+
+  public final long getDirectBytesSizeInMemory() {
+    return this.directBufferBytesInMemory.get();
+  }
+
+  public final long getNumRowsInColumnTable() {
+    return this.numRowsInColumnTable.get();
   }
 
   public long getInProgressSize() {
@@ -3102,22 +3117,44 @@ public class BucketRegion extends DistributedRegion implements Bucket {
   }
 
   @Override
-  public void updateMemoryStats(final Object oldValue, final Object newValue) {
+  public void updateMemoryStats(final Object oldValue, final Object newValue,
+      final AbstractRegionEntry re) {
     if (newValue != oldValue) {
       int oldValueSize = calcMemSize(oldValue);
       int newValueSize = calcMemSize(newValue);
       updateBucketMemoryStats(newValueSize - oldValueSize);
 
-      if (this.cache.getMemorySize() > 0) {
-        int directBufferDelta = 0;
-        if (oldValue instanceof SerializedDiskBuffer) {
-          directBufferDelta -= ((SerializedDiskBuffer)oldValue).getOffHeapSizeInBytes();
-        }
-        if (newValue instanceof SerializedDiskBuffer) {
-          directBufferDelta += ((SerializedDiskBuffer)newValue).getOffHeapSizeInBytes();
-        }
-        if (directBufferDelta != 0) {
-          this.directBufferBytesInMemory.getAndAdd(directBufferDelta);
+      // update number of rows in table and off-heap size if applicable
+      if (re != null) {
+        int numColumns = this.partitionedRegion.getNumColumns();
+        if (numColumns > 0) {
+          Object key = re.getRawKey();
+          final boolean hasNewOffHeap = this.cache.getMemorySize() > 0;
+          if (key instanceof ColumnBatchKey) {
+            ColumnBatchKey batchKey = (ColumnBatchKey)key;
+            int directBufferDelta = 0;
+            int numRowsDelta = 0;
+            if (oldValue instanceof SerializedDiskBuffer) {
+              SerializedDiskBuffer oldBuffer = (SerializedDiskBuffer)oldValue;
+              if (hasNewOffHeap) {
+                directBufferDelta -= oldBuffer.getOffHeapSizeInBytes();
+              }
+              numRowsDelta -= batchKey.getColumnBatchRowCount(this, oldBuffer);
+            }
+            if (newValue instanceof SerializedDiskBuffer) {
+              SerializedDiskBuffer newBuffer = (SerializedDiskBuffer)newValue;
+              if (hasNewOffHeap) {
+                directBufferDelta -= newBuffer.getOffHeapSizeInBytes();
+              }
+              numRowsDelta += batchKey.getColumnBatchRowCount(this, newBuffer);
+            }
+            if (directBufferDelta != 0) {
+              this.directBufferBytesInMemory.getAndAdd(directBufferDelta);
+            }
+            if (numRowsDelta != 0) {
+              this.numRowsInColumnTable.getAndAdd(numRowsDelta);
+            }
+          }
         }
       }
     }

@@ -1441,14 +1441,14 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
       if (rawOldVal instanceof SerializedDiskBuffer) {
         synchronized (rawOldVal) {
           setValueField(val);
-          if (context != null) context.updateMemoryStats(rawOldVal, val);
+          if (context != null) context.updateMemoryStats(rawOldVal, val, this);
           ((SerializedDiskBuffer)rawOldVal).release();
         }
         return;
       } else if (val instanceof SerializedDiskBuffer) {
         synchronized (val) {
           setValueField(val);
-          if (context != null) context.updateMemoryStats(rawOldVal, val);
+          if (context != null) context.updateMemoryStats(rawOldVal, val, this);
         }
         return;
       }
@@ -1463,7 +1463,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
         || (Token.isRemoved(val) && getValueAsToken() != Token.NOT_A_TOKEN)) {
       setValueField(val);
       if (!isOffHeap && context != null) {
-        context.updateMemoryStats(rawOldVal, val);
+        context.updateMemoryStats(rawOldVal, val, this);
       }
     }
     else {
@@ -1501,7 +1501,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
             setContainerInfo(null, val);
           }
           if (!isOffHeap && context != null) {
-            context.updateMemoryStats(rawOldVal, val);
+            context.updateMemoryStats(rawOldVal, val, this);
           }
           return;
         } catch (IllegalAccessException e) {
@@ -1739,10 +1739,10 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
       // set the context into the value if required
       initContextForDiskBuffer(owner, val);
       // add for new owner
-      if (owner != null) owner.updateMemoryStats(null, val);
+      if (owner != null) owner.updateMemoryStats(null, val, this);
       // reduce from previous owner
       if (previousOwner instanceof RegionEntryContext) {
-        ((RegionEntryContext)previousOwner).updateMemoryStats(val, null);
+        ((RegionEntryContext)previousOwner).updateMemoryStats(val, null, this);
       }
     }
     final StaticSystemCallbacks sysCb =

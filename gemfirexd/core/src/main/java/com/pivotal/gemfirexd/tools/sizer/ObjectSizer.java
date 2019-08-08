@@ -22,18 +22,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.sql.Connection;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
 
@@ -54,6 +43,8 @@ import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
 import com.gemstone.gemfire.internal.cache.lru.Sizeable;
 import com.gemstone.gemfire.internal.cache.partitioned.Bucket;
 import com.gemstone.gemfire.internal.cache.partitioned.PREntriesIterator;
+import com.gemstone.gemfire.internal.cache.store.ColumnBatchKey;
+import com.gemstone.gemfire.internal.cache.store.SerializedDiskBuffer;
 import com.gemstone.gemfire.internal.cache.wan.AbstractGatewaySender;
 import com.gemstone.gemfire.internal.cache.wan.GatewaySenderEventImpl;
 import com.gemstone.gemfire.internal.cache.wan.parallel.ConcurrentParallelGatewaySenderQueue;
@@ -76,7 +67,6 @@ import com.pivotal.gemfirexd.internal.engine.store.CompactCompositeIndexKey;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.engine.store.RegionEntryUtils;
-import com.pivotal.gemfirexd.internal.engine.store.RowFormatter;
 import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapRow;
 import com.pivotal.gemfirexd.internal.engine.store.offheap.OffHeapRowWithLobs;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
@@ -84,12 +74,10 @@ import com.pivotal.gemfirexd.internal.iapi.reference.Property;
 import com.pivotal.gemfirexd.internal.iapi.services.context.ContextManager;
 import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableHashtable;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
-import com.pivotal.gemfirexd.internal.iapi.sql.dictionary.ColumnDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
 import com.pivotal.gemfirexd.internal.iapi.types.RowLocation;
 import com.pivotal.gemfirexd.internal.impl.sql.catalog.GfxdDataDictionary;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
-import com.pivotal.gemfirexd.internal.snappy.ColumnBatchKey;
 
 /**
  * This class helps in finding out memory footprint per Region and divides
@@ -638,7 +626,6 @@ public class ObjectSizer {
     final boolean agentAttached = SIZE_OF_UTIL.isAgentAttached();
     boolean isValueTypeEvaluated = false;
     final boolean isColumnTable = c.isColumnStore();
-    int numColumnsInColumnTable = -1;
     long dvdArraySize = 0;
     boolean gatewayEntries = false;
     boolean offHeapEntries = false;
@@ -755,8 +742,6 @@ public class ObjectSizer {
           if (value != null) {
             if (!isValueTypeEvaluated) {
               if (isColumnTable) {
-                numColumnsInColumnTable = batchKey.getNumColumnsInTable(
-                    c.getQualifiedTableName());
               } else if (value instanceof DataValueDescriptor[]) {
                 dvdArraySize = SIZE_OF_UTIL.sizeof(value);
               } else if (value instanceof GatewaySenderEventImpl) {
@@ -768,8 +753,10 @@ public class ObjectSizer {
             }
             if (isColumnTable) {
               int valueSize = ((Sizeable)value).getSizeInBytes();
-              columnRowCount += batchKey.getColumnBatchRowCount(prEntryIter.getHostedBucketRegion(),
-                  re, numColumnsInColumnTable);
+              if (value instanceof SerializedDiskBuffer) {
+                columnRowCount += batchKey.getColumnBatchRowCount(
+                    prEntryIter.getHostedBucketRegion(), (SerializedDiskBuffer)value);
+              }
               valInMemoryCount++;
               valInMemorySize += valueSize;
               if (valueSize > maxSize) {
@@ -840,11 +827,6 @@ public class ObjectSizer {
             break OUTER;
           }
           else if (valClass == byte[][].class) {
-
-            if (c.isColumnStore()) {
-              columnRowCount += getRowCountFromColumnTable(c, (byte[][])value);
-            }
-
             valInMemoryCount++;
             byte[][] values = ((byte[][])value);  // add in size of Object[]
             long len = SIZE_OF_UTIL.sizeof(value);
@@ -991,16 +973,6 @@ public class ObjectSizer {
       }
     }
 
-  }
-
-  private int getRowCountFromColumnTable(GemFireContainer c, byte[][] value) throws StandardException {
-    int rowCount = 0;
-    RowFormatter rf = c.getRowFormatter(value);
-    ColumnDescriptor cd = c.getTableDescriptor().getColumnDescriptor("NUMROWS");
-    if (cd != null)
-      rowCount = rf.getColumn(cd.getPosition(), value).getInt();
-
-    return rowCount;
   }
 
   private static void createDistributionInfo(StringBuilder miscInfo,

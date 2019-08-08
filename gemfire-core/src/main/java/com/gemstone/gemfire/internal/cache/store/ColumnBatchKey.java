@@ -14,27 +14,23 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
-package com.pivotal.gemfirexd.internal.snappy;
+package com.gemstone.gemfire.internal.cache.store;
 
 import com.gemstone.gemfire.internal.cache.AbstractRegionEntry;
 import com.gemstone.gemfire.internal.cache.BucketRegion;
 import com.gemstone.gemfire.internal.cache.lru.Sizeable;
-import com.gemstone.gemfire.internal.cache.partitioned.PREntriesIterator;
 
 /**
  * Interface for a key object in the column store.
  */
-public interface ColumnBatchKey extends Sizeable {
-
-  /**
-   * Get the number of columns defined for the given
-   * column table (qualified name).
-   */
-  int getNumColumnsInTable(String columnTableName);
+public abstract class ColumnBatchKey implements Sizeable {
 
   /**
    * Get the number of rows in this column batch.
+   * This will return a non-zero result only for the STATS keys while
+   * for a key of DELETE bitmask it will return negative value
+   * indicating the delete count.
    */
-  int getColumnBatchRowCount(BucketRegion bucketRegion, AbstractRegionEntry re,
-      int numColumnsInTable);
+  public abstract int getColumnBatchRowCount(BucketRegion bucketRegion,
+      SerializedDiskBuffer value);
 }

@@ -56,13 +56,18 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.LogWriter;
-import com.gemstone.gemfire.cache.*;
+import com.gemstone.gemfire.cache.DataPolicy;
+import com.gemstone.gemfire.cache.EvictionAction;
+import com.gemstone.gemfire.cache.EvictionAttributes;
+import com.gemstone.gemfire.cache.Region;
+import com.gemstone.gemfire.cache.Scope;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.InternalDistributedSystem;
 import com.gemstone.gemfire.internal.ClassPathLoader;
 import com.gemstone.gemfire.internal.GFToSlf4jBridge;
 import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.cache.*;
+import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.util.ArrayUtils;
 import com.gemstone.gnu.trove.THashMap;
@@ -81,7 +86,10 @@ import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.access.index.GfxdIndexManager;
 import com.pivotal.gemfirexd.internal.engine.access.index.MemIndex;
-import com.pivotal.gemfirexd.internal.engine.ddl.*;
+import com.pivotal.gemfirexd.internal.engine.ddl.DDLConflatable;
+import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLQueueEntry;
+import com.pivotal.gemfirexd.internal.engine.ddl.GfxdDDLRegionQueue;
+import com.pivotal.gemfirexd.internal.engine.ddl.ReplayableConflatable;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.messages.GfxdSystemProcedureMessage;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.messages.AbstractGfxdReplayableMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdMessage;
@@ -697,7 +705,7 @@ public final class FabricDatabase implements ModuleControl,
     List<String> internalColumnTablesListPerSchema = new LinkedList<>();
     for (Map.Entry<String, List<String>> e : gfDBTablesMap.entrySet()) {
       for (String t : e.getValue()) {
-        if (CallbackFactoryProvider.getStoreCallbacks().isColumnTable(e.getKey() + "." + t)) {
+        if (ClientSharedUtils.isColumnTable(e.getKey() + "." + t)) {
             internalColumnTablesListPerSchema.add(t);
         }
       }

@@ -6587,7 +6587,7 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
     /**
      * Fetches hive meta data for Snappy tables.
      */
-    public ExternalTableMetaData fetchSnappyTablesHiveMetaData(PartitionedRegion region);
+    public ExternalTableMetaData fetchTableMetaData(PartitionedRegion region);
   }
 
   /**

@@ -44,8 +44,6 @@ public interface StoreCallbacks {
 
   List<String> getInternalTableSchemas();
 
-  boolean isColumnTable(String qualifiedName);
-
   boolean skipEvictionForEntry(LRUEntry entry);
 
   int getHashCodeSnappy(Object dvd, int numPartitions);

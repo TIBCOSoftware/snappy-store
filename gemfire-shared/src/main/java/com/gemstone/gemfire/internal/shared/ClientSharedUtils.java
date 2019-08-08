@@ -53,10 +53,8 @@ import java.nio.ByteOrder;
 import java.nio.channels.Channel;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.CodeSource;
 import java.security.PrivilegedAction;
 import java.util.*;
 import java.util.concurrent.locks.LockSupport;
@@ -1358,27 +1356,9 @@ public abstract class ClientSharedUtils {
     return cre.newRunTimeException(message, cause);
   }
 
-  public static Path getProductJarsDirectory(Class<?> c) throws IOException {
-    CodeSource cs = c.getProtectionDomain().getCodeSource();
-    URL jarURL = cs != null ? cs.getLocation() : null;
-    if (jarURL != null) {
-      return Paths.get(URLDecoder.decode(jarURL.getFile(), "UTF-8"))
-          .getParent().toRealPath(LinkOption.NOFOLLOW_LINKS);
-    } else {
-      // try in SNAPPY_HOME and SPARK_HOME
-      String productHome = System.getenv("SNAPPY_HOME");
-      if (productHome == null) {
-        productHome = System.getenv("SPARK_HOME");
-      }
-      if (productHome != null) {
-        return Paths.get(productHome, "jars")
-            .toRealPath(LinkOption.NOFOLLOW_LINKS);
-      } else {
-        throw new IllegalStateException("Unable to locate product install " +
-            "location. Set SNAPPY_HOME or SPARK_HOME explicitly if not using " +
-            "the standard scripts.");
-      }
-    }
+  public static boolean isColumnTable(String fullName) {
+    return fullName.endsWith(SystemProperties.SHADOW_TABLE_SUFFIX) &&
+        fullName.contains(SystemProperties.SHADOW_SCHEMA_NAME);
   }
 
   // Convert log4j.Level to java.util.logging.Level
