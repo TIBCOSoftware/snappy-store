@@ -337,8 +337,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
           else {
             isAdded = addMemberServer(m,
                 ThriftUtils.getHostAddress(bp.getHost(), bp.getPort())
-                    .setServerType(serverType).setIsCurrent(m.equals(GemFireStore.getMyId())),
-                this.thriftServers, true);
+                    .setServerType(serverType), this.thriftServers, true);
           }
         }
       }
