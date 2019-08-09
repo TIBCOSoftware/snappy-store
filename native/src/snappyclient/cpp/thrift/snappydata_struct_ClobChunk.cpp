@@ -160,9 +160,8 @@ uint32_t ClobChunk::write(::apache::thrift::protocol::TProtocol* oprot) const {
   return xfer;
 }
 
-void swap(ClobChunk &a, ClobChunk &b) noexcept {
+void swap(ClobChunk &a, ClobChunk &b) {
   using ::std::swap;
-  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.chunk, b.chunk);
   swap(a.last, b.last);
   swap(a.lobId, b.lobId);

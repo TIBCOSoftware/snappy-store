@@ -345,9 +345,8 @@ uint32_t ServiceMetaDataArgs::write(::apache::thrift::protocol::TProtocol* oprot
   return xfer;
 }
 
-void swap(ServiceMetaDataArgs &a, ServiceMetaDataArgs &b) noexcept {
+void swap(ServiceMetaDataArgs &a, ServiceMetaDataArgs &b) {
   using ::std::swap;
-  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.connId, b.connId);
   swap(a.driverType, b.driverType);
   swap(a.token, b.token);

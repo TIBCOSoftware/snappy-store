@@ -79,7 +79,7 @@ class SnappyException : public ::apache::thrift::TException {
   const char* what() const noexcept;
 };
 
-void swap(SnappyException &a, SnappyException &b) noexcept;
+void swap(SnappyException &a, SnappyException &b);
 
 inline std::ostream& operator<<(std::ostream& out, const SnappyException& obj)
 {

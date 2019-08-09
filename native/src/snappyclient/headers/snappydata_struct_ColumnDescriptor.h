@@ -158,7 +158,7 @@ class ColumnDescriptor {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(ColumnDescriptor &a, ColumnDescriptor &b) noexcept;
+void swap(ColumnDescriptor &a, ColumnDescriptor &b);
 
 inline std::ostream& operator<<(std::ostream& out, const ColumnDescriptor& obj)
 {

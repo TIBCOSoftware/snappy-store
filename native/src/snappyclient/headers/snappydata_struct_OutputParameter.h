@@ -83,7 +83,7 @@ class OutputParameter {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(OutputParameter &a, OutputParameter &b) noexcept;
+void swap(OutputParameter &a, OutputParameter &b);
 
 inline std::ostream& operator<<(std::ostream& out, const OutputParameter& obj)
 {

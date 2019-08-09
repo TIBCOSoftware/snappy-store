@@ -295,7 +295,7 @@ class ServiceMetaData {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(ServiceMetaData &a, ServiceMetaData &b) noexcept;
+void swap(ServiceMetaData &a, ServiceMetaData &b);
 
 inline std::ostream& operator<<(std::ostream& out, const ServiceMetaData& obj)
 {

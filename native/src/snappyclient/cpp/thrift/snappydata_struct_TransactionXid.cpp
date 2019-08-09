@@ -125,9 +125,8 @@ uint32_t TransactionXid::write(::apache::thrift::protocol::TProtocol* oprot) con
   return xfer;
 }
 
-void swap(TransactionXid &a, TransactionXid &b) noexcept {
+void swap(TransactionXid &a, TransactionXid &b) {
   using ::std::swap;
-  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.formatId, b.formatId);
   swap(a.globalId, b.globalId);
   swap(a.branchQualifier, b.branchQualifier);
