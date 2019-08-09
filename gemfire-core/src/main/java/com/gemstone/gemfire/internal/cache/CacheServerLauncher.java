@@ -552,9 +552,11 @@ public class CacheServerLauncher extends LauncherBase {
 
     // Complain if a cache server is already running in the specified working directory.
     // See bug 32574.
-    String msg = verifyAndClearStatus();
-    if (msg != null) {
-      System.err.println(msg);
+    int state = verifyAndClearStatus();
+    if (state != Status.SHUTDOWN) {
+      if (state == Status.RUNNING) {
+        System.exit(10);
+      }
       System.exit(1);
     }
 
