@@ -1555,11 +1555,56 @@ public class GfxdSystemProcedures extends SystemProcedures {
    * @param resolvedBaseName base table name with schema
    * @param isDrop flag to indicate that the stored procedure is being invoked to drop the
    *               reservoir region
+   * @deprecated this procedure is only kept for backward compatibility.
+   * Use {@link GfxdSystemProcedures#CREATE_OR_DROP_RESERVOIR_REGION_V2(String, String, Boolean, Boolean)}
+   * instead.
+   */
+  public static void CREATE_OR_DROP_RESERVOIR_REGION(String reservoirRegionName,
+      String resolvedBaseName, Boolean isDrop) throws SQLException {
+    try {
+      // check for permission on the sample table schema
+      LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
+      String currentUser = ((GenericLanguageConnectionContext)lcc).getUserName();
+      int dotIndex = resolvedBaseName.indexOf('.');
+      if (dotIndex == -1) {
+        throw new UnsupportedOperationException(
+            "Cannot created reservoir region for base name = " +
+                resolvedBaseName + " having no schema");
+      }
+      String schema = resolvedBaseName.substring(0, dotIndex);
+      CallbackFactoryProvider.getStoreCallbacks().checkSchemaPermission(
+          schema, currentUser);
+
+      // first create/drop locally
+      if (createOrDropReservoirRegion(reservoirRegionName, resolvedBaseName, isDrop,
+          false)) {
+        // don't send to other nodes or persist if local operation is unsuccessful
+        final Object[] args = new Object[] { reservoirRegionName,
+            resolvedBaseName, isDrop};
+        // send to other nodes
+        publishMessage(args, false,
+            GfxdSystemProcedureMessage.SysProcMethod.createOrDropReservoirRegion,
+            true, false);
+      }
+    } catch (StandardException se) {
+      throw PublicAPI.wrapStandardException(se);
+    } catch (Throwable t) {
+      throw TransactionResourceImpl.wrapInSQLException(t);
+    }
+  }
+
+  /**
+   * Create or drop reservoir region for sampler.
+   *
+   * @param reservoirRegionName name of the reservoir region
+   * @param resolvedBaseName base table name with schema
+   * @param isDrop flag to indicate that the stored procedure is being invoked to drop the
+   *               reservoir region
    * @param removeSampler flag to indicate that the cached sampler should also be removed
    *                      along with the region. This flag will be a ignored if the `isDrop`
    *                      flag is false.
    */
-  public static void CREATE_OR_DROP_RESERVOIR_REGION(String reservoirRegionName,
+  public static void CREATE_OR_DROP_RESERVOIR_REGION_V2(String reservoirRegionName,
       String resolvedBaseName, Boolean isDrop, Boolean removeSampler) throws SQLException {
     try {
       // check for permission on the sample table schema
@@ -1583,7 +1628,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
             resolvedBaseName, isDrop, removeSampler };
         // send to other nodes
         publishMessage(args, false,
-            GfxdSystemProcedureMessage.SysProcMethod.createOrDropReservoirRegion,
+            GfxdSystemProcedureMessage.SysProcMethod.createOrDropReservoirRegionV2,
             true, false);
       }
     } catch (StandardException se) {
@@ -1598,10 +1643,12 @@ public class GfxdSystemProcedures extends SystemProcedures {
     PartitionedRegion existingRegion = Misc.getReservoirRegionForSampleTable(
         reservoirRegionName);
     if (isDrop) {
+      // Cached sampler entry needs to be removed from all the nodes even if reservoir region
+      // does not exist on that node.
+      if(removeSampler) {
+        CallbackFactoryProvider.getStoreCallbacks().removeSampler(resolvedBaseName);
+      }
       if (existingRegion != null) {
-        if(removeSampler) {
-          CallbackFactoryProvider.getStoreCallbacks().removeSampler(resolvedBaseName);
-        }
         existingRegion.destroyRegion(null);
         return true;
       } else {

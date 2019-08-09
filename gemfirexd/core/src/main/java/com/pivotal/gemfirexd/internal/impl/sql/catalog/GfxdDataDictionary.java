@@ -1677,6 +1677,20 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
 
     {
       // CREATE_OR_DROP_RESERVOIR_REGION(String reservoirRegionName,
+      //   String resolvedBaseName, Boolean isDrop)
+      String[] arg_names = new String[] { "RESERVOIR_REGION_NAME",
+          "RESOLVED_BASE_NAME", "IS_DROP" };
+      TypeDescriptor[] arg_types = new TypeDescriptor[] {
+          DataTypeDescriptor.getCatalogType(Types.LONGVARCHAR),
+          DataTypeDescriptor.getCatalogType(Types.LONGVARCHAR),
+          DataTypeDescriptor.getCatalogType(Types.BOOLEAN)};
+      super.createSystemProcedureOrFunction("CREATE_OR_DROP_RESERVOIR_REGION",
+          sysUUID, arg_names, arg_types, 0, 0, RoutineAliasInfo.NO_SQL, null,
+          newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
+    }
+
+    {
+      // CREATE_OR_DROP_RESERVOIR_REGION_V2(String reservoirRegionName,
       //   String resolvedBaseName, Boolean isDrop, Boolean removeSampler)
       String[] arg_names = new String[] { "RESERVOIR_REGION_NAME",
           "RESOLVED_BASE_NAME", "IS_DROP", "REMOVE_SAMPLER" };
@@ -1685,7 +1699,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
           DataTypeDescriptor.getCatalogType(Types.LONGVARCHAR),
           DataTypeDescriptor.getCatalogType(Types.BOOLEAN),
           DataTypeDescriptor.getCatalogType(Types.BOOLEAN)};
-      super.createSystemProcedureOrFunction("CREATE_OR_DROP_RESERVOIR_REGION",
+      super.createSystemProcedureOrFunction("CREATE_OR_DROP_RESERVOIR_REGION_V2",
           sysUUID, arg_names, arg_types, 0, 0, RoutineAliasInfo.NO_SQL, null,
           newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
     }
