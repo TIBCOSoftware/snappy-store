@@ -84,7 +84,7 @@ class ClobChunk {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(ClobChunk &a, ClobChunk &b) noexcept;
+void swap(ClobChunk &a, ClobChunk &b);
 
 inline std::ostream& operator<<(std::ostream& out, const ClobChunk& obj)
 {

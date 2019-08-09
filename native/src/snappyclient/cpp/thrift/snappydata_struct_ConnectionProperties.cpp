@@ -179,9 +179,8 @@ uint32_t ConnectionProperties::write(::apache::thrift::protocol::TProtocol* opro
   return xfer;
 }
 
-void swap(ConnectionProperties &a, ConnectionProperties &b) noexcept {
+void swap(ConnectionProperties &a, ConnectionProperties &b) {
   using ::std::swap;
-  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.connId, b.connId);
   swap(a.clientHostName, b.clientHostName);
   swap(a.clientID, b.clientID);

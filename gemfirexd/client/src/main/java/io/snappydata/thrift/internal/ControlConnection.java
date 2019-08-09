@@ -310,8 +310,13 @@ final class ControlConnection {
     throw failoverExhausted(failedServers, failure);
   }
 
-  synchronized Set<HostAddress> getLocatorsCopy() {
-    return new HashSet<>(this.locators);
+  synchronized HostAddress getConnectedHost() {
+    for (HostAddress host : this.controlHostSet) {
+      if (host.isSetIsCurrent() && host.isIsCurrent()) {
+        return host;
+      }
+    }
+    return null;
   }
 
   private synchronized Set<HostAddress> failoverToAvailableHost(

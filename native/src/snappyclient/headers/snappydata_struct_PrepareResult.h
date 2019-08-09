@@ -95,7 +95,7 @@ class PrepareResult {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(PrepareResult &a, PrepareResult &b) noexcept;
+void swap(PrepareResult &a, PrepareResult &b);
 
 inline std::ostream& operator<<(std::ostream& out, const PrepareResult& obj)
 {

@@ -23,9 +23,10 @@
 namespace io { namespace snappydata { namespace thrift {
 
 typedef struct _HostAddress__isset {
-  _HostAddress__isset() : ipAddress(false), serverType(false) {}
+  _HostAddress__isset() : ipAddress(false), serverType(false), isCurrent(false) {}
   bool ipAddress :1;
   bool serverType :1;
+  bool isCurrent :1;
 } _HostAddress__isset;
 
 class HostAddress {
@@ -35,7 +36,7 @@ class HostAddress {
   HostAddress(HostAddress&&) noexcept;
   HostAddress& operator=(const HostAddress&);
   HostAddress& operator=(HostAddress&&) noexcept;
-  HostAddress() : hostName(), port(0), ipAddress(), serverType((ServerType::type)0) {
+  HostAddress() : hostName(), port(0), ipAddress(), serverType((ServerType::type)0), isCurrent(0) {
   }
 
   virtual ~HostAddress() noexcept;
@@ -43,6 +44,7 @@ class HostAddress {
   int32_t port;
   std::string ipAddress;
   ServerType::type serverType;
+  bool isCurrent;
 
   _HostAddress__isset __isset;
 
@@ -53,6 +55,8 @@ class HostAddress {
   void __set_ipAddress(const std::string& val);
 
   void __set_serverType(const ServerType::type val);
+
+  void __set_isCurrent(const bool val);
 
   bool operator == (const HostAddress & rhs) const
   {
@@ -68,6 +72,10 @@ class HostAddress {
       return false;
     else if (__isset.serverType && !(serverType == rhs.serverType))
       return false;
+    if (__isset.isCurrent != rhs.__isset.isCurrent)
+      return false;
+    else if (__isset.isCurrent && !(isCurrent == rhs.isCurrent))
+      return false;
     return true;
   }
   bool operator != (const HostAddress &rhs) const {
@@ -82,7 +90,7 @@ class HostAddress {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(HostAddress &a, HostAddress &b) noexcept;
+void swap(HostAddress &a, HostAddress &b);
 
 inline std::ostream& operator<<(std::ostream& out, const HostAddress& obj)
 {

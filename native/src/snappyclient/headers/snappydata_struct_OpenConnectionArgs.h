@@ -117,7 +117,7 @@ class OpenConnectionArgs {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(OpenConnectionArgs &a, OpenConnectionArgs &b) noexcept;
+void swap(OpenConnectionArgs &a, OpenConnectionArgs &b);
 
 inline std::ostream& operator<<(std::ostream& out, const OpenConnectionArgs& obj)
 {

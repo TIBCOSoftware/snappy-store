@@ -256,9 +256,8 @@ uint32_t StatementResult::write(::apache::thrift::protocol::TProtocol* oprot) co
   return xfer;
 }
 
-void swap(StatementResult &a, StatementResult &b) noexcept {
+void swap(StatementResult &a, StatementResult &b) {
   using ::std::swap;
-  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.resultSet, b.resultSet);
   swap(a.updateCount, b.updateCount);
   swap(a.batchUpdateCounts, b.batchUpdateCounts);

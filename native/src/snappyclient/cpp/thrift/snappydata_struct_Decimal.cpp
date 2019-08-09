@@ -125,9 +125,8 @@ uint32_t Decimal::write(::apache::thrift::protocol::TProtocol* oprot) const {
   return xfer;
 }
 
-void swap(Decimal &a, Decimal &b) noexcept {
+void swap(Decimal &a, Decimal &b) {
   using ::std::swap;
-  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.signum, b.signum);
   swap(a.scale, b.scale);
   swap(a.magnitude, b.magnitude);
