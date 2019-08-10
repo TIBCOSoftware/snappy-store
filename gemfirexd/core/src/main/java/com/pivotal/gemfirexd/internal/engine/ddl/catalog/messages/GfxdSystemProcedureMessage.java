@@ -1544,11 +1544,11 @@ public final class GfxdSystemProcedureMessage extends
         String resolvedBaseName = (String)params[1];
         Boolean isDrop = (Boolean)params[2];
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
-            "GfxdSystemProcedureMessage:CREATE_OR_DROP_RESERVOIR_REGION_V2 " +
+            "GfxdSystemProcedureMessage:CREATE_OR_DROP_RESERVOIR_REGION " +
                 "reservoirRegionName=" + reservoirRegionName +
                 " resolvedBaseName=" + resolvedBaseName + " isDrop=" + isDrop);
         GfxdSystemProcedures.createOrDropReservoirRegion(reservoirRegionName,
-            resolvedBaseName, isDrop, false);
+            resolvedBaseName, isDrop);
       }
 
       @Override
@@ -1594,74 +1594,8 @@ public final class GfxdSystemProcedureMessage extends
 
       @Override
       String getSQLStatement(Object[] params) {
-        return "CALL SYS.CREATE_OR_DROP_RESERVOIR_REGION_V2('" + params[0] +
+        return "CALL SYS.CREATE_OR_DROP_RESERVOIR_REGION('" + params[0] +
             "','" + params[1] + "'," + params[2] +')';
-      }
-    },
-
-    createOrDropReservoirRegionV2 {
-      @Override
-      public void processMessage(Object[] params, DistributedMember sender) {
-        String reservoirRegionName = (String)params[0];
-        String resolvedBaseName = (String)params[1];
-        Boolean isDrop = (Boolean)params[2];
-        Boolean removeSampler = (Boolean)params[3];
-        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
-            "GfxdSystemProcedureMessage:CREATE_OR_DROP_RESERVOIR_REGION_V2 " +
-                "reservoirRegionName=" + reservoirRegionName +
-                " resolvedBaseName=" + resolvedBaseName + " isDrop=" + isDrop +
-                " removeSampler=" + removeSampler);
-        GfxdSystemProcedures.createOrDropReservoirRegion(reservoirRegionName,
-            resolvedBaseName, isDrop, removeSampler);
-      }
-
-      @Override
-      public Object[] readParams(DataInput in, short flags) throws IOException {
-        Object[] inParams = new Object[4];
-        inParams[0] = in.readUTF();
-        inParams[1] = in.readUTF();
-        inParams[2] = in.readBoolean();
-        inParams[3] = in.readBoolean();
-        return inParams;
-      }
-
-      @Override
-      public void writeParams(Object[] params, DataOutput out)
-          throws IOException {
-        out.writeUTF((String)params[0]);
-        out.writeUTF((String)params[1]);
-        out.writeBoolean((Boolean)params[2]);
-        out.writeBoolean((Boolean)params[3]);
-      }
-
-      @Override
-      boolean preprocess() {
-        return false;
-      }
-
-      boolean postprocess() {
-        return true;
-      }
-
-      @Override
-      boolean shouldBeConflated(Object[] params) {
-        return (Boolean)params[2];
-      }
-
-      @Override
-      String getRegionToConflate(Object[] params) {
-        return "SYS.__SNAPPY_INTERNAL_RESERVOIR";
-      }
-
-      @Override
-      Object getKeyToConflate(Object[] params) {
-        return params[0];
-      }
-
-      @Override
-      String getSQLStatement(Object[] params) {
-        return "CALL SYS.CREATE_OR_DROP_RESERVOIR_REGION_V2('" + params[0] +
-            "','" + params[1] + "'," + params[2] + "'," + params[3] +')';
       }
     },
 

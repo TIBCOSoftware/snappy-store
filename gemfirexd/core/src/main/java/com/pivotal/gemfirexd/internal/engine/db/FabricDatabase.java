@@ -867,8 +867,8 @@ public final class FabricDatabase implements ModuleControl,
             if (reservoirRegion != null) {
               SanityManager.DEBUG_PRINT("warning:CATALOG", "Dropping reservoir region " +
                   reservoirRegionName);
-              GfxdSystemProcedures.CREATE_OR_DROP_RESERVOIR_REGION_V2(reservoirRegionName, tableName,
-                  true, true);
+              GfxdSystemProcedures.CREATE_OR_DROP_RESERVOIR_REGION(reservoirRegionName, tableName,
+                  true);
             }
             SanityManager.DEBUG_PRINT("warning:CATALOG", "Dropping table " +
                 columnBatchTableName);
