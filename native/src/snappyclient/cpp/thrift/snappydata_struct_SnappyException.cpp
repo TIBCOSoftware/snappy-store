@@ -144,9 +144,8 @@ uint32_t SnappyException::write(::apache::thrift::protocol::TProtocol* oprot) co
   return xfer;
 }
 
-void swap(SnappyException &a, SnappyException &b) noexcept {
+void swap(SnappyException &a, SnappyException &b) {
   using ::std::swap;
-  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.exceptionData, b.exceptionData);
   swap(a.serverInfo, b.serverInfo);
   swap(a.nextExceptions, b.nextExceptions);

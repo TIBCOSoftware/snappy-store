@@ -328,9 +328,8 @@ uint32_t ColumnDescriptor::write(::apache::thrift::protocol::TProtocol* oprot) c
   return xfer;
 }
 
-void swap(ColumnDescriptor &a, ColumnDescriptor &b) noexcept {
+void swap(ColumnDescriptor &a, ColumnDescriptor &b) {
   using ::std::swap;
-  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.type, b.type);
   swap(a.precision, b.precision);
   swap(a.scale, b.scale);

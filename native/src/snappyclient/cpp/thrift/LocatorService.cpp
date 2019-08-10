@@ -38,17 +38,17 @@ uint32_t LocatorService_getPreferredServer_args::read(::apache::thrift::protocol
         if (ftype == ::apache::thrift::protocol::T_SET) {
           {
             this->serverTypes.clear();
-            uint32_t _size306;
-            ::apache::thrift::protocol::TType _etype309;
-            xfer += iprot->readSetBegin(_etype309, _size306);
-            uint32_t _i310;
-            for (_i310 = 0; _i310 < _size306; ++_i310)
+            uint32_t _size500;
+            ::apache::thrift::protocol::TType _etype503;
+            xfer += iprot->readSetBegin(_etype503, _size500);
+            uint32_t _i504;
+            for (_i504 = 0; _i504 < _size500; ++_i504)
             {
-              ServerType::type _elem311;
-              int32_t ecast312;
-              xfer += iprot->readI32(ecast312);
-              _elem311 = (ServerType::type)ecast312;
-              this->serverTypes.insert(_elem311);
+              ServerType::type _elem505;
+              int32_t ecast506;
+              xfer += iprot->readI32(ecast506);
+              _elem505 = (ServerType::type)ecast506;
+              this->serverTypes.insert(_elem505);
             }
             xfer += iprot->readSetEnd();
           }
@@ -61,15 +61,15 @@ uint32_t LocatorService_getPreferredServer_args::read(::apache::thrift::protocol
         if (ftype == ::apache::thrift::protocol::T_SET) {
           {
             this->serverGroups.clear();
-            uint32_t _size313;
-            ::apache::thrift::protocol::TType _etype316;
-            xfer += iprot->readSetBegin(_etype316, _size313);
-            uint32_t _i317;
-            for (_i317 = 0; _i317 < _size313; ++_i317)
+            uint32_t _size507;
+            ::apache::thrift::protocol::TType _etype510;
+            xfer += iprot->readSetBegin(_etype510, _size507);
+            uint32_t _i511;
+            for (_i511 = 0; _i511 < _size507; ++_i511)
             {
-              std::string _elem318;
-              xfer += iprot->readString(_elem318);
-              this->serverGroups.insert(_elem318);
+              std::string _elem512;
+              xfer += iprot->readString(_elem512);
+              this->serverGroups.insert(_elem512);
             }
             xfer += iprot->readSetEnd();
           }
@@ -82,15 +82,15 @@ uint32_t LocatorService_getPreferredServer_args::read(::apache::thrift::protocol
         if (ftype == ::apache::thrift::protocol::T_SET) {
           {
             this->failedServers.clear();
-            uint32_t _size319;
-            ::apache::thrift::protocol::TType _etype322;
-            xfer += iprot->readSetBegin(_etype322, _size319);
-            uint32_t _i323;
-            for (_i323 = 0; _i323 < _size319; ++_i323)
+            uint32_t _size513;
+            ::apache::thrift::protocol::TType _etype516;
+            xfer += iprot->readSetBegin(_etype516, _size513);
+            uint32_t _i517;
+            for (_i517 = 0; _i517 < _size513; ++_i517)
             {
-              HostAddress _elem324;
-              xfer += _elem324.read(iprot);
-              this->failedServers.insert(_elem324);
+              HostAddress _elem518;
+              xfer += _elem518.read(iprot);
+              this->failedServers.insert(_elem518);
             }
             xfer += iprot->readSetEnd();
           }
@@ -118,10 +118,10 @@ uint32_t LocatorService_getPreferredServer_args::write(::apache::thrift::protoco
   xfer += oprot->writeFieldBegin("serverTypes", ::apache::thrift::protocol::T_SET, 1);
   {
     xfer += oprot->writeSetBegin(::apache::thrift::protocol::T_I32, static_cast<uint32_t>(this->serverTypes.size()));
-    std::set<ServerType::type> ::const_iterator _iter325;
-    for (_iter325 = this->serverTypes.begin(); _iter325 != this->serverTypes.end(); ++_iter325)
+    std::set<ServerType::type> ::const_iterator _iter519;
+    for (_iter519 = this->serverTypes.begin(); _iter519 != this->serverTypes.end(); ++_iter519)
     {
-      xfer += oprot->writeI32((int32_t)(*_iter325));
+      xfer += oprot->writeI32((int32_t)(*_iter519));
     }
     xfer += oprot->writeSetEnd();
   }
@@ -130,10 +130,10 @@ uint32_t LocatorService_getPreferredServer_args::write(::apache::thrift::protoco
   xfer += oprot->writeFieldBegin("serverGroups", ::apache::thrift::protocol::T_SET, 2);
   {
     xfer += oprot->writeSetBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->serverGroups.size()));
-    std::set<std::string> ::const_iterator _iter326;
-    for (_iter326 = this->serverGroups.begin(); _iter326 != this->serverGroups.end(); ++_iter326)
+    std::set<std::string> ::const_iterator _iter520;
+    for (_iter520 = this->serverGroups.begin(); _iter520 != this->serverGroups.end(); ++_iter520)
     {
-      xfer += oprot->writeString((*_iter326));
+      xfer += oprot->writeString((*_iter520));
     }
     xfer += oprot->writeSetEnd();
   }
@@ -142,10 +142,10 @@ uint32_t LocatorService_getPreferredServer_args::write(::apache::thrift::protoco
   xfer += oprot->writeFieldBegin("failedServers", ::apache::thrift::protocol::T_SET, 3);
   {
     xfer += oprot->writeSetBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->failedServers.size()));
-    std::set<HostAddress> ::const_iterator _iter327;
-    for (_iter327 = this->failedServers.begin(); _iter327 != this->failedServers.end(); ++_iter327)
+    std::set<HostAddress> ::const_iterator _iter521;
+    for (_iter521 = this->failedServers.begin(); _iter521 != this->failedServers.end(); ++_iter521)
     {
-      xfer += (*_iter327).write(oprot);
+      xfer += (*_iter521).write(oprot);
     }
     xfer += oprot->writeSetEnd();
   }
@@ -168,10 +168,10 @@ uint32_t LocatorService_getPreferredServer_pargs::write(::apache::thrift::protoc
   xfer += oprot->writeFieldBegin("serverTypes", ::apache::thrift::protocol::T_SET, 1);
   {
     xfer += oprot->writeSetBegin(::apache::thrift::protocol::T_I32, static_cast<uint32_t>((*(this->serverTypes)).size()));
-    std::set<ServerType::type> ::const_iterator _iter328;
-    for (_iter328 = (*(this->serverTypes)).begin(); _iter328 != (*(this->serverTypes)).end(); ++_iter328)
+    std::set<ServerType::type> ::const_iterator _iter522;
+    for (_iter522 = (*(this->serverTypes)).begin(); _iter522 != (*(this->serverTypes)).end(); ++_iter522)
     {
-      xfer += oprot->writeI32((int32_t)(*_iter328));
+      xfer += oprot->writeI32((int32_t)(*_iter522));
     }
     xfer += oprot->writeSetEnd();
   }
@@ -180,10 +180,10 @@ uint32_t LocatorService_getPreferredServer_pargs::write(::apache::thrift::protoc
   xfer += oprot->writeFieldBegin("serverGroups", ::apache::thrift::protocol::T_SET, 2);
   {
     xfer += oprot->writeSetBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>((*(this->serverGroups)).size()));
-    std::set<std::string> ::const_iterator _iter329;
-    for (_iter329 = (*(this->serverGroups)).begin(); _iter329 != (*(this->serverGroups)).end(); ++_iter329)
+    std::set<std::string> ::const_iterator _iter523;
+    for (_iter523 = (*(this->serverGroups)).begin(); _iter523 != (*(this->serverGroups)).end(); ++_iter523)
     {
-      xfer += oprot->writeString((*_iter329));
+      xfer += oprot->writeString((*_iter523));
     }
     xfer += oprot->writeSetEnd();
   }
@@ -192,10 +192,10 @@ uint32_t LocatorService_getPreferredServer_pargs::write(::apache::thrift::protoc
   xfer += oprot->writeFieldBegin("failedServers", ::apache::thrift::protocol::T_SET, 3);
   {
     xfer += oprot->writeSetBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>((*(this->failedServers)).size()));
-    std::set<HostAddress> ::const_iterator _iter330;
-    for (_iter330 = (*(this->failedServers)).begin(); _iter330 != (*(this->failedServers)).end(); ++_iter330)
+    std::set<HostAddress> ::const_iterator _iter524;
+    for (_iter524 = (*(this->failedServers)).begin(); _iter524 != (*(this->failedServers)).end(); ++_iter524)
     {
-      xfer += (*_iter330).write(oprot);
+      xfer += (*_iter524).write(oprot);
     }
     xfer += oprot->writeSetEnd();
   }
@@ -361,17 +361,17 @@ uint32_t LocatorService_getAllServersWithPreferredServer_args::read(::apache::th
         if (ftype == ::apache::thrift::protocol::T_SET) {
           {
             this->serverTypes.clear();
-            uint32_t _size331;
-            ::apache::thrift::protocol::TType _etype334;
-            xfer += iprot->readSetBegin(_etype334, _size331);
-            uint32_t _i335;
-            for (_i335 = 0; _i335 < _size331; ++_i335)
+            uint32_t _size525;
+            ::apache::thrift::protocol::TType _etype528;
+            xfer += iprot->readSetBegin(_etype528, _size525);
+            uint32_t _i529;
+            for (_i529 = 0; _i529 < _size525; ++_i529)
             {
-              ServerType::type _elem336;
-              int32_t ecast337;
-              xfer += iprot->readI32(ecast337);
-              _elem336 = (ServerType::type)ecast337;
-              this->serverTypes.insert(_elem336);
+              ServerType::type _elem530;
+              int32_t ecast531;
+              xfer += iprot->readI32(ecast531);
+              _elem530 = (ServerType::type)ecast531;
+              this->serverTypes.insert(_elem530);
             }
             xfer += iprot->readSetEnd();
           }
@@ -384,15 +384,15 @@ uint32_t LocatorService_getAllServersWithPreferredServer_args::read(::apache::th
         if (ftype == ::apache::thrift::protocol::T_SET) {
           {
             this->serverGroups.clear();
-            uint32_t _size338;
-            ::apache::thrift::protocol::TType _etype341;
-            xfer += iprot->readSetBegin(_etype341, _size338);
-            uint32_t _i342;
-            for (_i342 = 0; _i342 < _size338; ++_i342)
+            uint32_t _size532;
+            ::apache::thrift::protocol::TType _etype535;
+            xfer += iprot->readSetBegin(_etype535, _size532);
+            uint32_t _i536;
+            for (_i536 = 0; _i536 < _size532; ++_i536)
             {
-              std::string _elem343;
-              xfer += iprot->readString(_elem343);
-              this->serverGroups.insert(_elem343);
+              std::string _elem537;
+              xfer += iprot->readString(_elem537);
+              this->serverGroups.insert(_elem537);
             }
             xfer += iprot->readSetEnd();
           }
@@ -405,15 +405,15 @@ uint32_t LocatorService_getAllServersWithPreferredServer_args::read(::apache::th
         if (ftype == ::apache::thrift::protocol::T_SET) {
           {
             this->failedServers.clear();
-            uint32_t _size344;
-            ::apache::thrift::protocol::TType _etype347;
-            xfer += iprot->readSetBegin(_etype347, _size344);
-            uint32_t _i348;
-            for (_i348 = 0; _i348 < _size344; ++_i348)
+            uint32_t _size538;
+            ::apache::thrift::protocol::TType _etype541;
+            xfer += iprot->readSetBegin(_etype541, _size538);
+            uint32_t _i542;
+            for (_i542 = 0; _i542 < _size538; ++_i542)
             {
-              HostAddress _elem349;
-              xfer += _elem349.read(iprot);
-              this->failedServers.insert(_elem349);
+              HostAddress _elem543;
+              xfer += _elem543.read(iprot);
+              this->failedServers.insert(_elem543);
             }
             xfer += iprot->readSetEnd();
           }
@@ -441,10 +441,10 @@ uint32_t LocatorService_getAllServersWithPreferredServer_args::write(::apache::t
   xfer += oprot->writeFieldBegin("serverTypes", ::apache::thrift::protocol::T_SET, 1);
   {
     xfer += oprot->writeSetBegin(::apache::thrift::protocol::T_I32, static_cast<uint32_t>(this->serverTypes.size()));
-    std::set<ServerType::type> ::const_iterator _iter350;
-    for (_iter350 = this->serverTypes.begin(); _iter350 != this->serverTypes.end(); ++_iter350)
+    std::set<ServerType::type> ::const_iterator _iter544;
+    for (_iter544 = this->serverTypes.begin(); _iter544 != this->serverTypes.end(); ++_iter544)
     {
-      xfer += oprot->writeI32((int32_t)(*_iter350));
+      xfer += oprot->writeI32((int32_t)(*_iter544));
     }
     xfer += oprot->writeSetEnd();
   }
@@ -453,10 +453,10 @@ uint32_t LocatorService_getAllServersWithPreferredServer_args::write(::apache::t
   xfer += oprot->writeFieldBegin("serverGroups", ::apache::thrift::protocol::T_SET, 2);
   {
     xfer += oprot->writeSetBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->serverGroups.size()));
-    std::set<std::string> ::const_iterator _iter351;
-    for (_iter351 = this->serverGroups.begin(); _iter351 != this->serverGroups.end(); ++_iter351)
+    std::set<std::string> ::const_iterator _iter545;
+    for (_iter545 = this->serverGroups.begin(); _iter545 != this->serverGroups.end(); ++_iter545)
     {
-      xfer += oprot->writeString((*_iter351));
+      xfer += oprot->writeString((*_iter545));
     }
     xfer += oprot->writeSetEnd();
   }
@@ -465,10 +465,10 @@ uint32_t LocatorService_getAllServersWithPreferredServer_args::write(::apache::t
   xfer += oprot->writeFieldBegin("failedServers", ::apache::thrift::protocol::T_SET, 3);
   {
     xfer += oprot->writeSetBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->failedServers.size()));
-    std::set<HostAddress> ::const_iterator _iter352;
-    for (_iter352 = this->failedServers.begin(); _iter352 != this->failedServers.end(); ++_iter352)
+    std::set<HostAddress> ::const_iterator _iter546;
+    for (_iter546 = this->failedServers.begin(); _iter546 != this->failedServers.end(); ++_iter546)
     {
-      xfer += (*_iter352).write(oprot);
+      xfer += (*_iter546).write(oprot);
     }
     xfer += oprot->writeSetEnd();
   }
@@ -491,10 +491,10 @@ uint32_t LocatorService_getAllServersWithPreferredServer_pargs::write(::apache::
   xfer += oprot->writeFieldBegin("serverTypes", ::apache::thrift::protocol::T_SET, 1);
   {
     xfer += oprot->writeSetBegin(::apache::thrift::protocol::T_I32, static_cast<uint32_t>((*(this->serverTypes)).size()));
-    std::set<ServerType::type> ::const_iterator _iter353;
-    for (_iter353 = (*(this->serverTypes)).begin(); _iter353 != (*(this->serverTypes)).end(); ++_iter353)
+    std::set<ServerType::type> ::const_iterator _iter547;
+    for (_iter547 = (*(this->serverTypes)).begin(); _iter547 != (*(this->serverTypes)).end(); ++_iter547)
     {
-      xfer += oprot->writeI32((int32_t)(*_iter353));
+      xfer += oprot->writeI32((int32_t)(*_iter547));
     }
     xfer += oprot->writeSetEnd();
   }
@@ -503,10 +503,10 @@ uint32_t LocatorService_getAllServersWithPreferredServer_pargs::write(::apache::
   xfer += oprot->writeFieldBegin("serverGroups", ::apache::thrift::protocol::T_SET, 2);
   {
     xfer += oprot->writeSetBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>((*(this->serverGroups)).size()));
-    std::set<std::string> ::const_iterator _iter354;
-    for (_iter354 = (*(this->serverGroups)).begin(); _iter354 != (*(this->serverGroups)).end(); ++_iter354)
+    std::set<std::string> ::const_iterator _iter548;
+    for (_iter548 = (*(this->serverGroups)).begin(); _iter548 != (*(this->serverGroups)).end(); ++_iter548)
     {
-      xfer += oprot->writeString((*_iter354));
+      xfer += oprot->writeString((*_iter548));
     }
     xfer += oprot->writeSetEnd();
   }
@@ -515,10 +515,10 @@ uint32_t LocatorService_getAllServersWithPreferredServer_pargs::write(::apache::
   xfer += oprot->writeFieldBegin("failedServers", ::apache::thrift::protocol::T_SET, 3);
   {
     xfer += oprot->writeSetBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>((*(this->failedServers)).size()));
-    std::set<HostAddress> ::const_iterator _iter355;
-    for (_iter355 = (*(this->failedServers)).begin(); _iter355 != (*(this->failedServers)).end(); ++_iter355)
+    std::set<HostAddress> ::const_iterator _iter549;
+    for (_iter549 = (*(this->failedServers)).begin(); _iter549 != (*(this->failedServers)).end(); ++_iter549)
     {
-      xfer += (*_iter355).write(oprot);
+      xfer += (*_iter549).write(oprot);
     }
     xfer += oprot->writeSetEnd();
   }
@@ -558,14 +558,14 @@ uint32_t LocatorService_getAllServersWithPreferredServer_result::read(::apache::
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->success.clear();
-            uint32_t _size356;
-            ::apache::thrift::protocol::TType _etype359;
-            xfer += iprot->readListBegin(_etype359, _size356);
-            this->success.resize(_size356);
-            uint32_t _i360;
-            for (_i360 = 0; _i360 < _size356; ++_i360)
+            uint32_t _size550;
+            ::apache::thrift::protocol::TType _etype553;
+            xfer += iprot->readListBegin(_etype553, _size550);
+            this->success.resize(_size550);
+            uint32_t _i554;
+            for (_i554 = 0; _i554 < _size550; ++_i554)
             {
-              xfer += this->success[_i360].read(iprot);
+              xfer += this->success[_i554].read(iprot);
             }
             xfer += iprot->readListEnd();
           }
@@ -604,10 +604,10 @@ uint32_t LocatorService_getAllServersWithPreferredServer_result::write(::apache:
     xfer += oprot->writeFieldBegin("success", ::apache::thrift::protocol::T_LIST, 0);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->success.size()));
-      std::vector<HostAddress> ::const_iterator _iter361;
-      for (_iter361 = this->success.begin(); _iter361 != this->success.end(); ++_iter361)
+      std::vector<HostAddress> ::const_iterator _iter555;
+      for (_iter555 = this->success.begin(); _iter555 != this->success.end(); ++_iter555)
       {
-        xfer += (*_iter361).write(oprot);
+        xfer += (*_iter555).write(oprot);
       }
       xfer += oprot->writeListEnd();
     }
@@ -651,14 +651,14 @@ uint32_t LocatorService_getAllServersWithPreferredServer_presult::read(::apache:
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             (*(this->success)).clear();
-            uint32_t _size362;
-            ::apache::thrift::protocol::TType _etype365;
-            xfer += iprot->readListBegin(_etype365, _size362);
-            (*(this->success)).resize(_size362);
-            uint32_t _i366;
-            for (_i366 = 0; _i366 < _size362; ++_i366)
+            uint32_t _size556;
+            ::apache::thrift::protocol::TType _etype559;
+            xfer += iprot->readListBegin(_etype559, _size556);
+            (*(this->success)).resize(_size556);
+            uint32_t _i560;
+            for (_i560 = 0; _i560 < _size556; ++_i560)
             {
-              xfer += (*(this->success))[_i366].read(iprot);
+              xfer += (*(this->success))[_i560].read(iprot);
             }
             xfer += iprot->readListEnd();
           }

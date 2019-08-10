@@ -94,7 +94,7 @@ class ConnectionProperties {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(ConnectionProperties &a, ConnectionProperties &b) noexcept;
+void swap(ConnectionProperties &a, ConnectionProperties &b);
 
 inline std::ostream& operator<<(std::ostream& out, const ConnectionProperties& obj)
 {

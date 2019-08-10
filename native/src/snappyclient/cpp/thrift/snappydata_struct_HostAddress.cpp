@@ -45,6 +45,11 @@ void HostAddress::__set_serverType(const ServerType::type val) {
 __isset.serverType = true;
 }
 
+void HostAddress::__set_isCurrent(const bool val) {
+  this->isCurrent = val;
+__isset.isCurrent = true;
+}
+
 uint32_t HostAddress::read(::apache::thrift::protocol::TProtocol* iprot) {
 
   uint32_t xfer = 0;
@@ -101,6 +106,14 @@ uint32_t HostAddress::read(::apache::thrift::protocol::TProtocol* iprot) {
           xfer += iprot->skip(ftype);
         }
         break;
+      case 5:
+        if (ftype == ::apache::thrift::protocol::T_BOOL) {
+          xfer += iprot->readBool(this->isCurrent);
+          this->__isset.isCurrent = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
       default:
         xfer += iprot->skip(ftype);
         break;
@@ -139,18 +152,23 @@ uint32_t HostAddress::write(::apache::thrift::protocol::TProtocol* oprot) const 
     xfer += oprot->writeI32((int32_t)this->serverType);
     xfer += oprot->writeFieldEnd();
   }
+  if (this->__isset.isCurrent) {
+    xfer += oprot->writeFieldBegin("isCurrent", ::apache::thrift::protocol::T_BOOL, 5);
+    xfer += oprot->writeBool(this->isCurrent);
+    xfer += oprot->writeFieldEnd();
+  }
   xfer += oprot->writeFieldStop();
   xfer += oprot->writeStructEnd();
   return xfer;
 }
 
-void swap(HostAddress &a, HostAddress &b) noexcept {
+void swap(HostAddress &a, HostAddress &b) {
   using ::std::swap;
-  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.hostName, b.hostName);
   swap(a.port, b.port);
   swap(a.ipAddress, b.ipAddress);
   swap(a.serverType, b.serverType);
+  swap(a.isCurrent, b.isCurrent);
   swap(a.__isset, b.__isset);
 }
 
@@ -159,6 +177,7 @@ HostAddress::HostAddress(const HostAddress& other129) {
   port = other129.port;
   ipAddress = other129.ipAddress;
   serverType = other129.serverType;
+  isCurrent = other129.isCurrent;
   __isset = other129.__isset;
 }
 HostAddress::HostAddress( HostAddress&& other130) noexcept {
@@ -166,6 +185,7 @@ HostAddress::HostAddress( HostAddress&& other130) noexcept {
   port = std::move(other130.port);
   ipAddress = std::move(other130.ipAddress);
   serverType = std::move(other130.serverType);
+  isCurrent = std::move(other130.isCurrent);
   __isset = std::move(other130.__isset);
 }
 HostAddress& HostAddress::operator=(const HostAddress& other131) {
@@ -173,6 +193,7 @@ HostAddress& HostAddress::operator=(const HostAddress& other131) {
   port = other131.port;
   ipAddress = other131.ipAddress;
   serverType = other131.serverType;
+  isCurrent = other131.isCurrent;
   __isset = other131.__isset;
   return *this;
 }
@@ -181,6 +202,7 @@ HostAddress& HostAddress::operator=(HostAddress&& other132) noexcept {
   port = std::move(other132.port);
   ipAddress = std::move(other132.ipAddress);
   serverType = std::move(other132.serverType);
+  isCurrent = std::move(other132.isCurrent);
   __isset = std::move(other132.__isset);
   return *this;
 }
@@ -191,6 +213,7 @@ void HostAddress::printTo(std::ostream& out) const {
   out << ", " << "port=" << to_string(port);
   out << ", " << "ipAddress="; (__isset.ipAddress ? (out << to_string(ipAddress)) : (out << "<null>"));
   out << ", " << "serverType="; (__isset.serverType ? (out << to_string(serverType)) : (out << "<null>"));
+  out << ", " << "isCurrent="; (__isset.isCurrent ? (out << to_string(isCurrent)) : (out << "<null>"));
   out << ")";
 }
 

@@ -201,9 +201,8 @@ uint32_t PrepareResult::write(::apache::thrift::protocol::TProtocol* oprot) cons
   return xfer;
 }
 
-void swap(PrepareResult &a, PrepareResult &b) noexcept {
+void swap(PrepareResult &a, PrepareResult &b) {
   using ::std::swap;
-  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.statementId, b.statementId);
   swap(a.statementType, b.statementType);
   swap(a.parameterMetaData, b.parameterMetaData);

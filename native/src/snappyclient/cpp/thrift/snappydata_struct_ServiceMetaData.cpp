@@ -1225,9 +1225,8 @@ uint32_t ServiceMetaData::write(::apache::thrift::protocol::TProtocol* oprot) co
   return xfer;
 }
 
-void swap(ServiceMetaData &a, ServiceMetaData &b) noexcept {
+void swap(ServiceMetaData &a, ServiceMetaData &b) {
   using ::std::swap;
-  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.productName, b.productName);
   swap(a.productVersion, b.productVersion);
   swap(a.productMajorVersion, b.productMajorVersion);

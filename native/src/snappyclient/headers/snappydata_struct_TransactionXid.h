@@ -61,7 +61,7 @@ class TransactionXid {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(TransactionXid &a, TransactionXid &b) noexcept;
+void swap(TransactionXid &a, TransactionXid &b);
 
 inline std::ostream& operator<<(std::ostream& out, const TransactionXid& obj)
 {

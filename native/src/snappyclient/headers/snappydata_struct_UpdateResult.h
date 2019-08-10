@@ -105,7 +105,7 @@ class UpdateResult {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(UpdateResult &a, UpdateResult &b) noexcept;
+void swap(UpdateResult &a, UpdateResult &b);
 
 inline std::ostream& operator<<(std::ostream& out, const UpdateResult& obj)
 {

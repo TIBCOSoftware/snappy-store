@@ -58,7 +58,7 @@ class Decimal {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(Decimal &a, Decimal &b) noexcept;
+void swap(Decimal &a, Decimal &b);
 
 inline std::ostream& operator<<(std::ostream& out, const Decimal& obj)
 {

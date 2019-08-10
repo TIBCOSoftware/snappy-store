@@ -349,9 +349,8 @@ uint32_t RowSet::write(::apache::thrift::protocol::TProtocol* oprot) const {
   return xfer;
 }
 
-void swap(RowSet &a, RowSet &b) noexcept {
+void swap(RowSet &a, RowSet &b) {
   using ::std::swap;
-  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.rows, b.rows);
   swap(a.flags, b.flags);
   swap(a.cursorId, b.cursorId);
