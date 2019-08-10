@@ -1595,7 +1595,7 @@ public final class GfxdSystemProcedureMessage extends
       @Override
       String getSQLStatement(Object[] params) {
         return "CALL SYS.CREATE_OR_DROP_RESERVOIR_REGION('" + params[0] +
-            "','" + params[1] + "'," + params[2] +')';
+            "','" + params[1] + "'," + params[2] + ')';
       }
     },
 

@@ -1683,7 +1683,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
       TypeDescriptor[] arg_types = new TypeDescriptor[] {
           DataTypeDescriptor.getCatalogType(Types.LONGVARCHAR),
           DataTypeDescriptor.getCatalogType(Types.LONGVARCHAR),
-          DataTypeDescriptor.getCatalogType(Types.BOOLEAN)};
+          DataTypeDescriptor.getCatalogType(Types.BOOLEAN) };
       super.createSystemProcedureOrFunction("CREATE_OR_DROP_RESERVOIR_REGION",
           sysUUID, arg_names, arg_types, 0, 0, RoutineAliasInfo.NO_SQL, null,
           newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
