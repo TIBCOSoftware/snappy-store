@@ -83,7 +83,7 @@ class SnappyExceptionData {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(SnappyExceptionData &a, SnappyExceptionData &b) noexcept;
+void swap(SnappyExceptionData &a, SnappyExceptionData &b);
 
 inline std::ostream& operator<<(std::ostream& out, const SnappyExceptionData& obj)
 {

@@ -160,7 +160,7 @@ uint32_t BlobChunk::write(::apache::thrift::protocol::TProtocol* oprot) const {
   return xfer;
 }
 
-void swap(BlobChunk &a, BlobChunk &b) noexcept {
+void swap(BlobChunk &a, BlobChunk &b) {
   using ::std::swap;
   swap(a.chunk, b.chunk);
   swap(a.last, b.last);
@@ -178,7 +178,7 @@ BlobChunk::BlobChunk(const BlobChunk& other44) {
   totalLength = other44.totalLength;
   __isset = other44.__isset;
 }
-BlobChunk::BlobChunk( BlobChunk&& other45) noexcept {
+BlobChunk::BlobChunk(BlobChunk&& other45) noexcept {
   chunk = std::move(other45.chunk);
   last = std::move(other45.last);
   lobId = std::move(other45.lobId);

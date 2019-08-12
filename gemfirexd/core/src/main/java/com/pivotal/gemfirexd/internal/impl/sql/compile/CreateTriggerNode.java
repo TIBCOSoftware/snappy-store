@@ -48,6 +48,8 @@ import java.util.List;
 import java.util.Vector;
 
 import com.pivotal.gemfirexd.internal.catalog.UUID;
+import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
+import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
@@ -401,6 +403,32 @@ public class CreateTriggerNode extends DDLStatementNode
 		StringBuilder newText = new StringBuilder();
 		//Gemstone changes BEGIN
 		StringBuilder newGfxdActionText = new StringBuilder();
+
+		// disallow triggers on or targeting column tables
+		LanguageConnectionContext lcc = getLanguageConnectionContext();
+		GemFireContainer container = GemFireXDUtils.getGemFireContainer(
+				triggerTableDescriptor.getSchemaName(), triggerTableDescriptor.getName(), lcc);
+		if (container != null && (container.isRowBuffer() || container.isColumnStore())) {
+			throw StandardException.newException(SQLState.NOT_IMPLEMENTED,
+					"Triggers on column tables not supported (for table: " +
+							triggerTableDescriptor.getQualifiedName() + ")");
+		}
+		CollectNodesVisitor tableVisitor = new CollectNodesVisitor(FromBaseTable.class);
+		actionNode.accept(tableVisitor);
+		Vector tableRefs = tableVisitor.getList();
+		for (Object ref : tableRefs) {
+			FromBaseTable fromTable = (FromBaseTable)ref;
+			TableName table = fromTable.getActualTableName();
+			GemFireContainer target = GemFireXDUtils.getGemFireContainer(
+					table.getSchemaName(), table.getTableName(), lcc);
+			if (target != null && (target.isRowBuffer() || target.isColumnStore())) {
+				throw StandardException.newException(SQLState.NOT_IMPLEMENTED,
+						"Triggers cannot change column tables (for table: " +
+								triggerTableDescriptor.getQualifiedName() +
+								", trigger action: " + actionText + ")");
+			}
+		}
+
 		//Gemstone changes END
 		boolean regenNode = false;
 		int start = 0;
@@ -494,10 +522,7 @@ public class CreateTriggerNode extends DDLStatementNode
 			** the from table is NEW or OLD (or user designated alternates
 			** REFERENCING), we turn them into a trigger table VTI.
 			*/
-			CollectNodesVisitor visitor = new CollectNodesVisitor(FromBaseTable.class);
-			actionNode.accept(visitor);
-			Vector refs = visitor.getList();
-			QueryTreeNode[] tabs = sortRefs(refs, false);
+			QueryTreeNode[] tabs = sortRefs(tableRefs, false);
 			for (int i = 0; i < tabs.length; i++)
 			{
 				FromBaseTable fromTable = (FromBaseTable) tabs[i];

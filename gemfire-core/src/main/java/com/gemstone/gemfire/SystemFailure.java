@@ -16,6 +16,9 @@
  */
 package com.gemstone.gemfire;
 
+import java.io.File;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.gemstone.gemfire.internal.LocalLogWriter;
 import com.gemstone.gemfire.internal.LogWriterImpl;
 import com.gemstone.gemfire.internal.LogWriterImpl.GemFireThreadGroup;
@@ -24,6 +27,7 @@ import com.gemstone.gemfire.internal.admin.remote.RemoteGfManagerAgent;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 
+import com.gemstone.gemfire.internal.shared.NativeCalls;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 /**
@@ -216,6 +220,9 @@ public final class SystemFailure {
    public static final String DISTRIBUTION_HALTED_MESSAGE = LocalizedStrings.SystemFailure_DISTRIBUTION_HALTED_DUE_TO_JVM_CORRUPTION.toLocalizedString();
    public static final String DISTRIBUTED_SYSTEM_DISCONNECTED_MESSAGE = LocalizedStrings.SystemFailure_DISTRIBUTED_SYSTEM_DISCONNECTED_DUE_TO_JVM_CORRUPTION.toLocalizedString();
 
+   // OOME handling is now done by native agent (jvmkill.c)
+   private static boolean disableWatchDog = true;
+
   /**
    * the underlying failure
    * 
@@ -249,7 +256,12 @@ public final class SystemFailure {
    * told us it was OK.
    */
   private static volatile Throwable exitExcuse;
-  
+
+  private static final ThreadLocal<Boolean> SKIP_OOME = new ThreadLocal<>();
+  private static final AtomicInteger numSkipOOME = new AtomicInteger();
+  private static final File skipOOMEFile = new File("jvmkill_pid" +
+      NativeCalls.getInstance().getProcessId() + ".skip");
+
   /**
    * Indicate whether it is acceptable to call {@link System#exit(int)} after
    * failure processing has completed.
@@ -271,6 +283,32 @@ public final class SystemFailure {
     return result;
   }
 
+  private static void deleteSkipOOMEFile() {
+    try {
+      // noinspection ResultOfMethodCallIgnored
+      skipOOMEFile.delete();
+    } catch (Throwable ignored) {
+    }
+  }
+
+  public static void setSkipOOMEForThread(boolean skip) {
+    if (skip) {
+      SKIP_OOME.set(Boolean.TRUE);
+      if (numSkipOOME.getAndIncrement() == 0) {
+        try {
+          // noinspection ResultOfMethodCallIgnored
+          skipOOMEFile.createNewFile();
+        } catch (Throwable ignored) {
+        }
+      }
+    } else if (SKIP_OOME.get() == Boolean.TRUE) {
+      SKIP_OOME.set(null);
+      if (numSkipOOME.decrementAndGet() == 0 && skipOOMEFile.exists()) {
+        deleteSkipOOMEFile();
+      }
+    }
+  }
+
   /**
    * Returns true if the given Error is a fatal to the JVM and it should be shut
    * down. Code should call {@link #initiateFailure(Error)} or
@@ -280,13 +318,22 @@ public final class SystemFailure {
     // all VirtualMachineErrors are not fatal to the JVM, in particular
     // StackOverflowError is not
     if (err instanceof OutOfMemoryError) {
+      if (SKIP_OOME.get() == Boolean.TRUE) return false;
       // ignore OOMEs thrown by Spark
       String message = err.getMessage();
-      return !message.contains("Unable to acquire") &&
+      boolean result = !message.contains("Unable to acquire") &&
           !message.contains("error while calling spill") &&
           !message.contains("enough memory for aggregation") &&
           !message.contains("enough memory to grow") &&
           !message.contains("Direct buffer");
+      if (result) {
+        // remove any ".skip" file created by other threads so that
+        // the native jvmkill agent can force exit this JVM
+        if (numSkipOOME.get() > 0) {
+          deleteSkipOOMEFile();
+        }
+      }
+      return result;
     } else {
       return false;
     }
@@ -355,9 +402,10 @@ public final class SystemFailure {
         System.err.println("Internal error in SystemFailure watchdog:" + e);
         e.printStackTrace();
       }
-      };  
-    }
-  
+      };
+    skipOOMEFile.deleteOnExit();
+  }
+
   /**
    * This is the amount of time, in seconds, the watchdog periodically awakens
    * to see if the system has been corrupted.
@@ -384,6 +432,7 @@ public final class SystemFailure {
    * Start the watchdog thread, if it isn't already running.
    */
   private static void startWatchDog() {
+    if (disableWatchDog) return;
     if (failureActionCompleted) {
       // Our work is done, don't restart
       return;
@@ -403,6 +452,7 @@ public final class SystemFailure {
   }
 
   private static void stopWatchDog() {
+    if (disableWatchDog) return;
     Thread watchDogThread;
     synchronized (failureSync) {
       stopping = true;
@@ -1013,6 +1063,7 @@ public final class SystemFailure {
    * @throws Error if a thread-specific AssertionError cannot be allocated.
    */
   public static void initiateFailure(Error f) throws InternalGemFireError, Error {
+    if (f instanceof OutOfMemoryError && SKIP_OOME.get() == Boolean.TRUE) return;
     SystemFailure.setFailure(f);
     throwFailure();
   }

@@ -18,12 +18,22 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <jvmti.h>
 
+#define SKIP_FILE_PATTERN "jvmkill_pid%d.skip"
 
 static FILE* g_logFile = NULL;
 
-void logMessage(char *format, ...) {
+int logMessage(jint flags, char *format, ...) {
+   // check if file indicating skip OOME errors exists
+   if (flags & (JVMTI_RESOURCE_EXHAUSTED_OOM_ERROR | JVMTI_RESOURCE_EXHAUSTED_JAVA_HEAP)) {
+     char fname[100];
+     sprintf(fname, SKIP_FILE_PATTERN, getpid());
+     int result = access(fname, F_OK);
+     errno = 0;
+     if (result != -1) return 0;
+   }
    FILE* logFile = g_logFile;
    if (logFile == NULL) {
      char fname[100];
@@ -36,6 +46,7 @@ void logMessage(char *format, ...) {
    vfprintf(logFile, format, args);
    va_end(args);
    fflush(logFile);
+   return 1;
 }
 
 static void JNICALL
@@ -45,8 +56,9 @@ resourceExhausted(
       jint flags,
       const void *reserved,
       const char *description) {
-   logMessage("ResourceExhausted: %s: killing current process!", description);
-   kill(getpid(), SIGKILL);
+   if (logMessage(flags, "ResourceExhausted: %s: killing current process!", description)) {
+     kill(getpid(), SIGKILL);
+   }
 }
 
 JNIEXPORT jint JNICALL
@@ -55,7 +67,7 @@ Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
    jvmtiError err;
    jint rc = (*vm)->GetEnv(vm, (void **) &jvmti, JVMTI_VERSION);
    if (rc != JNI_OK) {
-      logMessage("ERROR: GetEnv failed: %d\n", rc);
+      logMessage(0, "ERROR: GetEnv failed: %d\n", rc);
       return JNI_ERR;
    }
 
@@ -66,16 +78,22 @@ Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
 
    err = (*jvmti)->SetEventCallbacks(jvmti, &callbacks, sizeof(callbacks));
    if (err != JVMTI_ERROR_NONE) {
-      logMessage("ERROR: SetEventCallbacks failed: %d\n", err);
+      logMessage(0, "ERROR: SetEventCallbacks failed: %d\n", err);
       return JNI_ERR;
    }
 
    err = (*jvmti)->SetEventNotificationMode(
          jvmti, JVMTI_ENABLE, JVMTI_EVENT_RESOURCE_EXHAUSTED, NULL);
    if (err != JVMTI_ERROR_NONE) {
-      logMessage("ERROR: SetEventNotificationMode failed: %d\n", err);
+      logMessage(0, "ERROR: SetEventNotificationMode failed: %d\n", err);
       return JNI_ERR;
    }
+
+   // remove any .skip file
+   char fname[100];
+   sprintf(fname, SKIP_FILE_PATTERN, getpid());
+   remove(fname);
+   errno = 0;
 
    return JNI_OK;
 }

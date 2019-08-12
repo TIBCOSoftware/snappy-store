@@ -303,6 +303,22 @@ class UpdateResult;
 
 class StatementResult;
 
+class BucketOwners;
+
+class CatalogStorage;
+
+class CatalogSchemaObject;
+
+class CatalogTableObject;
+
+class CatalogFunctionObject;
+
+class CatalogPartitionObject;
+
+class CatalogMetadataRequest;
+
+class CatalogMetadataDetails;
+
 class EntityId;
 
 }}} // namespace

@@ -150,4 +150,10 @@ public interface StoreCallbacks {
    * Check permission for current user on given schema.
    */
   String checkSchemaPermission(String schema, String currentUser);
+
+  /**
+   * Removes the sampler from global map for the given sample table.
+   * @param resolvedSampleTableName
+   */
+  void removeSampler(String resolvedSampleTableName);
 }

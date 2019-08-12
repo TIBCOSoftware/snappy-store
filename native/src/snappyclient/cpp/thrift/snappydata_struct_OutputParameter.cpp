@@ -125,9 +125,8 @@ uint32_t OutputParameter::write(::apache::thrift::protocol::TProtocol* oprot) co
   return xfer;
 }
 
-void swap(OutputParameter &a, OutputParameter &b) noexcept {
+void swap(OutputParameter &a, OutputParameter &b) {
   using ::std::swap;
-  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.type, b.type);
   swap(a.scale, b.scale);
   swap(a.typeName, b.typeName);

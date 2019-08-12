@@ -28,6 +28,14 @@
 #include "snappydata_struct_PrepareResult.h"
 #include "snappydata_struct_UpdateResult.h"
 #include "snappydata_struct_StatementResult.h"
+#include "snappydata_struct_BucketOwners.h"
+#include "snappydata_struct_CatalogStorage.h"
+#include "snappydata_struct_CatalogSchemaObject.h"
+#include "snappydata_struct_CatalogTableObject.h"
+#include "snappydata_struct_CatalogFunctionObject.h"
+#include "snappydata_struct_CatalogPartitionObject.h"
+#include "snappydata_struct_CatalogMetadataRequest.h"
+#include "snappydata_struct_CatalogMetadataDetails.h"
 
 #include "snappydata_types.h"
 
@@ -82,7 +90,7 @@ class EntityId {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(EntityId &a, EntityId &b) noexcept;
+void swap(EntityId &a, EntityId &b);
 
 inline std::ostream& operator<<(std::ostream& out, const EntityId& obj)
 {

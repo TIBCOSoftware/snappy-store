@@ -162,9 +162,8 @@ uint32_t SnappyExceptionData::write(::apache::thrift::protocol::TProtocol* oprot
   return xfer;
 }
 
-void swap(SnappyExceptionData &a, SnappyExceptionData &b) noexcept {
+void swap(SnappyExceptionData &a, SnappyExceptionData &b) {
   using ::std::swap;
-  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.reason, b.reason);
   swap(a.errorCode, b.errorCode);
   swap(a.sqlState, b.sqlState);

@@ -130,7 +130,7 @@ class StatementResult {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(StatementResult &a, StatementResult &b) noexcept;
+void swap(StatementResult &a, StatementResult &b);
 
 inline std::ostream& operator<<(std::ostream& out, const StatementResult& obj)
 {

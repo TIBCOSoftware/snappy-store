@@ -1549,7 +1549,14 @@ public class GfxdSystemProcedures extends SystemProcedures {
   }
 
   /**
-   * Create or drop reservoir region for sampler.
+   * Create or drop reservoir region for sampler. Note that the creat and drop operation
+   * are intentionally combined in single procedure here to make conflation of create and
+   * drop operation possible for same region.
+   *
+   * @param reservoirRegionName name of the reservoir region
+   * @param resolvedBaseName base table name with schema
+   * @param isDrop flag to indicate that the stored procedure is being invoked to drop the
+   *               reservoir region
    */
   public static void CREATE_OR_DROP_RESERVOIR_REGION(String reservoirRegionName,
       String resolvedBaseName, Boolean isDrop) throws SQLException {
@@ -1571,7 +1578,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
       if (createOrDropReservoirRegion(reservoirRegionName, resolvedBaseName, isDrop)) {
         // don't send to other nodes or persist if local operation is unsuccessful
         final Object[] args = new Object[] { reservoirRegionName,
-            resolvedBaseName, isDrop };
+            resolvedBaseName, isDrop};
         // send to other nodes
         publishMessage(args, false,
             GfxdSystemProcedureMessage.SysProcMethod.createOrDropReservoirRegion,
@@ -1589,6 +1596,9 @@ public class GfxdSystemProcedures extends SystemProcedures {
     PartitionedRegion existingRegion = Misc.getReservoirRegionForSampleTable(
         reservoirRegionName);
     if (isDrop) {
+      // Cached sampler entry needs to be removed from all the nodes even if reservoir region
+      // does not exist on that node.
+      CallbackFactoryProvider.getStoreCallbacks().removeSampler(resolvedBaseName);
       if (existingRegion != null) {
         existingRegion.destroyRegion(null);
         return true;

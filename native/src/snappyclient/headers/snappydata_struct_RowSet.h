@@ -144,7 +144,7 @@ class RowSet {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(RowSet &a, RowSet &b) noexcept;
+void swap(RowSet &a, RowSet &b);
 
 inline std::ostream& operator<<(std::ostream& out, const RowSet& obj)
 {

@@ -259,9 +259,8 @@ uint32_t OpenConnectionArgs::write(::apache::thrift::protocol::TProtocol* oprot)
   return xfer;
 }
 
-void swap(OpenConnectionArgs &a, OpenConnectionArgs &b) noexcept {
+void swap(OpenConnectionArgs &a, OpenConnectionArgs &b) {
   using ::std::swap;
-  static_assert(noexcept(swap(a, b)), "throwing swap");
   swap(a.clientHostName, b.clientHostName);
   swap(a.clientID, b.clientID);
   swap(a.security, b.security);

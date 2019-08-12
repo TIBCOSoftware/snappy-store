@@ -46,6 +46,7 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 import com.gemstone.gemfire.CancelCriterion;
 import com.gemstone.gemfire.DataSerializer;
@@ -69,11 +70,10 @@ import com.gemstone.gemfire.internal.cache.ControllerAdvisor.ControllerProfile;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.GridAdvisor;
 import com.gemstone.gemfire.internal.cache.UpdateAttributesProcessor;
+import com.gemstone.gemfire.internal.cache.control.MemoryThresholds;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantReadWriteLock;
-import com.gemstone.gnu.trove.THashSet;
-import com.gemstone.gnu.trove.TObjectProcedure;
 import com.pivotal.gemfirexd.FabricService;
 import com.pivotal.gemfirexd.FabricServiceManager;
 import com.pivotal.gemfirexd.NetworkInterface;
@@ -90,6 +90,7 @@ import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
 import io.snappydata.thrift.HostAddress;
 import io.snappydata.thrift.ServerType;
 import io.snappydata.thrift.common.ThriftUtils;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
 
 /**
  * This {@link DistributionAdvisor} keeps track of the server groups of various
@@ -569,9 +570,8 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
    *          when true then skip non GemFireXD locators else include pure GFE
    *          locators too
    */
-  @SuppressWarnings("unchecked")
   public final Set<DistributedMember> adviseServerLocators(boolean skipNonGfxd) {
-    final THashSet locators = new THashSet();
+    final UnifiedSet<DistributedMember> locators = new UnifiedSet<>();
     this.mapLock.readLock().lock();
     try {
       InternalDistributedMember member;
@@ -752,7 +752,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     }
   }
 
-  static final class FilterThriftHosts implements TObjectProcedure {
+  static final class FilterThriftHosts implements Consumer<HostAddress> {
 
     final Collection<HostAddress> outServers;
     private boolean keepLocators;
@@ -762,11 +762,11 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       this.outServers = outServers;
     }
 
-    public void setKeepLocators(boolean v) {
+    void setKeepLocators(boolean v) {
       this.keepLocators = v;
     }
 
-    public void setKeepServers(boolean v) {
+    void setKeepServers(boolean v) {
       this.keepServers = v;
     }
 
@@ -774,8 +774,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
      * {@inheritDoc}
      */
     @Override
-    public boolean execute(Object o) {
-      final HostAddress hostAddr = (HostAddress)o;
+    public void accept(HostAddress hostAddr) {
       if (this.keepLocators) {
         if (hostAddr.getServerType().isThriftLocator()) {
           this.outServers.add(hostAddr);
@@ -786,7 +785,6 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
           this.outServers.add(hostAddr);
         }
       }
-      return true;
     }
   }
 
@@ -796,7 +794,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
    */
   public final void getAllThriftServers(Set<ServerType> serverTypes,
       Collection<HostAddress> outHosts) {
-    final THashSet thriftHosts = new THashSet();
+    final UnifiedSet<HostAddress> thriftHosts = new UnifiedSet<>();
     this.mapLock.readLock().lock();
     try {
       // first add for self
@@ -816,7 +814,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
             continue;
           }
           thriftHosts.add(ThriftUtils.getHostAddress(ni.getHostName(),
-              ni.getPort()).setServerType(serverType));
+              ni.getPort()).setServerType(serverType).setIsCurrent(true));
         }
       }
       // then for all the other members of the DS
@@ -843,7 +841,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       thriftHosts.forEach(filter);
 
       if (SanityManager.TraceClientHA) {
-        THashSet allHosts = new THashSet(thriftHosts.size());
+        UnifiedSet<HostAddress> allHosts = new UnifiedSet<>(thriftHosts.size());
         for (Set<HostAddress> hostAddrs : this.thriftServers.values()) {
           allHosts.addAll(hostAddrs);
         }
@@ -1070,9 +1068,8 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
    *          when true then skip non GemFireXD locators else include pure GFE
    *          locators too
    */
-  @SuppressWarnings("unchecked")
   public final Set<String> getAllServerLocators(boolean skipNonGfxd) {
-    final THashSet allLocators = new THashSet();
+    final UnifiedSet<String> allLocators = new UnifiedSet<>();
     this.mapLock.readLock().lock();
     try {
       InternalDistributedMember member;
@@ -1128,11 +1125,12 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       Object server, Map<InternalDistributedMember, ?> map,
       boolean allowMultiple) {
     boolean isAdded = false;
+    // noinspection UnnecessaryLocalVariable
     final Map serverMap = map;
     if (allowMultiple) {
-      Set servers = (Set)serverMap.get(member);
+      Set servers = (Set)map.get(member);
       if (servers == null) {
-        servers = new THashSet();
+        servers = new UnifiedSet<>();
         serverMap.put(member, servers);
         isAdded = true;
       }
@@ -1158,10 +1156,9 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
    * default server group that includes all VMs. The extra union types added in
    * {@link VMKindToken} are also honoured.
    */
-  @SuppressWarnings("unchecked")
-  private final Set<DistributedMember> adviseVMsOfKind(
+  private Set<DistributedMember> adviseVMsOfKind(
       final Set<String> groups, final VMKind kind) {
-    final THashSet members = new THashSet();
+    final UnifiedSet<DistributedMember> members = new UnifiedSet<>();
     this.mapLock.readLock().lock();
     try {
       // special default server group check for null/empty groups
@@ -1226,7 +1223,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
    * provided set of members.
    */
   private void addGroupMembers(String group, VMKind kind,
-      THashSet members) {
+      UnifiedSet<DistributedMember> members) {
     final Map<InternalDistributedMember, VMKind> groupMembers = serverGroupMap
         .get(group);
     if (groupMembers != null) {
@@ -1298,6 +1295,8 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     private static final byte F_HAS_PROCESSOR_COUNT = 0x8;
 
     private static final byte F_HAS_LONG_CATALOG_VERSION = 0x10;
+
+    private static final byte F_HAS_USABLE_HEAP = 0x20;
     // end bitmasks
 
     /** OR of various bitmasks above */
@@ -1331,6 +1330,12 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
      */
     private AtomicLong catalogSchemaVersion;
 
+    /**
+     * The usable heap size of this VM in bytes. This includes the memory till
+     * the critical-heap-percentage limit.
+     */
+    private long usableHeap;
+
     /** for deserialization */
     public GfxdProfile() {
       this.initialized = true;
@@ -1346,6 +1351,22 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       boolean hasURL = sparkDriverUrl != null && !sparkDriverUrl.equals("");
       this.catalogSchemaVersion = new AtomicLong(catalogVersion);
       setHasSparkURL(hasURL);
+      GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+      if (cache != null) {
+        MemoryThresholds thresholds = cache.getResourceManager()
+            .getHeapMonitor().getThresholds();
+        if (thresholds.isCriticalThresholdEnabled()) {
+          this.usableHeap = thresholds.getCriticalThresholdBytes();
+        }
+      }
+      if (this.usableHeap <= 0L) {
+        long maxMemory = Runtime.getRuntime().maxMemory();
+        if (maxMemory > 0 && maxMemory != Long.MAX_VALUE) {
+          this.usableHeap = maxMemory;
+        } else {
+          this.usableHeap = Runtime.getRuntime().totalMemory();
+        }
+      }
       initFlags();
     }
 
@@ -1353,6 +1374,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       this.flags |= F_HASLOCALE;
       this.flags |= F_HAS_PROCESSOR_COUNT;
       this.flags |= F_HAS_LONG_CATALOG_VERSION;
+      this.flags |= F_HAS_USABLE_HEAP;
     }
 
     public final VMKind getVMKind() {
@@ -1435,6 +1457,10 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
 
     public final int getNumProcessors() {
       return this.numProcessors;
+    }
+
+    public final long getUsableHeap() {
+      return this.usableHeap;
     }
 
     @Override
@@ -1522,6 +1548,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
         DataSerializer.writeString(sparkDriverUrl, out);
       }
       out.writeLong(this.catalogSchemaVersion.get());
+      out.writeLong(this.usableHeap);
     }
 
     @Override
@@ -1559,6 +1586,9 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       } else {
         this.catalogSchemaVersion = new AtomicLong(in.readInt());
       }
+      if ((this.flags & F_HAS_USABLE_HEAP) != 0) {
+        this.usableHeap = in.readLong();
+      }
     }
 
     @Override
@@ -1577,6 +1607,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       sb.append("; dbLocaleStr=").append(this.dbLocaleStr);
       sb.append("; numProcessors=").append(this.numProcessors);
       sb.append("; catalogVersion=").append(this.catalogSchemaVersion.get());
+      sb.append("; usableHeap=").append(this.usableHeap);
     }
   }
 
