@@ -455,7 +455,10 @@ void ControlConnection::getConnectedHost(thrift::HostAddress& hostAddr,
   boost::lock_guard<boost::mutex> controlConnLock(this->m_lock);
 
   auto it = m_controlHostSet.find(hostAddr);
-  if (it != m_controlHostSet.end()) connectedHost = it->second;
+  if (it != m_controlHostSet.end()){
+    connectedHost = it->second;
+    return;
+  }
 
   for (auto iterator = m_controlHostSet.begin();
       iterator != m_controlHostSet.end(); ++iterator) {
