@@ -8138,8 +8138,19 @@ public class PartitionedRegion extends LocalRegion implements
       }
       return this.lockOwned;
     }
-    
-    
+
+    public void lock(int timeout) {
+      try {
+        cache.getCancelCriterion().checkCancelInProgress(null);
+        basicTryLock(timeout);
+      } catch (LockServiceDestroyedException e) {
+        cache.getCancelCriterion().checkCancelInProgress(null);
+        throw e;
+      }
+      if (!this.lockOwned) {
+        throw new LockTimeoutException("Couldn't acquire lock on " + this.lockName);
+      }
+    }
 
     private void basicLock() {
       if(enableAlerts) {
