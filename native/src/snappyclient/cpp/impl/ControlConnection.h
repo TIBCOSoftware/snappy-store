@@ -40,7 +40,7 @@
 #include <boost/thread/mutex.hpp>
 #include <boost/optional.hpp>
 #include "../thrift/LocatorService.h"
-
+#include <map>
 //-----------namespaces-----
 
 using namespace apache::thrift;
@@ -82,7 +82,7 @@ namespace io {
           std::vector<thrift::HostAddress> m_locators;
           thrift::HostAddress m_controlHost;
           std::unique_ptr<thrift::LocatorServiceClient> m_controlLocator;
-          std::unordered_set<thrift::HostAddress> m_controlHostSet;
+          std::map<thrift::HostAddress,thrift::HostAddress> m_controlHostSet;
           const std::set<std::string>& m_serverGroups;
 
           boost::mutex m_lock;
@@ -106,7 +106,7 @@ namespace io {
               bool checkFailedControlHosts, const std::exception& failure);
 
           void refreshAllHosts(
-              const std::vector<thrift::HostAddress>& allHosts);
+              std::vector<thrift::HostAddress>& allHosts);
 
           const thrift::SnappyException unexpectedError(
               const std::exception& e, const thrift::HostAddress& host);
@@ -121,6 +121,8 @@ namespace io {
 
           void getPreferredServer(thrift::HostAddress& preferredServer,
               const std::exception& failure, bool forFailover = false);
+
+          void addHosts(std::vector<thrift::HostAddress>& hosts);
 
         public:
 
@@ -138,7 +140,8 @@ namespace io {
               const std::exception& failure,
               thrift::HostAddress& hostAddress);
 
-          void getLocatorsCopy(std::vector<thrift::HostAddress>& locators);
+          void getConnectedHost(thrift::HostAddress& hostAddr,
+              thrift::HostAddress& connectedHost);
 
           void close(bool clearGlobal);
         };

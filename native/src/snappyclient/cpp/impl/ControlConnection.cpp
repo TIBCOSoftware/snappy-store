@@ -51,7 +51,7 @@
 #include <boost/make_shared.hpp>
 #include "ControlConnection.h"
 #include "NetConnection.h"
-
+#include <map>
 using namespace io::snappydata;
 using namespace io::snappydata::client;
 using namespace io::snappydata::client::impl;
@@ -69,9 +69,15 @@ ControlConnection::ControlConnection(ClientService * const &service) :
   m_controlHost = service->getCurrentHostAddress();
   boost::assign::insert(m_snappyServerTypeSet)(
       service->getServerType(true, false, false));
-  std::copy(m_locators.begin(), m_locators.end(),
-      std::inserter(m_controlHostSet, m_controlHostSet.end()));
+
+  addHosts(m_locators);
   m_controlLocator = nullptr;
+}
+void ControlConnection::addHosts(std::vector<thrift::HostAddress>& hosts) {
+  for (thrift::HostAddress& host : hosts) {
+    m_controlHostSet.insert(
+        std::pair<thrift::HostAddress, thrift::HostAddress>(host, host));
+  }
 }
 
 const boost::optional<ControlConnection&> ControlConnection::getOrCreateControlConnection(
@@ -190,10 +196,6 @@ void ControlConnection::getPreferredServer(
         m_controlLocator->getAllServersWithPreferredServer(
             prefServerAndAllHosts, m_snappyServerTypeSet, serverGroups,
             failedServers);
-//        HostAddress _preferServer;
-//        m_controlLocator->getPreferredServer(_preferServer,
-//            m_snappyServerTypeSet, serverGroups, failedServers);
-//        prefServerAndAllHosts.push_back(_preferServer);
         if (!prefServerAndAllHosts.empty()) {
           std::vector<HostAddress> allHosts(prefServerAndAllHosts.begin() + 1,
               prefServerAndAllHosts.end());
@@ -252,10 +254,12 @@ void ControlConnection::getPreferredServer(
 void ControlConnection::searchRandomServer(
     const std::set<thrift::HostAddress>& skipServers,
     const std::exception& failure, thrift::HostAddress& hostAddress) {
+
   std::vector<thrift::HostAddress> searchServers;
-  // Note: Do not use unordered_set -- reason is http://www.cplusplus.com/forum/general/198319/
-  std::copy(m_controlHostSet.begin(), m_controlHostSet.end(),
-      std::inserter(searchServers, searchServers.end()));
+  for(auto it= m_controlHostSet.begin(); it!=m_controlHostSet.end();++it){
+    auto hst = it->first;
+    searchServers.push_back(hst);
+  }
   if (searchServers.size() > 2) {
     std::random_shuffle(searchServers.begin(), searchServers.end());
   }
@@ -280,7 +284,7 @@ void ControlConnection::failoverToAvailableHost(
   boost::lock_guard<boost::mutex> localGuard(m_lock);
   for (auto iterator = m_controlHostSet.begin();
       iterator != m_controlHostSet.end(); ++iterator) {
-    thrift::HostAddress controlAddr = *iterator;
+    thrift::HostAddress controlAddr = iterator->first;
     if (checkFailedControlHosts && !failedServers.empty()
         && (failedServers.find(controlAddr) != failedServers.end())) {
       continue;
@@ -385,7 +389,7 @@ const thrift::SnappyException ControlConnection::unexpectedError(
 }
 
 void ControlConnection::refreshAllHosts(
-    const std::vector<thrift::HostAddress>& allHosts) {
+     std::vector<thrift::HostAddress>& allHosts) {
   //refresh the locator list first(keep old but push current to front)
   std::vector<thrift::HostAddress> locators = m_locators;
   std::vector<thrift::HostAddress> newLocators(locators.size());
@@ -408,20 +412,6 @@ void ControlConnection::refreshAllHosts(
     }
   }
 
-  // as above foreach loop added entry of m_locators with Server ip and port
-  // if user give server ip and port to connect directly to server
-  // its kind of workaround to update the value of servertype for that entry
-  // as allHosts contains that value
-  // this updated value will get cross-check in ClientService::openConnection
-  for (HostAddress& host : newLocators) {
-    for (HostAddress alHost : allHosts) {
-      if ((!alHost.hostName.compare(host.hostName)
-          || !alHost.ipAddress.compare(host.hostName))
-          && alHost.port == host.port && host.port != 0) {
-        host.serverType = alHost.serverType;
-      }
-    }
-  }
   m_locators = newLocators;
   // refresh the new server list
 
@@ -429,8 +419,8 @@ void ControlConnection::refreshAllHosts(
   // to prefer the ones coming as "allServers" with "isServer" flag
   // correctly set rather than the ones in "secondary-locators"
   m_controlHostSet.clear();
-  m_controlHostSet.insert(newLocators.begin(), newLocators.end());
-  m_controlHostSet.insert(allHosts.begin(), allHosts.end());
+  addHosts(newLocators);
+  addHosts(allHosts);
 }
 
 void ControlConnection::failoverExhausted(
@@ -460,10 +450,21 @@ void ControlConnection::failoverExhausted(
   throw snappyEx;
 }
 
-void ControlConnection::getLocatorsCopy(
-    std::vector<thrift::HostAddress>& locators) {
+void ControlConnection::getConnectedHost(thrift::HostAddress& hostAddr,
+    thrift::HostAddress& connectedHost) {
   boost::lock_guard<boost::mutex> controlConnLock(this->m_lock);
-  locators = this->m_locators;
+
+  auto it = m_controlHostSet.find(hostAddr);
+  if (it != m_controlHostSet.end()) connectedHost = it->second;
+
+  for (auto iterator = m_controlHostSet.begin();
+      iterator != m_controlHostSet.end(); ++iterator) {
+    auto host = iterator->first;
+    if(host.__isset.isCurrent && host.isCurrent){
+      connectedHost = host;
+    }
+  }
+
 }
 
 void ControlConnection::close(bool clearGlobal) {

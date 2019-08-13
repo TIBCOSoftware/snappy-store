@@ -92,7 +92,7 @@ namespace io {
         private:
           const thrift::OpenConnectionArgs m_connArgs;
           bool m_loadBalance;
-          bool m_explicitLoadBalance;
+          bool m_loadBalanceInitialized;
           thrift::ServerType::type m_reqdServerType;
           bool m_useFramedTransport;
           std::set<std::string> m_serverGroups;

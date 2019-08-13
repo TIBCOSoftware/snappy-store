@@ -359,11 +359,11 @@ void ClientService::setPendingTransactionAttrs(
 ClientService::ClientService(const std::string& host, const int port,
     thrift::OpenConnectionArgs& connArgs) :
     // default for load-balance is false
-    m_connArgs(initConnectionArgs(connArgs)), m_loadBalance(true), m_reqdServerType(
+    m_connArgs(initConnectionArgs(connArgs)), m_loadBalance(false), m_reqdServerType(
         thrift::ServerType::THRIFT_SNAPPY_CP), m_useFramedTransport(false), m_serverGroups(), m_transport(), m_client(
         createDummyProtocol()), m_connHosts(0), m_connId(0), m_token(), m_isOpen(
         false), m_pendingTXAttrs(), m_hasPendingTXAttrs(false), m_isolationLevel(
-        IsolationLevel::NONE), m_lock(), m_explicitLoadBalance(true) {
+        IsolationLevel::NONE), m_lock(), m_loadBalanceInitialized(false) {
   std::map<std::string, std::string>& props = connArgs.properties;
   std::map<std::string, std::string>::iterator propValue;
 
@@ -377,16 +377,13 @@ ClientService::ClientService(const std::string& host, const int port,
     // doesn't give any property
     bool hasLoadBalance = ((propValue = props.find(
         ClientAttribute::LOAD_BALANCE)) != props.end());
-    if (hasLoadBalance) {
-      bool loadBalance = !(boost::iequals("false", propValue->second));
-      props.erase(propValue);
-      m_explicitLoadBalance = hasLoadBalance && loadBalance;
-    } else {
-      m_explicitLoadBalance = false;
-    }
     //default for load-balance is true on locators and false on servers
     // so tentatively set as true and adjust using the ControlConnection
-    m_loadBalance = m_explicitLoadBalance || !hasLoadBalance;
+    if (hasLoadBalance) {
+      m_loadBalance = (boost::iequals("true", propValue->second));
+      props.erase(propValue);
+      m_loadBalanceInitialized = true;
+    }
   }
   if (!props.empty()) {
     // setup the original host list
@@ -466,37 +463,25 @@ void ClientService::openConnection(thrift::HostAddress& hostAddr,
     boost::lock_guard<boost::mutex> serviceGuard(m_lock);
     try {
       m_currentHostAddr = hostAddr;
-      if (m_loadBalance) {
+
+      if(m_loadBalance || !m_loadBalanceInitialized){
         boost::optional<ControlConnection&> controlConn =
             ControlConnection::getOrCreateControlConnection(m_connHosts, this,
                 te);
         //if connected to the server then disable load-balance by default
-        if (!m_explicitLoadBalance) {
-          //check the actual host type of "locators"
-          std::vector<thrift::HostAddress> locators;
-          controlConn->getLocatorsCopy(locators);
-          bool hasServer = false;
-          if (!locators.empty()) {
-            for (thrift::HostAddress address : locators) {
-              thrift::ServerType::type serverType = address.serverType;
-              if ((serverType == thrift::ServerType::type::THRIFT_SNAPPY_BP
-                  || serverType
-                      == thrift::ServerType::type::THRIFT_SNAPPY_BP_SSL
-                  || serverType == thrift::ServerType::type::THRIFT_SNAPPY_CP
-                  || serverType
-                      == thrift::ServerType::type::THRIFT_SNAPPY_CP_SSL)
-                  && !address.hostName.empty()) {
-                hasServer = true;
-                break;
-              }
-            }
+        if(!m_loadBalanceInitialized){
+          // set default load-balance to false for servers and true for locators
+          thrift::HostAddress connectedHost;
+          controlConn->getConnectedHost(hostAddr,connectedHost);
+          thrift::ServerType::type serverType = connectedHost.serverType;
+          if(serverType == thrift::ServerType::THRIFT_LOCATOR_BP
+              || serverType == thrift::ServerType::THRIFT_LOCATOR_BP_SSL
+              || serverType == thrift::ServerType::THRIFT_LOCATOR_CP
+              || serverType == thrift::ServerType::THRIFT_LOCATOR_CP_SSL){
+            m_loadBalance=true;
           }
-          if (hasServer) {
-            m_loadBalance = false;
-            controlConn->close(true);
-          }
+          m_loadBalanceInitialized=true;
         }
-
         if (m_loadBalance) {
           // at this point query the control service for preferred server
           controlConn->getPreferredServer(hostAddr, te, failedServers,
