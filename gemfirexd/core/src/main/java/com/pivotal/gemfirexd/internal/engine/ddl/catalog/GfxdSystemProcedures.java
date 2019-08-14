@@ -2490,7 +2490,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
                       + " timeout=" + timeout);
     }
     try {
-      lock.lock(timeout * 1000);
+      lock.lock(timeout);
     } catch (Throwable t) {
       throw TransactionResourceImpl.wrapInSQLException(t);
     }
