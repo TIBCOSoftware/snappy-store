@@ -69,15 +69,9 @@ ControlConnection::ControlConnection(ClientService * const &service) :
   m_controlHost = service->getCurrentHostAddress();
   boost::assign::insert(m_snappyServerTypeSet)(
       service->getServerType(true, false, false));
-
-  addHosts(m_locators);
+  std::copy(m_locators.begin(), m_locators.end(),
+      std::inserter(m_controlHostSet, m_controlHostSet.end()));
   m_controlLocator = nullptr;
-}
-void ControlConnection::addHosts(std::vector<thrift::HostAddress>& hosts) {
-  for (thrift::HostAddress& host : hosts) {
-    m_controlHostSet.insert(
-        std::pair<thrift::HostAddress, thrift::HostAddress>(host, host));
-  }
 }
 
 const boost::optional<ControlConnection&> ControlConnection::getOrCreateControlConnection(
@@ -256,10 +250,9 @@ void ControlConnection::searchRandomServer(
     const std::exception& failure, thrift::HostAddress& hostAddress) {
 
   std::vector<thrift::HostAddress> searchServers;
-  for(auto it= m_controlHostSet.begin(); it!=m_controlHostSet.end();++it){
-    auto hst = it->first;
-    searchServers.push_back(hst);
-  }
+  // Note: Do not use unordered_set -- reason is http://www.cplusplus.com/forum/general/198319/
+  std::copy(m_controlHostSet.begin(), m_controlHostSet.end(),
+      std::inserter(searchServers, searchServers.end()));
   if (searchServers.size() > 2) {
     std::random_shuffle(searchServers.begin(), searchServers.end());
   }
@@ -284,7 +277,7 @@ void ControlConnection::failoverToAvailableHost(
   boost::lock_guard<boost::mutex> localGuard(m_lock);
   for (auto iterator = m_controlHostSet.begin();
       iterator != m_controlHostSet.end(); ++iterator) {
-    thrift::HostAddress controlAddr = iterator->first;
+    thrift::HostAddress controlAddr = *iterator;
     if (checkFailedControlHosts && !failedServers.empty()
         && (failedServers.find(controlAddr) != failedServers.end())) {
       continue;
@@ -389,7 +382,7 @@ const thrift::SnappyException ControlConnection::unexpectedError(
 }
 
 void ControlConnection::refreshAllHosts(
-     std::vector<thrift::HostAddress>& allHosts) {
+    const std::vector<thrift::HostAddress>& allHosts) {
   //refresh the locator list first(keep old but push current to front)
   std::vector<thrift::HostAddress> locators = m_locators;
   std::vector<thrift::HostAddress> newLocators(locators.size());
@@ -419,8 +412,8 @@ void ControlConnection::refreshAllHosts(
   // to prefer the ones coming as "allServers" with "isServer" flag
   // correctly set rather than the ones in "secondary-locators"
   m_controlHostSet.clear();
-  addHosts(newLocators);
-  addHosts(allHosts);
+  m_controlHostSet.insert(newLocators.begin(), newLocators.end());
+  m_controlHostSet.insert(allHosts.begin(), allHosts.end());
 }
 
 void ControlConnection::failoverExhausted(
@@ -454,16 +447,16 @@ void ControlConnection::getConnectedHost(thrift::HostAddress& hostAddr,
     thrift::HostAddress& connectedHost) {
   boost::lock_guard<boost::mutex> controlConnLock(this->m_lock);
 
-  auto it = m_controlHostSet.find(hostAddr);
-  if (it != m_controlHostSet.end()){
-    connectedHost = it->second;
+  auto it = std::find(m_controlHostSet.begin(),m_controlHostSet.end(),hostAddr);//;m_controlHostSet.find(hostAddr);
+  if (it != m_controlHostSet.end()) {
+    connectedHost = *it;
     return;
   }
 
   for (auto iterator = m_controlHostSet.begin();
       iterator != m_controlHostSet.end(); ++iterator) {
-    auto host = iterator->first;
-    if(host.__isset.isCurrent && host.isCurrent){
+    auto host = *iterator;
+    if (host.__isset.isCurrent && host.isCurrent) {
       connectedHost = host;
     }
   }
@@ -478,6 +471,13 @@ void ControlConnection::close(bool clearGlobal) {
   }
   if (clearGlobal) {
     boost::lock_guard<boost::mutex> globalGuard(s_allConnsLock);
-    s_allConnections.erase(s_allConnections.begin());
+    auto thisPtr = std::unique_ptr<ControlConnection>(this);
+    auto pos = std::find(s_allConnections.begin(), s_allConnections.end(),
+        thisPtr);
+    // don't delete "this" here
+    thisPtr.release();
+    if (pos != s_allConnections.end()) {
+      s_allConnections.erase(pos);
+    }
   }
 }

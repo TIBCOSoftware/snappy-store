@@ -464,23 +464,24 @@ void ClientService::openConnection(thrift::HostAddress& hostAddr,
     try {
       m_currentHostAddr = hostAddr;
 
-      if(m_loadBalance || !m_loadBalanceInitialized){
+      if (m_loadBalance || !m_loadBalanceInitialized) {
         boost::optional<ControlConnection&> controlConn =
             ControlConnection::getOrCreateControlConnection(m_connHosts, this,
                 te);
         //if connected to the server then disable load-balance by default
-        if(!m_loadBalanceInitialized){
+        if (!m_loadBalanceInitialized) {
           // set default load-balance to false for servers and true for locators
           thrift::HostAddress connectedHost;
-          controlConn->getConnectedHost(hostAddr,connectedHost);
+          connectedHost.serverType = thrift::ServerType::THRIFT_LOCATOR_CP;
+          controlConn->getConnectedHost(hostAddr, connectedHost);
           thrift::ServerType::type serverType = connectedHost.serverType;
-          if(serverType == thrift::ServerType::THRIFT_LOCATOR_BP
+          if (serverType == thrift::ServerType::THRIFT_LOCATOR_BP
               || serverType == thrift::ServerType::THRIFT_LOCATOR_BP_SSL
               || serverType == thrift::ServerType::THRIFT_LOCATOR_CP
-              || serverType == thrift::ServerType::THRIFT_LOCATOR_CP_SSL){
-            m_loadBalance=true;
+              || serverType == thrift::ServerType::THRIFT_LOCATOR_CP_SSL) {
+            m_loadBalance = true;
           }
-          m_loadBalanceInitialized=true;
+          m_loadBalanceInitialized = true;
         }
         if (m_loadBalance) {
           // at this point query the control service for preferred server
