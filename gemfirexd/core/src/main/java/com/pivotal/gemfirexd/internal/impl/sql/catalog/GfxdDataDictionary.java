@@ -1756,10 +1756,12 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
             tc, GFXD_SYS_PROC_CLASSNAME, false);
       }
       {
-        String[] argNames = new String[] { "lockName" };
+        String[] argNames = new String[] { "lockName", "timeout" };
         TypeDescriptor[] argTypes = new TypeDescriptor[] {
                 DataTypeDescriptor.getBuiltInDataTypeDescriptor(
-                        Types.VARCHAR, false).getCatalogType() };
+                        Types.VARCHAR, false).getCatalogType(),
+                DataTypeDescriptor.getBuiltInDataTypeDescriptor(
+                        Types.INTEGER, false).getCatalogType()};
         super.createSystemProcedureOrFunction("ACQUIRE_REGION_LOCK", sysUUID,
                 argNames, argTypes, 0, 0, RoutineAliasInfo.READS_SQL_DATA,
                 DataTypeDescriptor.getCatalogType(Types.BOOLEAN),

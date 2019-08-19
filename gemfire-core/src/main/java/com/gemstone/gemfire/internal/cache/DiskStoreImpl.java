@@ -567,7 +567,7 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     File extraSpaceFile = new File(dirs[0], extraReservedSpaceFileName + ".oplog");
     this.extraSpaceReservedFile = new Oplog.OplogFile();
     this.extraSpaceReservedFile.f = extraSpaceFile;
-    if (reserveSpace) {
+    if (reserveSpace && !(offline || offlineCompacting)) {
       try {
         this.preblow(this.standByCrf, this.standbyCrfSize, directories[0]);
         this.preblow(this.standByDrf, this.standbyDrfSize, directories[0]);

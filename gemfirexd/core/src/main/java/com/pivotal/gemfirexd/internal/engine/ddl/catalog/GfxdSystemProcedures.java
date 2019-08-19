@@ -46,6 +46,7 @@ import com.gemstone.gemfire.internal.NanoTimer;
 import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.control.InternalResourceManager;
 import com.gemstone.gemfire.internal.cache.persistence.query.CloseableIterator;
+import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.ColumnTableEntry;
 import com.gemstone.gnu.trove.TIntArrayList;
@@ -2477,14 +2478,19 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
   }
 
-  public static Boolean ACQUIRE_REGION_LOCK(String lockName)
+  public static Boolean ACQUIRE_REGION_LOCK(String lockName, int timeout)
           throws SQLException {
     LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
     GemFireTransaction tr = (GemFireTransaction) lcc.getTransactionExecute();
     PartitionedRegion.RegionLock lock = PartitionedRegion.getRegionLock
             (lockName, GemFireCacheImpl.getExisting());
+    if (GemFireXDUtils.TraceLock) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_LOCK,
+              "in procedure ACQUIRE_REGION_LOCK() for lockName:  " + lockName
+                      + " timeout=" + timeout);
+    }
     try {
-      lock.lock();
+      lock.lock(timeout);
     } catch (Throwable t) {
       throw TransactionResourceImpl.wrapInSQLException(t);
     }
@@ -2499,6 +2505,10 @@ public class GfxdSystemProcedures extends SystemProcedures {
     LanguageConnectionContext lcc = ConnectionUtil.getCurrentLCC();
     GemFireTransaction tr = (GemFireTransaction) lcc.getTransactionExecute();
     PartitionedRegion.RegionLock lock = tr.getRegionLock(lockName);
+    if (GemFireXDUtils.TraceLock) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_LOCK,
+              "in procedure RELEASE_REGION_LOCK() for lockName:  " + lockName);
+    }
     if (lock != null) {
       try {
         lock.unlock();

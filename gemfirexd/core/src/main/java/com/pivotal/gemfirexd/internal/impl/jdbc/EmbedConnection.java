@@ -4217,7 +4217,7 @@ public abstract class EmbedConnection implements EngineConnection
         // send to other members
         Set<DistributedMember> otherMembers = GfxdMessage.getOtherServers();
         if (otherMembers.size() > 0) {
-          FunctionService.onMembers(Misc.getDistributedSystem(), otherMembers)
+          FunctionService.onMembers(otherMembers)
               .withArgs(connIDs).execute(
                   DistributedConnectionCloseExecutorFunction.ID);
         }

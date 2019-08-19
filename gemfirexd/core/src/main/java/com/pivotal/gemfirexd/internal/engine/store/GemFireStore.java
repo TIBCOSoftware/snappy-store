@@ -1389,7 +1389,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     for (DistributedMember server : servers) {
       final GfxdDistributionAdvisor.GfxdProfile other = GemFireXDUtils
           .getGfxdProfile(server);
-      if (other.hasSparkURL() && !server.equals(this.getMyId())) {
+      if (other.hasSparkURL() && !server.equals(getMyId())) {
         CallbackFactoryProvider.getClusterCallbacks().
             launchExecutor(other.getSparkDriverURL(), other.getDistributedMember());
       }

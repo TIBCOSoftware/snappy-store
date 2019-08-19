@@ -46,6 +46,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -317,7 +318,7 @@ public abstract class LauncherBase {
         // don't exceed 99%
         if (criticalPercent > 99.0f) criticalPercent = 99.0f;
         map.put(CRITICAL_HEAP_PERCENTAGE, "-" + CRITICAL_HEAP_PERCENTAGE +
-            '=' + String.format("%.2f", criticalPercent));
+            '=' + String.format(Locale.ENGLISH, "%.2f", criticalPercent));
       } else {
         criticalPercent = Float.parseFloat(criticalHeapStr.substring(
             criticalHeapStr.indexOf('=') + 1).trim());
@@ -329,7 +330,7 @@ public abstract class LauncherBase {
         // eviction-heap-percentage
         evictPercent = criticalPercent * 0.9f;
         map.put(EVICTION_HEAP_PERCENTAGE, "-" + EVICTION_HEAP_PERCENTAGE +
-            '=' + evictPercent);
+            '=' + String.format(Locale.ENGLISH, "%.2f", evictPercent));
       } else {
         evictPercent = Float.parseFloat(evictHeapStr.substring(
             evictHeapStr.indexOf('=') + 1).trim());
