@@ -92,6 +92,7 @@ namespace io {
         private:
           const thrift::OpenConnectionArgs m_connArgs;
           bool m_loadBalance;
+          bool m_loadBalanceInitialized;
           thrift::ServerType::type m_reqdServerType;
           bool m_useFramedTransport;
           std::set<std::string> m_serverGroups;
@@ -183,14 +184,12 @@ namespace io {
 
           void destroyTransport() noexcept;
 
-          void newSnappyExceptionForConnectionClose(
-              const char* op,
+          void newSnappyExceptionForConnectionClose(const char* op,
               const thrift::HostAddress source,
               std::set<thrift::HostAddress>& failedServers,
               bool createNewConnection, const thrift::SnappyException& te);
 
-          void newSnappyExceptionForConnectionClose(
-              const char* op,
+          void newSnappyExceptionForConnectionClose(const char* op,
               const thrift::HostAddress& source);
 
           void tryCreateNewConnection(thrift::HostAddress source,
@@ -208,10 +207,9 @@ namespace io {
               bool createNewConnection, const std::exception& se);
 
           virtual bool handleException(const char* op, bool tryFailover,
-                        bool ignoreNodeFailure, bool createNewConnection,
-                        std::set<thrift::HostAddress>& failedServers,
-                        const TException& te);
-
+              bool ignoreNodeFailure, bool createNewConnection,
+              std::set<thrift::HostAddress>& failedServers,
+              const TException& te);
 
         private:
           // the static hostName and hostId used by all connections

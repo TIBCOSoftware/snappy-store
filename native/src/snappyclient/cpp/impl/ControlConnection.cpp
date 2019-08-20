@@ -51,7 +51,7 @@
 #include <boost/make_shared.hpp>
 #include "ControlConnection.h"
 #include "NetConnection.h"
-
+#include <map>
 using namespace io::snappydata;
 using namespace io::snappydata::client;
 using namespace io::snappydata::client::impl;
@@ -248,6 +248,7 @@ void ControlConnection::getPreferredServer(
 void ControlConnection::searchRandomServer(
     const std::set<thrift::HostAddress>& skipServers,
     const std::exception& failure, thrift::HostAddress& hostAddress) {
+
   std::vector<thrift::HostAddress> searchServers;
   // Note: Do not use unordered_set -- reason is http://www.cplusplus.com/forum/general/198319/
   std::copy(m_controlHostSet.begin(), m_controlHostSet.end(),
@@ -339,7 +340,7 @@ void ControlConnection::failoverToAvailableHost(
         protocolFactory = 0;
         break;
       }
-    } catch (const TException& te) {
+    } catch (const TException&) {
       failedServers.insert(controlAddr);
       if (outTransport != nullptr) {
         outTransport->close();
@@ -403,6 +404,7 @@ void ControlConnection::refreshAllHosts(
       newLocators.push_back(host);
     }
   }
+
   m_locators = newLocators;
   // refresh the new server list
 
@@ -439,4 +441,43 @@ void ControlConnection::failoverExhausted(
   snappyEx.__set_exceptionData(snappyExData);
   snappyEx.__set_serverInfo(failedServerString);
   throw snappyEx;
+}
+
+void ControlConnection::getConnectedHost(thrift::HostAddress& hostAddr,
+    thrift::HostAddress& connectedHost) {
+  boost::lock_guard<boost::mutex> controlConnLock(this->m_lock);
+
+  auto it = std::find(m_controlHostSet.begin(),m_controlHostSet.end(),hostAddr);//;m_controlHostSet.find(hostAddr);
+  if (it != m_controlHostSet.end()) {
+    connectedHost = *it;
+    return;
+  }
+
+  for (auto iterator = m_controlHostSet.begin();
+      iterator != m_controlHostSet.end(); ++iterator) {
+    auto host = *iterator;
+    if (host.__isset.isCurrent && host.isCurrent) {
+      connectedHost = host;
+    }
+  }
+
+}
+
+void ControlConnection::close(bool clearGlobal) {
+  m_controlHost = thrift::HostAddress();
+  if (m_controlLocator != nullptr) {
+    m_controlLocator->getOutputProtocol()->getTransport()->close();
+    m_controlLocator.reset(nullptr);
+  }
+  if (clearGlobal) {
+    boost::lock_guard<boost::mutex> globalGuard(s_allConnsLock);
+    auto thisPtr = std::unique_ptr<ControlConnection>(this);
+    auto pos = std::find(s_allConnections.begin(), s_allConnections.end(),
+        thisPtr);
+    // don't delete "this" here
+    thisPtr.release();
+    if (pos != s_allConnections.end()) {
+      s_allConnections.erase(pos);
+    }
+  }
 }
