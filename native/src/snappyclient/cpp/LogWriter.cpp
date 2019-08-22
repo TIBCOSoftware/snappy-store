@@ -354,7 +354,8 @@ void LogWriter::setTraceFlag(const TraceFlag& flag, bool enable) {
   flag.enableFlag(m_traceFlags, enable, this == &g_logger);
 }
 
-std::ostream& LogWriter::print(const LogLevel::type logLevel, const char* flag) {
+std::ostream& LogWriter::print(const LogLevel::type logLevel,
+    const char* flag) {
   std::ostream* ostr = &getRawStream();
   while (true) {
     std::ostream& out = *ostr;
@@ -363,15 +364,16 @@ std::ostream& LogWriter::print(const LogLevel::type logLevel, const char* flag) 
           boost::chrono::system_clock::now();
       // our Timestamp is both more efficient and uses abbreviated
       // timezone names, so using that instead of chrono directly
-      const int64_t totalNanos = currentTime.time_since_epoch().count();
+      const int64_t totalNanos = boost::chrono::duration_cast<
+          boost::chrono::nanoseconds>(currentTime.time_since_epoch()).count();
       out << '[' << LogLevel::toString(logLevel) << ' '
           << types::Timestamp(totalNanos / types::Timestamp::NANOS_MAX,
               totalNanos % types::Timestamp::NANOS_MAX) << " SNAPPY:" << flag;
       if (Utils::getCurrentThreadName(" <", out)) {
         out << '>';
       }
-      out << " tid=0x" << std::hex << boost::this_thread::get_id()
-          << std::dec << "] ";
+      out << " tid=0x" << std::hex << boost::this_thread::get_id() << std::dec
+          << "] ";
       return out;
     } catch (const std::exception& se) {
       if (ostr == &std::cerr) {
