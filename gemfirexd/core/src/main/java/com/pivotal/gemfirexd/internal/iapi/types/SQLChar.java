@@ -1349,6 +1349,12 @@ readingLoop:
 
 
         rawData = str;
+        if (strlen < utflen) {
+          char[] newCharArray = new char[strlen];
+          System.arraycopy(str, 0, newCharArray, 0, strlen);
+          rawData = newCharArray;
+        }
+
         rawLength = strlen;
         value = null;
         //stream = null;
