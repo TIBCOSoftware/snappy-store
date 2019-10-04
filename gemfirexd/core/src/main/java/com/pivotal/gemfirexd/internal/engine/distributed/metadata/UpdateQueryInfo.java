@@ -16,8 +16,10 @@
  */
 package com.pivotal.gemfirexd.internal.engine.distributed.metadata;
 
+import com.gemstone.gemfire.internal.cache.ExternalTableMetaData;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
+import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.io.FormatableBitSet;
@@ -158,6 +160,26 @@ public class UpdateQueryInfo extends DMLQueryInfo {
           .clear(this.queryType, IS_PRIMARY_KEY_TYPE);
       checkForColumnConstr = false;
     }
+
+    /**
+     * For sorted column batches allow delta insert that is implemented as update plan
+     * It is not necessary to check if its update vs insert since there will be no row in row buffer
+     */
+    boolean isSortedColumnTable = false;
+    LocalRegion region = tqi.getRegion();
+    if (region != null) {
+      GemFireContainer container = (GemFireContainer)region.getUserAttribute();
+      if (container.isPartitioned()) {
+        ExternalTableMetaData md = container.fetchHiveMetaData(false);
+        if (md != null) {
+          isSortedColumnTable = md.columnTableSortOrder.equalsIgnoreCase("ASC") ||
+              md.columnTableSortOrder.equalsIgnoreCase("Ascending") ||
+              md.columnTableSortOrder.equalsIgnoreCase("DESC") ||
+              md.columnTableSortOrder.equalsIgnoreCase("Descending");
+        }
+      }
+    }
+
     //ASIF: DISABLE FK Constraint check on query node
     //this.fcd = this.tableQueryInfoList.get(this.updateTargetTableNum).getForeignKeyConstraintDescriptorIfAny();
     for (int i = 0; i < this.updateCols.length; ++i) {
@@ -166,14 +188,14 @@ public class UpdateQueryInfo extends DMLQueryInfo {
         if (cqi.isTableInfoMissing()) {
           cqi.setMissingTableInfo(tqi);
         }
-        if (cqi.isUsedInPartitioning()) {
+        if (!isSortedColumnTable && cqi.isUsedInPartitioning()) {
           throw StandardException.newException(SQLState.NOT_IMPLEMENTED,
               "Update of partitioning column not supported");
         }
         // For the time being since we are allowing only one table
         // the columns are necessarily part of the lone TableQueryInfo
         // Later the check needs to be more robust
-        if (cqi.isPartOfPrimaryKey(tqi.getPrimaryKeyColumns())) {
+        if (!isSortedColumnTable && cqi.isPartOfPrimaryKey(tqi.getPrimaryKeyColumns())) {
           throw StandardException
               .newException(
                   SQLState.NOT_IMPLEMENTED,

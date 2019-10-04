@@ -333,4 +333,6 @@ public interface GfxdSerializable extends GfxdDSFID {
   byte COLUMN_FORMAT_DELTA = 115;
 
   byte COLUMN_DELETE_DELTA = 116;
+
+  byte COLUMN_DELETE_CHANGE = 117;
 }

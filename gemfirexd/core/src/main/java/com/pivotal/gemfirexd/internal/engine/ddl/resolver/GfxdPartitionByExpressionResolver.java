@@ -449,6 +449,14 @@ public final class GfxdPartitionByExpressionResolver extends
     return this.partitionColumnNames;
   }
 
+  /**
+   * Return the column positions (1-based) of partitioning columns
+   * in the table schema.
+   */
+  public int[] getColumnPositions() {
+    return this.columnPositionsInRow;
+  }
+
   @Override
   public int getPartitioningColumnIndex(String partitionColumn) {
     Integer idx = this.columnToIndexMap.get(partitionColumn);
