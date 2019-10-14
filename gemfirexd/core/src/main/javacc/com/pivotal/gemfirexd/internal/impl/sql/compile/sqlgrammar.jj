@@ -5437,8 +5437,11 @@ approximateNumericType() throws StandardException :
 		/*
 			When not specified, default is DOUBLE_PRECISION
 		 */
-		if (prec == -1)
-			prec = TypeId.DOUBLE_PRECISION;
+		if (prec == -1) {
+			//prec = TypeId.DOUBLE_PRECISION;
+			// To Fix bug SNAP-3193
+			prec = Misc.getMemStore().isSnappyStore()? TypeId.REAL_PRECISION : TypeId.DOUBLE_PRECISION;
+		}
 
 		if (prec > 0 && prec <= TypeId.REAL_PRECISION)
 		{
