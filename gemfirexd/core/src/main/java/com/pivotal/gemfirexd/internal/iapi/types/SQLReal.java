@@ -41,8 +41,10 @@
 package com.pivotal.gemfirexd.internal.iapi.types;
 
 import com.gemstone.gemfire.internal.DSCODE;
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.offheap.ByteSource;
 import com.gemstone.gemfire.pdx.internal.unsafe.UnsafeWrapper;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.store.RowFormatter;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
@@ -462,7 +464,7 @@ public final class SQLReal
         // we might have rounding error (different than DB2 behaviour)
 		float fv = (float) theValue;
         // detect rounding taking place at cast time
-        if (fv == 0.0f && theValue != 0.0d) {
+        if (fv == 0.0f && theValue != 0.0d && !Misc.getMemStore().isSnappyStore()) {
 			throw StandardException.newException(SQLState.LANG_OUTSIDE_RANGE_FOR_DATATYPE, TypeId.REAL_NAME, (String)null);
         }
         setValue(fv);
