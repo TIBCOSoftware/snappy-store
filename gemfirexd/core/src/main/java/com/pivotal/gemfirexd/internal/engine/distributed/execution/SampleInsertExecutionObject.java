@@ -7,10 +7,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.gemstone.gemfire.DataSerializer;
+import com.gemstone.gemfire.internal.HeapDataOutputStream;
+import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.pivotal.gemfirexd.internal.engine.distributed.DVDIOUtil;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.types.SQLDecimal;
 import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
 import com.pivotal.gemfirexd.internal.snappy.LeadNodeExecutionContext;
 import com.pivotal.gemfirexd.internal.snappy.SparkSQLExecute;
@@ -18,7 +21,8 @@ import com.pivotal.gemfirexd.internal.snappy.SparkSQLExecute;
 public class SampleInsertExecutionObject extends LeadNodeExecutionObject {
 
   private String baseTableName;
-  private List<DataValueDescriptor[]> rows;
+  private List<DataValueDescriptor[]> rows = null;
+  private byte[] serializedDVDs = null;
   public SampleInsertExecutionObject(String baseTableName, List<DataValueDescriptor[]>
     rows) {
     this.baseTableName = baseTableName;
@@ -32,8 +36,8 @@ public class SampleInsertExecutionObject extends LeadNodeExecutionObject {
 
   public SparkSQLExecute getSparkSQlExecute(Version v, LeadNodeExecutionContext ctx) throws Exception {
 
-    return CallbackFactoryProvider.getClusterCallbacks().getSampleInsertExecute(
-      this.baseTableName, ctx, v, this.rows);
+    return CallbackFactoryProvider.getClusterCallbacks().getSampleInsertExecute( this.baseTableName,
+      ctx, v, this.rows, this.serializedDVDs);
   }
 
   @Override
@@ -53,37 +57,49 @@ public class SampleInsertExecutionObject extends LeadNodeExecutionObject {
 
   @Override
   public void toData(DataOutput out) throws IOException {
+    DataSerializer.writeString(this.baseTableName, out);
     int numCols = this.rows.get(0).length;
     int numEightColGroups = numCols / 8 + (numCols % 8 == 0 ? 0 : 1);
     byte numPartCols = (byte)(numCols % 8);
     if (numPartCols == 0) {
       numPartCols = 8;
     }
-    DataSerializer.writeString(this.baseTableName, out);
-    DataSerializer.writePrimitiveInt(numEightColGroups, out);
-    DataSerializer.writePrimitiveByte(numPartCols, out);
-    DataSerializer.writePrimitiveInt(rows.size(), out);
+    int[] dvdTypes = new int[numCols * 3];
+    DataValueDescriptor[] row = rows.get(0);
+    for(int i = 0 ; i < numCols; ++i) {
+      DataValueDescriptor dvd = row[i];
+      dvdTypes[i * 3] = dvd.getTypeFormatId();
+      if (dvd instanceof SQLDecimal) {
+        dvdTypes[i * 3 + 1] = ((SQLDecimal)dvd).getDecimalValuePrecision();
+        dvdTypes[i * 3 + 2] = ((SQLDecimal)dvd).getDecimalValueScale();
+      } else {
+        dvdTypes[i * 3 + 1] = -1;
+        dvdTypes[i * 3 + 2] = -1;
+      }
+    }
+
+    final HeapDataOutputStream hdos = new HeapDataOutputStream();
+
+    DataSerializer.writePrimitiveInt(numEightColGroups, hdos);
+    DataSerializer.writePrimitiveByte(numPartCols, hdos);
+    DataSerializer.writeIntArray(dvdTypes, hdos);
+    DataSerializer.writePrimitiveInt(rows.size(), hdos);
     try {
       for (DataValueDescriptor[] dvds : rows) {
-        DVDIOUtil.writeDVDArray(dvds, numEightColGroups, numPartCols, out);
+        DVDIOUtil.writeDVDArray(dvds, numEightColGroups, numPartCols, hdos);
       }
     } catch(StandardException se) {
       throw new IOException(se);
     }
+    InternalDataSerializer.writeArrayLength(hdos.size(), out);
+    hdos.sendTo(out);
+
   }
 
   @Override
   public void fromData(DataInput in) throws IOException, ClassNotFoundException {
     this.baseTableName = DataSerializer.readString(in);
-    int numEightColGroups = DataSerializer.readPrimitiveInt(in);
-    byte numPartCols = DataSerializer.readPrimitiveByte(in);
-    int numRows = DataSerializer.readPrimitiveInt(in);
-    this.rows = new ArrayList<DataValueDescriptor[]>();
-    for(int i = 0; i < numRows; ++i) {
-      DataValueDescriptor[] dvds = new DataValueDescriptor[numEightColGroups * 8 + numPartCols];
-      DVDIOUtil.readDVDArray(dvds, in, numEightColGroups, numPartCols);
-      this.rows.add(dvds);
-    }
+    this.serializedDVDs = DataSerializer.readByteArray(in);
   }
 
   @Override

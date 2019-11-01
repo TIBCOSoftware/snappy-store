@@ -331,7 +331,9 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
         // TODO: what exception should be thrown? Check.
         throw new IllegalStateException("SnappyResultHolder: cannot handle type: " + storeType);
     }
-    dtds[colNum] = dtd;
+    if (dtds != null) {
+      dtds[colNum] = dtd;
+    }
     return dvd;
   }
 

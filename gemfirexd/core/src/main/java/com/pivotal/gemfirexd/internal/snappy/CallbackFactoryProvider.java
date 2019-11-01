@@ -62,7 +62,7 @@ public abstract class CallbackFactoryProvider {
 
     @Override
     public SparkSQLExecute getSampleInsertExecute(String baseTable,  LeadNodeExecutionContext ctx,
-      Version v, List<DataValueDescriptor[]> dvdRows) {
+      Version v, List<DataValueDescriptor[]> dvdRows, byte[] serializedDVDs) {
       return null;
     }
 

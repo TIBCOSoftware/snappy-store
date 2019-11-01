@@ -386,15 +386,13 @@ public final class GemFireInsertResultSet extends AbstractGemFireResultSet {
           boolean enableStreaming = this.lcc.streamingEnabled();
           SnappyUpdateDeletePutResultSet rs = new SnappyUpdateDeletePutResultSet(this.activation, false);
           final GfxdResultCollector<Object> rc;
-          if (enableStreaming) {
-            rc = new GfxdQueryStreamingResultCollector();
-          } else {
-            rc = new GfxdQueryResultCollector();
-          }
+
+          rc = new GfxdQueryResultCollector();
+
           rs.setupRC(rc);
           LeadNodeExecutionObject execObj = new SampleInsertExecutionObject(
              this.gfContainer.getQualifiedTableName(), batchRows);
-          SnappyActivation.executeOnLeadNode(rs,rc, enableStreaming, this.activation.getConnectionID(),
+          SnappyActivation.executeOnLeadNode(rs,rc, false, this.activation.getConnectionID(),
             this.lcc, execObj);
         }
       } finally {
