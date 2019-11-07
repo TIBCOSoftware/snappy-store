@@ -5195,7 +5195,8 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
 
   public boolean hasDependentSampleTables() {
-    return this.fetchHiveMetaData(false).hasDependentSampleTables;
+    ExternalTableMetaData etmd = this.fetchHiveMetaData(false);
+    return etmd != null ? etmd.hasDependentSampleTables : false;
   }
 
   /**
