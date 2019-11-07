@@ -32,7 +32,8 @@ public class ExternalTableMetaData {
       String dml,
       String[] dependents,
       String dataSourcePath,
-      String driverClass) {
+      String driverClass,
+      boolean hasDependentSampleTables) {
     this.entityName = entityName;
     this.schema = schema;
     this.tableType = tableType;
@@ -45,6 +46,7 @@ public class ExternalTableMetaData {
     this.dependents = dependents;
     this.dataSourcePath = dataSourcePath;
     this.driverClass = driverClass;
+    this.hasDependentSampleTables = hasDependentSampleTables;
   }
 
   public String entityName;
@@ -65,11 +67,13 @@ public class ExternalTableMetaData {
   public String viewText;
   // columns for metadata queries
   public List<Column> columns;
+  public boolean hasDependentSampleTables;
 
   @Override
   public String toString() {
     return "ObjectMetadata(name=" + this.entityName + ", schema=" + this.schema +
         ", type=" + this.tableType + ", provider=" + this.provider +
+        ", hasDependentSampleTables=" + this.hasDependentSampleTables +
         ", path=" + this.dataSourcePath + ", driver=" + this.driverClass +
         ") Columns(" + this.columns.stream().map(c -> c.name + ':' + c.typeName).collect(
             Collectors.joining(", ")) + ')';

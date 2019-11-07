@@ -170,7 +170,7 @@ public final class GemFireInsertResultSet extends AbstractGemFireResultSet {
       return;
     }
     this.hasDependentSampleTable = !this.lcc.isSnappyInternalConnection() &&
-      this.gfContainer.hasDependentSampleTable();
+      this.gfContainer.hasDependentSampleTables();
     final long beginTime = statisticsTimingOn ? XPLAINUtil
         .recordTiming(openTime = -1) : 0;
     long restOfOpenTime = 0;

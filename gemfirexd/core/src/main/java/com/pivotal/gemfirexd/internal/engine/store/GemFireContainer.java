@@ -349,6 +349,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
       new AtomicReference<ExternalTableMetaData>(null);
 
   private final IndexStats stats;
+  private volatile boolean hasDependentSampleTables = false;
   /**
    * !!!:ezoerner:20080320 need to determine what exceptions this should throw
    * 
@@ -5192,33 +5193,9 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         && !isObjectStore();
   }
 
-  public boolean hasDependentSampleTable() {
-    if (this.isApplicationTable() &&
-      !SystemProperties.SNAPPY_HIVE_METASTORE.equals(this.getSchemaName())) {
-      ExternalTableMetaData etmd = this.fetchHiveMetaData(true);
 
-      if (etmd.dependents != null && etmd.dependents.length > 0) {
-        ExternalCatalog extcat = Misc.getMemStore().getExistingExternalCatalog();
-        for (String fullName : etmd.dependents) {
-          int dotIndex = fullName.indexOf('.');
-          String sampleSchemaName, sampleTableName;
-          if (dotIndex > 0) {
-            sampleSchemaName = fullName.substring(0, dotIndex);
-            sampleTableName = fullName.substring(dotIndex + 1);
-          } else {
-            sampleSchemaName = Misc.getDefaultSchemaName(null);
-            sampleTableName = fullName;
-          }
-          boolean isSample = extcat.isSampleTable(sampleSchemaName, sampleTableName, true);
-          if (isSample) {
-            return true;
-          }
-        }
-      } else {
-        return false;
-      }
-    }
-    return false;
+  public boolean hasDependentSampleTables() {
+    return this.fetchHiveMetaData(false).hasDependentSampleTables;
   }
 
   /**

@@ -49,8 +49,6 @@ public interface ExternalCatalog {
    */
   boolean isColumnTable(String schema, String tableName, boolean skipLocks);
 
-  boolean isSampleTable(String schema, String tableName, boolean skipLocks);
-
   /**
    * Get the schema for a column table in Json format (as in Spark).
    */
@@ -129,6 +127,4 @@ public interface ExternalCatalog {
   long getCatalogSchemaVersion();
 
   void close();
-
-  boolean hasDependentSampleTable(String table);
 }
