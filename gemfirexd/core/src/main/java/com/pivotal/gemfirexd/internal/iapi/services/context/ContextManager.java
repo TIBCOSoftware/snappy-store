@@ -52,6 +52,7 @@ import com.pivotal.gemfirexd.internal.iapi.error.PassThroughException;
 import com.pivotal.gemfirexd.internal.iapi.error.ShutdownException;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
 import com.pivotal.gemfirexd.internal.iapi.reference.Property;
+import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.i18n.LocaleFinder;
 import com.pivotal.gemfirexd.internal.iapi.services.monitor.Monitor;
 import com.pivotal.gemfirexd.internal.iapi.services.property.PropertyUtil;
@@ -741,6 +742,11 @@ cleanup:	for (int index = holder.size() - 1; index >= 0; index--) {
 				        .getSystemInt(Property.LOG_SEVERITY_LEVEL,
 				            this.errorStream.getLogSeverityLevel());
 				  }
+				}
+				// SNAP-3176
+				if (se.getSQLState().equals(SQLState.LANG_SYNTAX_ERROR)
+						|| se.getSQLState().equals(SQLState.LANG_LEXICAL_ERROR)) {
+					return false;
 				}
 // GemStone changes END
 				return (level >= logSeverityLevel) ||
