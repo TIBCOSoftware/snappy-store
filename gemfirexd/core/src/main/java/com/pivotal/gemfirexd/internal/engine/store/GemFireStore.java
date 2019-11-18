@@ -393,7 +393,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
   public static final ThreadLocal<Boolean> externalCatalogInitThread =
       new ThreadLocal<>();
 
-  private Region<String, String> snappyGlobalCmdRgn;
+  private Region<String, String> snappyMetadataCmdRgn;
 
   /**
    *************************************************************************
@@ -3082,12 +3082,12 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     }
   }
 
-  public void setGlobalCmdRgn(Region gcr) {
-    this.snappyGlobalCmdRgn = gcr;
+  public void setMetadataCmdRgn(Region gcr) {
+    this.snappyMetadataCmdRgn = gcr;
   }
 
-  public Region<String, String> getGlobalCmdRgn() {
-    return this.snappyGlobalCmdRgn;
+  public Region<String, String> getMetadataCmdRgn() {
+    return this.snappyMetadataCmdRgn;
   }
 
   private boolean restrictTableCreation = Boolean.getBoolean(

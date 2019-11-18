@@ -1515,7 +1515,9 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
       String[] argNames = new String[] { "EXPORT_ALL" };
       TypeDescriptor[] argTypes = new TypeDescriptor[] {
           DataTypeDescriptor.getCatalogType(Types.BOOLEAN) };
-      super.createSystemProcedureOrFunction("EXPORT_DDLS", sysUUID, argNames,
+      // changed the procedure name from EXPORT_DDLS to EXPORT_ALL_DDLS to use
+      // the former for user facing procedure
+      super.createSystemProcedureOrFunction("EXPORT_ALL_DDLS", sysUUID, argNames,
           argTypes, 0, 1, RoutineAliasInfo.NO_SQL, null, newlyCreatedRoutines,
           tc, GFXD_SYS_PROC_CLASSNAME, true);
     }
@@ -1819,7 +1821,7 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
           DataTypeDescriptor.getCatalogType(Types.VARCHAR),
           DataTypeDescriptor.getCatalogType(Types.VARCHAR),
           DataTypeDescriptor.getCatalogType(Types.BOOLEAN)};
-      super.createSystemProcedureOrFunction("DUMP_DATA",
+      super.createSystemProcedureOrFunction("EXPORT_DATA",
           sysUUID, arg_names, arg_types, 0, 0, RoutineAliasInfo.READS_SQL_DATA, null,
           newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
     }
@@ -1829,7 +1831,15 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
       TypeDescriptor[] arg_types = new TypeDescriptor[] {
           DataTypeDescriptor.getCatalogType(Types.VARCHAR),
       };
-      super.createSystemProcedureOrFunction("DUMP_DDLS", sysUUID, arg_name, arg_types, 0, 0, RoutineAliasInfo.READS_SQL_DATA, null, newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
+      super.createSystemProcedureOrFunction("EXPORT_DDLS", sysUUID, arg_name, arg_types, 0,
+          0, RoutineAliasInfo.READS_SQL_DATA, null, newlyCreatedRoutines,
+          tc, GFXD_SYS_PROC_CLASSNAME, false);
+    }
+
+    {
+      String[] arg_name = new String[] {};
+      TypeDescriptor[] arg_types = new TypeDescriptor[] {};
+      super.createSystemProcedureOrFunction("GENERATE_LOAD_SCRIPTS", sysUUID, arg_name, arg_types, 0, 0, RoutineAliasInfo.READS_SQL_DATA, null, newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
     }
 
     {

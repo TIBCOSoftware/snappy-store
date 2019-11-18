@@ -360,20 +360,27 @@ size_t Decimal::toString(std::string& str) const {
   char buf[thrift::snappydataConstants::DECIMAL_MAX_PRECISION + 4];
   char* bufp = buf;
   io::snappydata::client::impl::FreePointer freep(0);
-  const size_t ndigits = mpz_sizeinbase(m_bigInt, 10);
+  size_t ndigits = mpz_sizeinbase(m_bigInt, 10);
   if (ndigits > 128) {
     bufp = new char[ndigits + 2];
     freep.reset(bufp);
   }
   mpz_get_str(bufp, 10, m_bigInt);
-
-  // now the three cases of '.' inside, before and not at all
+  /*
+  * mpz_sizeinbase, as per its implementation, it could return the exact size or 1 too big.
+  * for values like -66 or other negative values it returns 3 instead of 2.
+  * As solution of this using strlen
+  * Fixed- JIRA SDENT-76
+  */
+  ndigits = strlen(bufp);
   const bool neg = (*bufp == '-');
+  if (neg) ndigits--;
   if (m_scale == 0) {
     str.append(bufp, ndigits + neg);
     return (ndigits + neg);
   }
   // check for sign (using signed version of size_t)
+  // now the three cases of '.' inside, before and not at all
   ptrdiff_t wholeDigits = (ndigits - m_scale);
   if (wholeDigits > 0) {
     size_t wholeDigitsWithSign = static_cast<size_t>(wholeDigits + neg);

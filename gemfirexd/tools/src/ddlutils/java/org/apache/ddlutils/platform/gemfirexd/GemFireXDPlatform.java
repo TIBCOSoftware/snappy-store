@@ -163,7 +163,7 @@ public class GemFireXDPlatform extends DerbyPlatform {
   @Override
   protected void writeAllDDLs(Connection conn, Writer writer, boolean exportAll)
       throws SQLException, IOException {
-    CallableStatement cstmt = conn.prepareCall("call SYS.EXPORT_DDLS(?)");
+    CallableStatement cstmt = conn.prepareCall("call SYS.EXPORT_ALL_DDLS(?)");
     cstmt.setBoolean(1, exportAll);
     ResultSet rs = cstmt.executeQuery();
     while (rs.next()) {

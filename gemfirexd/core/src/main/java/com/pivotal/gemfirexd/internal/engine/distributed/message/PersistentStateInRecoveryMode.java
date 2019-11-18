@@ -27,13 +27,13 @@ import com.gemstone.gemfire.internal.cache.DiskInitFile;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.RegionEntry;
+import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
 import com.gemstone.gemfire.internal.cache.persistence.PRPersistentConfig;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionHolder;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.ddl.DDLConflatable;
-import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -168,10 +168,7 @@ public class PersistentStateInRecoveryMode {
     return sb.toString();
   }
 
-  public static long getLatestModifiedTime(AbstractDiskRegion adr, LogWriter logger) {
-    if (logger.infoEnabled()) {
-      logger.info("getLatestModifiedTime: map = " + adr.getRecoveredEntryMap());
-    }
+  public static long getLatestModifiedTime(AbstractDiskRegion adr) {
     Optional<RegionEntry> rmax = adr.getRecoveredEntryMap()
         .regionEntries().stream().max((t1, t2) -> {
           if (t1.getLastModified() <= t2.getLastModified()) return -1;
@@ -188,13 +185,12 @@ public class PersistentStateInRecoveryMode {
     private String diskStoreName;
     private transient RegionVersionVector rvv;
     private long mostRecentEntryModifiedTime;
+    private long latestOplogTime;
+    private transient InternalDistributedMember member;
 
     public void setMember(InternalDistributedMember member) {
       this.member = member;
     }
-
-    private long latestOplogTime;
-    private transient InternalDistributedMember member;
 
     public RecoveryModePersistentView(
         final String diskStoreName, final String regionFullPath,
@@ -208,7 +204,10 @@ public class PersistentStateInRecoveryMode {
     }
 
     public RecoveryModePersistentView() {
+    }
 
+    public RegionVersionVector getRvv() {
+      return this.rvv;
     }
 
     public String getRegionPath() {
@@ -247,55 +246,67 @@ public class PersistentStateInRecoveryMode {
 
     @Override
     public String toString() {
-      StringBuilder sb = new StringBuilder();
-      sb.append("RecoveryModePersistentView member: ");
-      sb.append(this.member);
-      sb.append(": region: ");
-      sb.append(this.regionPath);
-      return sb.toString();
+      String sb = "RecoveryModePersistentView member: " +
+          this.member +
+          ": region: " +
+          this.regionPath +
+          ": diskStoreName:" +
+          this.diskStoreName;
+      return sb;
     }
 
+    // todo: add test to check if compareTo method is commutative and transitive
     @Override
     public int compareTo(RecoveryModePersistentView other) {
       // They should be called for the same region
       assert this.regionPath.equals(other.regionPath);
-      if (this.rvv.sameAs(other.rvv)) {
+
+      if (mostRecentEntryModifiedTime == other.mostRecentEntryModifiedTime &&
+          latestOplogTime == other.latestOplogTime &&
+          Objects.equals(regionPath, other.regionPath) &&
+          Objects.equals(diskStoreName, other.diskStoreName) &&
+          rvv.sameAs(other.rvv) &&
+          member.equals(other.member)) {
+        return 0;
+      }
+      if (this.rvv.logicallySameAs(other.rvv)) {
         if (this.latestOplogTime <= other.latestOplogTime) {
           return -1;
         }
-        if (this.mostRecentEntryModifiedTime
-            <= other.mostRecentEntryModifiedTime) {
+        if (this.mostRecentEntryModifiedTime < other.mostRecentEntryModifiedTime) { // replacing "<=" with "<" as former makes it non-commutative
           return -1;
         }
         return 1;
       } else {
-        Map<?, RegionVersionHolder<?>> versionHolderOne
+        if (this.rvv.dominates(other.rvv)) {
+          return 1;
+        } else if (other.rvv.dominates(this.rvv)) {
+          return -1;
+        }
+
+        Map<DiskStoreID, RegionVersionHolder> versionHolderOne
             = this.rvv.getMemberToVersion();
-        Map<?, RegionVersionHolder<?>> versionHolderTwo
+        Map<DiskStoreID, RegionVersionHolder> versionHolderTwo
             = other.rvv.getMemberToVersion();
-        if (versionHolderOne.keySet().equals(versionHolderTwo.keySet())) {
-          for (Map.Entry<?, RegionVersionHolder<?>> e : versionHolderOne.entrySet()) {
-            RegionVersionHolder rvh1 = e.getValue();
-            RegionVersionHolder rvh2 = versionHolderTwo.get(e.getKey());
-            if (rvh2.dominates(rvh1)) {
-              return -1;
-            } else if (rvh1.dominates(rvh2)) {
-              return 1;
+
+        for (Map.Entry<DiskStoreID, RegionVersionHolder> e1 : versionHolderOne.entrySet()) {
+          for (Map.Entry<DiskStoreID, RegionVersionHolder> e2 : versionHolderTwo.entrySet()) {
+            if (e1.getKey().equals(e2.getKey())) {
+              RegionVersionHolder rvh1 = e1.getValue();
+              RegionVersionHolder rvh2 = e2.getValue();
+              if (rvh1.dominates(rvh2)) {
+                return 1;
+              } else if (rvh2.dominates(rvh1)) {
+                return -1;
+              }
+              // comprise ; because both has some set of changes that other doesn't
+              // take sum of all versions from each entry in the map and see which is bigger
+              // sum ???? don't know
             }
-            // If no one dominates then let them be equal.
-          }
-        } else {
-          // log a warning and pick the one with more version holder objects
-          if (versionHolderOne.size() < versionHolderTwo.size()) {
-            return -1;
-          } else if (versionHolderTwo.size() < versionHolderOne.size()) {
-            return 1;
-          } else {
-            // equal. Means you can't do much. So let any one get picked up.
           }
         }
       }
-      return 0;
+      return 1;
     }
   }
 }

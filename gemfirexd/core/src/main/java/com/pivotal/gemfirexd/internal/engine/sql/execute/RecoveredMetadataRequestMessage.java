@@ -9,6 +9,8 @@ import com.pivotal.gemfirexd.internal.engine.distributed.message.GfxdFunctionMes
 import com.pivotal.gemfirexd.internal.engine.distributed.message.MemberExecutorMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.PersistentStateInRecoveryMode;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
+import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
@@ -19,9 +21,17 @@ public class RecoveredMetadataRequestMessage extends MemberExecutorMessage {
     super(collector, null, false, true);
   }
 
-  private final Double CATALOG_OBJECTS_SUBLIST_SIZE = 25.0;
-  private final Double OTHER_DDLS_SUBLIST_SIZE = 100.0;
-  private final Double REGION_VIEWS_SUBLIST_SIZE = 30.0;
+  private enum ListType {
+    CATALOG_OBJECTS,
+    OTHER_DDLS,
+    REGION_VIEWS
+  }
+
+
+  private final Integer CATALOG_OBJECTS_SUBLIST_SIZE = 25;
+  private final Integer OTHER_DDLS_SUBLIST_SIZE = 100;
+  private final Integer REGION_VIEWS_SUBLIST_SIZE = 30;
+
   /**
    * Default constructor for deserialization. Not to be invoked directly.
    */
@@ -51,26 +61,29 @@ public class RecoveredMetadataRequestMessage extends MemberExecutorMessage {
   private void sendPersistentStateMsg(PersistentStateInRecoveryMode persistentStateMsg) {
     RecoveryModeResultHolder.PersistentStateInRMMetadata resultHolderMetadata = new RecoveryModeResultHolder.PersistentStateInRMMetadata(persistentStateMsg.getMember(), persistentStateMsg.getPrToNumBuckets(), persistentStateMsg.getReplicatedRegions(), persistentStateMsg.isServer());
     this.sendResult(resultHolderMetadata);
-    sendList(persistentStateMsg.getCatalogObjects(), CATALOG_OBJECTS_SUBLIST_SIZE, 1);
-    sendList(persistentStateMsg.getOtherDDLs(), OTHER_DDLS_SUBLIST_SIZE, 2);
-    sendList(persistentStateMsg.getAllRegionViews(), REGION_VIEWS_SUBLIST_SIZE, 3);
-    this.lastResult(null);
+    sendList(persistentStateMsg.getCatalogObjects(), CATALOG_OBJECTS_SUBLIST_SIZE, ListType.CATALOG_OBJECTS);
+    sendList(persistentStateMsg.getOtherDDLs(), OTHER_DDLS_SUBLIST_SIZE, ListType.OTHER_DDLS);
+    sendList(persistentStateMsg.getAllRegionViews(), REGION_VIEWS_SUBLIST_SIZE, ListType.REGION_VIEWS);
   }
 
-  public <T> void sendList(ArrayList<T> arrayList, Double partSize, int type) {
+  public <T> void sendList(ArrayList<T> arrayList, Integer partSize, ListType type) {
     int n = arrayList.size();
     for (int i = 0; i < n; i += partSize) {
-      ArrayList<T> arr = new ArrayList<>();
-      arr.addAll(arrayList.subList(i, Math.min(n, i + partSize.intValue())));
+      ArrayList<T> arrayChunk = new ArrayList<>(arrayList.subList(i, Math.min(n, i + partSize)));
 
-      if (type == 1) {
-        sendResult(new RecoveryModeResultHolder.PersistentStateInRMCatalogObjectsList((java.util.ArrayList<java.lang.Object>)arr));
-      } else if (type == 2) {
-        sendResult(new RecoveryModeResultHolder.PersistentStateInRMOtherDDLsList((ArrayList<String>)arr));
-      } else {
-        // RegionViews...
-        this.sendResult(new RecoveryModeResultHolder.PersistentStateInRMAllRegionViews((ArrayList<PersistentStateInRecoveryMode
-            .RecoveryModePersistentView>)arr));
+      if (type == ListType.CATALOG_OBJECTS) {
+        sendResult(new RecoveryModeResultHolder.PersistentStateInRMCatalogObjectsList((java.util.ArrayList<java.lang.Object>)arrayChunk));
+      } else if (type == ListType.OTHER_DDLS) {
+        sendResult(new RecoveryModeResultHolder.PersistentStateInRMOtherDDLsList((ArrayList<String>)arrayChunk));
+      } else if (type == ListType.REGION_VIEWS) {
+        // RegionViews
+        if ((i + partSize) < n) {
+          this.sendResult((new RecoveryModeResultHolder.PersistentStateInRMAllRegionViews((ArrayList<PersistentStateInRecoveryMode
+              .RecoveryModePersistentView>)arrayChunk)));
+        } else { // last chunk of the list
+          this.lastResult(new RecoveryModeResultHolder.PersistentStateInRMAllRegionViews((ArrayList<PersistentStateInRecoveryMode
+            .RecoveryModePersistentView>)arrayChunk));
+        }
       }
     }
   }

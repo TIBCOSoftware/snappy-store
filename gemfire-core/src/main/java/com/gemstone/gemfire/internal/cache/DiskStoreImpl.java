@@ -1868,11 +1868,17 @@ public class DiskStoreImpl implements DiskStore, ResourceListener<MemoryEvent> {
     return result;
   }
 
-  private long latestModifiedTime;
-
-  // TODO: KN fill the method appropriately
   public long getLatestModifiedTime() {
-    return latestModifiedTime;
+    Long lastModifiedTime = 0L;
+    for (Oplog oplog : persistentOplogs.getAllOplogs()) {
+      for (File file : oplog.getAllFiles()) {
+        if (file.getAbsolutePath().endsWith(".crf") || file.getAbsolutePath().endsWith(".CRF")) {
+          lastModifiedTime =
+              file.lastModified() > lastModifiedTime ? file.lastModified() : lastModifiedTime;
+        }
+      }
+    }
+    return lastModifiedTime;
   }
 
   private class FlushPauser extends FlushNotifier {
