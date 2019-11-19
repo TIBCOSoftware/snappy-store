@@ -2,6 +2,7 @@ package com.pivotal.gemfirexd.internal.engine.sql.execute;
 
 import com.gemstone.gemfire.cache.execute.ResultCollector;
 import com.gemstone.gemfire.distributed.DistributedMember;
+import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.distributed.RecoveryModeResultHolder;
@@ -42,7 +43,11 @@ public class RecoveredMetadataRequestMessage extends MemberExecutorMessage {
   @Override
   protected void execute() throws Exception {
     GemFireXDUtils.waitForNodeInitialization();
-    sendPersistentStateMsg(Misc.getMemStore().getPersistentStateMsg());
+    PersistentStateInRecoveryMode psrm = Misc.getMemStore().getPersistentStateMsg();
+    if (GemFireXDUtils.TraceRecoveryMode) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_RECOVERY_MODE, psrm.toString());
+    }
+    sendPersistentStateMsg(psrm);
     this.lastResultSent = true;
   }
 
@@ -82,7 +87,7 @@ public class RecoveredMetadataRequestMessage extends MemberExecutorMessage {
               .RecoveryModePersistentView>)arrayChunk)));
         } else { // last chunk of the list
           this.lastResult(new RecoveryModeResultHolder.PersistentStateInRMAllRegionViews((ArrayList<PersistentStateInRecoveryMode
-            .RecoveryModePersistentView>)arrayChunk));
+              .RecoveryModePersistentView>)arrayChunk));
         }
       }
     }
