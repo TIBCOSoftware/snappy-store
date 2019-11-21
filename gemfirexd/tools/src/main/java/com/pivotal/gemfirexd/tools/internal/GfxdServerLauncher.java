@@ -265,6 +265,12 @@ public class GfxdServerLauncher extends CacheServerLauncher {
     if (options != null && options.containsKey(CacheServerLauncher.RECOVER)) {
       props.put(GfxdConstants.SNAPPY_PREFIX + CacheServerLauncher.RECOVER, "true");
     }
+    if (options != null &&
+        options.containsKey(CacheServerLauncher.RECOVERY_STATE_CHUNK_SIZE)) {
+      props.put(GfxdConstants.SNAPPY_PREFIX +
+              CacheServerLauncher.RECOVERY_STATE_CHUNK_SIZE,
+          options.getOrDefault(CacheServerLauncher.RECOVERY_STATE_CHUNK_SIZE, 30));
+    }
     return props;
   }
 

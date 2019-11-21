@@ -266,6 +266,7 @@ public class CacheServerLauncher extends LauncherBase {
   protected static final String PROPERTIES = "properties";
   public static final String REBALANCE = "rebalance";
   public static final String RECOVER = "recover";
+  public static final String RECOVERY_STATE_CHUNK_SIZE = "recovery-state-chunk-size";
   public static final String SERVER_PORT = "server-port";
   public static final String SERVER_BIND_ADDRESS = "server-bind-address";
   public static final String DISABLE_DEFAULT_SERVER = "disable-default-server";
@@ -336,6 +337,9 @@ public class CacheServerLauncher extends LauncherBase {
       }
       else if (arg.startsWith("-rebalance")) {
         options.put(REBALANCE, Boolean.TRUE);
+      }
+      else if (arg.startsWith("-recovery-state-chunk-size")) {
+        options.put(RECOVERY_STATE_CHUNK_SIZE,  arg.substring(arg.indexOf("=") + 1));
       }
       else if (arg.startsWith("-recover")) {
         options.put(RECOVER, Boolean.TRUE);
@@ -468,6 +472,9 @@ public class CacheServerLauncher extends LauncherBase {
       }
       else if (arg.startsWith("-rebalance")) {
         options.put(REBALANCE, Boolean.TRUE);
+      }
+      else if (arg.startsWith("-recovery-state-chunk-size")) {
+        options.put(RECOVERY_STATE_CHUNK_SIZE,  arg.substring(arg.indexOf("=") + 1));
       }
       else if (arg.startsWith("-recover")) {
         options.put(RECOVER, "true");

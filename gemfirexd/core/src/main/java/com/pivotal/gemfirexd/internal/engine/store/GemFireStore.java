@@ -1121,6 +1121,13 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
             this.gemFireCache.getLogger().info(
                 "GemFire Cache has come up in recovery mode.");
             this.gemFireCache.setRecoverMode(true);
+
+            if (props.containsKey(GfxdConstants.SNAPPY_PREFIX +
+                CacheServerLauncher.RECOVERY_STATE_CHUNK_SIZE)) {
+              this.gemFireCache.setRecoveryStateChunkSize(Integer.parseInt(props.
+                  getProperty(GfxdConstants.SNAPPY_PREFIX +
+                      CacheServerLauncher.RECOVERY_STATE_CHUNK_SIZE)));
+            }
           }
         }
       } catch (CacheExistsException ex) {
