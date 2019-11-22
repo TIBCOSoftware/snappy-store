@@ -49,9 +49,6 @@ public class RecoveryModeResultCollector extends ArrayList<Object> implements
   }
 
   public ArrayList<Object> getResult() throws FunctionException {
-    if (GemFireXDUtils.TraceRecoveryMode) {
-      throw new AssertionError("unexpected Throwable ");
-    }
     return this;
   }
 

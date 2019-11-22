@@ -3360,6 +3360,7 @@ public final class GemFireXDUtils {
     TraceProcedureExecution = (TraceQuery || DistributionManager.VERBOSE
         || SanityManager.TRACE_ON(GfxdConstants.TRACE_PROCEDURE_EXEC))
         && !SanityManager.TRACE_OFF(GfxdConstants.TRACE_PROCEDURE_EXEC);
+    TraceRecoveryMode = SanityManager.TRACE_ON(GfxdConstants.TRACE_RECOVERY_MODE);
 
     TraceStatementMatching = SanityManager
         .TRACE_ON(GfxdConstants.TRACE_STATEMENT_MATCHING);
