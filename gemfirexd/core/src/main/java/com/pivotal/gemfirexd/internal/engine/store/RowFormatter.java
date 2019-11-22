@@ -108,7 +108,7 @@ public final class RowFormatter implements Serializable {
    * normally not used because the offset then is negative of next variable
    * column offset, but when serializing columns back to back with embedded
    * widths (rather than offsets) this is used to denote a null column.
-   * 
+   *
    * public static final int OFFSET_IS_NULL = -1;
    */
 
@@ -1039,8 +1039,6 @@ public final class RowFormatter implements Serializable {
     this.metadata = null;
     this.isTableFormatter = false;
     this.isPrimaryKeyFormatter = false;
-//    SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_ROW_FORMATTER,
-//        "RowFormatter#cqi#column[] = " + ArrayUtils.toString(this.columns));
   }
 
   /**
@@ -1105,8 +1103,6 @@ public final class RowFormatter implements Serializable {
       this.isTableFormatter = true;
     }
     this.isPrimaryKeyFormatter = false;
-//    SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_ROW_FORMATTER,
-//        "RowFormatter#const1#column[] = " + ArrayUtils.toString(this.columns));
   }
 
   /**
@@ -1165,8 +1161,6 @@ public final class RowFormatter implements Serializable {
     if (isTableFormatter && container != null) {
       container.hasLobs = hasLobs();
     }
-//    SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_ROW_FORMATTER,
-//        "RowFormatter#const2#column[] = " + ArrayUtils.toString(this.columns));
   }
 
   /**
@@ -1225,8 +1219,6 @@ public final class RowFormatter implements Serializable {
     this.metadata = null;
     this.isTableFormatter = false;
     this.isPrimaryKeyFormatter = false;
-//    SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_ROW_FORMATTER,
-//        "RowFormatter#const3#column[] = " + ArrayUtils.toString(this.columns));
   }
 
   /**
@@ -1287,8 +1279,6 @@ public final class RowFormatter implements Serializable {
     this.metadata = getMetaData(schemaName, tableName, schemaVersion);
     this.isTableFormatter = false;
     this.isPrimaryKeyFormatter = isPrimaryKeyFormatter;
-//    SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_ROW_FORMATTER,
-//        "RowFormatter#const4#column[] = " + ArrayUtils.toString(this.columns));
   }
 
   /**
@@ -1924,7 +1914,7 @@ public final class RowFormatter implements Serializable {
   /**
    * Read the schema version from the start of byte array.
    */
-  public static int readVersion(final byte[] bytes) {
+  static int readVersion(final byte[] bytes) {
     // version is written at the start of byte array
     final int schemaVersion = readCompactInt(bytes, 0);
     // special token TOKEN_RECOVERY_VERSION is used for upgrade from old Oplogs
@@ -7136,8 +7126,7 @@ public final class RowFormatter implements Serializable {
     if (hasUnknown || maxDataLength > Integer.MAX_VALUE) {
       maxDataLength = Integer.MAX_VALUE;
     }
-    //                                                  todo change is ok?
-    calcNumOffsetBytesToUse((int)maxDataLength, result[NUM_VAR_WIDTH_COLS_POS],
+    calcNumOffsetBytesToUse((int)maxDataLength, result[VAR_DATA_OFFSET_POS],
         result);
     return result;
   }
@@ -7168,7 +7157,7 @@ public final class RowFormatter implements Serializable {
     if (hasUnknown || maxDataLength > Integer.MAX_VALUE) {
       maxDataLength = Integer.MAX_VALUE;
     }
-    calcNumOffsetBytesToUse((int)maxDataLength, result[NUM_VAR_WIDTH_COLS_POS],
+    calcNumOffsetBytesToUse((int)maxDataLength, result[VAR_DATA_OFFSET_POS],
         result);
     return result;
   }

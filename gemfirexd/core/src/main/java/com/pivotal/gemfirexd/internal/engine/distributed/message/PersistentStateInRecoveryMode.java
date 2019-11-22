@@ -20,20 +20,19 @@ package com.pivotal.gemfirexd.internal.engine.distributed.message;
 
 import com.gemstone.gemfire.DataSerializable;
 import com.gemstone.gemfire.DataSerializer;
-import com.gemstone.gemfire.LogWriter;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.cache.AbstractDiskRegion;
 import com.gemstone.gemfire.internal.cache.DiskInitFile;
 import com.gemstone.gemfire.internal.cache.DiskStoreImpl;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.RegionEntry;
-import com.gemstone.gemfire.internal.cache.persistence.DiskStoreID;
 import com.gemstone.gemfire.internal.cache.persistence.PRPersistentConfig;
-import com.gemstone.gemfire.internal.cache.versions.RegionVersionHolder;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.ddl.DDLConflatable;
+import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
+import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -154,6 +153,14 @@ public class PersistentStateInRecoveryMode {
       sb.append(e);
       sb.append("\n");
     }
+    sb.append("prToNumBuckets:");
+    for (Map.Entry<String, Integer> e : prToNumBuckets.entrySet()) {
+      sb.append("\nbucket: " + e.getKey() + " ::: numBuckets: " + e.getValue());
+    }
+    sb.append("\n");
+    sb.append("replicatedRegions\n");
+    sb.append(replicatedRegions);
+    sb.append("\n");
     sb.append("Catalog Objects\n");
     for (Object obj : this.catalogObjects) {  /// since like catalogtableobjects, other types also
       // has implicit tostring  conversion, pattern matching isn't required ?
@@ -206,6 +213,23 @@ public class PersistentStateInRecoveryMode {
     public RecoveryModePersistentView() {
     }
 
+    public RecoveryModePersistentView(RecoveryModePersistentView view) {
+      this.member = view.getMember();
+      this.regionPath = view.getRegionPath();
+      this.diskStoreName = view.getDiskStoreName();
+      this.rvv = view.getRvv().getCloneForTransmission();
+      this.mostRecentEntryModifiedTime = view.getMostRecentEntryModifiedTime();
+      this.latestOplogTime = view.getLatestOplogTime();
+    }
+
+    public long getMostRecentEntryModifiedTime() {
+      return mostRecentEntryModifiedTime;
+    }
+
+    public long getLatestOplogTime() {
+      return latestOplogTime;
+    }
+
     public RegionVersionVector getRvv() {
       return this.rvv;
     }
@@ -250,9 +274,21 @@ public class PersistentStateInRecoveryMode {
           this.member +
           ": region: " +
           this.regionPath +
+          ": latestOplogTime:" +
+          this.latestOplogTime +
+          ": mostRecentEntryModifiedTime:" +
+          this.mostRecentEntryModifiedTime +
+          ": rvv:" +
+          this.rvv +
           ": diskStoreName:" +
           this.diskStoreName;
       return sb;
+    }
+
+    void log(String str) {
+      if(GemFireXDUtils.TraceRecoveryMode) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_RECOVERY_MODE, str);
+      }
     }
 
     // todo: add test to check if compareTo method is commutative and transitive
@@ -260,53 +296,222 @@ public class PersistentStateInRecoveryMode {
     public int compareTo(RecoveryModePersistentView other) {
       // They should be called for the same region
       assert this.regionPath.equals(other.regionPath);
-
       if (mostRecentEntryModifiedTime == other.mostRecentEntryModifiedTime &&
           latestOplogTime == other.latestOplogTime &&
           Objects.equals(regionPath, other.regionPath) &&
           Objects.equals(diskStoreName, other.diskStoreName) &&
           rvv.sameAs(other.rvv) &&
           member.equals(other.member)) {
+        SanityManager.DEBUG_PRINT("info", "Comparing same object. Doesn't make sense to do this. Please check.");
         return 0;
       }
-      if (this.rvv.logicallySameAs(other.rvv)) {
+      if (this.rvv.logicallySameAs(other.rvv) ||
+          (!this.rvv.dominates(other.rvv) && !other.rvv.dominates(this.rvv))) {
+        log("RVV based approach is not usable.");
         if (this.latestOplogTime <= other.latestOplogTime) {
+          SanityManager.DEBUG_PRINT("info", " 1. this.latestOplogTime <= other.latestOplogTime");
+          log("Deciding on basis of Oplog file time: return -1");
           return -1;
         }
-        if (this.mostRecentEntryModifiedTime < other.mostRecentEntryModifiedTime) { // replacing "<=" with "<" as former makes it non-commutative
+        if (this.mostRecentEntryModifiedTime < other.mostRecentEntryModifiedTime) {
+          // replacing "<=" with "<" as former makes it non-commutative
+          log("Deciding on basis of Modified entry time: return -1");
           return -1;
         }
+        log("Oplog file time AND Modified entry time are greater for LHS: return 1");
         return 1;
       } else {
+        log("Use RVV based approach.");
         if (this.rvv.dominates(other.rvv)) {
+          log("RVV of LHS dominates RHS: return 1");
           return 1;
-        } else if (other.rvv.dominates(this.rvv)) {
+        } else {
+          log("RVV of RHS dominates LHS: return -1");
           return -1;
         }
+      }
+    }
+  }
 
-        Map<DiskStoreID, RegionVersionHolder> versionHolderOne
-            = this.rvv.getMemberToVersion();
-        Map<DiskStoreID, RegionVersionHolder> versionHolderTwo
-            = other.rvv.getMemberToVersion();
+  public static class RecoveryModePersistentViewPair
+      implements Comparable<RecoveryModePersistentViewPair> {
 
-        for (Map.Entry<DiskStoreID, RegionVersionHolder> e1 : versionHolderOne.entrySet()) {
-          for (Map.Entry<DiskStoreID, RegionVersionHolder> e2 : versionHolderTwo.entrySet()) {
-            if (e1.getKey().equals(e2.getKey())) {
-              RegionVersionHolder rvh1 = e1.getValue();
-              RegionVersionHolder rvh2 = e2.getValue();
-              if (rvh1.dominates(rvh2)) {
-                return 1;
-              } else if (rvh2.dominates(rvh1)) {
-                return -1;
-              }
-              // comprise ; because both has some set of changes that other doesn't
-              // take sum of all versions from each entry in the map and see which is bigger
-              // sum ???? don't know
-            }
+    private RecoveryModePersistentView rowView = null;
+    private RecoveryModePersistentView colView = null;
+
+    public RecoveryModePersistentView getRowView() {
+      return rowView;
+    }
+
+    public RecoveryModePersistentView getColView() {
+      return colView;
+    }
+
+    public RecoveryModePersistentViewPair(RecoveryModePersistentView rowView,
+        RecoveryModePersistentView colView) {
+      this.rowView = rowView;
+      this.colView = colView;
+    }
+
+    @Override
+    public String toString() {
+      String theString = "RecoveryModePersistentViewPair\nROW VIEW: " +
+          this.getRowView() +
+          "\nCOL VIEW: " +
+          this.getColView();
+      return theString;
+    }
+
+    @Override
+    public int compareTo(RecoveryModePersistentViewPair other) {
+      // They should be called for the same region
+      log("Comparing :::\nthis view: " + this + "\n other view: " + other);
+
+      RecoveryModePersistentView thisRowView = this.getRowView();
+      RecoveryModePersistentView thisColView = this.getColView();
+      RecoveryModePersistentView otherRowView = other.getRowView();
+      RecoveryModePersistentView otherColView = other.getColView();
+
+      if ((thisRowView.mostRecentEntryModifiedTime == otherRowView.mostRecentEntryModifiedTime &&
+          thisRowView.latestOplogTime == otherRowView.latestOplogTime &&
+          Objects.equals(thisRowView.regionPath, otherRowView.regionPath) &&
+          Objects.equals(thisRowView.diskStoreName, otherRowView.diskStoreName) &&
+          thisRowView.rvv.sameAs(otherRowView.rvv) &&
+          thisRowView.member.equals(otherRowView.member))
+          &&
+          (thisColView.mostRecentEntryModifiedTime == otherColView.mostRecentEntryModifiedTime &&
+              thisColView.latestOplogTime == otherColView.latestOplogTime &&
+              Objects.equals(thisColView.regionPath, otherColView.regionPath) &&
+              Objects.equals(thisColView.diskStoreName, otherColView.diskStoreName) &&
+              thisColView.rvv.sameAs(otherColView.rvv) &&
+              thisColView.member.equals(otherColView.member) ||
+              (thisColView == null && otherColView == null))
+      ) {
+        SanityManager.DEBUG_PRINT("info", "Comparing same object. Doesn't make sense to do this. Please check.");
+        return 0;
+      }
+
+      int compareValue = getCompareValue(thisRowView, thisColView, otherRowView, otherColView);
+      return compareValue;
+    }
+
+    void log(String str) {
+      if(GemFireXDUtils.TraceRecoveryMode) {
+      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_RECOVERY_MODE, str);
+      }
+    }
+
+    private int getCompareValue(
+        RecoveryModePersistentView thisRowView,
+        RecoveryModePersistentView thisColView,
+        RecoveryModePersistentView otherRowView,
+        RecoveryModePersistentView otherColView) {
+
+      if (thisColView == null || otherColView == null) {
+        // row tables as col regs are absent
+        int retVal = (new RecoveryModePersistentView(thisRowView).compareTo(otherRowView));
+        log("Row table: return value = " + retVal);
+        int retVal1 = retVal;
+        return retVal1;
+      } else {
+        // col tables
+        boolean rowAndColRVVLogicallySame =
+            thisRowView.rvv.logicallySameAs(otherRowView.rvv) &&
+                (thisColView.rvv.logicallySameAs(otherColView.rvv));
+        boolean rowAndColLatestOplogTimeSame =
+            thisColView.latestOplogTime == otherColView.latestOplogTime &&
+                thisRowView.latestOplogTime == otherRowView.latestOplogTime;
+        boolean otherRowDominates = otherRowView.rvv.dominates(thisRowView.rvv);
+        boolean otherColDominates = otherColView.rvv.dominates(thisColView.rvv);
+        boolean thisRowDominates = thisRowView.rvv.dominates(otherRowView.rvv);
+        boolean thisColDominates = thisColView.rvv.dominates(otherColView.rvv);
+
+//              t, t | t, t
+//              t, t | f, f
+//              f, f | t, t
+//              f, f | f, f
+//              t, f | f, t
+//              f, t | t, f
+        boolean isRVVNotUsable =
+            ((thisRowDominates == otherRowDominates &&
+                otherColDominates == thisColDominates) ||
+                (thisRowDominates != otherRowDominates &&
+                    otherColDominates != thisColDominates));
+
+        log("thisRowView Dominates otherRowView: " + thisRowView.rvv.dominates(otherRowView.rvv));
+        log("otherRowView Dominates thisRowView: " + otherRowView.rvv.dominates(thisRowView.rvv));
+        log("thisColView Dominates otherColView: " + thisColView.rvv.dominates(otherColView.rvv));
+        log("otherColView Dominates thisColView: " + otherColView.rvv.dominates(thisColView.rvv));
+
+        if (isRVVNotUsable) {
+          log("RVV based approach is not usable.");
+          if (rowAndColLatestOplogTimeSame) {
+            int retVal = compareTime(thisColView.getMostRecentEntryModifiedTime(),
+                otherColView.getMostRecentEntryModifiedTime(),
+                thisRowView.getMostRecentEntryModifiedTime(),
+                otherRowView.getMostRecentEntryModifiedTime());
+            log("Decide on basis of MostRecentEntryModifiedTime: return value = " + retVal);
+            return retVal;
+          } else {
+            int retVal = compareTime(thisColView.getLatestOplogTime(),
+                otherColView.getLatestOplogTime(),
+                thisRowView.getLatestOplogTime(),
+                otherRowView.getLatestOplogTime());
+            log("Decide on basis of LatestOplogTime: return value = " + retVal);
+            return retVal;
           }
+        } else {
+// NOTES : At this point there can't be a case when all 4 combinations are false or all are true.
+// Also cannot be a case when row combinations are true and col combinations are false(and vice versa).
+
+// Also there cannot be a case when there is conflict.
+// eg: (thisrowdominates)true & (otherrowdominates)false for row AND
+//     (thiscoldominates)false & (othercoldominates)true for col
+
+
+          if (thisColDominates == otherColDominates) { // true == true , false == false
+            // Decide on basis of row rvv
+//              t, t | f, t
+//              t, t | t, f
+//              f, f | t, f
+//              f, f | f, t
+            return thisRowDominates ? 1 : -1;
+          } else if (thisRowDominates == otherRowDominates) { // true == true , false == false
+//              t, t | f, t
+//              t, t | t, f
+//              f, f | t, f
+//              f, f | f, t
+            // Decide on basis of col rvv
+            return thisColDominates ? 1 : -1;
+          } else {
+//              t, f | t, f
+//              f, t | f, t
+            // conflicting case  - not sure when will this happen?
+            return thisColDominates && thisRowDominates ? 1 : -1;
+          }
+
         }
       }
-      return 1;
+    }
+
+    private int compareTime(Long thisColViewTime, Long otherColViewTime, Long thisRowViewTime, Long otherRowViewTime) {
+      //              |   equal col,      thisRowGreater
+      //              |   thisColgreater, equalrow
+      //         1 ---|   thisColGreater, thisRowGreater
+      //              |   thisColGreater, otherRowGreater
+
+      //              |    equal col,       otherRowGreater
+      //              |    otherColGreater, equal row
+      //        -1 ---|    otherColGreater, thisRowGreater
+      //              |    otherColGreater, otherRowGreater
+      if ((thisColViewTime > otherColViewTime &&
+          thisRowViewTime >= otherRowViewTime) ||
+          (thisColViewTime == otherColViewTime &&
+              thisRowViewTime > otherRowViewTime)) {
+        return 1;
+      } else {
+        return -1;
+      }
     }
   }
 }
