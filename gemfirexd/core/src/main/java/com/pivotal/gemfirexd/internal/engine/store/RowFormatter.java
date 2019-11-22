@@ -1039,10 +1039,6 @@ public final class RowFormatter implements Serializable {
     this.metadata = null;
     this.isTableFormatter = false;
     this.isPrimaryKeyFormatter = false;
-    if (SanityManager.DEBUG) {
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_ROW_FORMATTER,
-          "RowFormatter#cqi#column[] = " + ArrayUtils.toString(this.columns));
-    }
   }
 
   /**
@@ -1107,10 +1103,6 @@ public final class RowFormatter implements Serializable {
       this.isTableFormatter = true;
     }
     this.isPrimaryKeyFormatter = false;
-    if (SanityManager.DEBUG) {
-    SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_ROW_FORMATTER,
-        "RowFormatter#const1#column[] = " + ArrayUtils.toString(this.columns));
-    }
   }
 
   /**
@@ -1168,10 +1160,6 @@ public final class RowFormatter implements Serializable {
     this.isPrimaryKeyFormatter = false;
     if (isTableFormatter && container != null) {
       container.hasLobs = hasLobs();
-    }
-    if (SanityManager.DEBUG) {
-    SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_ROW_FORMATTER,
-        "RowFormatter#const2#column[] = " + ArrayUtils.toString(this.columns));
     }
   }
 
@@ -1231,10 +1219,6 @@ public final class RowFormatter implements Serializable {
     this.metadata = null;
     this.isTableFormatter = false;
     this.isPrimaryKeyFormatter = false;
-    if (SanityManager.DEBUG) {
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_ROW_FORMATTER,
-          "RowFormatter#const3#column[] = " + ArrayUtils.toString(this.columns));
-    }
   }
 
   /**
@@ -1295,10 +1279,6 @@ public final class RowFormatter implements Serializable {
     this.metadata = getMetaData(schemaName, tableName, schemaVersion);
     this.isTableFormatter = false;
     this.isPrimaryKeyFormatter = isPrimaryKeyFormatter;
-    if (SanityManager.DEBUG) {
-      SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_ROW_FORMATTER,
-          "RowFormatter#const4#column[] = " + ArrayUtils.toString(this.columns));
-    }
   }
 
   /**
