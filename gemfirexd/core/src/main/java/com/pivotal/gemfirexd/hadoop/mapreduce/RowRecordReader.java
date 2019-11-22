@@ -214,7 +214,7 @@ public class RowRecordReader extends RecordReader<Key, Row> {
     if (!isClosed) {
       GfxdConnectionWrapper.restoreContextStack(es, rs);
       try {
-        rs.lightWeightClose();
+        rs.close();
       } catch (SQLException e) {
         logger.warn("Error while trying to free reader resources", e);
       }

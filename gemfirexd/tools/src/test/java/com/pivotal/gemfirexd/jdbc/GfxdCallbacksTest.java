@@ -115,6 +115,8 @@ public class GfxdCallbacksTest extends JdbcTestBase {
     addListener("ID1", "EMP", "TESTTABLE",
         "com.pivotal.gemfirexd.jdbc.GfxdTestCacheListener", "initInfoStrForListener",null);
     s.execute("insert into EMP.TESTTABLE values (1, 2, 3)");
+    s.execute("drop table emp.testtable");
+    s.execute("drop schema emp restrict");
   }
 
   public void testMultipleListenerAdditionAndRemoval() throws SQLException {
@@ -132,6 +134,8 @@ public class GfxdCallbacksTest extends JdbcTestBase {
     removeListener("ID1", "EMP", "TESTTABLE");
     s.execute("insert into EMP.TESTTABLE values (5, 6, 7)");
     s.execute("update EMP.TESTTABLE set thirdid=10 where id=1");
+    s.execute("drop table emp.testtable");
+    s.execute("drop schema emp restrict");
   }
 
   public void testWriterAddition() throws SQLException {
@@ -144,6 +148,8 @@ public class GfxdCallbacksTest extends JdbcTestBase {
     addWriter("EMP", "TESTTABLE",
         "com.pivotal.gemfirexd.jdbc.GfxdTestCacheWriter", "initInfoStrForWriter", "");
     s.execute("insert into EMP.TESTTABLE values (1, 2, 3)");
+    s.execute("drop table emp.testtable");
+    s.execute("drop schema emp restrict");
   }
   
   public void testMultipleWriterAddition() throws SQLException {
@@ -158,6 +164,8 @@ public class GfxdCallbacksTest extends JdbcTestBase {
     addWriter("EMP", "TESTTABLE",
         "com.pivotal.gemfirexd.jdbc.GfxdTestCacheWriter", "initInfoStrForWriter", null);
     s.execute("insert into EMP.TESTTABLE values (1, 2, 3)");
+    s.execute("drop table emp.testtable");
+    s.execute("drop schema emp restrict");
   }
 
   public void testWriterRemoval() throws SQLException {
@@ -173,5 +181,7 @@ public class GfxdCallbacksTest extends JdbcTestBase {
     s.execute("update EMP.TESTTABLE set secondid=1 where id=1");
     removeWriter("EMP", "TESTTABLE");
     s.execute("insert into EMP.TESTTABLE values (5, 6, 7)");
+    s.execute("drop table emp.testtable");
+    s.execute("drop schema emp restrict");
   }
 }

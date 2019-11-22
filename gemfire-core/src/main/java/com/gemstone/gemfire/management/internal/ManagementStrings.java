@@ -141,7 +141,7 @@ public class ManagementStrings {
 
   public static final StringId MANAGEMENT_TASK_THREAD_GROUP = new StringIdImpl(100053, "Management Task Thread Group");
 
-  public static final StringId MANAGEMENT_TASK_CANCELLED = new StringIdImpl(100054, "Management Task Cacelled");
+  public static final StringId MANAGEMENT_TASK_CANCELLED = new StringIdImpl(100054, "Management Task Cancelled");
 
 
   //Management Agents Related

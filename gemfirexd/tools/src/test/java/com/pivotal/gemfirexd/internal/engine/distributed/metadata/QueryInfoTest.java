@@ -591,6 +591,7 @@ public class QueryInfoTest extends JdbcTestBase {
 
   public void createTableWithPrimaryKey(Connection conn) throws SQLException {
     Statement s = conn.createStatement();
+    s.execute("drop table if exists orders");
     // We create a table...
     s.execute("create table orders"
         + "(id int PRIMARY KEY, cust_name varchar(200), vol int, "
@@ -600,6 +601,7 @@ public class QueryInfoTest extends JdbcTestBase {
 
   public void createTableWithCompositeKey(Connection conn) throws SQLException {
     Statement s = conn.createStatement();
+    s.execute("drop table if exists orders");
     // We create a table...
     s.execute("create table orders"
         + "(id int , cust_name varchar(200), vol int, "

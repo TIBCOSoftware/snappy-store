@@ -67,6 +67,9 @@ public class OrdersTest extends JdbcTestBase {
 			rs = q.executeQuery();
 			while (rs.next()); // consume ResultSet
 		}
+    Statement st = conn.createStatement();
+		st.execute("drop table orders");
+		st.close();
 	}
   
   
@@ -87,6 +90,7 @@ public class OrdersTest extends JdbcTestBase {
     Statement s = conn.createStatement();
     
     // We create a table...
+    s.execute("drop table if exists orders");
     s.execute("create table orders" +
               "(id int not null , cust_name varchar(200), vol int, " +
               "security_id varchar(10), num int, addr varchar(100))");

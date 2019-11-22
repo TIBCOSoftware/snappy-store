@@ -64,6 +64,7 @@ public class PkAsRegionKeyTest extends JdbcTestBase {
   assertFalse("Expected a result set containing one row " +
               "but there is another with " + rs.getInt(1),
               rs.next());
+    s.execute("drop table t1");
   }
   
   /**
@@ -102,6 +103,7 @@ public class PkAsRegionKeyTest extends JdbcTestBase {
     assertFalse("Expected a result set conatining one row " +
                 "but there is another with " + rs.getInt(1),
                 rs.next());
+    s.execute("drop table t1");
   }
   
   /**
@@ -455,6 +457,7 @@ public class PkAsRegionKeyTest extends JdbcTestBase {
               
       searchKey+=10;
     }
+    s.execute("drop table broker_tickets");
   }
 
   /**
@@ -552,6 +555,7 @@ public class PkAsRegionKeyTest extends JdbcTestBase {
 
       searchKey += 10;
     }
+    s.execute("drop table broker_tickets");
   }
 
   /**
@@ -670,8 +674,8 @@ public class PkAsRegionKeyTest extends JdbcTestBase {
     		"broker_tickets");
     while (rs.next()) {
       assertEquals("Result should match ", 15, rs.getInt(1));
-    }    
-    
+    }
+    s.execute("drop table broker_tickets");
   } 
 
 }
