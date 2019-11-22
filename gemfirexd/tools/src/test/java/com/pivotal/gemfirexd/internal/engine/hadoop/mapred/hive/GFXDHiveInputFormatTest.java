@@ -106,8 +106,10 @@ public class GFXDHiveInputFormatTest extends JdbcTestBase {
     while (rr.next(key, value)) {
       assertEquals(count++, value.getRowAsResultSet().getInt("col1"));
     }
-    
     assertEquals(20, count);
+    rr.close();
+
+    st.execute("drop table if exists app.mytab1 ");
     
     TestUtil.shutDown();
   }

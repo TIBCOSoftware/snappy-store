@@ -131,6 +131,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
     Region r = Misc.getRegionForTable("TRAN.T1", true);
     assert (r.size() == 10);
+    st.execute("drop table tran.t1");
   }
 
   //auto commit is disabled.
@@ -185,6 +186,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     assertEquals("ResultSet should contain 0 rows ", 0, numRows);
 
     rs.close();
+    st.execute("drop table tran.t1");
     st.close();
     conn.close();
   }
@@ -217,7 +219,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     //conn.commit();
 
     // Close connection, resultset etc...
-
+    st.execute("drop table t1");
     st.close();
     conn.close();
   }
@@ -267,6 +269,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
     // Close connection, resultset etc...
     rs.close();
+    st.execute("drop table t1");
     st.close();
     conn.close();
   }
@@ -298,6 +301,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
     // Close connection, resultset etc...
     rs.close();
+    st.execute("drop table t1");
     st.close();
     conn.close();
   }
@@ -999,6 +1003,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
     // Close connection, resultset etc...
     rs.close();
+    st.execute("drop table t1");
     st.close();
     //conn.commit();
     conn.close();
@@ -1074,6 +1079,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
     // Close connection, resultset etc...
     rs.close();
+    st.execute("drop table t1");
     st.close();
     conn.commit();
     conn.close();
@@ -1154,6 +1160,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
     // Close connection, resultset etc...
     rs.close();
+    st.execute("drop table t1");
     st.close();
     //conn.commit();
     conn.close();
@@ -1210,6 +1217,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
       assertEquals("C3 should be  20 ", 20, c2);
     }
     assertEquals("ResultSet should contain two rows ", 2, numRows);
+    st.execute("drop table t1");
     //assert that old value is returned
   }
 
@@ -1249,6 +1257,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
       numRows++;
     }
     assertEquals("ResultSet should contain two row ", 2, numRows);
+    st.execute("drop table t1");
     //assert that old value is returned
   }
 
@@ -1272,6 +1281,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     //PreparedStatement pst = conn.prepareStatement(sql);
     //pst.executeQuery();
     GemFireCacheImpl.getInstance().getCacheTransactionManager().commit();
+    st.execute("drop table tran.t1");
   }
 
   public void _testSnapshotAgainstMultipleTable() throws Exception {
@@ -1439,6 +1449,8 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
     // Close connection, resultset etc...
     rs.close();
+    st.execute("drop table if exits t1");
+    st.execute("drop table if exists t2");
     st.close();
     //conn.commit();
     conn.close();
@@ -1506,7 +1518,17 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
   public void testCommitWithConflicts() throws Exception {
     Connection conn = getConnection();
     Statement st = conn.createStatement();
-    st.execute("create schema tran");
+    try {
+      st.execute("create schema tran");
+    } catch (SQLException sqle) {
+      // ignore if schema already exists
+      try {
+        st.close();
+      } catch (Exception e) {
+        //ignore
+      }
+      st = conn.createStatement();
+    }
     st.execute("Create table tran.t1 (c1 int not null , c2 int not null, "
         + "primary key(c1)) replicate persistent enable concurrency checks" +getSuffix());
     conn.commit();
@@ -1573,6 +1595,8 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     txMgrImpl.commit();
 
     rs.close();
+    st2.execute("drop table tran.t1");
+    st2.execute("drop schema tran restrict");
     st2.close();
     conn.commit();
     conn.close();
@@ -1637,6 +1661,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     }
     assertEquals("ResultSet should contain 10 rows ", 10, numRows);
     Misc.getGemFireCache().getCacheTransactionManager().commit();
+    st.execute("drop table t1");
     conn.commit();
 
   }
@@ -1696,6 +1721,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     Misc.getGemFireCache().getCacheTransactionManager().commit();
     conn.commit();
     rs.close();
+    st.execute("drop table t1");
     st.close();
     conn.close();
   }
@@ -1764,6 +1790,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
     // Close connection, resultset etc...
     rs.close();
+    st.execute("drop table t1");
     st.close();
     conn.commit();
     conn.close();
@@ -1861,6 +1888,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
     // Close connection, resultset etc...
     rs.close();
+    st.execute("drop table t1");
     st.close();
     conn.commit();
     conn.close();
@@ -1908,6 +1936,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
 
     // Close connection, resultset etc...
     rs.close();
+    st.execute("drop table t1");
     st.close();
     conn.commit();
     conn.close();
@@ -2177,6 +2206,7 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     assert(versionAfterExecutingUpdate == (versionAfterExecutingThreadWithNewTx+1));
     conn.commit();
     rs.close();
+    st.execute("drop table t1");
     st.close();
     conn.close();
   }
@@ -2353,6 +2383,8 @@ public class SnapshotTransactionTest  extends JdbcTestBase {
     System.out.println(numRows1);
     // The count should be 21 after releasing the lock and re-initializing snapshot map
     assert (numRows1 == 26);
+    st.execute("drop table t2");
+    st.execute("drop table t1");
 
   }
 }

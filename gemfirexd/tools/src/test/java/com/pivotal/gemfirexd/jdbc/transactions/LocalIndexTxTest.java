@@ -202,6 +202,7 @@ public class LocalIndexTxTest extends JdbcTestBase{
       conn.commit();
     }
     finally {
+      st.execute("drop table t1");
       GemFireXDQueryObserverHolder.clearInstance();
     }  
   }
@@ -277,6 +278,7 @@ public class LocalIndexTxTest extends JdbcTestBase{
         assertFalse(rs.next());
     }
     finally {
+      st.execute("drop table t1");
       GemFireXDQueryObserverHolder.clearInstance();
     }
   }
@@ -340,6 +342,7 @@ public class LocalIndexTxTest extends JdbcTestBase{
       conn.commit();
     }
     finally {
+      st.execute("drop table t1");
       GemFireXDQueryObserverHolder.clearInstance();
     }
   }
@@ -412,6 +415,7 @@ public class LocalIndexTxTest extends JdbcTestBase{
       conn.commit();
     }
     finally {
+      st.execute("drop table t1");
       GemFireXDQueryObserverHolder.clearInstance();
     }
   }
@@ -492,6 +496,7 @@ public class LocalIndexTxTest extends JdbcTestBase{
       // 22 rows should be deleted some txnl and some committed
       assertEquals(22,st.executeUpdate("delete from t1 where c2 = 8 or c2 > 34"));
       conn.commit();
+      st.execute("drop table t1");
     }
     finally {
       GemFireXDQueryObserverHolder.clearInstance();
@@ -556,6 +561,7 @@ public class LocalIndexTxTest extends JdbcTestBase{
       assertEquals(14,st.executeUpdate("update t1 set c2 = 8 " +
                 " where c5 >= 1 and c5 < 21 "));     
       conn.commit();
+      st.execute("drop table t1");
     }
     finally {
       GemFireXDQueryObserverHolder.clearInstance();
@@ -621,6 +627,7 @@ public class LocalIndexTxTest extends JdbcTestBase{
                 " where c5 >= 1 and c5 < 21 "));
      
       conn.commit();
+      st.execute("drop table t1");
     }
     finally {
       GemFireXDQueryObserverHolder.clearInstance();
@@ -683,6 +690,7 @@ public class LocalIndexTxTest extends JdbcTestBase{
                 " where c5 >= 18 and c5 < 26 "));
 
       conn.commit();
+      st.execute("drop table t1");
     } finally {
       GemFireXDQueryObserverHolder.clearInstance();
     }
@@ -764,5 +772,6 @@ public class LocalIndexTxTest extends JdbcTestBase{
     // 22 rows should be deleted some txnl and some committed
     assertEquals(22, st.executeUpdate("delete from t1 where c2 = 8 or c2 > 34"));
     conn.commit();
+    st.execute("drop table t1");
   }
 }

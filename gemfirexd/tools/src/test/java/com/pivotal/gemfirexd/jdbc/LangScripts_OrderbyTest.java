@@ -469,6 +469,7 @@ public class LangScripts_OrderbyTest extends JdbcTestBase {
 		{"a","e"},{"b",null},{"g","c"},{null,"d"} } },
 	{ "drop table t1", null },
 	{ "drop table t2", null },
+  { "drop table t3", null },
 	{ "create table t1 (c1 int, c2 varchar(10))"+ getOffHeapSuffix(), null },
 	{ "create table t2 (t2c1 int)"+ getOffHeapSuffix(), null },
 	{ "insert into t1 values (3, 'a'), (4, 'c'), (2, 'b'), (1, 'c')", null },
@@ -487,6 +488,7 @@ public class LangScripts_OrderbyTest extends JdbcTestBase {
 	{ "select t1.* from t1, t2 where t1.c1=t2.t2c1 order by t2c1", new String[][] {
 		{"3","a"},{"4","c"} } },
 	{ "drop table t1", null },
+  { "drop table t2", null },
 	{ "create table person (name varchar(10), age int)"+ getOffHeapSuffix(), null },
 	{ "insert into person values ('John', 10)", null },
 	{ "insert into person values ('John', 30)", null },
@@ -1000,6 +1002,7 @@ public class LangScripts_OrderbyTest extends JdbcTestBase {
 		{"a","e"},{"b",null},{"g","c"},{null,"d"} } },
 	{ "drop table t1", null },
 	{ "drop table t2", null },
+  { "drop table t3", null },
 	{ "create table t1 (c1 int, c2 varchar(10))"+ getOffHeapSuffix(), null },
 	{ "create table t2 (t2c1 int)"+ getOffHeapSuffix(), null },
 	{ "insert into t1 values (3, 'a'), (4, 'c'), (2, 'b'), (1, 'c')", null },
@@ -1018,6 +1021,7 @@ public class LangScripts_OrderbyTest extends JdbcTestBase {
 	{ "select t1.* from t1, t2 where t1.c1=t2.t2c1 order by t2c1", new String[][] {
 		{"3","a"},{"4","c"} } },
 	{ "drop table t1", null },
+  { "drop table t2", null },
 	{ "create table person (name varchar(10), age int)"+ getOffHeapSuffix(), null },
 	{ "insert into person values ('John', 10)", null },
 	{ "insert into person values ('John', 30)", null },
