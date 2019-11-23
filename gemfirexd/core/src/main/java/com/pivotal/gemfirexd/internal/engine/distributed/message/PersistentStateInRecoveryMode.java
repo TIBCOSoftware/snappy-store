@@ -295,6 +295,8 @@ public class PersistentStateInRecoveryMode {
     @Override
     public int compareTo(RecoveryModePersistentView other) {
       // They should be called for the same region
+      log("Comparing RecoveryModePersistentViews :::\n" +
+          "this view: " + this + "\n other view: " + other);
       assert this.regionPath.equals(other.regionPath);
       if (mostRecentEntryModifiedTime == other.mostRecentEntryModifiedTime &&
           latestOplogTime == other.latestOplogTime &&
@@ -302,7 +304,7 @@ public class PersistentStateInRecoveryMode {
           Objects.equals(diskStoreName, other.diskStoreName) &&
           rvv.sameAs(other.rvv) &&
           member.equals(other.member)) {
-        SanityManager.DEBUG_PRINT("info", "Comparing same object. Doesn't make sense to do this. Please check.");
+        log("Comparing same object. Doesn't make sense to do this. Please check.");
         return 0;
       }
       if (this.rvv.logicallySameAs(other.rvv) ||
@@ -365,7 +367,8 @@ public class PersistentStateInRecoveryMode {
     @Override
     public int compareTo(RecoveryModePersistentViewPair other) {
       // They should be called for the same region
-      log("Comparing :::\nthis view: " + this + "\n other view: " + other);
+      log("Comparing RecoveryModePersistentViewPairs :::\n" +
+          "this view: " + this + "\n other view: " + other);
 
       RecoveryModePersistentView thisRowView = this.getRowView();
       RecoveryModePersistentView thisColView = this.getColView();
