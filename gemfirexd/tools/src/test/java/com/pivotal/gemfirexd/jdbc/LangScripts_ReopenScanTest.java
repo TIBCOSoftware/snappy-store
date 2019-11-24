@@ -109,7 +109,10 @@ public class LangScripts_ReopenScanTest extends JdbcTestBase {
 	{ "insert into n values 1,2,3", null },
 	{ "insert into x values 1,2,3", null },
 	{ "select * from x where x in (select x from n)", new String[][] { {"1"},{"2"},{"3"} } },
-	{ "drop table n", null }
+	{ "drop table n", null },
+  { "drop table x", null },
+  { "drop table y", null },
+  { "drop table z", null }
    };
 
     // Do not use partitioning as default, use replicate
@@ -181,9 +184,11 @@ public class LangScripts_ReopenScanTest extends JdbcTestBase {
 	{ "insert into n values 1,2,3", null },
 	{ "insert into x values 1,2,3", null },
 	{ "select * from x where x in (select x from n)", new String[][] { {"1"},{"2"},{"3"} } },
-	{ "drop table n", null }
-
-    };
+	{ "drop table n", null },
+  { "drop table x", null },
+  { "drop table y", null },
+  { "drop table z", null }
+  };
 
     Connection conn = TestUtil.getConnection();
     Statement stmt = conn.createStatement();

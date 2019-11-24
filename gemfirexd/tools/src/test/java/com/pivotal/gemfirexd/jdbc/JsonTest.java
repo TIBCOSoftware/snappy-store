@@ -174,6 +174,8 @@ public class JsonTest extends JdbcTestBase {
       }
       i++;
     }
+    stmt.execute("drop view view1");
+    stmt.execute("drop table t1");
   }
   
   public void testJSON() throws Exception {
@@ -269,6 +271,7 @@ public class JsonTest extends JdbcTestBase {
       i++;
     }
     assertEquals(2, i);
+    stmt.execute("drop table t1");
   }
   
   public void testBug51374_1() throws Exception {
@@ -322,6 +325,8 @@ public class JsonTest extends JdbcTestBase {
         }
         i++;
       }
+      stmt.execute("drop table t1");
+      stmt.execute("drop table t2");
     } finally {
       new File("T1.dat").delete();
     }
@@ -367,6 +372,8 @@ public class JsonTest extends JdbcTestBase {
         System.out.println("output=" + output);
         i++;
       }
+      stmt.execute("drop table t1");
+      stmt.execute("drop table t2");
     } finally {
       new File("T1.dat").delete();
     }

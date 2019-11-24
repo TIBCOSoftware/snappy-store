@@ -318,10 +318,13 @@ public final class ClientService extends ReentrantLock implements LobService {
       throws SnappyException {
 
     ClientConfiguration config = ClientConfiguration.getInstance();
-    ClientSharedUtils.getLogger(getClass()).info("Starting client on '" + hostName +
-        "' with ID='" + hostId + "' Source-Revision=" +
-        config.getSourceRevision());
-
+    String intpModeProperty = System.getProperty("LAUNCHER_INTERPRETER_MODE");
+    boolean isInterpreterMode = intpModeProperty != null && intpModeProperty.equals("true");
+    if (!isInterpreterMode) {
+      ClientSharedUtils.getLogger(getClass()).info("Starting client on '" + hostName +
+              "' with ID='" + hostId + "' Source-Revision=" +
+              config.getSourceRevision());
+    }
     this.isClosed = true;
 
     this.currentHostConnection = null;

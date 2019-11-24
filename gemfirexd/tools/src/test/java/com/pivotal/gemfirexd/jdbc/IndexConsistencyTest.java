@@ -22,6 +22,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+
+import com.gemstone.gemfire.cache.hdfs.internal.HDFSStoreImpl;
+import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
+import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import junit.framework.TestSuite;
 import junit.textui.TestRunner;
 
@@ -50,6 +54,13 @@ public class IndexConsistencyTest extends JdbcTestBase {
     super(name);
   }
 
+  @Override
+  protected void setUp() throws Exception {
+    super.setUp();
+    Connection conn = getConnection();
+    Statement s = conn.createStatement();
+    s.execute("drop schema if exists trade restrict");
+  }
   @Override
   protected String reduceLogging() {
     return "config";
@@ -587,7 +598,8 @@ public class IndexConsistencyTest extends JdbcTestBase {
   public void testOnPRAndReplicatedTable2() throws Exception {
     setupConnection();
     // Create a schema
-    sqlExecute("create schema trade", false);
+
+    sqlExecute("create schema  trade", false);
 
     // Create a set of expected region attributes for the schema
     RegionAttributesCreation expectedAttrs = new RegionAttributesCreation();
@@ -665,6 +677,10 @@ public class IndexConsistencyTest extends JdbcTestBase {
         + " unique (tid))"+ getSuffix(), false);
 
     checkInsertUpdate(true);
+    sqlExecute("drop table if exists trade.test", false);
+    sqlExecute("drop table if exists trade.customers", false);
+    sqlExecute("drop schema if exists trade restrict ", false);
+
   }
 
   protected void additionalTableAttributes(
@@ -833,7 +849,7 @@ public class IndexConsistencyTest extends JdbcTestBase {
     Connection conn = getConnection();
     Statement s = conn.createStatement();
 
-    s.execute("create schema trade ");
+    s.execute("create schema  trade ");
     s.execute("create table trade.securities (sec_id int not null, "
         + "symbol varchar(10) not null, price decimal (30, 20), "
         + "exchange varchar(10) not null, tid int, constraint sec_pk "
@@ -950,6 +966,11 @@ public class IndexConsistencyTest extends JdbcTestBase {
       ++len;
     }
     assertEquals(10, len);
+    sqlExecute("drop table if exists trade.portfolio", false);
+    sqlExecute("drop table if exists trade.customers", false);
+    sqlExecute("drop table if exists trade.securities", false);
+    sqlExecute("drop schema if exists trade restrict", false);
+
   }
 
   public void testBug40879_2() throws Exception
@@ -957,7 +978,7 @@ public class IndexConsistencyTest extends JdbcTestBase {
     Connection conn = getConnection();
     Statement s = conn.createStatement();
 
-    s.execute("create schema trade ");
+    s.execute("create schema  trade ");
     s
         .execute("create table trade.securities (sec_id int not null, symbol varchar(10) not null, price decimal (30, 20), exchange varchar(10) not null, tid int, constraint sec_pk primary key (sec_id), constraint sec_uq unique (symbol, exchange), constraint exc_ch check (exchange in ('nasdaq', 'nye', 'amex', 'lse', 'fse', 'hkse', 'tse')))  replicate");
     s
@@ -1047,6 +1068,11 @@ public class IndexConsistencyTest extends JdbcTestBase {
       ++len;
     }
     assertEquals(4, len);
+    s.execute("drop table if exists trade.portfolio");
+    s.execute("drop table if exists trade.customers");
+    s.execute("drop table if exists trade.securities");
+    s.execute("drop schema if exists trade restrict");
+
 
   }
 

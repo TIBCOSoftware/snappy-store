@@ -44,6 +44,8 @@ public interface ClusterCallbacks {
   SparkSQLExecute getSQLExecute(String sql, String schema, LeadNodeExecutionContext ctx,
       Version v, boolean isPreparedStatement, boolean isPreparedPhase, ParameterValueSet pvs);
 
+  InterpreterExecute getInterpreterExecution(String sql, Version v, Long connId);
+
   SparkSQLExecute getSampleInsertExecute(String baseTable,  LeadNodeExecutionContext ctx,
       Version v, List<DataValueDescriptor[]> dvdRows, byte[] serializedDVDs);
 

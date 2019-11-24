@@ -19,4 +19,5 @@ public abstract class LeadNodeExecutionObject implements GfxdSerializable {
     return null;
   }
   public abstract String getExceptionString();
+  public String getSql() { return null; }
 }

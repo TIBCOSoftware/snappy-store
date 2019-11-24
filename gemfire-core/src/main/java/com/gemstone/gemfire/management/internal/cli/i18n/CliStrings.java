@@ -118,7 +118,7 @@ public class CliStrings {
   public static final String NO_MEMBERS_IN_GROUP_ERROR_MESSAGE = "No caching members for group {0} could be found.  Please verify the group and try again.";
   public static final String NO_MEMBERS_FOUND_MESSAGE = "No Members Found";
   public static final String NO_CACHING_MEMBERS_FOUND_MESSAGE = "No caching members found.";
-  public static final String COMMAND_FAILURE_MESSAGE = "Error occured while executing : {0}";
+  public static final String COMMAND_FAILURE_MESSAGE = "Error occurred while executing : {0}";
   public static final String EXCEPTION_CLASS_AND_MESSAGE = "Exception : {0} , Message : {1}";
   public static final String GROUP_EMPTY_ERROR_MESSAGE = "No members found in group : {0}";
   public static final String REGION_NOT_FOUND = "Region : {0} not found";
@@ -145,7 +145,7 @@ public class CliStrings {
   public static final String GFSH__MSG__NO_LONGER_CONNECTED_TO_0 = "No longer connected to {0}.";
   public static final String GFSHPARSER__MSG__REQUIRED_ARGUMENT_0 = "Required Argument: \"{0}\"";
   public static final String GFSHPARSER__MSG__VALUE_REQUIRED_FOR_OPTION_0 = "Value is required for parameter \"{0}\"";
-  public static final String GFSHPARSER__MSG__AMBIGIOUS_COMMAND_0_FOR_ASSISTANCE_USE_1_OR_HINT_HELP = "Ambigious command \"{0}\" (for assistance press \"{1}\" or type \"hint\" or \"help <command name>\" & then hit ENTER)";
+  public static final String GFSHPARSER__MSG__AMBIGIOUS_COMMAND_0_FOR_ASSISTANCE_USE_1_OR_HINT_HELP = "Ambiguous command \"{0}\" (for assistance press \"{1}\" or type \"hint\" or \"help <command name>\" & then hit ENTER)";
   public static final String GFSHPARSER__MSG__COMMAND_ARGUMENT_0_IS_REQUIRED_USE_HELP = "Command parameter \"{0}\" is required. Use \"help <command name>\" for assistance.";
   public static final String GFSHPARSER__MSG__COMMAND_OPTION_0_IS_REQUIRED_USE_HELP = "Parameter \"{0}\" is required. Use \"help <command name>\" for assistance.";
   public static final String GFSHPARSER__MSG__VALUE_0_IS_NOT_APPLICABLE_FOR_1 = "Value \"{0}\" is not applicable for \"{1}\".";
@@ -180,7 +180,7 @@ public class CliStrings {
   public static final String ALTER_DISK_STORE__REGIONNAME__HELP = "Name/Path of the region in the disk store to alter.";
   public static final String ALTER_DISK_STORE__DISKDIRS = "disk-dirs";
   public static final String ALTER_DISK_STORE__DISKDIRS__HELP = "Directories where data for the disk store was previously written.";
-  public static final String ALTER_DISK_STORE__LRU__EVICTION__ALGORITHM = "lru-algorthm";
+  public static final String ALTER_DISK_STORE__LRU__EVICTION__ALGORITHM = "lru-algorithm";
   public static final String ALTER_DISK_STORE__LRU__EVICTION__ALGORITHM__HELP = "Least recently used eviction algorithm.  Valid values are: none, lru-entry-count, lru-heap-percentage and lru-memory-size.";
   public static final String ALTER_DISK_STORE__LRU__EVICTION__ACTION = "lru-action";
   public static final String ALTER_DISK_STORE__LRU__EVICTION__ACTION__HELP = "Action to take when evicting entries from the region. Valid values are: none, overflow-to-disk and local-destroy.";
@@ -193,7 +193,7 @@ public class CliStrings {
   public static final String ALTER_DISK_STORE__LOAD__FACTOR = "load-factor";
   public static final String ALTER_DISK_STORE__LOAD__FACTOR__HELP = "Together with --initial-capacity, sets the parameters on the underlying java.util.ConcurrentHashMap used for storing region entries. This must be a floating point number between 0 and 1, inclusive.";
   public static final String ALTER_DISK_STORE__COMPRESSOR = "compressor";
-  public static final String ALTER_DISK_STORE__COMPRESSOR__HELP = "The fully-qualifed class name of the Compressor to use when compressing region entry values. A value of 'none' will remove the Compressor.";
+  public static final String ALTER_DISK_STORE__COMPRESSOR__HELP = "The fully-qualified class name of the Compressor to use when compressing region entry values. A value of 'none' will remove the Compressor.";
   public static final String ALTER_DISK_STORE__STATISTICS__ENABLED = "enable-statistics";
   public static final String ALTER_DISK_STORE__STATISTICS__ENABLED__HELP = "Whether to enable statistics. Valid values are: true and false.";
   public static final String ALTER_DISK_STORE__REMOVE = "remove";
@@ -342,7 +342,7 @@ public class CliStrings {
   public static final String CONNECT__DEFAULT_BASE_URL = "http://localhost:8080/gemfire/v1";
   public static final String CONNECT__URL__HELP = "Indicates the base URL to the Manager's HTTP service.  For example: http://<host>:<port>/ Default is " + CONNECT__DEFAULT_BASE_URL;
   public static final String CONNECT__USE_HTTP = "use-http";
-  public static final String CONNECT__USE_HTTP__HELP = "Connects to Manager by sending HTTP requests to HTTP service hostint the Management REST API.  You must first 'disconnect' in order to reconnect to the Manager via locator or jmx-manager using JMX.";
+  public static final String CONNECT__USE_HTTP__HELP = "Connects to Manager by sending HTTP requests to HTTP service hosting the Management REST API.  You must first 'disconnect' in order to reconnect to the Manager via locator or jmx-manager using JMX.";
   public static final String CONNECT__USERNAME = "user";
   public static final String CONNECT__USERNAME__HELP = "User name to securely connect to the jmx-manager. If the --password parameter is not specified then it will be prompted for.";
   public static final String CONNECT__PASSWORD = "password";
@@ -363,7 +363,7 @@ public class CliStrings {
   public static final String CONNECT__SECURITY_PROPERTIES = "security-properties-file";
   public static final String CONNECT__SECURITY_PROPERTIES__HELP = "The gfsecurity.properties file for configuring gfsh to connect to the Locator/Manager. The file's path can be absolute or relative to gfsh directory.";
   public static final String CONNECT__USE_SSL = "use-ssl";
-  public static final String CONNECT__USE_SSL__HELP = "Whether to use SSL for communication with Locator and/or JMX Manager. If set to \"true\", will also read \"gfsecurity.properties\". SSL Options take precedence over proeprties file. If none are specified, defaults will be used. The default value for this options is \"false\".";
+  public static final String CONNECT__USE_SSL__HELP = "Whether to use SSL for communication with Locator and/or JMX Manager. If set to \"true\", will also read \"gfsecurity.properties\". SSL Options take precedence over properties file. If none are specified, defaults will be used. The default value for this option is \"false\".";
   public static final String CONNECT__MSG__CONNECTING_TO_MANAGER_AT_0 = "Connecting to Manager at {0} ..";
   public static final String CONNECT__MSG__CONNECTING_TO_MANAGER_HTTP_SERVICE_AT_0 = "Connecting to Manager's HTTP service at {0} ..";
   public static final String CONNECT__MSG__LOCATOR_COULD_NOT_FIND_MANAGER = "Locator could not find a JMX Manager";
@@ -441,7 +441,7 @@ public class CliStrings {
   public static final String CREATE_INDEX__INVALID__INDEX__TYPE__MESSAGE = "Invalid index type,value must be one of the following: range, key or hash.";
   public static final String CREATE_INDEX__SUCCESS__MSG = "Index successfully created with following details";
   public static final String CREATE_INDEX__FAILURE__MSG = "Failed to create index \"{0}\" due to following reasons";
-  public static final String CREATE_INDEX__ERROR__MSG = "Exception \"{0}\" occured on following members";
+  public static final String CREATE_INDEX__ERROR__MSG = "Exception \"{0}\" occurred on following members";
   public static final String CREATE_INDEX__NAME__CONFLICT = "Index \"{0}\" already exists.  "
       + "Create failed due to duplicate name.";
   public static final String CREATE_INDEX__INDEX__EXISTS = "Index \"{0}\" already exists.  "
@@ -469,7 +469,7 @@ public class CliStrings {
   public static final String CREATE_REGION__USEATTRIBUTESFROM = "template-region";
   public static final String CREATE_REGION__USEATTRIBUTESFROM__HELP = "Name/Path of the region whose attributes should be duplicated when creating this region.";
   public static final String CREATE_REGION__SKIPIFEXISTS = "skip-if-exists";
-  public static final String CREATE_REGION__SKIPIFEXISTS__HELP = "Skip region ceation if the region already exists.";
+  public static final String CREATE_REGION__SKIPIFEXISTS__HELP = "Skip region creation if the region already exists.";
   public static final String CREATE_REGION__KEYCONSTRAINT = "key-constraint";
   public static final String CREATE_REGION__KEYCONSTRAINT__HELP = "Fully qualified class name of the objects allowed as region keys. Ensures that keys for region entries are all of the same class.";
   public static final String CREATE_REGION__VALUECONSTRAINT = "value-constraint";
@@ -482,7 +482,7 @@ public class CliStrings {
   public static final String CREATE_REGION__ENTRYEXPIRATIONIDLETIMEACTION__HELP = "Action to be taken on an entry that has exceeded the idle expiration.";
   public static final String CREATE_REGION__ENTRYEXPIRATIONTIMETOLIVE = "entry-time-to-live-expiration";
   public static final String CREATE_REGION__ENTRYEXPIRATIONTIMETOLIVE__HELP = "How long the region’s entries can remain in the cache without being accessed or updated. The default is no expiration of this type.";
-  public static final String CREATE_REGION__ENTRYEXPIRATIONTTLACTION = "entry-time-to-live-expiriation-action";
+  public static final String CREATE_REGION__ENTRYEXPIRATIONTTLACTION = "entry-time-to-live-expiration-action";
   public static final String CREATE_REGION__ENTRYEXPIRATIONTTLACTION__HELP = "Action to be taken on an entry that has exceeded the TTL expiration.";
   public static final String CREATE_REGION__REGIONEXPIRATIONIDLETIME = "region-idle-time-expiration";
   public static final String CREATE_REGION__REGIONEXPIRATIONIDLETIME__HELP = "How long the region can remain in the cache without being accessed. The default is no expiration of this type.";
@@ -523,7 +523,7 @@ public class CliStrings {
   public static final String CREATE_REGION__RECOVERYDELAY = "recovery-delay";
   public static final String CREATE_REGION__RECOVERYDELAY__HELP = "Sets the delay in milliseconds that existing members will wait before satisfying redundancy after another member crashes. -1 (the default) indicates that redundancy will not be recovered after a failure.";
   public static final String CREATE_REGION__REDUNDANTCOPIES = "redundant-copies";
-  public static final String CREATE_REGION__REDUNDANTCOPIES__HELP = "Sets the number of extra copies of buckets desired. Extra copies allow for both high availability in the face of VM departure (intended or unintended) and and load balancing read operations. (Allowed values: 0, 1, 2 and 3)";
+  public static final String CREATE_REGION__REDUNDANTCOPIES__HELP = "Sets the number of extra copies of buckets desired. Extra copies allow for both high availability in the face of VM departure (intended or unintended) and load balancing read operations. (Allowed values: 0, 1, 2 and 3)";
   public static final String CREATE_REGION__STARTUPRECOVERYDDELAY = "startup-recovery-delay";
   public static final String CREATE_REGION__STARTUPRECOVERYDDELAY__HELP = "Sets the delay in milliseconds that new members will wait before satisfying redundancy. -1 indicates that adding new members will not trigger redundancy recovery. The default is to recover redundancy immediately when a new member is added.";
   public static final String CREATE_REGION__TOTALMAXMEMORY = "total-max-memory";
@@ -591,7 +591,7 @@ public class CliStrings {
   public static final String CREATE_REGION__MSG__0_IS_A_PR_CANNOT_HAVE_SUBREGIONS = "\"{0}\" is a Partitioned Region and cannot have Subregions.";
 
   public static final String CREATE_REGION__COMPRESSOR = "compressor";
-  public static final String CREATE_REGION__COMPRESSOR__HELP = "The fully-qualifed class name of the Compressor to use when compressing region entry values.  The default is no compression.";
+  public static final String CREATE_REGION__COMPRESSOR__HELP = "The fully-qualified class name of the Compressor to use when compressing region entry values.  The default is no compression.";
   public static final String CREATE_REGION__MSG__INVALID_COMPRESSOR = "{0} is an invalid Compressor."; // leave space in the end
 
   /* debug command */
@@ -779,18 +779,18 @@ public class CliStrings {
   public static final String EXECUTE_FUNCTION__MSG__HAS_NO_MEMBER = "No member to execute on";
   public static final String EXECUTE_FUNCTION__MSG__COULD_NOT_EXECUTE_FUNCTION_0_ON_MEMBER_1_ERROR_2 = "Could not execute function :{0} on member : {1}. Details are : {2}";
   public static final String EXECUTE_FUNCTION__MSG__DOES_NOT_HAVE_FUNCTION_0_REGISTERED = "Function : {0} is not registered on member.";
-  public static final String EXECUTE_FUNCTION__MSG__ERROR_IN_EXECUTING_ON_MEMBER_1_DETAILS_2 = "While executing function : {0} on member : {1} error occured : {2}";
+  public static final String EXECUTE_FUNCTION__MSG__ERROR_IN_EXECUTING_ON_MEMBER_1_DETAILS_2 = "While executing function : {0} on member : {1} error occurred : {2}";
   public static final String EXECUTE_FUNCTION__MSG__RESULT_COLLECTOR_0_NOT_FOUND_ERROR_1 = "ResultCollector : {0} not found. Error : {1}";
   public static final String EXECUTE_FUNCTION__MSG__MXBEAN_0_FOR_NOT_FOUND = "MXBean for : {0} not found. ";
   public static final String EXECUTE_FUNCTION__MSG__EXECUTING_0_ON_ENTIRE_DS = "Executing function : {0} on entire distributed system ";
   public static final String EXECUTE_FUNCTION__MSG__DS_HAS_NO_MEMBERS = "Distributed system has no members";
-  public static final String EXECUTE_FUNCTION__MSG__ERROR_IN_EXECUTING_0_ON_REGION_1_DETAILS_2 = "While executing function : {0} on region : {1} error occured : {2}";
+  public static final String EXECUTE_FUNCTION__MSG__ERROR_IN_EXECUTING_0_ON_REGION_1_DETAILS_2 = "While executing function : {0} on region : {1} error occurred : {2}";
   public static final String EXECUTE_FUNCTION__MSG__ERROR_IN_RETRIEVING_EXECUTOR = "Could not retrieve executor";
   public static final String EXECUTE_FUNCTION__MSG__GROUP_0_HAS_NO_MEMBERS = "Group : {0} has no members";
   public static final String EXECUTE_FUNCTION__MSG__NO_ASSOCIATED_MEMBER_REGION = "Could not find a member associated with region ";
   public static final String EXECUTE_FUNCTION__MSG__COULD_NOT_RETRIEVE_ARGUMENTS = "Could not retrieve arguments";
-  public static final String EXECUTE_FUNCTION__MSG__ERROR_IN_EXECUTING_0_ON_MEMBER_1_ON_REGION_2_DETAILS_3 = "While executing function : {0} on member : {1} one region : {2} error occured : {3}";
-  public static final String EXECUTE_FUNCTION__MSG__MEMBER_SHOULD_NOT_HAVE_FILTER_FOR_EXECUTION = "Filters for executing on \"member\"/\"mebers of group\" is not supported.";
+  public static final String EXECUTE_FUNCTION__MSG__ERROR_IN_EXECUTING_0_ON_MEMBER_1_ON_REGION_2_DETAILS_3 = "While executing function : {0} on member : {1} one region : {2} error occurred : {3}";
+  public static final String EXECUTE_FUNCTION__MSG__MEMBER_SHOULD_NOT_HAVE_FILTER_FOR_EXECUTION = "Filters for executing on \"member\"/\"members of group\" is not supported.";
 
   /* exit command */
   public static final String EXIT = "exit";
@@ -822,7 +822,7 @@ public class CliStrings {
   public static final String EXPORT_DATA__MEMBER__HELP = "Name/Id of a member which hosts the region. The data will be exported to the specified file on the host where the member is running.";
   public static final String EXPORT_DATA__MEMBER__NOT__FOUND = "Member {0} not found";
   public static final String EXPORT_DATA__REGION__NOT__FOUND = "Region {0} not found";
-  public static final String EXPORT_DATA__SUCCESS__MESSAGE = "Data succesfully exported from region : {0} to file : {1} on host : {2}";
+  public static final String EXPORT_DATA__SUCCESS__MESSAGE = "Data successfully exported from region : {0} to file : {1} on host : {2}";
 
   /* export logs command */
   public static final String EXPORT_LOGS = "export logs";
@@ -867,7 +867,7 @@ public class CliStrings {
   public static final String EXPORT_STACKTRACE__FILE__HELP = "Name of the file to which the stack traces will be written.";
   public static final String EXPORT_STACKTRACE__MEMBER__NOT__FOUND = "Member not found";
   public static final String EXPORT_STACKTRACE__SUCCESS = "stack-trace(s) exported to file: {0}";
-  public static final String EXPORT_STACKTRACE__ERROR = "Error occured while showing stack-traces";
+  public static final String EXPORT_STACKTRACE__ERROR = "Error occurred while showing stack-traces";
   public static final String EXPORT_STACKTRACE__HOST = "On host : ";
   public static final String EXPORT_STACKTRACE__INVALID_FILE_TYPE = "Invalid file extension. File must be a text file (.txt)";
 
@@ -919,7 +919,7 @@ public class CliStrings {
   public static final String HINT__MSG__SHELL_NOT_INITIALIZED = "Shell is not initialized properly. Please restart the shell. Check gfsh-<timestamp>.log for errors.";
   public static final String HINT__MSG__UNKNOWN_TOPIC = "Unknown topic: {0}. Use " + HINT
       + "; to view the list of available topics.";
-  public static final String HINT__MSG__TOPICS_AVAILABLE = "Hints are availbale for following topics. Use \"" + HINT
+  public static final String HINT__MSG__TOPICS_AVAILABLE = "Hints are available for following topics. Use \"" + HINT
       + " <topic-name>\" for a specific hint.";
 
   /* history command */
@@ -1039,7 +1039,7 @@ public class CliStrings {
   public static final String NETSTAT__GROUP = "group";
   public static final String NETSTAT__GROUP__HELP = "Group of members on which to run the netstat command.";
   public static final String NETSTAT__FILE = "file";
-  public static final String NETSTAT__FILE__HELP = "Text file to which output from the netstat command will be written. A \".txt\" extention will be added if it's not already a part of the specified name.";
+  public static final String NETSTAT__FILE__HELP = "Text file to which output from the netstat command will be written. A \".txt\" extension will be added if it's not already a part of the specified name.";
   public static final String NETSTAT__WITHLSOF = "with-lsof";
   public static final String NETSTAT__WITHLSOF__HELP = "Whether lsof (list open files) command output should also be displayed. Not applicable for \"Microsoft Windows(TM)\" hosts.";
   public static final String NETSTAT__MSG__FOR_HOST_1_OS_2_MEMBER_0 = "Host: {1}{3}OS: {2}{3}Member(s):{3} {0}"; // {3} for line separator
@@ -1129,8 +1129,8 @@ public class CliStrings {
   public static final String REBALANCE__MSG__TOTALPRIMARYTRANSFERSCOMPLETED = "Total primaries transferred during this rebalance";
   public static final String REBALANCE__MSG__TOTALTIME = "Total time (in milliseconds) for this rebalance";
   public static final String REBALANCE__MSG__NO_REBALANCING_REGIONS_ON_DS = "Distributed system has no regions that can be rebalanced";
-  public static final String REBALANCE__MSG__EXCEPTION_IN_REBALANCE_FOR_MEMBER_0_Exception = "Excpetion occured while rebalancing on member : {0} . Exception is ";
-  public static final String REBALANCE__MSG__EXCEPTION_IN_REBALANCE_FOR_MEMBER_0_Exception_1 = "Excpetion occured while rebalancing on member : {0} . Exception is : {1}";
+  public static final String REBALANCE__MSG__EXCEPTION_IN_REBALANCE_FOR_MEMBER_0_Exception = "Exception occurred while rebalancing on member : {0} . Exception is ";
+  public static final String REBALANCE__MSG__EXCEPTION_IN_REBALANCE_FOR_MEMBER_0_Exception_1 = "Exception occurred while rebalancing on member : {0} . Exception is : {1}";
   public static final String REBALANCE__MSG__ERROR_IN_RETRIEVING_MBEAN = "Could not retrieve MBean for region : {0}";
   public static final String REBALANCE__MSG__NO_EXECUTION_FOR_REGION_0_ON_MEMBERS_1 = "Could not execute rebalance for region: {0} on members : {1} ";
   public static final String REBALANCE__MSG__NO_EXECUTION_FOR_REGION_0 = "Could not execute rebalance for region: {0}";
@@ -1209,7 +1209,7 @@ public class CliStrings {
       + "3. APP_LAST_EXIT_STATUS            Numeric value for last command exit status. One of: 0 (success), 1 (error), 2 (crash) (read only)\n"
       + "4. APP_COLLECTION_LIMIT            Number of items in the embedded collection of a result to be iterated. Valid values are: 1-100.\n"
       + "5. APP_QUERY_RESULTS_DISPLAY_MODE  How command results should be shown. Valid values are: table and catalog.\n"
-      + "6. APP_QUIET_EXECUTION.            Whether commands should be excuted in quiet mode. Valid values are: true and false.\n";
+      + "6. APP_QUIET_EXECUTION.            Whether commands should be executed in quiet mode. Valid values are: true and false.\n";
 
   /* 'sh' command */
   public static final String SH = "sh";
@@ -1276,7 +1276,7 @@ public class CliStrings {
   public static final String SHUTDOWN__TIMEOUT__HELP = "Time to wait (in seconds) for a graceful shutdown before members are forcefully stopped.";
   public static final String SHUTDOWN__MSG__CANNOT_EXECUTE = "Cannot execute";
   public static final String SHUTDOWN__MSG__ERROR = "Error in shut down";
-  public static final String SHUTDOWN__MSG__SUCESS = "Sucessfully shut down";
+  public static final String SHUTDOWN__MSG__SUCESS = "Successfully shut down";
   public static final String SHUTDOWN__MSG__MANAGER_NOT_FOUND = "Could not locate Manager.";
   public static final String SHUTDOWN__MSG__WARN_USER = "As a lot of data in memory will be lost, including possibly events in queues, do you really want to shutdown the entire distributed system?";
   public static final String SHUTDOWN__MSG__ABORTING_SHUTDOWN = "Aborting shutdown of the entire distributed system";
@@ -1679,11 +1679,11 @@ public class CliStrings {
   public static final String UPGRADE_OFFLINE_DISK_STORE__J__HELP = "Arguments passed to the Java Virtual Machine performing the upgrade operation on the disk store.";
   public static final String UPGRADE_OFFLINE_DISK_STORE__DISKSTORE_0_DOESNOT_EXIST = "Disk store \"{0}\" does not exist.";
   public static final String UPGRADE_OFFLINE_DISK_STORE__UPGRADE_ATTEMPTED_BUT_NOTHING_TO_UPGRADE = "Upgradation was attempted but nothing to upgrade.";
-  public static final String UPGRADE_OFFLINE_DISK_STORE__ERROR_WHILE_UPGRADATION_REASON_0 = "Error occurred while perfoming disk store upgrade. Reason: \"{0}\"";
+  public static final String UPGRADE_OFFLINE_DISK_STORE__ERROR_WHILE_UPGRADATION_REASON_0 = "Error occurred while performing disk store upgrade. Reason: \"{0}\"";
   public static final String UPGRADE_OFFLINE_DISK_STORE__MSG__CANNOT_LOCATE_0_DISKSTORE_IN_1 = "Cannot locate disk store \"{0}\" in directory : \"{1}\"";
   public static final String UPGRADE_OFFLINE_DISK_STORE__MSG__DISKSTORE_IN_USE_COMPACT_DISKSTORE_CAN_BE_USED = "The disk is currently being used by another process";
   public static final String UPGRADE_OFFLINE_DISK_STORE__MSG__CANNOT_ACCESS_DISKSTORE_0_FROM_1_CHECK_GFSH_LOGS = COMPACT_OFFLINE_DISK_STORE__MSG__CANNOT_ACCESS_DISKSTORE_0_FROM_1_CHECK_GFSH_LOGS;
-  public static final String UPGRADE_OFFLINE_DISK_STORE__MSG__ERROR_WHILE_COMPACTING_DISKSTORE_0_WITH_1_REASON_2 = "Error occured while upgrading disk store={0} {1}. Reason: {2}";
+  public static final String UPGRADE_OFFLINE_DISK_STORE__MSG__ERROR_WHILE_COMPACTING_DISKSTORE_0_WITH_1_REASON_2 = "Error occurred while upgrading disk store={0} {1}. Reason: {2}";
 
   /* 'validate disk-store' command */
   public static final String VALIDATE_DISK_STORE = "validate offline-disk-store";
@@ -1826,8 +1826,8 @@ public class CliStrings {
   public static final String COUNT_DURABLE_CQ_EVENTS__DURABLE_CQ_NOT_FOUND = "No cq found on server for client with durable-client-id : {0} with cq-name : {1}.";
   public static final String COUNT_DURABLE_CQ_EVENTS__DURABLE_CQ_STATS_NOT_FOUND = "No cq stats found on server for durable client id {0} with cq name {1}.";
   public static final String COUNT_DURABLE_CQ_EVENTS__NO__CQS__REGISTERED = "No cq's registered on this member";
-  public static final String COUNT_DURABLE_CQ_EVENTS__SUBSCRIPTION__QUEUE__SIZE__CQ = "subcription-queue-size for durable-cq : \"{0}\".";
-  public static final String COUNT_DURABLE_CQ_EVENTS__SUBSCRIPTION__QUEUE__SIZE__CLIENT = "subcription-queue-size for durable-client : \"{0}\".";
+  public static final String COUNT_DURABLE_CQ_EVENTS__SUBSCRIPTION__QUEUE__SIZE__CQ = "subscription-queue-size for durable-cq : \"{0}\".";
+  public static final String COUNT_DURABLE_CQ_EVENTS__SUBSCRIPTION__QUEUE__SIZE__CLIENT = "subscription-queue-size for durable-client : \"{0}\".";
 
 
   /**

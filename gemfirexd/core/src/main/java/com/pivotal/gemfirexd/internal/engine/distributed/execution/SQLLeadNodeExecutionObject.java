@@ -204,4 +204,9 @@ public class SQLLeadNodeExecutionObject  extends LeadNodeExecutionObject {
   public String getExceptionString() {
     return this.sql;
   }
+
+  @Override
+  public String getSql() {
+    return this.sql;
+  }
 }

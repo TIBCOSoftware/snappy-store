@@ -170,8 +170,10 @@ public class GenericStatement
         private static final Pattern NON_ROUTED_QUERY =
             Pattern.compile(ROUTED_QUERY_PREFIX + "\\{?\\s*(CALL|EXECUTE)\\s+",
                 Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-
-	      private static ExecutionEngineArbiter engineArbiter = new ExecutionEngineArbiter();
+        private static final Pattern GRANT_REVOKE_INTP_PATTERN =
+            Pattern.compile("^\\s*(GRANT|REVOKE)\\s+(PRIVILEGE)\\s+(EXEC)\\s+(SCALA)\\s+",
+                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        private static ExecutionEngineArbiter engineArbiter = new ExecutionEngineArbiter();
 // GemStone changes END
 	/**
 	 * Constructor for a Statement given the text of the statement in a String
@@ -238,7 +240,10 @@ public class GenericStatement
 			StatementContext statementContext, LanguageConnectionContext lcc, boolean isDDL,
 			boolean checkCancellation, boolean isUpdateOrDeleteOrPut, Throwable cause) throws StandardException {
       GenericPreparedStatement gps = preparedStmt;
-      GeneratedClass ac = new SnappyActivationClass(lcc, !isDDL, isPreparedStatement() && !isDDL,
+      String source = getSource();
+      boolean isGrantRevokeIntp = source != null ? GRANT_REVOKE_INTP_PATTERN.matcher(source).find() : false;
+      GeneratedClass ac = new SnappyActivationClass(lcc, !(isDDL || isGrantRevokeIntp),
+        isPreparedStatement() && !isDDL && !isGrantRevokeIntp,
           isUpdateOrDeleteOrPut);
       gps.setActivationClass(ac);
       gps.incrementVersionCounter();

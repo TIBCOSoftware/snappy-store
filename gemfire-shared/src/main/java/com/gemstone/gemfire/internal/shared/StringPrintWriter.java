@@ -29,7 +29,7 @@ import java.io.Writer;
  */
 public class StringPrintWriter extends PrintWriter {
 
-  private final StringBuilder sb;
+  private StringBuilder sb;
 
   private final static Writer dummyLock = new StringWriter();
 
@@ -221,6 +221,10 @@ public class StringPrintWriter extends PrintWriter {
   @Override
   public void flush() {
     // nothing to be done
+  }
+
+  public void reset() {
+    this.sb.setLength(0);
   }
 
   @Override

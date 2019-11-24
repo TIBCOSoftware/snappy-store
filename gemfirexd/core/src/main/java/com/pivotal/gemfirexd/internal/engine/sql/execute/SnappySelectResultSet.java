@@ -239,7 +239,7 @@ public class SnappySelectResultSet
         new ResultColumnDescriptor[colTypes.length], null);
 
     for (int i = 0; i < colNames.length; i++) {
-      String tableName = tableNames[i];
+      String tableName = tableNames != null ? tableNames[i] : "";
       String schema = "";
       String table = "";
       if (!tableName.isEmpty()) {

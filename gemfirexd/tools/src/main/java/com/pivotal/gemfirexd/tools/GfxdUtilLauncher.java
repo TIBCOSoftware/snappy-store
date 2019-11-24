@@ -19,6 +19,7 @@ package com.pivotal.gemfirexd.tools;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeSet;
@@ -189,6 +190,20 @@ public class GfxdUtilLauncher extends GemFireUtilLauncher {
         cause = cause.getCause();
       }
       throw re;
+    }
+  }
+
+  public static ArrayList<String> initialRunFiles = new ArrayList<>();
+
+  public static String connectStr = null;
+
+  public void setInitialCommands(String connectionString, String commaSeparatedFiles) {
+    connectStr = connectionString;
+    if (commaSeparatedFiles != null) {
+      String[] farr = commaSeparatedFiles.split(",");
+      for (String f : farr) {
+        initialRunFiles.add(f);
+      }
     }
   }
 

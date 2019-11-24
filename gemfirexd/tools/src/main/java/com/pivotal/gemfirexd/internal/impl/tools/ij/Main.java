@@ -246,49 +246,70 @@ public class Main {
 				}
 			});
 		  // simple string completion for builtin ij commands
-		  reader.addCompleter(new StringsCompleter(new String[]{
-		      "PROTOCOL", "protocol", "DRIVER", "driver",
-		      "CONNECT CLIENT", "connect client",
-		      "CONNECT PEER", "connect peer",
-		      "SET CONNECTION", "set connection",
-		      "SHOW CONNECTIONS", "show connections",
-		      "AUTOCOMMIT ON;", "AUTOCOMMIT OFF;",
-		      "autocommit on;", "autocommit off;",
-		      "DISCONNECT", "DISCONNECT CURRENT;", "DISCONNECT ALL;",
-		      "disconnect", "disconnect current;", "disconnect all;",
-		      "SHOW SCHEMAS", "show schemas",
-		      "SHOW TABLES", "show tables",
-		      "SHOW VIEWS", "show views",
-		      "SHOW PROCEDURES IN", "show procedures in",
-		      "SHOW FUNCTIONS", "show functions",
-		      "SHOW INDEXES IN", "SHOW INDEXES FROM",
-		      "show indexes in", "show indexes from",
-                      "SHOW IMPORTEDKEYS IN", "SHOW IMPORTEDKEYS FROM",
-                      "show importedkeys in", "show importedkeys from",
-		      "SHOW MEMBERS;", "show members;",
-		      "DESCRIBE", "describe", "COMMIT;", "commit;",
-		      "ROLLBACK;", "rollback;", "PREPARE", "prepare",
-		      "EXECUTE", "execute", "REMOVE", "remove", "RUN", "run",
-		      "ELAPSEDTIME ON;", "ELAPSEDTIME OFF;",
-		      "elapsedtime on;", "elapsedtime off;",
-		      "MAXIMUMDISPLAYWIDTH", "maximumdisplaywidth",
-		      "MAXIMUMLINEWIDTH", "maximumlinewidth",
-		      "PAGING ON;", "paging on;", "PAGING OFF;", "paging off;",
-		      "ASYNC", "async", "WAIT FOR", "wait for",
-		      "GET", "GET CURSOR", "GET SCROLL INSENSITIVE CURSOR",
-		      "get", "get cursor", "get scroll insensitive cursor",
-		      "NEXT", "next", "FIRST", "first", "LAST", "last",
-		      "PREVIOUS", "previous", "ABSOLUTE", "absolute",
-		      "RELATIVE", "relative", "AFTER LAST", "after last",
-		      "BEFORE FIRST", "before first", "CLOSE", "close",
-		      "GETCURRENTROWNUMBER", "getcurrentrownumber",
-		      "LOCALIZEDDISPLAY ON;", "LOCALIZEDDISPLAY OFF;",
-		      "localizeddisplay on;", "localizeddisplay off;",
-		      "EXIT;", "exit;", "QUIT;", "quit;", "HELP;", "help;",
-		      "EXPLAIN ", "explain ",
-		      "EXPLAINMODE ON;", "explainmode on;",
-		      "EXPLAINMODE OFF;", "explainmode off;",
-		    }));
+			String intpModeProperty = System.getProperty("LAUNCHER_INTERPRETER_MODE");
+			boolean isInterpreterMode = intpModeProperty != null
+					&& intpModeProperty.equals("true") ? true : false;
+			if (!isInterpreterMode) {
+				reader.addCompleter(new StringsCompleter(new String[]{
+						"PROTOCOL", "protocol", "DRIVER", "driver",
+						"CONNECT CLIENT", "connect client",
+						"CONNECT PEER", "connect peer",
+						"SET CONNECTION", "set connection",
+						"SHOW CONNECTIONS", "show connections",
+						"AUTOCOMMIT ON;", "AUTOCOMMIT OFF;",
+						"autocommit on;", "autocommit off;",
+						"DISCONNECT", "DISCONNECT CURRENT;", "DISCONNECT ALL;",
+						"disconnect", "disconnect current;", "disconnect all;",
+						"SHOW SCHEMAS", "show schemas",
+						"SHOW TABLES", "show tables",
+						"SHOW VIEWS", "show views",
+						"SHOW PROCEDURES IN", "show procedures in",
+						"SHOW FUNCTIONS", "show functions",
+						"SHOW INDEXES IN", "SHOW INDEXES FROM",
+						"show indexes in", "show indexes from",
+						"SHOW IMPORTEDKEYS IN", "SHOW IMPORTEDKEYS FROM",
+						"show importedkeys in", "show importedkeys from",
+						"SHOW MEMBERS;", "show members;",
+						"DESCRIBE", "describe", "COMMIT;", "commit;",
+						"ROLLBACK;", "rollback;", "PREPARE", "prepare",
+						"EXECUTE", "execute", "REMOVE", "remove", "RUN", "run",
+						"ELAPSEDTIME ON;", "ELAPSEDTIME OFF;",
+						"elapsedtime on;", "elapsedtime off;",
+						"MAXIMUMDISPLAYWIDTH", "maximumdisplaywidth",
+						"MAXIMUMLINEWIDTH", "maximumlinewidth",
+						"PAGING ON;", "paging on;", "PAGING OFF;", "paging off;",
+						"ASYNC", "async", "WAIT FOR", "wait for",
+						"GET", "GET CURSOR", "GET SCROLL INSENSITIVE CURSOR",
+						"get", "get cursor", "get scroll insensitive cursor",
+						"NEXT", "next", "FIRST", "first", "LAST", "last",
+						"PREVIOUS", "previous", "ABSOLUTE", "absolute",
+						"RELATIVE", "relative", "AFTER LAST", "after last",
+						"BEFORE FIRST", "before first", "CLOSE", "close",
+						"GETCURRENTROWNUMBER", "getcurrentrownumber",
+						"LOCALIZEDDISPLAY ON;", "LOCALIZEDDISPLAY OFF;",
+						"localizeddisplay on;", "localizeddisplay off;",
+						"EXIT;", "exit;", "QUIT;", "quit;", "HELP;", "help;",
+						"EXPLAIN ", "explain ",
+						"EXPLAINMODE ON;", "explainmode on;",
+						"EXPLAINMODE OFF;", "explainmode off;"
+				}));
+			} else {
+				reader.addCompleter(new StringsCompleter(new String[]{
+						// Adding the scala keywords
+						"abstract", "case class", "case", "catch", "class", "def", "do",
+						"else", "extends", "false", "final", "finally", "flatmap", "for",
+						"forSome", "forEach", "if", "implicit", "import", "lazy",
+						"match", "map", "new", "null", "object", "override", "package",
+						"private", "protected", "return", "sealed", "super", "this", "throw",
+						"trait", "true", "try", "type", "val", "var", "while", "with", "yield",
+						"snappy", "sc",
+
+						// Adding the commands
+						":help", ":reset", ":replay", ":imports", ":implicits",
+						":javap", ":require", ":save", ":silent", ":sh", ":type",
+						":warnings", ":elapsedtime on", ":quit", ":run", ":maximumdisplaywidth", ":maximumlinewidth"
+				}));
+			}
 		  // set the default max display width to terminal width
 		  int termWidth;
 		  if ((maxDisplayWidth == null || maxDisplayWidth.length() == 0)

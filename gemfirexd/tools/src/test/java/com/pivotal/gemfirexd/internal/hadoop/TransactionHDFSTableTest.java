@@ -97,6 +97,7 @@ public class TransactionHDFSTableTest extends JdbcTestBase {
     // Close connection, resultset etc...
     st.execute("drop table tran.t1");
     st.execute("drop hdfsstore myhdfs");
+    st.execute("drop schema tran restrict");
     st.close();
     conn.commit();
     conn.close();
@@ -162,6 +163,8 @@ public class TransactionHDFSTableTest extends JdbcTestBase {
     // Close connection, resultset etc...
     st.execute("drop table tran.t1");
     st.execute("drop hdfsstore myhdfs");
+
+    st.execute("drop schema tran restrict");
     st.close();
     conn.commit();
     conn.close();
@@ -224,6 +227,7 @@ public class TransactionHDFSTableTest extends JdbcTestBase {
     // Close connection, resultset etc...
     st.execute("drop table tran.t1");
     st.execute("drop hdfsstore myhdfs");
+    st.execute("drop schema tran restrict");
     st.close();
     conn.commit();
     conn.close();
@@ -287,6 +291,7 @@ public class TransactionHDFSTableTest extends JdbcTestBase {
     // Close connection, resultset etc...
     st.execute("drop table tran.t1");
     st.execute("drop hdfsstore myhdfs");
+    st.execute("drop schema tran restrict");
     st.close();
     conn.commit();
     conn.close();
@@ -404,6 +409,7 @@ public class TransactionHDFSTableTest extends JdbcTestBase {
     // Close connection, resultset etc...
     st.execute("drop table tran.t1");
     st.execute("drop hdfsstore myhdfs");
+    st.execute("drop schema tran restrict");
     st.close();
     conn.commit();
     conn.close();
@@ -522,6 +528,7 @@ public class TransactionHDFSTableTest extends JdbcTestBase {
     // Close connection, resultset etc...
     st.execute("drop table tran.t1");
     st.execute("drop hdfsstore myhdfs");
+    st.execute("drop schema tran restrict");
     st.close();
     conn.commit();
     conn.close();
@@ -572,6 +579,7 @@ public class TransactionHDFSTableTest extends JdbcTestBase {
     // Close connection, resultset etc...
     st.execute("drop table tran.t1");
     st.execute("drop hdfsstore myhdfs");
+    st.execute("drop schema tran restrict");
     st.close();
     conn.commit();
     conn.close();
@@ -621,6 +629,7 @@ public class TransactionHDFSTableTest extends JdbcTestBase {
     // Close connection, resultset etc...
     st.execute("drop table tran.t1");
     st.execute("drop hdfsstore myhdfs");
+    st.execute("drop schema tran restrict");
     st.close();
     conn.commit();
     conn.close();
@@ -670,6 +679,7 @@ public class TransactionHDFSTableTest extends JdbcTestBase {
     // Close connection, resultset etc...
     st.execute("drop table tran.t1");
     st.execute("drop hdfsstore myhdfs");
+    st.execute("drop schema tran restrict");
     st.close();
     conn.commit();
     conn.close();
@@ -728,6 +738,7 @@ public class TransactionHDFSTableTest extends JdbcTestBase {
     // Close connection, resultset etc...
     st.execute("drop table tran.t1");
     st.execute("drop hdfsstore myhdfs");
+     st.execute("drop schema tran restrict");
     st.close();
     conn.commit(); // not sure why it is getting region destroyed exception
     conn.close();
@@ -787,6 +798,7 @@ public class TransactionHDFSTableTest extends JdbcTestBase {
     // Close connection, resultset etc...
     st.execute("drop table tran.t1");
     st.execute("drop hdfsstore myhdfs");
+    st.execute("drop schema tran restrict");
     st.close();
     conn.commit();
     conn.close();
@@ -994,6 +1006,7 @@ public class TransactionHDFSTableTest extends JdbcTestBase {
       // Close connection, resultset etc...
       st.execute("drop table tran.t1");
       st.execute("drop hdfsstore myhdfs");
+      st.execute("drop schema tran restrict");
       st.close();
       conn.commit();
       conn.close();
@@ -1081,6 +1094,7 @@ public class TransactionHDFSTableTest extends JdbcTestBase {
     // Close connection, resultset etc...
     st.execute("drop table tran.t1");
     st.execute("drop hdfsstore myhdfs");
+    st.execute("drop schema tran restrict");
     st.close();
     conn.commit();
     conn.close();

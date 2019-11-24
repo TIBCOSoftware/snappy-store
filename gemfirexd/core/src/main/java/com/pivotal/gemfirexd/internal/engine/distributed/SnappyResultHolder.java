@@ -22,6 +22,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.sql.SQLWarning;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.Iterator;
 
 import com.gemstone.gemfire.DataSerializer;
@@ -61,12 +62,18 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
   private DataTypeDescriptor[] dtds;
   private boolean hasMetadata;
   private boolean isUpdateOrDeleteOrPut;
+  private boolean interpreterExecution = false;
+  private String[] intpOutput;
 
   public SnappyResultHolder(SparkSQLExecute exec, Boolean isUpdateOrDeleteOrPut) {
     this.exec = exec;
     this.isUpdateOrDeleteOrPut = isUpdateOrDeleteOrPut;
   }
 
+  public SnappyResultHolder(String[] interpreterOutputStrs) {
+    this.intpOutput = interpreterOutputStrs;
+    this.interpreterExecution = true;
+  }
   /** for deserialization */
   public SnappyResultHolder() {
   }
@@ -105,16 +112,34 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
 
   @Override
   public void toData(final DataOutput out) throws IOException {
-    this.exec.serializeRows(out, this.hasMetadata);
+    InternalDataSerializer.writeBoolean(interpreterExecution, out);
+    if (!interpreterExecution) {
+      this.exec.serializeRows(out, this.hasMetadata);
+    } else {
+      DataSerializer.writeStringArray(intpOutput, out);
+    }
   }
 
   @Override
   public void fromData(DataInput in) throws IOException, ClassNotFoundException {
-    final int numBytes = InternalDataSerializer.readArrayLength(in);
-    if (numBytes > 0) {
-      final byte[] rawData = DataSerializer.readByteArray(in, numBytes);
-      Version v = InternalDataSerializer.getVersionForDataStreamOrNull(in);
-      fromSerializedData(rawData, numBytes, v);
+    this.interpreterExecution = DataSerializer.readBoolean(in);
+    if (!this.interpreterExecution) {
+      final int numBytes = InternalDataSerializer.readArrayLength(in);
+      if (numBytes > 0) {
+        final byte[] rawData = DataSerializer.readByteArray(in, numBytes);
+        Version v = InternalDataSerializer.getVersionForDataStreamOrNull(in);
+        fromSerializedData(rawData, numBytes, v);
+      }
+    } else {
+      this.intpOutput = DataSerializer.readStringArray(in);
+      // just initialize the types assuming one col of type string
+      colNames = new String[] { "C0" };
+      nullability = new boolean[] { true };
+      this.dataTypes = new Object[1];
+      dtds = new DataTypeDescriptor[ ] {
+        // Randomly chosen 10000. The lines should not be bigger than this.
+        DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.VARCHAR, true, 10000) };
+      this.colTypes = new int[] { StoredFormatIds.SQL_VARCHAR_ID };
     }
   }
 
@@ -161,22 +186,24 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
   }
 
   private void makeTemplateDVDArr() {
-    if (this.isUpdateOrDeleteOrPut) {
-      DataValueDescriptor[] dvds = new DataValueDescriptor[1];
-      dvds[0] = new SQLInteger();
-      dtds = new DataTypeDescriptor[1];
-      dtds[0] = DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.INTEGER, false);
-      this.templateDVDRow = dvds;
-    } else {
-      dtds = new DataTypeDescriptor[colTypes.length];
-      DataValueDescriptor[] dvds = new DataValueDescriptor[colTypes.length];
-      for (int i = 0; i < colTypes.length; i++) {
-        int typeId = colTypes[i];
-        DataValueDescriptor dvd = getNewNullDVD(typeId, i, dtds,
-            precisions[i], scales[i]);
-        dvds[i] = dvd;
+    if (!this.interpreterExecution) {
+      if (this.isUpdateOrDeleteOrPut) {
+        DataValueDescriptor[] dvds = new DataValueDescriptor[1];
+        dvds[0] = new SQLInteger();
+        dtds = new DataTypeDescriptor[1];
+        dtds[0] = DataTypeDescriptor.getBuiltInDataTypeDescriptor(Types.INTEGER, false);
+        this.templateDVDRow = dvds;
+      } else {
+        dtds = new DataTypeDescriptor[colTypes.length];
+        DataValueDescriptor[] dvds = new DataValueDescriptor[colTypes.length];
+        for (int i = 0; i < colTypes.length; i++) {
+          int typeId = colTypes[i];
+          DataValueDescriptor dvd = getNewNullDVD(typeId, i, dtds,
+                  precisions[i], scales[i]);
+          dvds[i] = dvd;
+        }
+        this.templateDVDRow = dvds;
       }
-      this.templateDVDRow = dvds;
     }
   }
 
@@ -194,7 +221,10 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
     this.exec.packRows(msg, this, execObject);
   }
 
-  public ExecRow getNextRow() throws IOException, ClassNotFoundException, StandardException {
+  public ExecRow getNextRow() {
+    if (this.interpreterExecution) {
+      return getInterpreterNextRow();
+    }
     final ByteArrayDataInput in = this.dis;
     if (in != null) {
       Iterator<ValueRow> execRows = this.execRows;
@@ -217,6 +247,25 @@ public final class SnappyResultHolder extends GfxdDataSerializable {
       }
     }
     this.dis = null;
+    return null;
+  }
+
+  private ExecRow getInterpreterNextRow() {
+    if (this.intpOutput != null) {
+      if (this.execRows == null) {
+        ArrayList<ValueRow> list = new ArrayList<>();
+        for (int i=0; i< this.intpOutput.length; i++) {
+          ValueRow vr = new ValueRow(1);
+          vr.setColumn(1, new SQLVarchar(this.intpOutput[i]));
+          list.add(vr);
+        }
+        this.execRows = list.iterator();
+      }
+      if (this.execRows.hasNext()) {
+        ValueRow vr = this.execRows.next();
+        return vr;
+      }
+    }
     return null;
   }
 

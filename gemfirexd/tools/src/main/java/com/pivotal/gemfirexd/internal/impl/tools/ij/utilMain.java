@@ -50,14 +50,10 @@ import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.StopWatch;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.tools.JDBCDisplayUtil;
+import com.pivotal.gemfirexd.tools.GfxdUtilLauncher;
 import jline.console.ConsoleReader;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Stack;
-import java.util.Hashtable;
-import java.util.Properties;
+import java.util.*;
 import java.io.File;
 import java.io.InputStream;
 import java.io.FileInputStream;
@@ -129,8 +125,21 @@ public class utilMain implements java.security.PrivilegedAction {
 
 	static String basePrompt = "gfxd";
 
+	private static String incompleteprompt = null;
+	public static String getIncompletePrompt() {
+		if (incompleteprompt != null) return incompleteprompt;
+		StringBuilder sb = new StringBuilder();
+		int basePromptLength = basePrompt.length();
+		for (int i=0; i<basePromptLength; i++) {
+			sb.append(" ");
+		}
+		sb.append("|");
+		incompleteprompt = sb.toString();
+		return incompleteprompt;
+	}
+
 	public static void setBasePrompt(String prompt) {
-		if (prompt != null && prompt.trim().length() >= 3 && prompt.trim().length() <= 10) {
+		if (prompt != null && prompt.trim().length() >= 3 && prompt.trim().length() <= 15) {
 			basePrompt = prompt.trim();
 		}
 	}
@@ -227,6 +236,12 @@ public class utilMain implements java.security.PrivilegedAction {
 	}
 
 
+	private static String INTERPRETER_PREFIX = "exec scala ";
+	private String getInterpreterPrefixCmdString(String command) {
+	  return INTERPRETER_PREFIX + command;
+	}
+
+	private boolean isInterpreterMode = false;
 	/**
 	 * run ij over the specified input, sending output to the
 	 * specified output. Any prior input and output will be lost.
@@ -238,6 +253,10 @@ public class utilMain implements java.security.PrivilegedAction {
 	public void go(LocalizedInput[] in, LocalizedOutput out,
 				   Properties connAttributeDefaults) throws ijFatalException
 	{
+		String intpModeProperty = System.getProperty("LAUNCHER_INTERPRETER_MODE");
+		isInterpreterMode = intpModeProperty != null && intpModeProperty.equals("true");
+		if (isInterpreterMode) JDBCDisplayUtil.INTERPRETER_MODE = true;
+
 		this.out = out;
 		this.connAttributeDefaults = connAttributeDefaults;
 		
@@ -270,9 +289,11 @@ public class utilMain implements java.security.PrivilegedAction {
 				version = "?";
 			}
 			*/
-			out.println(convertGfxdMessageToSnappy(
-					langUtil.getTextMessage("IJ_IjVers30C199", GemFireVersion.getProductVersion() + " " +
-							GemFireVersion.getProductReleaseStage())));
+			if (!isInterpreterMode) {
+			  out.println(convertGfxdMessageToSnappy(
+			    langUtil.getTextMessage("IJ_IjVers30C199", GemFireVersion.getProductVersion() + " " +
+			    GemFireVersion.getProductReleaseStage())));
+			}
 			// GemStone changes END
 			for (int i = connEnv.length - 1; i >= 0; i--) { // print out any initial warnings...
 				Connection c = connEnv[i].getConnection();
@@ -310,6 +331,15 @@ public class utilMain implements java.security.PrivilegedAction {
 		cleanupGo(in);
 	}
 
+	private boolean isLocallyAllowedCommands(String command) {
+		for (String cmd : StatementFinder.commandsToStripColonPrefix) {
+			if (command != null) {
+				String lcCommand = command.toLowerCase();
+				if (lcCommand.startsWith(cmd)) return true;
+			}
+		}
+		return false;
+	}
 	/**
 	 * Support to run a script. Performs minimal setup
 	 * to set the passed in connection into the existing
@@ -390,9 +420,12 @@ public class utilMain implements java.security.PrivilegedAction {
 				command = commandGrabber[currCE].nextStatement();
 				*/
 // GemStone changes END
-
 				// if there is no next statement,
 				// pop back to the top saved grabber.
+				String originalCommand = command;
+				if (JDBCDisplayUtil.INTERPRETER_MODE && !JDBCDisplayUtil.INITIAL_CMD_IN_PROGRESS) {
+					command = StatementFinder.preProcessIntpLine(command);
+				}
 				while (command == null && ! oldGrabbers.empty()) {
 					// close the old input file if not System.in
 					if (fileInput) commandGrabber[currCE].close();
@@ -406,7 +439,12 @@ public class utilMain implements java.security.PrivilegedAction {
 					command = commandGrabber[currCE].nextStatement();
 					*/
 // GemStone changes END
+					originalCommand = command;
+					if (isInterpreterMode && !JDBCDisplayUtil.INITIAL_CMD_IN_PROGRESS) {
+						command = StatementFinder.preProcessIntpLine(command);
+					}
 				}
+				if (isInterpreterMode && command != null && command.isEmpty()) continue;
 
 				// if there are no grabbers left,
 				// we are done.
@@ -416,7 +454,7 @@ public class utilMain implements java.security.PrivilegedAction {
 				else {
 					boolean	elapsedTimeOn = ijParser.getElapsedTimeState();
 					long	beginTime = 0;
-					long	endTime;
+					long	endTime = 0;
 
 					if (fileInput) {
 						out.println(command+";");
@@ -439,10 +477,27 @@ public class utilMain implements java.security.PrivilegedAction {
 						beginTime = System.currentTimeMillis();
 					}
 
-					ijResult result = ijParser.ijStatement();
-					endTime = displayResult(out,result,connEnv[currCE].getConnection(),
-					    beginTime /* GemStoneAddition */, true);
+					boolean gotException = true;
+						ijResult result = ijParser.ijStatement();
+						// If this is interpreter mode then if it parses successfully then it should be just
+						// the allowed commands in INTERPRETER MODE
+						if (this.isInterpreterMode && !JDBCDisplayUtil.INITIAL_CMD_IN_PROGRESS) {
+							if (!isLocallyAllowedCommands(command) || !originalCommand.startsWith(":")) {
+								// throw dummy Parse Exception so that it is carried to actual interpreter
+								throw new ParseException();
+							}
+						}
+					ArrayList<String> initialFiles = GfxdUtilLauncher.initialRunFiles;
 
+					if (isInterpreterMode && (initialFiles == null || initialFiles.isEmpty())) {
+					  JDBCDisplayUtil.INITIAL_CMD_IN_PROGRESS = false;
+					  GfxdUtilLauncher.initialRunFiles = null;
+					}
+						if (this.isInterpreterMode && !JDBCDisplayUtil.BEFORE_CONNECT) {
+							endTime = displayResult(out, result, connEnv[currCE].getConnection(),
+									beginTime /* GemStoneAddition */, true);
+						}
+						JDBCDisplayUtil.BEFORE_CONNECT = false;
 					// if something went wrong, an SQLException or ijException was thrown.
 					// we can keep going to the next statement on those (see catches below).
 					// ijParseException means we try the SQL parser.
@@ -484,10 +539,23 @@ public class utilMain implements java.security.PrivilegedAction {
 					// unless it is considered fatal.
 					handleSQLException(out,e);
 // GemStone changes BEGIN
-					if (!"08001".equals(e.getSQLState())
-					    && !"08004".equals(e.getSQLState())) {
-					  printConnectUsage(command, out);
+					if (!JDBCDisplayUtil.INTERPRETER_MODE) {
+						if (!"08001".equals(e.getSQLState())
+								&& !"08004".equals(e.getSQLState())) {
+							printConnectUsage(command, out);
+						}
 					}
+                    String sqlstate = e.getSQLState();
+                    if (isInterpreterMode && ("40XD0".equalsIgnoreCase(sqlstate) ||
+                      "08004".equalsIgnoreCase(sqlstate))) {
+                      System.out.println("\nNot connected to cluster. Exiting...");
+                      System.exit(1);
+                    }
+                    // Actually exit for anything when the state is before connect
+                    if (JDBCDisplayUtil.BEFORE_CONNECT) {
+                      System.out.println("\nNot connected to cluster. Exiting..."
+                      + e.getSQLState() + " " + e.getMessage());
+                    }
 // GemStone changes END
     			} catch (ijException e) {
                     scriptErrorCount++;
@@ -746,7 +814,9 @@ public class utilMain implements java.security.PrivilegedAction {
 				boolean reportRunNum = false;
 				String firstToken = ClientSharedUtils.getStatementToken(command, 0);
 				// final String c = command.trim().toLowerCase();
-				if (firstToken.equalsIgnoreCase("set") || firstToken.equalsIgnoreCase("elapsed")) {
+				if (firstToken != null && (
+				  firstToken.equalsIgnoreCase("set") || (
+				  !this.isInterpreterMode && firstToken.equalsIgnoreCase("elapsed")))) {
 					repeatCommand = 1;
 				} else if (repeatCommand > 1) {
 					reportRunNum = true;
@@ -763,6 +833,11 @@ public class utilMain implements java.security.PrivilegedAction {
 				beginTime = System.currentTimeMillis();
 			}
 
+			// Here is where the command is sent to server
+			// so just prepend the intp prefix if in interpreter mode
+			if (isInterpreterMode) {
+			  command = getInterpreterPrefixCmdString(command);
+			}
 			ijResult result = ijParser.executeImmediate(command);
                         if (ijParser.getExplainMode() && command.startsWith("explain ")) {
                           redirected = RedirectedLocalizedOutput.getNewInstance();
@@ -772,10 +847,12 @@ public class utilMain implements java.security.PrivilegedAction {
                         }
 // GemStone changes BEGIN
       boolean displayCount = false;
-      if (firstToken.equalsIgnoreCase("insert") || firstToken.equalsIgnoreCase("update")
-        || firstToken.equalsIgnoreCase("delete") || firstToken.equalsIgnoreCase("put") ) {
-        displayCount = true;
-      }
+      if (!this.isInterpreterMode) {
+		  if (firstToken.equalsIgnoreCase("insert") || firstToken.equalsIgnoreCase("update")
+				  || firstToken.equalsIgnoreCase("delete") || firstToken.equalsIgnoreCase("put")) {
+			  displayCount = true;
+		  }
+	  }
 // GemStone changes END
 			endTime = displayResult(redirected == null ? out :
 			  redirected,result,connEnv[currCE].getConnection(),
@@ -808,6 +885,9 @@ public class utilMain implements java.security.PrivilegedAction {
 			// SQL exception occurred in ij's actions; print and continue
 			// unless it is considered fatal.
 			handleSQLException(out,e);
+			if ("40XD0".equalsIgnoreCase(e.getSQLState()) && JDBCDisplayUtil.INTERPRETER_MODE) {
+			    System.exit(1);
+            }
 	    } catch (ijException i) {
 // GemStone changes BEGIN
 	  		out.println(langUtil.getTextMessage("IJ_IjErro0_5",
@@ -968,7 +1048,7 @@ public class utilMain implements java.security.PrivilegedAction {
 	 {
 		if (newStatement) {
 // GemStone changes BEGIN
-				out.print(basePrompt + (tag == null ? "" : tag) + "> ");
+					out.print(basePrompt + (tag == null ? "" : tag) + "> ");
 	  		/* (original code)
 	  		out.print("ij"+(tag==null?"":tag)+"> ");
 	  		*/
@@ -983,7 +1063,12 @@ public class utilMain implements java.security.PrivilegedAction {
 // GemStone changes BEGIN
 	static String getPrompt(boolean newStatement, String tag) {
 	  if (newStatement) {
-	    return basePrompt + tag + "> ";
+		  if (JDBCDisplayUtil.lastWasIncomplete) {
+			  JDBCDisplayUtil.lastWasIncomplete = false;
+			  return getIncompletePrompt();
+		  } else {
+			  return basePrompt + tag + "> ";
+		  }
 	  }
 	  return "> ";
 	}

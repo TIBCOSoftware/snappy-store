@@ -61,12 +61,15 @@ public abstract class CallbackFactoryProvider {
     }
 
     @Override
+    public InterpreterExecute getInterpreterExecution(String sql, Version v, Long connId) {
+        return null;
+    }
+
     public SparkSQLExecute getSampleInsertExecute(String baseTable,  LeadNodeExecutionContext ctx,
         Version v, List<DataValueDescriptor[]> dvdRows, byte[] serializedDVDs) {
       return null;
     }
 
-    @Override
     public void exportData(Long connId, String exportUri, String formatType, String tableNames, Boolean ignoreError){
     }
 

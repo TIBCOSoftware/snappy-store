@@ -96,7 +96,7 @@ public class ConnectionURLTest extends JdbcTestBase {
     s.execute("insert into t1 (c1, c2) values (10, 'YYYY')");
     s.execute("insert into t1 (c1, c2) values (20, 'YYYY')");
     s.executeQuery("select * from t1 where t1.c1=10");
-
+    s.execute("drop table t1");
     conn.close();
   }
 
@@ -164,7 +164,8 @@ public class ConnectionURLTest extends JdbcTestBase {
 
      s = conn.createStatement();
      s.executeQuery("select * from t1 where t1.c1=10");
-    return;
+     s.execute("drop table t1");
+     conn.close();
   }
 
   /**
@@ -210,6 +211,7 @@ public class ConnectionURLTest extends JdbcTestBase {
     rs = s.executeQuery("select id from sys.members");
     assertTrue(rs.next());
     assertFalse(rs.next());
+    s.execute("drop table t1");
     conn.close();
 
     // check exception without dbName using a subsubprotocol
