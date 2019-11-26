@@ -38,6 +38,7 @@ public class ClusterStatistics {
     private static final ClusterStatistics INSTANCE = new ClusterStatistics();
   }
 
+  private long startTime = System.currentTimeMillis();
   private int totalCPUCores = 0;
 
   private final CircularFifoBuffer timeLine =
@@ -183,6 +184,10 @@ public class ClusterStatistics {
           SnappyUtils.bytesToGivenUnits(sumDiskStoreDiskSpace, SnappyUtils.STORAGE_SIZE_UNIT_GB));
     }
 
+  }
+
+  public long getStartTime() {
+    return startTime;
   }
 
   public int getTotalCPUCores() {
