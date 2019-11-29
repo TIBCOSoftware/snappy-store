@@ -19,6 +19,6 @@ package com.pivotal.gemfirexd.internal.snappy;
 
 public interface InterpreterExecute {
 
-  String[] execute(String user, String authToken);
+  Object execute(String user, String authToken);
 
 }

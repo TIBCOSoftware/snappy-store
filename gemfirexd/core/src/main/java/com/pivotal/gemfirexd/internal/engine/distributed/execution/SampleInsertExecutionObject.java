@@ -34,8 +34,8 @@ public class SampleInsertExecutionObject extends LeadNodeExecutionObject {
    */
   public SampleInsertExecutionObject() {}
 
-  public SparkSQLExecute getSparkSQlExecute(Version v, LeadNodeExecutionContext ctx) throws Exception {
-
+  public SparkSQLExecute getSparkSQlExecute(Version v,
+      LeadNodeExecutionContext ctx, Object dfOject) throws Exception {
     return CallbackFactoryProvider.getClusterCallbacks().getSampleInsertExecute( this.baseTableName,
       ctx, v, this.rows, this.serializedDVDs);
   }
