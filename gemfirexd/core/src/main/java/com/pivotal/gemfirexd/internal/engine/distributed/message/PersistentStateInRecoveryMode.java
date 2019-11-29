@@ -396,7 +396,7 @@ public class PersistentStateInRecoveryMode {
               thisColView.member.equals(otherColView.member) ||
               (thisColView == null && otherColView == null))
       ) {
-        log("Comparing same object. Doesn't make sense to do this. Please check.");
+        log("Comparing same object. Doesn't make sense to do this. Please check debug logs.");
         return 0;
       }
 
@@ -420,8 +420,7 @@ public class PersistentStateInRecoveryMode {
         // row tables as col regs are absent
         int retVal = (new RecoveryModePersistentView(thisRowView).compareTo(otherRowView));
         log("Row table: return value = " + retVal);
-        int retVal1 = retVal;
-        return retVal1;
+        return retVal;
       } else {
         // column tables
         boolean otherRowDominates = otherRowView.rvv.dominates(thisRowView.rvv);
@@ -433,12 +432,15 @@ public class PersistentStateInRecoveryMode {
         log("thisColView Dominates otherColView: " + thisColView.rvv.dominates(otherColView.rvv));
         log("otherColView Dominates thisColView: " + otherColView.rvv.dominates(thisColView.rvv));
 
-//              t, t | t, t
-//              t, t | f, f
-//              f, f | t, t
-//              f, f | f, f
-//              t, f | f, t
-//              f, t | t, f
+//       Convention: (thisRowDominates, otherRowDominates) | (thisColDominates, otherColDominates)
+//               ROW  | COLUMN
+//              --------------
+//              (t, t) | (t, t)
+//              (t, t) | (f, f)
+//              (f, f) | (t, t)
+//              (f, f) | (f, f)
+//              (t, f) | (f, t)
+//              (f, t) | (t, f)
         boolean isRVVNotUsable =
             ((thisRowDominates == otherRowDominates &&
                 otherColDominates == thisColDominates) ||
@@ -476,23 +478,30 @@ public class PersistentStateInRecoveryMode {
 
 
           if (thisColDominates == otherColDominates) { // true == true , false == false
+            // todo: when both cases are false, it is better to ask user for a preference
+            // todo: than relying on row buckets.
             // Decide on basis of row rvv
-//              t, t | f, t
-//              t, t | t, f
-//              f, f | t, f
-//              f, f | f, t
+//              ROW  | COLUMN
+//              -------------
+//              (f, t)| (t, t)
+//              (t, f)| (t, t)
+//              (t, f)| (f, f)
+//              (f, t)| (f, f)
             return thisRowDominates ? 1 : -1;
           } else if (thisRowDominates == otherRowDominates) { // true == true , false == false
-//              t, t | f, t
-//              t, t | t, f
-//              f, f | t, f
-//              f, f | f, t
+//              ROW  | COLUMN
+//              -------------
+//              (t, t) | (f, t)
+//              (t, t) | (t, f)
+//              (f, f) | (t, f)
+//              (f, f) | (f, t)
             // Decide on basis of col rvv
             return thisColDominates ? 1 : -1;
           } else {
-//              t, f | t, f
-//              f, t | f, t
-            // conflicting case  - not sure when will this happen?
+//              ROW  | COLUMN
+//              -------------
+//              (t, f) | (t, f)
+//              (f, t) | (f, t)
             return thisColDominates && thisRowDominates ? 1 : -1;
           }
 
