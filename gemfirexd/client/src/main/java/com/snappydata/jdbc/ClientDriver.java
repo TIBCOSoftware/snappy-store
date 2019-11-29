@@ -1,5 +1,7 @@
 /*
- * Copyright (c) 2017-2019 TIBCO Software Inc. All rights reserved.
+ * Changes for SnappyData data platform.
+ *
+ * Portions Copyright (c) 2017-2019 TIBCO Software Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License. You
@@ -14,11 +16,11 @@
  * permissions and limitations under the License. See accompanying
  * LICENSE file.
  */
+package com.snappydata.jdbc;
 
-package com.pivotal.gemfirexd.internal.snappy;
-
-public interface InterpreterExecute {
-
-  Object execute(String user, String authToken);
-
+/**
+ *  This allows using com.snappydata.jdbc.ClientDriver instead of
+ *  {@link io.snappydata.jdbc.ClientDriver}
+ */
+public class ClientDriver extends io.snappydata.jdbc.ClientDriver {
 }

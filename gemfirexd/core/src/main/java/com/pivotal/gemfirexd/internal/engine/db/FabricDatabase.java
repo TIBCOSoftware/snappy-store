@@ -1685,8 +1685,8 @@ public final class FabricDatabase implements ModuleControl,
     PersistentStateInRecoveryMode pmsg
         = new PersistentStateInRecoveryMode(allEntries, otherExtractedDDLs);
     for (DiskStoreImpl ds : diskStores) {
-      if (logger.infoEnabled()) {
-        logger.info("preparePersistentStatesMsg: disk store = " + ds.getName());
+      if (logger.fineEnabled()) {
+        logger.fine("preparePersistentStatesMsg: disk store = " + ds.getName());
       }
       long latestOplogTime = ds.getLatestModifiedTime();
       Map<Long, AbstractDiskRegion> drs = ds.getAllDiskRegions();
@@ -1697,18 +1697,18 @@ public final class FabricDatabase implements ModuleControl,
           Map.Entry<Long, AbstractDiskRegion> elem = iter.next();
           AbstractDiskRegion adr = elem.getValue();
           if (adr.getRecoveredEntryMap() == null) {
-            if (logger.infoEnabled()) {
-              logger.info("preparePersistentStatesMsg: adr = " + adr.getFullPath() + " continuing as map is null");
+            if (logger.fineEnabled()) {
+              logger.fine("preparePersistentStatesMsg: adr = " + adr.getFullPath() + " continuing as map is null");
             }
             continue;
           }
           if (adr.getRecoveredEntryMap().size() == 0) {
-            if (logger.infoEnabled()) {
-              logger.info("preparePersistentStatesMsg: adr = " + adr.getFullPath() + " continuing as size of map is 0");
+            if (logger.fineEnabled()) {
+              logger.fine("preparePersistentStatesMsg: adr = " + adr.getFullPath() + " continuing as size of map is 0");
             }
           } else {
-            if (logger.infoEnabled()) {
-              logger.info("preparePersistentStatesMsg: adr = " + adr.getFullPath() + " size = " + adr.getRecoveredEntryMap().size());
+            if (logger.fineEnabled()) {
+              logger.fine("preparePersistentStatesMsg: adr = " + adr.getFullPath() + " size = " + adr.getRecoveredEntryMap().size());
             }
           }
           long mostRecentModifiedTime = 0;

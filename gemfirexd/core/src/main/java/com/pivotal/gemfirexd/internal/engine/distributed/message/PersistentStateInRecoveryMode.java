@@ -309,18 +309,24 @@ public class PersistentStateInRecoveryMode {
       }
       if (this.rvv.logicallySameAs(other.rvv) ||
           (!this.rvv.dominates(other.rvv) && !other.rvv.dominates(this.rvv))) {
+        log("Both dominate each other?" + this.rvv.logicallySameAs(other.rvv));
+        log("Both don't dominate each other?" +
+            (!this.rvv.dominates(other.rvv) && !other.rvv.dominates(this.rvv)));
         log("RVV based approach is not usable.");
-        if (this.latestOplogTime <= other.latestOplogTime) {
-          SanityManager.DEBUG_PRINT("info", " 1. this.latestOplogTime <= other.latestOplogTime");
-          log("Deciding on basis of Oplog file time: return -1");
-          return -1;
-        }
+
         if (this.mostRecentEntryModifiedTime < other.mostRecentEntryModifiedTime) {
           // replacing "<=" with "<" as former makes it non-commutative
           log("Deciding on basis of Modified entry time: return -1");
           return -1;
+        } else if (this.mostRecentEntryModifiedTime > other.mostRecentEntryModifiedTime) {
+          // replacing "<=" with "<" as former makes it non-commutative
+          log("Deciding on basis of Modified entry time: return 1");
+          return 1;
+        } else if (this.latestOplogTime <= other.latestOplogTime) {
+          log("Deciding on basis of Oplog file time: return -1");
+          return -1;
         }
-        log("Oplog file time AND Modified entry time are greater for LHS: return 1");
+        log("Deciding on basis of Oplog file time: return 1");
         return 1;
       } else {
         log("Use RVV based approach.");
@@ -390,7 +396,7 @@ public class PersistentStateInRecoveryMode {
               thisColView.member.equals(otherColView.member) ||
               (thisColView == null && otherColView == null))
       ) {
-        SanityManager.DEBUG_PRINT("info", "Comparing same object. Doesn't make sense to do this. Please check.");
+        log("Comparing same object. Doesn't make sense to do this. Please check debug logs.");
         return 0;
       }
 
@@ -414,53 +420,52 @@ public class PersistentStateInRecoveryMode {
         // row tables as col regs are absent
         int retVal = (new RecoveryModePersistentView(thisRowView).compareTo(otherRowView));
         log("Row table: return value = " + retVal);
-        int retVal1 = retVal;
-        return retVal1;
+        return retVal;
       } else {
-        // col tables
-        boolean rowAndColRVVLogicallySame =
-            thisRowView.rvv.logicallySameAs(otherRowView.rvv) &&
-                (thisColView.rvv.logicallySameAs(otherColView.rvv));
-        boolean rowAndColLatestOplogTimeSame =
-            thisColView.latestOplogTime == otherColView.latestOplogTime &&
-                thisRowView.latestOplogTime == otherRowView.latestOplogTime;
+        // column tables
         boolean otherRowDominates = otherRowView.rvv.dominates(thisRowView.rvv);
         boolean otherColDominates = otherColView.rvv.dominates(thisColView.rvv);
         boolean thisRowDominates = thisRowView.rvv.dominates(otherRowView.rvv);
         boolean thisColDominates = thisColView.rvv.dominates(otherColView.rvv);
+        log("thisRowView Dominates otherRowView: " + thisRowView.rvv.dominates(otherRowView.rvv));
+        log("otherRowView Dominates thisRowView: " + otherRowView.rvv.dominates(thisRowView.rvv));
+        log("thisColView Dominates otherColView: " + thisColView.rvv.dominates(otherColView.rvv));
+        log("otherColView Dominates thisColView: " + otherColView.rvv.dominates(thisColView.rvv));
 
-//              t, t | t, t
-//              t, t | f, f
-//              f, f | t, t
-//              f, f | f, f
-//              t, f | f, t
-//              f, t | t, f
+//       Convention: (thisRowDominates, otherRowDominates) | (thisColDominates, otherColDominates)
+//               ROW  | COLUMN
+//              --------------
+//              (t, t) | (t, t)
+//              (t, t) | (f, f)
+//              (f, f) | (t, t)
+//              (f, f) | (f, f)
+//              (t, f) | (f, t)
+//              (f, t) | (t, f)
         boolean isRVVNotUsable =
             ((thisRowDominates == otherRowDominates &&
                 otherColDominates == thisColDominates) ||
                 (thisRowDominates != otherRowDominates &&
                     otherColDominates != thisColDominates));
 
-        log("thisRowView Dominates otherRowView: " + thisRowView.rvv.dominates(otherRowView.rvv));
-        log("otherRowView Dominates thisRowView: " + otherRowView.rvv.dominates(thisRowView.rvv));
-        log("thisColView Dominates otherColView: " + thisColView.rvv.dominates(otherColView.rvv));
-        log("otherColView Dominates thisColView: " + otherColView.rvv.dominates(thisColView.rvv));
+        boolean rowAndColLatestEntryModifiedTimeIsSame =
+            thisColView.mostRecentEntryModifiedTime == otherColView.mostRecentEntryModifiedTime &&
+                thisRowView.mostRecentEntryModifiedTime == otherRowView.mostRecentEntryModifiedTime;
 
         if (isRVVNotUsable) {
           log("RVV based approach is not usable.");
-          if (rowAndColLatestOplogTimeSame) {
-            int retVal = compareTime(thisColView.getMostRecentEntryModifiedTime(),
-                otherColView.getMostRecentEntryModifiedTime(),
-                thisRowView.getMostRecentEntryModifiedTime(),
-                otherRowView.getMostRecentEntryModifiedTime());
-            log("Decide on basis of MostRecentEntryModifiedTime: return value = " + retVal);
-            return retVal;
-          } else {
+          if (rowAndColLatestEntryModifiedTimeIsSame) {
             int retVal = compareTime(thisColView.getLatestOplogTime(),
                 otherColView.getLatestOplogTime(),
                 thisRowView.getLatestOplogTime(),
                 otherRowView.getLatestOplogTime());
             log("Decide on basis of LatestOplogTime: return value = " + retVal);
+            return retVal;
+          } else {
+            int retVal = compareTime(thisColView.getMostRecentEntryModifiedTime(),
+                otherColView.getMostRecentEntryModifiedTime(),
+                thisRowView.getMostRecentEntryModifiedTime(),
+                otherRowView.getMostRecentEntryModifiedTime());
+            log("Decide on basis of MostRecentEntryModifiedTime: return value = " + retVal);
             return retVal;
           }
         } else {
@@ -473,23 +478,30 @@ public class PersistentStateInRecoveryMode {
 
 
           if (thisColDominates == otherColDominates) { // true == true , false == false
+            // todo: when both cases are false, it is better to ask user for a preference
+            // todo: than relying on row buckets.
             // Decide on basis of row rvv
-//              t, t | f, t
-//              t, t | t, f
-//              f, f | t, f
-//              f, f | f, t
+//              ROW  | COLUMN
+//              -------------
+//              (f, t)| (t, t)
+//              (t, f)| (t, t)
+//              (t, f)| (f, f)
+//              (f, t)| (f, f)
             return thisRowDominates ? 1 : -1;
           } else if (thisRowDominates == otherRowDominates) { // true == true , false == false
-//              t, t | f, t
-//              t, t | t, f
-//              f, f | t, f
-//              f, f | f, t
+//              ROW  | COLUMN
+//              -------------
+//              (t, t) | (f, t)
+//              (t, t) | (t, f)
+//              (f, f) | (t, f)
+//              (f, f) | (f, t)
             // Decide on basis of col rvv
             return thisColDominates ? 1 : -1;
           } else {
-//              t, f | t, f
-//              f, t | f, t
-            // conflicting case  - not sure when will this happen?
+//              ROW  | COLUMN
+//              -------------
+//              (t, f) | (t, f)
+//              (f, t) | (f, t)
             return thisColDominates && thisRowDominates ? 1 : -1;
           }
 
