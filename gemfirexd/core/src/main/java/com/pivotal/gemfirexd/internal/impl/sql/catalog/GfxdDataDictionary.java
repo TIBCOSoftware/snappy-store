@@ -1837,12 +1837,6 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
     }
 
     {
-      String[] arg_name = new String[] {};
-      TypeDescriptor[] arg_types = new TypeDescriptor[] {};
-      super.createSystemProcedureOrFunction("GENERATE_LOAD_SCRIPTS", sysUUID, arg_name, arg_types, 0, 0, RoutineAliasInfo.READS_SQL_DATA, null, newlyCreatedRoutines, tc, GFXD_SYS_PROC_CLASSNAME, false);
-    }
-
-    {
       // GET_BUCKET_TO_SERVER_MAPPING
       String[] arg_names = new String[] { "FQTN", "BKT_TO_SERVER_MAPPING" };
       TypeDescriptor[] arg_types = new TypeDescriptor[] { DataTypeDescriptor

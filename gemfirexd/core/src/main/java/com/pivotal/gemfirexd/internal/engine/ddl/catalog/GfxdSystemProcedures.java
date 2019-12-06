@@ -1610,26 +1610,6 @@ public class GfxdSystemProcedures extends SystemProcedures {
     }
   }
 
-  public static void GENERATE_LOAD_SCRIPTS() throws SQLException {
-    try {
-      if (GemFireXDUtils.TraceSysProcedures) {
-        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
-            "Executing GENERATE_LOAD_SCRIPTS");
-      }
-      Long connectionId = Misc.getLanguageConnectionContext().getConnectionId();
-      GfxdListResultCollector collector = new GfxdListResultCollector();
-      GetLeadNodeInfoAsStringMessage msg = new GetLeadNodeInfoAsStringMessage(
-          collector, GetLeadNodeInfoAsStringMessage.DataReqType.GENERATE_LOAD_SCRIPTS, connectionId);
-      msg.executeFunction();
-      if (GemFireXDUtils.TraceSysProcedures) {
-        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_SYS_PROCEDURES,
-            "GENERATE_LOAD_SCRIPTS successful.");
-      }
-    } catch(StandardException e) {
-      throw PublicAPI.wrapStandardException(e);
-    }
-  }
-
   /**
    * Create or drop reservoir region for sampler. Note that the creat and drop operation
    * are intentionally combined in single procedure here to make conflation of create and

@@ -49,11 +49,10 @@ public interface ClusterCallbacks {
   SparkSQLExecute getSampleInsertExecute(String baseTable,  LeadNodeExecutionContext ctx,
       Version v, List<DataValueDescriptor[]> dvdRows, byte[] serializedDVDs);
 
-  void exportData(Long connId, String exportUri, String formatType, String tableNames, Boolean ignoreError);
+  void exportData(Long connId, String exportUri, String formatType, String tableNames,
+      Boolean ignoreError);
 
   void exportDDLs(Long connId, String exportUri);
-
-  void generateLoadScripts(Long connId);
 
   Object readDataType(ByteArrayDataInput in);
 
