@@ -729,7 +729,7 @@ public class PersistentOplogSet implements OplogSet {
       if (!parent.isOffline()) {
         // schedule GFXD index recovery first
         parent.scheduleIndexRecovery(oplogSet, false);
-        if(recoverValues() && !recoverValuesSync()) {
+        if(!parent.getCache().isSnappyRecoveryMode() && recoverValues() && !recoverValuesSync()) {
           //TODO DAN - should we defer compaction until after
           //value recovery is complete? Or at least until after
           //value recovery for a given oplog is complete?
