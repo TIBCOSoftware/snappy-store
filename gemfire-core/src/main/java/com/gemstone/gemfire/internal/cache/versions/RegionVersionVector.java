@@ -19,12 +19,7 @@ package com.gemstone.gemfire.internal.cache.versions;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.ConcurrentModificationException;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -784,7 +779,9 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
       }
 
       holder.recordVersion(version, logger);
+
       memberToVersionSnapshot.put(holder.id, holder);
+
       forPrinting = memberToVersionSnapshot;
     }
 
@@ -800,6 +797,67 @@ public abstract class RegionVersionVector<T extends VersionSource<?>> implements
     }
   }
 
+  public Map<T, RegionVersionHolder<T>> getMemToVSnapshotCopy() {
+    Map<T, RegionVersionHolder<T>> m = new HashMap();
+    for (Map.Entry<T, RegionVersionHolder<T>> entry : memberToVersionSnapshot.entrySet()) {
+      m.put(entry.getKey(), entry.getValue().clone());
+    }
+    return m;
+  }
+
+  public Map<T, RegionVersionHolder<T>> recordVersionForSnapshotWithoutPublish(T member, long version,
+    Map<T, RegionVersionHolder<T>> m) {
+    LogWriterI18n logger = getLoggerI18n();
+    T mbr = member;
+    GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    if (cache != null && !cache.snapshotEnabled()) {
+      return null;
+    }
+    RegionVersionHolder<T> holder;
+    //Find the version holder object
+    synchronized (memberToVersionSnapshot) {
+      holder = m.get(mbr);
+      if (holder == null) {
+        mbr = getCanonicalId(mbr);
+        holder = new RegionVersionHolder<T>(mbr);
+      }
+      holder.recordVersion(version, logger);
+
+      // instead of putting the holder save it
+      // and do a putAll
+      m.put(holder.id, holder);
+    }
+
+    if (logger!= null && logger.fineEnabled()) {
+
+      logger.fine("Recorded version: " + version + " for member " + member + " in the snapshot region : "
+              + " the snapshot is " + m +
+              " it contains version after recording "
+              + m.get(member).contains(version));
+    }
+    return m;
+
+  }
+
+  public void recordAllVersion(Map<T, RegionVersionHolder<T>> versions) {
+    LogWriterI18n logger = getLoggerI18n();
+
+    GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    if (cache != null && !cache.snapshotEnabled()) {
+      return;
+    }
+    RegionVersionHolder<T> holder;
+    Map<T, RegionVersionHolder<T>> forPrinting;
+    //Find the version holder object
+    synchronized (memberToVersionSnapshot) {
+      memberToVersionSnapshot.putAll(versions);
+      forPrinting = memberToVersionSnapshot;
+    }
+    if (logger!= null && logger.fineEnabled()) {
+
+      logger.fine("Recorded version: " + versions + " After record:" + forPrinting);
+    }
+  }
   /**
    * Records a received region-version.  These are transmitted in VersionTags
    * in messages between peers and from servers to clients.  In general you

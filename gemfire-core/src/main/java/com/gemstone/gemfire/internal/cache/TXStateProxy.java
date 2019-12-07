@@ -4792,7 +4792,7 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
   }
 
   @Override
-  public void recordVersionForSnapshot(Object member, long version, Region region) {
+  public void recordVersionForSnapshot(Object member, long version, LocalRegion region) {
     final TXState localState = getTXStateForRead();
     localState.recordVersionForSnapshot(member, version, region);
   }

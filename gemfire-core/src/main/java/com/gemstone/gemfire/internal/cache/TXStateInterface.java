@@ -177,5 +177,5 @@ public interface TXStateInterface extends InternalDataView {
 
   public boolean isSnapshot();
 
-  public void recordVersionForSnapshot(Object member, long version, Region region);
+  public void recordVersionForSnapshot(Object member, long version, LocalRegion region);
 }

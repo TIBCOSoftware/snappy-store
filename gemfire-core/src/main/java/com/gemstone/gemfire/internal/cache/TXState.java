@@ -46,11 +46,7 @@ import com.gemstone.gemfire.internal.cache.locks.LockingPolicy.ReadEntryUnderLoc
 import com.gemstone.gemfire.internal.cache.locks.NonReentrantLock;
 import com.gemstone.gemfire.internal.cache.tier.sockets.ClientProxyMembershipID;
 import com.gemstone.gemfire.internal.cache.tier.sockets.VersionedObjectList;
-import com.gemstone.gemfire.internal.cache.versions.RegionVersionHolder;
-import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
-import com.gemstone.gemfire.internal.cache.versions.VersionSource;
-import com.gemstone.gemfire.internal.cache.versions.VersionStamp;
-import com.gemstone.gemfire.internal.cache.versions.VersionTag;
+import com.gemstone.gemfire.internal.cache.versions.*;
 import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
 import com.gemstone.gemfire.internal.concurrent.CustomEntryConcurrentHashMap;
 import com.gemstone.gemfire.internal.concurrent.MapCallback;
@@ -1146,18 +1142,27 @@ public final class TXState implements TXStateInterface {
       if (isSnapshot() || cache.snapshotEnabledForTest()) {
         // first take a lock at cache level so that we don't go into deadlock or sort array before
         // This is for tx RC, for snapshot just record all the versions from the queue
-        //TODO: this is performance issue: Need to make the lock granular at region level.
-        // also write a different recordVersion which will record without making clone
-
         cache.acquireWriteLockOnSnapshotRvv();
         try {
+          Map<LocalRegion, Map<VersionSource, VersionHolder>> s = new HashMap();
           for (VersionInformation vi : queue) {
             if (TXStateProxy.LOG_FINE) {
               logger.info(LocalizedStrings.DEBUG, "Recording version " + vi + " from snapshot to " +
-                  "region.");
+                      "region.");
             }
-            ((LocalRegion)vi.region).getVersionVector().
-                recordVersionForSnapshot((VersionSource)vi.member, vi.version, null);
+
+            if (vi.region.isSnapshotEnabledRegion()) {
+              Map versionV = s.get(vi.region);
+              if (versionV == null) {
+                versionV = vi.region.getVersionVector().getMemToVSnapshotCopy();
+                s.put(vi.region, versionV);
+              }
+              vi.region.getVersionVector().
+                      recordVersionForSnapshotWithoutPublish((VersionSource) vi.member, vi.version, versionV);
+            }
+          }
+          for (Map.Entry<LocalRegion, Map<VersionSource, VersionHolder>> entry : s.entrySet()) {
+            entry.getKey().getVersionVector().recordAllVersion(entry.getValue());
           }
         } finally {
           cache.releaseWriteLockOnSnapshotRvv();
@@ -4270,8 +4275,9 @@ public final class TXState implements TXStateInterface {
   }
 
   @Override
-  public void recordVersionForSnapshot(Object member, long version, Region region) {
+  public void recordVersionForSnapshot(Object member, long version, LocalRegion region) {
     queue.add(new VersionInformation(member, version, region));
+
     Boolean wasPresent = writeRegions.putIfAbsent(region, true);
     if (wasPresent == null) {
       if (region instanceof BucketRegion) {
@@ -4284,8 +4290,8 @@ public final class TXState implements TXStateInterface {
   class VersionInformation {
     Object member;
     long version;
-    Region region;
-    public VersionInformation(Object member, long version, Region reg){
+    LocalRegion region;
+    public VersionInformation(Object member, long version, LocalRegion reg){
       this.member = member;
       this.version = version;
       this.region = reg;
