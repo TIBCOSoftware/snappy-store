@@ -1927,10 +1927,10 @@ boost::shared_ptr<TSSLSocket> ClientService::createSocket(
       sslSocketFactory.authenticate(true);
       sslProperty = this->getSSLPropertyName(SSLProperty::KEYSTORE);
       std::string propVal = this->getSSLPropertyValue(sslProperty);
-      sslSocketFactory.loadCertificate(propVal.c_str());
+      sslSocketFactory.loadPrivateKey(propVal.c_str());
       sslProperty = this->getSSLPropertyName(SSLProperty::TRUSTSTORE);
       propVal = this->getSSLPropertyValue(sslProperty);
-      sslSocketFactory.loadPrivateKey(propVal.c_str());
+      sslSocketFactory.loadCertificate(propVal.c_str());
       /*TODO:
        * keystore-password and truststore-password fields are passed to OpenSSL API by function callback TSSLSocketFactory.getPassword.
        * This needs to call the appropriate callback method to fetch password field from UI by extending TSSLSocketFactory.
