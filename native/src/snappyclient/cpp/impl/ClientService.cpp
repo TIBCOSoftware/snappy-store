@@ -1943,6 +1943,8 @@ boost::shared_ptr<TSSLSocket> ClientService::createSocket(
       propVal = this->getSSLPropertyValue(sslProperty);
       if(!propVal.empty()){
         sslSocketFactory.ciphers(propVal);
+      }else{
+        sslSocketFactory.ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
       }
 
     } else {
