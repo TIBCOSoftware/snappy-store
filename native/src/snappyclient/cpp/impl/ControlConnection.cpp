@@ -303,7 +303,7 @@ void ControlConnection::failoverToAvailableHost(
             || m_snappyServerType == thrift::ServerType::THRIFT_SNAPPY_BP_SSL
             || m_snappyServerType
                 == thrift::ServerType::THRIFT_SNAPPY_CP_SSL) {
-          tTransport = service->createSocket(controlAddr.hostName, controlAddr.port);
+          tTransport = service->createSSLSocket(controlAddr.hostName, controlAddr.port);
         } else if (m_snappyServerType == thrift::ServerType::THRIFT_LOCATOR_BP
             || m_snappyServerType == thrift::ServerType::THRIFT_LOCATOR_CP
             || m_snappyServerType == thrift::ServerType::THRIFT_SNAPPY_BP

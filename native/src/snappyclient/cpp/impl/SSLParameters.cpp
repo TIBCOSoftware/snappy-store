@@ -1,15 +1,32 @@
 /*
- * SSLParameters.cpp
+ * Copyright (c) 2017-2019 TIBCO Software Inc. All rights reserved.
  *
- *  Created on: 13-Dec-2019
- *      Author: pbisen
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
  */
 
-//#include "thrift/snappydata_struct_SnappyException.h"
 #include "SSLParameters.h"
+
+#include <boost/algorithm/string.hpp>
+
 using namespace io::snappydata;
 using namespace io::snappydata::client::impl;
 using namespace io::snappydata::thrift;
+
+const std::set<std::string> SSLParameters::s_sslProperties {
+    "protocol", "cipher-suites", "client-auth", "enabled-protocols", "keystore",
+    "keystore-password", "certificate", "certificate-password", "truststore",
+    "truststore-password" };
 
 void SSLParameters::operator()(const std::string& str) {
   size_t spos;
@@ -23,61 +40,104 @@ void SSLParameters::operator()(const std::string& str) {
 
 void SSLParameters::setSSLProperty(std::string &propertyName,
     std::string& value) {
-  auto itr = sslProperties.find(propertyName);
-  if (itr != sslProperties.end()) {
-    auto mapItr = sslPropValMap.find(propertyName);
-    if (mapItr == sslPropValMap.end()) {
-      sslPropValMap.insert(
+  auto itr = s_sslProperties.find(propertyName);
+  if (itr != s_sslProperties.end()) {
+    auto mapItr = m_sslPropValMap.find(propertyName);
+    if (mapItr == m_sslPropValMap.end()) {
+      m_sslPropValMap.insert(
           std::pair<std::string, std::string>(propertyName, value));
     }
-  }else{
-    throw std::invalid_argument(":Unknown SSL Property:" + propertyName );
-  }
-}
-std::string SSLParameters::getSSLPropertyValue(std::string &propertyName) {
-  std::string val = "";
-  auto itr = sslProperties.find(propertyName);
-  if (itr != sslProperties.end()) {
-    auto itr = sslPropValMap.find(propertyName);
-    if (itr != sslPropValMap.end()) {
-      val = itr->second;
-    }
-    return val;
   } else {
     throw std::invalid_argument(":Unknown SSL Property:" + propertyName);
   }
-
 }
+
 std::string SSLParameters::getSSLPropertyName(SSLProperty sslProperty) {
-  std::string propertyName = "";
+  m_currentProperty = sslProperty;
   switch (sslProperty) {
-    case SSLProperty::CIPHERSUITES:
-      propertyName = "cipher-suites";
-      break;
-    case SSLProperty::CLIENTAUTH:
-      propertyName = "client-auth";
-      break;
-    case SSLProperty::ENABLEPROTOCOLS:
-      propertyName = "enabled-protocols";
-      break;
-    case SSLProperty::KEYSTORE:
-      propertyName = "keystore";
-      break;
-    case SSLProperty::KEYSTOREPASSWORD:
-      propertyName = "keystore-password";
-      break;
     case SSLProperty::PROTOCOL:
-      propertyName = "protocol";
+      return "protocol";
+    case SSLProperty::CIPHERSUITES:
+      return "cipher-suites";
+    case SSLProperty::CLIENTAUTH:
+      return "client-auth";
+    case SSLProperty::KEYSTORE:
+      return "keystore";
+    case SSLProperty::KEYSTOREPASSWORD:
+      return "keystore-password";
+    case SSLProperty::CERTIFICATE:
+      return "certificate";
+    case SSLProperty::CERTIFICATEPASSWORD:
+      return "certificate-password";
+    case SSLProperty::TRUSTSTORE:
+      return "truststore";
+    case SSLProperty::TRUSTSTOREPASSWORD:
+      return "truststore-password";
+    default:
+      throw std::invalid_argument(
+          ":Unknown SSL Property enum: "
+              + std::to_string(static_cast<int>(sslProperty)));
+  }
+}
+
+std::string SSLParameters::getSSLPropertyValue(
+    const std::string &propertyName) const {
+  auto itr = s_sslProperties.find(propertyName);
+  if (itr != s_sslProperties.end()) {
+    auto itr = m_sslPropValMap.find(propertyName);
+    if (itr != m_sslPropValMap.end()) {
+      return itr->second;
+    } else {
+      return "";
+    }
+  } else {
+    throw std::invalid_argument(":Unknown SSL Property: " + propertyName);
+  }
+}
+
+SSLSocketFactory::SSLSocketFactory(SSLParameters& params) :
+    TSSLSocketFactory(getProtocol(params)), m_params(params) {
+  overrideDefaultPasswordCallback(); // use getPassword override
+}
+
+SSLProtocol SSLSocketFactory::getProtocol(const SSLParameters& params) {
+  std::string propVal = params.getSSLPropertyValue("protocol");
+  if (!propVal.empty()) {
+    if (boost::iequals(propVal, "SSLTLS")) {
+      return SSLProtocol::SSLTLS;
+    } else if (boost::iequals(propVal, "SSL3")) {
+      return SSLProtocol::SSLv3;
+    } else if (boost::iequals(propVal, "TLS1.0")) {
+      return SSLProtocol::TLSv1_0;
+    } else if (boost::iequals(propVal, "TLS1.1")) {
+      return SSLProtocol::TLSv1_1;
+    } else if (boost::iequals(propVal, "TLS1.2")) {
+      return SSLProtocol::TLSv1_2;
+    } else {
+      throw std::invalid_argument(":Unknown SSL protocol: " + propVal);
+    }
+  } else {
+    return SSLProtocol::SSLTLS;
+  }
+}
+
+void SSLSocketFactory::getPassword(std::string& password, int size) {
+  /* TODO: the password fields should be fetched from UI for ODBC */
+
+  SSLProperty sslProperty = m_params.m_currentProperty;
+  std::string name = m_params.getSSLPropertyName(sslProperty);
+  switch (sslProperty) {
+    case SSLProperty::KEYSTORE:
+      name = m_params.getSSLPropertyName(SSLProperty::KEYSTOREPASSWORD);
+      break;
+    case SSLProperty::CERTIFICATE:
+      name = m_params.getSSLPropertyName(SSLProperty::CERTIFICATEPASSWORD);
       break;
     case SSLProperty::TRUSTSTORE:
-      propertyName = "truststore";
-      break;
-    case SSLProperty::TRUSTSTOREPASSWORD:
-      propertyName = "truststore-password";
+      name = m_params.getSSLPropertyName(SSLProperty::TRUSTSTOREPASSWORD);
       break;
     default:
-      throw std::invalid_argument(":Unknown SSL Property:" + propertyName);
-      break;
+      throw std::invalid_argument(":Expected password SSL Property: " + name);
   }
-  return propertyName;
+  password = m_params.getSSLPropertyValue(name);
 }

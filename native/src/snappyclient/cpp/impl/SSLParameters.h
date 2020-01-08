@@ -1,55 +1,89 @@
 /*
- * SSLParameters.h
+ * Copyright (c) 2017-2019 TIBCO Software Inc. All rights reserved.
  *
- *  Created on: 13-Dec-2019
- *      Author: pbisen
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
  */
 
-#ifndef SRC_SNAPPYCLIENT_HEADERS_SSLPARAMETERS_H_
-#define SRC_SNAPPYCLIENT_HEADERS_SSLPARAMETERS_H_
+#ifndef SSLPARAMETERS_H_
+#define SSLPARAMETERS_H_
 
 #include "ClientBase.h"
+#include "thrift/transport/TSSLSocket.h"
+
+using namespace apache::thrift::transport;
 
 namespace io {
-  namespace snappydata {
-    namespace client {
-      namespace impl {
+namespace snappydata {
+namespace client {
+namespace impl {
 
-        enum class SSLProperty
-          : int {
-            CIPHERSUITES = 0,
-          CLIENTAUTH = 1,
-          ENABLEPROTOCOLS = 2,
-          KEYSTORE = 3,
-          KEYSTOREPASSWORD = 4,
-          PROTOCOL = 5,
-          TRUSTSTORE = 6,
-          TRUSTSTOREPASSWORD = 7
-        };
+enum class SSLProperty {
+  PROTOCOL,
+  CIPHERSUITES,
+  CLIENTAUTH,
+  KEYSTORE,
+  KEYSTOREPASSWORD,
+  CERTIFICATE,
+  CERTIFICATEPASSWORD,
+  TRUSTSTORE,
+  TRUSTSTOREPASSWORD
+};
 
-        class SSLParameters {
-        private:
-//          SSLParameters();
-//          ~SSLParameters();
-//        SSLParameters(const SSLParameters&) = delete; // no instances
-//        SSLParameters operator=(const SSLParameters&) = delete; // no instances
-          std::map<std::string, std::string> sslPropValMap;
-          std::set<std::string> sslProperties = { "cipher-suites",
-                                                  "client-auth",
-                                                  "enabled-protocols",
-                                                  "keystore",
-                                                  "keystore-password",
-                                                  "protocol", "truststore",
-                                                  "truststore-password" };
-        public:
+class SSLSocketFactory;
 
-          void setSSLProperty(std::string &propertyName, std::string& value);
-          std::string getSSLPropertyValue(std::string &propertyName);
-          std::string getSSLPropertyName(SSLProperty sslProperty);
-          void operator()(const std::string& str);
-        };
-      }
-    }
+class SSLParameters {
+private:
+  static const std::set<std::string> s_sslProperties;
+  std::map<std::string, std::string> m_sslPropValMap;
+  SSLProperty m_currentProperty;
+
+  friend class SSLSocketFactory;
+
+public:
+  SSLParameters() :
+      m_sslPropValMap(), m_currentProperty(SSLProperty::PROTOCOL) {
   }
-}
-#endif /* SRC_SNAPPYCLIENT_HEADERS_SSLPARAMETERS_H_ */
+
+  void setSSLProperty(std::string &propertyName, std::string& value);
+  std::string getSSLPropertyName(SSLProperty sslProperty);
+  std::string getSSLPropertyValue(const std::string &propertyName) const;
+  void operator()(const std::string& str);
+};
+
+class SSLSocketFactory : public TSSLSocketFactory {
+public:
+  /**
+   * Constructor
+   *
+   * @param params SSL parameters to use.
+   */
+  SSLSocketFactory(SSLParameters& params);
+  virtual ~SSLSocketFactory() {
+  }
+
+protected:
+  virtual void getPassword(std::string& password, int size);
+
+private:
+  SSLParameters& m_params;
+
+  static SSLProtocol getProtocol(const SSLParameters& params);
+};
+
+} /* namespace impl */
+} /* namespace client */
+} /* namespace snappydata */
+} /* namespace io */
+
+#endif /* SSLPARAMETERS_H_ */

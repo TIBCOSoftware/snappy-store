@@ -133,8 +133,16 @@ namespace io {
               thrift::HostAddress& hostAddr,
               const thrift::ServerType::type serverType,
               const bool useFramedTransport,
-              //const SSLSocketParameters& sslParams,
               boost::shared_ptr<ClientTransport>& returnTransport);
+
+          inline std::string getSSLPropertyName(SSLProperty sslProperty) {
+            return m_sslParams.getSSLPropertyName(sslProperty);
+          }
+
+          inline std::string getSSLPropertyValue(
+              const std::string& propertyName) const {
+            return m_sslParams.getSSLPropertyValue(propertyName);
+          }
 
           void updateFailedServersForCurrent(
               std::set<thrift::HostAddress>& failedServers,
@@ -267,6 +275,9 @@ namespace io {
           IsolationLevel getCurrentIsolationLevel() const noexcept {
             return m_isolationLevel;
           }
+
+          boost::shared_ptr<TSSLSocket> createSSLSocket(
+              const std::string& host, int port);
 
           void execute(thrift::StatementResult& result,
               const std::string& sql,
@@ -401,9 +412,6 @@ namespace io {
           inline bool isFrameTransport() const noexcept {
             return m_useFramedTransport;
           }
-          std::string getSSLPropertyValue(std::string& propertyName);
-          std::string getSSLPropertyName(SSLProperty sslProperty);
-          boost::shared_ptr<TSSLSocket> createSocket(const std::string& host, int port);
         };
 
       } /* namespace impl */

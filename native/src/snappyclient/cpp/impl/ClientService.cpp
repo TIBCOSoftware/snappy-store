@@ -381,7 +381,7 @@ ClientService::ClientService(const std::string& host, const int port,
     //default for load-balance is true on locators and false on servers
     // so tentatively set as true and adjust using the ControlConnection
     if (hasLoadBalance) {
-      m_loadBalance = (boost::iequals("true", propValue->second));
+      m_loadBalance = (boost::iequals(propValue->second, "true"));
       props.erase(propValue);
       m_loadBalanceInitialized = true;
     }
@@ -646,7 +646,7 @@ protocol::TProtocol* ClientService::createDummyProtocol() {
 
 protocol::TProtocol* ClientService::createProtocol(
     thrift::HostAddress& hostAddr, const thrift::ServerType::type serverType,
-    bool useFramedTransport,      //const SSLSocketParameters& sslParams,
+    bool useFramedTransport,
     boost::shared_ptr<ClientTransport>& returnTransport) {
   bool useBinaryProtocol;
   bool useSSL;
@@ -694,7 +694,7 @@ protocol::TProtocol* ClientService::createProtocol(
 
   boost::shared_ptr<TSocket> socket;
   if (useSSL) {
-    socket = this->createSocket(hostAddr.hostName, hostAddr.port);
+    socket = createSSLSocket(hostAddr.hostName, hostAddr.port);
   } else {
     socket.reset(new TSocket(hostAddr.hostName, hostAddr.port));
   }
@@ -1910,57 +1910,41 @@ bool ClientService::handleException(const char* op, bool tryFailover,
   updateFailedServersForCurrent(failedServers, true, te);
   return true;
 }
-std::string ClientService::getSSLPropertyValue(std::string& propertyName){
-   return m_sslParams.getSSLPropertyValue(propertyName);
-}
-std::string ClientService::getSSLPropertyName(SSLProperty sslProperty){
-  return m_sslParams.getSSLPropertyName(sslProperty);
-}
-boost::shared_ptr<TSSLSocket> ClientService::createSocket(
+
+boost::shared_ptr<TSSLSocket> ClientService::createSSLSocket(
     const std::string& host, int port) {
-  try {
-    TSSLSocketFactory sslSocketFactory;
-    std::string sslProperty = this->getSSLPropertyName(
-        SSLProperty::CLIENTAUTH);
-    std::string clientAuth = this->getSSLPropertyValue(sslProperty);
-    if (!clientAuth.compare("true")) {
-      sslSocketFactory.authenticate(true);
-      sslProperty = this->getSSLPropertyName(SSLProperty::KEYSTORE);
-      std::string propVal = this->getSSLPropertyValue(sslProperty);
+  SSLSocketFactory sslSocketFactory(m_sslParams);
+
+  std::string sslProperty = getSSLPropertyName(SSLProperty::CLIENTAUTH);
+  std::string propVal = getSSLPropertyValue(sslProperty);
+  if (boost::iequals(propVal, "true")) {
+    sslSocketFactory.authenticate(true);
+    sslProperty = getSSLPropertyName(SSLProperty::KEYSTORE);
+    propVal = getSSLPropertyValue(sslProperty);
+    if (!propVal.empty()) {
       sslSocketFactory.loadPrivateKey(propVal.c_str());
-      sslProperty = this->getSSLPropertyName(SSLProperty::TRUSTSTORE);
-      propVal = this->getSSLPropertyValue(sslProperty);
-      sslSocketFactory.loadCertificate(propVal.c_str());
-      /*TODO:
-       * keystore-password and truststore-password fields are passed to OpenSSL API by function callback TSSLSocketFactory.getPassword.
-       * This needs to call the appropriate callback method to fetch password field from UI by extending TSSLSocketFactory.
-       * This can be tackled as a separate task and needs discussion on how to tie up UI with
-       * the callback cleanly (and also handle the case when UI is not being used directly).
-       *
-       * */
-
-      sslProperty = this->getSSLPropertyName(SSLProperty::CIPHERSUITES);
-      propVal = this->getSSLPropertyValue(sslProperty);
-      if(!propVal.empty()){
-        sslSocketFactory.ciphers(propVal);
-      }else{
-        sslSocketFactory.ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-      }
-
-    } else {
-      sslProperty = this->getSSLPropertyName(SSLProperty::TRUSTSTORE);
-      std::string trustStoreCert = this->getSSLPropertyValue(sslProperty);
-      sslSocketFactory.loadTrustedCertificates(trustStoreCert.c_str());
-      sslSocketFactory.authenticate(false);
     }
-
-    return sslSocketFactory.createSocket(host, port);
-  } catch (const TSSLException& ex) {
-    throw ex;
-  } catch (const TTransportException& ex) {
-    throw ex;
-  } catch (const std::exception& ex) {
-    throw ex;
+    sslProperty = getSSLPropertyName(SSLProperty::CERTIFICATE);
+    propVal = getSSLPropertyValue(sslProperty);
+    if (!propVal.empty()) {
+      sslSocketFactory.loadCertificate(propVal.c_str());
+    }
+  } else {
+    sslSocketFactory.authenticate(false);
   }
 
+  sslProperty = this->getSSLPropertyName(SSLProperty::TRUSTSTORE);
+  propVal = this->getSSLPropertyValue(sslProperty);
+  if (!propVal.empty()) {
+    sslSocketFactory.loadTrustedCertificates(propVal.c_str());
+  }
+  sslProperty = getSSLPropertyName(SSLProperty::CIPHERSUITES);
+  propVal = getSSLPropertyValue(sslProperty);
+  if (!propVal.empty()) {
+    sslSocketFactory.ciphers(propVal);
+  } else {
+    sslSocketFactory.ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  }
+
+  return sslSocketFactory.createSocket(host, port);
 }
