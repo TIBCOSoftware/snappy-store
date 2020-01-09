@@ -245,10 +245,12 @@ namespace io {
           static void staticInitialize(
               std::map<std::string, std::string>& props);
 
-          thrift::ServerType::type getServerType(bool isServer,
+          static thrift::ServerType::type getServerType(bool isServer,
               bool useBinaryProtocol, bool useSSL);
 
-          thrift::ServerType::type getServerType(){ return m_reqdServerType;}
+          inline thrift::ServerType::type getServerType() const noexcept {
+            return m_reqdServerType;
+          }
 
           inline bool isOpen() const noexcept {
             return m_isOpen;

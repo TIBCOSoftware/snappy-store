@@ -61,7 +61,7 @@ using namespace io::snappydata::thrift;
 std::vector<std::unique_ptr<ControlConnection> > ControlConnection::s_allConnections;
 boost::mutex ControlConnection::s_allConnsLock;
 
-ControlConnection::ControlConnection(ClientService * const &service) :
+ControlConnection::ControlConnection(ClientService* service) :
     m_serverGroups(service->getServerGrps()) {
   m_locators = service->getLocators();
   m_framedTransport = service->isFrameTransport();
@@ -76,7 +76,7 @@ ControlConnection::ControlConnection(ClientService * const &service) :
 
 const boost::optional<ControlConnection&> ControlConnection::getOrCreateControlConnection(
     const std::vector<thrift::HostAddress>& hostAddrs,
-    ClientService * const &service, const std::exception& failure) {
+    ClientService* service, const std::exception& failure) {
 
   // loop through all ControlConnections since size of this global list is
   // expected to be in single digit (total number of distributed systems)
@@ -164,19 +164,18 @@ void ControlConnection::getLocatorPreferredServer(
 }
 
 void ControlConnection::getPreferredServer(
-    thrift::HostAddress& preferredServer, const std::exception& failure,
-    ClientService * const &service,
-    bool forFailover) {
+    thrift::HostAddress &preferredServer, const std::exception &failure,
+    ClientService* service, bool forFailover) {
   std::set<thrift::HostAddress> failedServers;
   std::set<std::string> serverGroups;
   return getPreferredServer(preferredServer, failure, failedServers,
-      serverGroups, service ,forFailover);
+      serverGroups, service, forFailover);
 }
 
 void ControlConnection::getPreferredServer(
     thrift::HostAddress& preferredServer, const std::exception& failure,
     std::set<thrift::HostAddress>& failedServers,
-    std::set<std::string>& serverGroups, ClientService * const &service,
+    std::set<std::string>& serverGroups, ClientService* service,
     bool forFailover) {
   if (m_controlLocator == nullptr) {
     failoverToAvailableHost(failedServers, false, failure, service);
@@ -274,9 +273,9 @@ void ControlConnection::searchRandomServer(
 }
 
 void ControlConnection::failoverToAvailableHost(
-    std::set<thrift::HostAddress>& failedServers,
-    bool checkFailedControlHosts, const std::exception& failure,
-    ClientService * const &service) {
+    std::set<thrift::HostAddress> &failedServers,
+    bool checkFailedControlHosts, const std::exception &failure,
+    ClientService *service) {
   boost::lock_guard<boost::mutex> localGuard(m_lock);
   for (auto iterator = m_controlHostSet.begin();
       iterator != m_controlHostSet.end(); ++iterator) {
@@ -461,7 +460,6 @@ void ControlConnection::getConnectedHost(thrift::HostAddress& hostAddr,
       connectedHost = host;
     }
   }
-
 }
 
 void ControlConnection::close(bool clearGlobal) {
