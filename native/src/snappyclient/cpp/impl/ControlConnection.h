@@ -122,7 +122,7 @@ namespace io {
               std::set<std::string> serverGroups);
 
           void getPreferredServer(thrift::HostAddress& preferredServer,
-              const std::exception& failure,ClientService* service,
+              const std::exception& failure, ClientService* service,
               bool forFailover = false);
 
         public:
