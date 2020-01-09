@@ -92,7 +92,7 @@ dependencies {
 
 // apply default manifest
 if (rootProject.hasProperty('enablePublish')) {
-  createdBy = 'SnappyData Build Team'
+  createdBy = vendorName
 }
 shadowJar {
   zip64 = true
