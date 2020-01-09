@@ -1917,7 +1917,7 @@ boost::shared_ptr<TSSLSocket> ClientService::createSSLSocket(
 
   std::string sslProperty = getSSLPropertyName(SSLProperty::CLIENTAUTH);
   std::string propVal = getSSLPropertyValue(sslProperty);
-  if (boost::iequals(propVal, "true")) {
+  if (!propVal.empty() && boost::iequals(propVal, "true")) {
     sslSocketFactory.authenticate(true);
     sslProperty = getSSLPropertyName(SSLProperty::KEYSTORE);
     propVal = getSSLPropertyValue(sslProperty);
