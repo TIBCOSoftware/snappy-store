@@ -96,31 +96,32 @@ import org.apache.thrift.protocol.TProtocolException;
  *     header      body
  * </pre>
  */
+@SuppressWarnings("WeakerAccess")
 public class OptimizedElementArray {
 
   /**
    * Holds the primitive values with types at start (-ve of type for nulls).
    * Also has the offset into {@link #nonPrimitives} for non-primitives.
    */
-  protected long[] primitives;
-  protected Object[] nonPrimitives;
-  protected int nonPrimSize;
+  long[] primitives;
+  Object[] nonPrimitives;
 
-  protected int headerSize;
-  protected transient int hash;
-  protected boolean hasLobs;
+  private int nonPrimSize;
+  private int headerSize;
+  private transient int hash;
+  private boolean hasLobs;
 
-  protected static final long[] EMPTY = new long[0];
+  private static final long[] EMPTY = new long[0];
 
-  protected OptimizedElementArray() {
+  OptimizedElementArray() {
     this.primitives = EMPTY;
   }
 
-  protected OptimizedElementArray(OptimizedElementArray other) {
+  OptimizedElementArray(OptimizedElementArray other) {
     this(other, false, true);
   }
 
-  protected OptimizedElementArray(OptimizedElementArray other,
+  OptimizedElementArray(OptimizedElementArray other,
       boolean otherIsEmpty, boolean copyValues) {
     final long[] prims = other.primitives;
     final Object[] nonPrims = other.nonPrimitives;
@@ -156,7 +157,7 @@ public class OptimizedElementArray {
    *
    * @param metadata the list of {@link ColumnDescriptor}s ordered by their position
    */
-  public OptimizedElementArray(final List<ColumnDescriptor> metadata,
+  OptimizedElementArray(final List<ColumnDescriptor> metadata,
       boolean checkOutputParameters) {
     int nonPrimitiveIndex = 0;
     int numFields = metadata.size();
@@ -217,7 +218,7 @@ public class OptimizedElementArray {
     final long[] primitives = this.primitives;
     final int end = Platform.LONG_ARRAY_OFFSET + size();
     for (int offset = Platform.LONG_ARRAY_OFFSET; offset < end; offset++) {
-      final byte snappyType = Platform.getByte(primitives, offset);
+      final byte snappyType = getByte(primitives, offset);
       switch (Math.abs(snappyType)) {
         case 4: // INTEGER
         case 5: // BIGINT
@@ -232,20 +233,36 @@ public class OptimizedElementArray {
         case 24: // NULLTYPE
           // primitives must be marked non-null
           if (snappyType < 0) {
-            Platform.putByte(primitives, offset, (byte)-snappyType);
+            setByte(primitives, offset, (byte)-snappyType);
           }
           break;
         default:
           // non-primitives must be marked null
           if (snappyType > 0) {
-            Platform.putByte(primitives, offset, (byte)-snappyType);
+            setByte(primitives, offset, (byte)-snappyType);
           }
       }
     }
   }
 
+  private void setByte(long[] array, int offset, byte b) {
+    if (Platform.LONG_ARRAY_OFFSET != 0) {
+      Platform.putByte(array, offset, b);
+    } else {
+      array[offset >>> 3] |= (b << (offset & 0x7));
+    }
+  }
+
+  private byte getByte(long[] array, int offset) {
+    if (Platform.LONG_ARRAY_OFFSET != 0) {
+      return Platform.getByte(array, offset);
+    } else {
+      return (byte)((array[offset >>> 3] >>> (offset & 0x7)) & 0xff);
+    }
+  }
+
   public final void setType(int index, int snappyType) {
-    Platform.putByte(this.primitives, Platform.LONG_ARRAY_OFFSET + index,
+    setByte(this.primitives, Platform.LONG_ARRAY_OFFSET + index,
         (byte)snappyType);
   }
 
@@ -256,7 +273,7 @@ public class OptimizedElementArray {
    * @param index 0-based index of the column
    */
   public final int getType(int index) {
-    return Platform.getByte(primitives, Platform.LONG_ARRAY_OFFSET + index);
+    return getByte(primitives, Platform.LONG_ARRAY_OFFSET + index);
   }
 
   public final boolean isNull(int index) {
@@ -935,8 +952,7 @@ public class OptimizedElementArray {
     this.hasLobs = false;
   }
 
-  public final void setColumnValue(int index,
-      ColumnValue cv) throws SQLException {
+  public final void setColumnValue(int index, ColumnValue cv) {
     final ColumnValue._Fields setField = cv.getSetField();
     if (setField != null) {
       int sqlTypeId;
