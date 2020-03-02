@@ -40,6 +40,7 @@
 
 package com.pivotal.gemfirexd.internal.impl.jdbc;
 
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.sql.DatabaseMetaData;
@@ -141,33 +142,48 @@ public class EmbedDatabaseMetaData extends ConnectionChild
     private static Properties queryDescriptions;
     /** Cached query descriptions from metadata_net.properties. */
     private static Properties queryDescriptions_net;
-    /**
-     * Return all queries found in either metadata.properties or
-     * metadata_net.properties.
+    /** Cached query descriptions from metadata_lc.properties. */
+    private static Properties queryDescriptions_lc;
+
+	/**
+     * Return all queries found in either metadata.properties,
+     * metadata_net.properties or metadata_lc.properties.
      *
      * @param net if <code>true</code>, read metadata_net.properties;
      * otherwise, read metadata.properties.
      * @return a <code>Properties</code> value with the queries
      */
-    private Properties getQueryDescriptions(boolean net) {
-        Properties p = net ? queryDescriptions_net : queryDescriptions;
-        if (p != null) {
-            return p;
-        }
-        loadQueryDescriptions();
-        return net ? queryDescriptions_net : queryDescriptions;
-    }
+	private Properties getQueryDescriptions(boolean net) {
+		return Optional.ofNullable(getProperties(net)).orElseGet(() -> {
+			loadQueryDescriptions();
+			return getProperties(net);
+		});
+	}
 
-    /**
+	private Properties getProperties(boolean net) {
+		Properties p;
+		if (net) {
+			p = queryDescriptions_net;
+		} else if (System.getProperty("metadatacase.lower") != null
+			&& getLanguageConnectionContext().isQueryRoutingFlagTrue()) {
+			p = queryDescriptions_lc;
+		} else {
+			p = queryDescriptions;
+		}
+		return p;
+	}
+
+	/**
      * Read the query descriptions from metadata.properties and
      * metadata_net.properties. This method must be invoked from
      * within a privileged block.
      */
     private void PBloadQueryDescriptions() {
-        String[] files = {
-            "metadata.properties",
-            "/com/pivotal/gemfirexd/internal/impl/sql/catalog/metadata_net.properties"
-        };
+		String[] files = {
+			"metadata.properties",
+			"/com/pivotal/gemfirexd/internal/impl/sql/catalog/metadata_net.properties",
+			"/com/pivotal/gemfirexd/internal/impl/sql/catalog/metadata_lc.properties",
+		};
         Properties[] props = new Properties[files.length];
         for (int i = 0; i < files.length; ++i) {
             try {
@@ -182,8 +198,9 @@ public class EmbedDatabaseMetaData extends ConnectionChild
                 }
             }
         }
-        queryDescriptions = props[0];
-        queryDescriptions_net = props[1];
+		queryDescriptions = props[0];
+		queryDescriptions_net = props[1];
+		queryDescriptions_lc = props[2];
     }
 
 	//////////////////////////////////////////////////////////////

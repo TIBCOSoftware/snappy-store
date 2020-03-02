@@ -99,6 +99,7 @@
       <include name="${derby.dir}/${cur.dir}/**"/>
     </javac>
     <copy file="${derby.engine.src.dir}/${derby.dir}/${cur.dir}/catalog/metadata_net.properties" tofile="${out.dir}/com/pivotal/gemfirexd/internal/impl/sql/catalog/metadata_net.properties"/>
+    <copy file="${derby.engine.src.dir}/${derby.dir}/${cur.dir}/catalog/metadata_lc.properties" tofile="${out.dir}/com/pivotal/gemfirexd/internal/impl/sql/catalog/metadata_lc.properties"/>
   </target>
 
 </project>

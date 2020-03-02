@@ -1296,6 +1296,7 @@
                          com/pivotal/gemfirexd/internal/loc/toolsmessages.properties,
                          com/pivotal/gemfirexd/internal/impl/jdbc/metadata.properties,
                          com/pivotal/gemfirexd/internal/impl/sql/catalog/metadata_net.properties,
+                         com/pivotal/gemfirexd/internal/impl/sql/catalog/metadata_lc.properties,
                          com/pivotal/gemfirexd/internal/info/DBMS.properties"/>
       <fileset dir="${derby.jar.dir}/lists"
                includes="META-INF/**,
