@@ -107,8 +107,9 @@ import com.pivotal.gemfirexd.internal.impl.sql.execute.GenericExecutionFactory;
 public class EmbedDatabaseMetaData extends ConnectionChild 
 	implements DatabaseMetaData, java.security.PrivilegedAction {
 
-    private static final int ILLEGAL_UDT_TYPE = 0;
-    
+	private static final int ILLEGAL_UDT_TYPE = 0;
+	public static final String METADATACASE_UPPER_PROP = "metadatacase.upper";
+
 	/*
 	** Property and values related to using
 	** stored prepared statements for metatdata.
@@ -164,7 +165,7 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 		Properties p;
 		if (net) {
 			p = queryDescriptions_net;
-		} else if (System.getProperty("metadatacase.lower") != null
+		} else if (System.getProperty(METADATACASE_UPPER_PROP) == null
 			&& getLanguageConnectionContext().isQueryRoutingFlagTrue()) {
 			p = queryDescriptions_lc;
 		} else {
