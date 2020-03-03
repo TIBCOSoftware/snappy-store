@@ -40,6 +40,8 @@
 
 package com.pivotal.gemfirexd.internal.impl.jdbc;
 
+import java.io.File;
+import java.io.PrintStream;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -3663,6 +3665,22 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 	{
 		// [snappydata] treat system procedures like other normal ones
 		String queryText = getQueryDescriptions(net).getProperty(nameKey);
+        File file = new File("/tmp/precheckin.log");
+        PrintStream ps = null;
+        try {
+            file.createNewFile();
+            ps = new PrintStream(file);
+            String s = "VMVM: getQueryFromDescription - nameKey :"
+                + nameKey + ", queryText :" + queryText + "\n";
+            ps.write(s.getBytes());
+            new RuntimeException().printStackTrace(ps);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            if(ps != null) {
+                ps.close();
+            }
+        }
 		if (queryText == null) {
 			throw Util.notImplemented(nameKey);
 		}
@@ -3798,8 +3816,24 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 			if (queryName.equals("getTablePrivileges"))
 				queryName = "getTablePrivileges_10_1";
 		}
-
-		return getQueryDescriptions(net).getProperty(queryName);
+        String queryText = getQueryDescriptions(net).getProperty(queryName);
+        File file = new File("/tmp/precheckin.log");
+        PrintStream ps = null;
+        try {
+            file.createNewFile();
+            ps = new PrintStream(file);
+            String s = "VMVM: getQueryFromDescription - nameKey :"
+                + queryName + ", queryText :" + queryText + "\n";
+            ps.write(s.getBytes());
+            new RuntimeException().printStackTrace(ps);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            if(ps != null) {
+                ps.close();
+            }
+        }
+        return queryText;
 	}
 
 	/*
