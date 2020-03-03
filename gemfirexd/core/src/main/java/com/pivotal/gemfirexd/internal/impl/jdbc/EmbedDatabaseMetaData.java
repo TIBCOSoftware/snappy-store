@@ -41,6 +41,7 @@
 package com.pivotal.gemfirexd.internal.impl.jdbc;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.Optional;
 import java.util.Properties;
@@ -3669,7 +3670,7 @@ public class EmbedDatabaseMetaData extends ConnectionChild
         PrintStream ps = null;
         try {
             file.createNewFile();
-            ps = new PrintStream(file);
+            ps = new PrintStream(new FileOutputStream(file, true));
             String s = "VMVM: getQueryFromDescription - nameKey :"
                 + nameKey + ", queryText :" + queryText + "\n";
             ps.write(s.getBytes());
@@ -3821,7 +3822,7 @@ public class EmbedDatabaseMetaData extends ConnectionChild
         PrintStream ps = null;
         try {
             file.createNewFile();
-            ps = new PrintStream(file);
+			ps = new PrintStream(new FileOutputStream(file, true));
             String s = "VMVM: getQueryFromDescription - nameKey :"
                 + queryName + ", queryText :" + queryText + "\n";
             ps.write(s.getBytes());
