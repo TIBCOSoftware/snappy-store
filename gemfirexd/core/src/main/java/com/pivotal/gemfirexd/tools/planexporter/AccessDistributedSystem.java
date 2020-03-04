@@ -536,7 +536,9 @@ public final class AccessDistributedSystem {
     boolean found = false;
     ResultSet result = conn.getMetaData().getSchemas();
     while (result.next()) {
-      if (result.getString(1).equals(schema)) {
+      boolean schemaMatches = lcc.isQueryRoutingFlagTrue() ?
+          result.getString(1).equalsIgnoreCase(schema) : result.getString(1).equals(schema);
+      if (schemaMatches) {
         found = true;
         break;
       }
