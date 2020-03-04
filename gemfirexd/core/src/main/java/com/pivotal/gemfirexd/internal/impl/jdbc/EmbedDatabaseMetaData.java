@@ -3672,7 +3672,8 @@ public class EmbedDatabaseMetaData extends ConnectionChild
             file.createNewFile();
             ps = new PrintStream(new FileOutputStream(file, true));
             String s = "VMVM: getQueryFromDescription - nameKey :"
-                + nameKey + ", queryText :" + queryText + "\n";
+                + nameKey + ", queryText :" + queryText + ", queryRouting:"
+				+ getLanguageConnectionContext().isQueryRoutingFlagTrue()+ "\n";
             ps.write(s.getBytes());
             new RuntimeException().printStackTrace(ps);
         } catch (IOException e) {
@@ -3823,8 +3824,9 @@ public class EmbedDatabaseMetaData extends ConnectionChild
         try {
             file.createNewFile();
 			ps = new PrintStream(new FileOutputStream(file, true));
-            String s = "VMVM: getQueryFromDescription - nameKey :"
-                + queryName + ", queryText :" + queryText + "\n";
+			String s = "VMVM: getQueryFromDescription - nameKey :"
+				+ queryName + ", queryText :" + queryText + ", queryRouting:"
+				+ getLanguageConnectionContext().isQueryRoutingFlagTrue()+ "\n";
             ps.write(s.getBytes());
             new RuntimeException().printStackTrace(ps);
         } catch (IOException e) {
