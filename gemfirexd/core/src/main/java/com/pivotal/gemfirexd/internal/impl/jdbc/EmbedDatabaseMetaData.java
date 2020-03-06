@@ -3666,23 +3666,6 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 	{
 		// [snappydata] treat system procedures like other normal ones
 		String queryText = getQueryDescriptions(net).getProperty(nameKey);
-        File file = new File("/tmp/precheckin.log");
-        PrintStream ps = null;
-        try {
-            file.createNewFile();
-            ps = new PrintStream(new FileOutputStream(file, true));
-            String s = "VMVM: getQueryFromDescription - nameKey :"
-                + nameKey + ", queryText :" + queryText + ", queryRouting:"
-				+ getLanguageConnectionContext().isQueryRoutingFlagTrue()+ "\n";
-            ps.write(s.getBytes());
-            new RuntimeException().printStackTrace(ps);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } finally {
-            if(ps != null) {
-                ps.close();
-            }
-        }
 		if (queryText == null) {
 			throw Util.notImplemented(nameKey);
 		}
@@ -3818,25 +3801,7 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 			if (queryName.equals("getTablePrivileges"))
 				queryName = "getTablePrivileges_10_1";
 		}
-        String queryText = getQueryDescriptions(net).getProperty(queryName);
-        File file = new File("/tmp/precheckin.log");
-        PrintStream ps = null;
-        try {
-            file.createNewFile();
-			ps = new PrintStream(new FileOutputStream(file, true));
-			String s = "VMVM: getQueryFromDescription - nameKey :"
-				+ queryName + ", queryText :" + queryText + ", queryRouting:"
-				+ getLanguageConnectionContext().isQueryRoutingFlagTrue()+ "\n";
-            ps.write(s.getBytes());
-            new RuntimeException().printStackTrace(ps);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } finally {
-            if(ps != null) {
-                ps.close();
-            }
-        }
-        return queryText;
+        return getQueryDescriptions(net).getProperty(queryName);
 	}
 
 	/*
