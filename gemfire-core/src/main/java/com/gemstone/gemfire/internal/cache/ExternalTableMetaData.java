@@ -69,6 +69,8 @@ public class ExternalTableMetaData {
   public List<Column> columns;
   public boolean hasDependentSampleTables;
 
+  public ExternalTableMetaData() { }
+
   @Override
   public String toString() {
     return "ObjectMetadata(name=" + this.entityName + ", schema=" + this.schema +

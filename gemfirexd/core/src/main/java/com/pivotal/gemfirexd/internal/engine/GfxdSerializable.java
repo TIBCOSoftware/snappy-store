@@ -326,7 +326,7 @@ public interface GfxdSerializable extends GfxdDSFID {
 
   byte SNAPPY_REGION_STATS_RESULT = 111;
 
-  // 112 is unused -- use for new IDs
+  byte HIVE_TABLES_COLLECTOR_RESULT= 112;
 
   byte COLUMN_FORMAT_KEY = 113;
 

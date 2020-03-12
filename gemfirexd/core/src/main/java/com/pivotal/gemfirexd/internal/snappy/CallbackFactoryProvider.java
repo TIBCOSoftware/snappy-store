@@ -17,12 +17,14 @@
 
 package com.pivotal.gemfirexd.internal.snappy;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.internal.ByteArrayDataInput;
+import com.gemstone.gemfire.internal.cache.ExternalTableMetaData;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
 import com.pivotal.gemfirexd.internal.iapi.sql.ParameterValueSet;
@@ -110,6 +112,11 @@ public abstract class CallbackFactoryProvider {
 
     @Override
     public void setLeadClassLoader() {
+    }
+
+    @Override
+    public Collection<ExternalTableMetaData> getHiveTablesMetadata() {
+      return null;
     }
   };
 

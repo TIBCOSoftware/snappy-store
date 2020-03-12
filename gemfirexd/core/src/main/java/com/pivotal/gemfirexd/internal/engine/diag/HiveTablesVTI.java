@@ -21,18 +21,26 @@ import java.sql.Clob;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.ListIterator;
+import java.util.concurrent.TimeUnit;
 
+import com.gemstone.gemfire.cache.execute.FunctionService;
 import com.gemstone.gemfire.internal.cache.ExternalTableMetaData;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
+import com.google.common.collect.Iterators;
 import com.pivotal.gemfirexd.internal.catalog.ExternalCatalog;
 import com.pivotal.gemfirexd.internal.engine.GfxdVTITemplate;
 import com.pivotal.gemfirexd.internal.engine.GfxdVTITemplateNoAllNodesRoute;
 import com.pivotal.gemfirexd.internal.engine.Misc;
+import com.pivotal.gemfirexd.internal.engine.distributed.GfxdDistributionAdvisor;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultColumnDescriptor;
+import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.types.HarmonySerialClob;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedResultSetMetaData;
 import com.pivotal.gemfirexd.internal.impl.jdbc.Util;
@@ -40,6 +48,8 @@ import com.pivotal.gemfirexd.internal.impl.sql.catalog.GfxdDataDictionary;
 import com.pivotal.gemfirexd.internal.shared.common.SharedUtils;
 import com.pivotal.gemfirexd.internal.shared.common.reference.Limits;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
+import com.pivotal.gemfirexd.internal.snappy.hivetables.ExternalHiveTablesCollectorFunction;
+import com.pivotal.gemfirexd.internal.snappy.hivetables.dto.ExternalHiveTablesCollectorResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +79,9 @@ public class HiveTablesVTI extends GfxdVTITemplate
       if (!GfxdDataDictionary.SKIP_CATALOG_OPS.get().skipHiveCatalogCalls &&
           (hiveCatalog = Misc.getMemStore().getExternalCatalog()) != null) {
         try {
-          this.tableMetas = hiveCatalog.getCatalogTables().iterator();
+          List<ExternalTableMetaData> catalogTables = hiveCatalog.getCatalogTables();
+          Collection<ExternalTableMetaData> externalHiveTables = getExternalHiveTables();
+          this.tableMetas = Iterators.concat(catalogTables.iterator(), externalHiveTables.iterator());
         } catch (Exception e) {
           // log and move on
           logger.warn("ERROR in retrieving Hive tables: " + e.toString());
@@ -93,6 +105,21 @@ public class HiveTablesVTI extends GfxdVTITemplate
         this.currentTableColumn = null;
         return false;
       }
+    }
+  }
+
+  private Collection<ExternalTableMetaData> getExternalHiveTables() throws InterruptedException {
+    GfxdDistributionAdvisor.GfxdProfile primaryLeadProfile = Misc.getPrimaryLeadProfile()
+        .<IllegalArgumentException>orElseThrow(() -> {
+          throw new IllegalStateException("Lead not available");
+        });
+    if (!Misc.isLead() && primaryLeadProfile.isHiveSessionInitialized()) {
+      ArrayList result = (ArrayList)FunctionService.onMembers(Misc.getLeadNode())
+          .execute(ExternalHiveTablesCollectorFunction.ID)
+          .getResult(30, TimeUnit.SECONDS);
+      return ((ExternalHiveTablesCollectorResult)(result).get(0)).getTablesMetadata();
+    } else {
+      return Collections.emptyList();
     }
   }
 

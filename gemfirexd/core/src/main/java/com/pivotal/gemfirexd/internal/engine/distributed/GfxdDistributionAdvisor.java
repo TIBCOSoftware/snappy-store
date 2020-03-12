@@ -1336,6 +1336,13 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
      */
     private long usableHeap;
 
+    /**
+     * Flag indicating whether the external hive catalog is enabled. By default it's false.
+     * Set to true when hive session is initialized at
+     * org.apache.spark.sql.SnappyContext#newHiveSession().
+     */
+    private boolean hiveSessionInitialized;
+
     /** for deserialization */
     public GfxdProfile() {
       this.initialized = true;
@@ -1450,7 +1457,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
     public final boolean getInitialized() {
       return this.initialized;
     }
-    
+
     public final String getLocale() {
       return this.dbLocaleStr;
     }
@@ -1461,6 +1468,14 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
 
     public final long getUsableHeap() {
       return this.usableHeap;
+    }
+
+    public void setHiveSessionInitialized(boolean hiveSessionInitialized) {
+      this.hiveSessionInitialized = hiveSessionInitialized;
+    }
+
+    public boolean isHiveSessionInitialized() {
+      return hiveSessionInitialized;
     }
 
     @Override
@@ -1549,6 +1564,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       }
       out.writeLong(this.catalogSchemaVersion.get());
       out.writeLong(this.usableHeap);
+      out.writeBoolean(this.hiveSessionInitialized);
     }
 
     @Override
@@ -1589,6 +1605,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       if ((this.flags & F_HAS_USABLE_HEAP) != 0) {
         this.usableHeap = in.readLong();
       }
+      this.hiveSessionInitialized = in.readBoolean();
     }
 
     @Override
@@ -1608,6 +1625,7 @@ public final class GfxdDistributionAdvisor extends DistributionAdvisor {
       sb.append("; numProcessors=").append(this.numProcessors);
       sb.append("; catalogVersion=").append(this.catalogSchemaVersion.get());
       sb.append("; usableHeap=").append(this.usableHeap);
+      sb.append("; hiveSessionInitialized=").append(this.hiveSessionInitialized);
     }
   }
 
