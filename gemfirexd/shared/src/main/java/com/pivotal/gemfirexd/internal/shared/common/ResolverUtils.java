@@ -101,7 +101,7 @@ public abstract class ResolverUtils extends ClientResolverUtils {
       strChars = null;
     }
     bigIntCons = cons;
-    stringCharsOffset = strChars != null
+    stringCharsOffset = strChars != null && UnsafeHolder.hasUnsafe()
         ? UnsafeHolder.getUnsafe().objectFieldOffset(strChars) : -1L;
   }
 

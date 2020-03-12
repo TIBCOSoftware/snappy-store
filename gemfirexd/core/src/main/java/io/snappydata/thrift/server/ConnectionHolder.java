@@ -49,6 +49,7 @@ import java.util.Properties;
 import com.gemstone.gemfire.internal.cache.locks.NonReentrantLock;
 import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.FinalizeObject;
+import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.iapi.jdbc.EngineConnection;
 import com.pivotal.gemfirexd.internal.iapi.jdbc.EngineStatement;
 import com.pivotal.gemfirexd.internal.jdbc.EmbedXAConnection;
@@ -646,7 +647,7 @@ final class ConnectionHolder {
         return Arrays.equals(otherId.array(), connToken.array());
       } else {
         // don't create intermediate byte[]
-        return ClientSharedUtils.equalBuffers(connToken.array(), otherId);
+        return GemFireXDUtils.equalBuffers(connToken.array(), otherId);
       }
     } else {
       return false;
