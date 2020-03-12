@@ -103,22 +103,9 @@ void CatalogTableObject::__set_properties(const std::map<std::string, std::strin
   this->properties = val;
 }
 
-void CatalogTableObject::__set_sizeInBytes(const int64_t val) {
-  this->sizeInBytes = val;
-__isset.sizeInBytes = true;
-}
-
-void CatalogTableObject::__set_rowCount(const int64_t val) {
-  this->rowCount = val;
-__isset.rowCount = true;
-}
-
-void CatalogTableObject::__set_colStats(const std::vector<std::map<std::string, std::string> > & val) {
-  this->colStats = val;
-}
-
-void CatalogTableObject::__set_isBroadcastable(const bool val) {
-  this->isBroadcastable = val;
+void CatalogTableObject::__set_stats(const CatalogStats& val) {
+  this->stats = val;
+__isset.stats = true;
 }
 
 void CatalogTableObject::__set_viewOriginalText(const std::string& val) {
@@ -148,6 +135,11 @@ void CatalogTableObject::__set_schemaPreservesCase(const bool val) {
   this->schemaPreservesCase = val;
 }
 
+void CatalogTableObject::__set_ignoredProperties(const std::map<std::string, std::string> & val) {
+  this->ignoredProperties = val;
+__isset.ignoredProperties = true;
+}
+
 uint32_t CatalogTableObject::read(::apache::thrift::protocol::TProtocol* iprot) {
 
   uint32_t xfer = 0;
@@ -173,8 +165,6 @@ uint32_t CatalogTableObject::read(::apache::thrift::protocol::TProtocol* iprot) 
   bool isset_createTime = false;
   bool isset_lastAccessTime = false;
   bool isset_properties = false;
-  bool isset_colStats = false;
-  bool isset_isBroadcastable = false;
   bool isset_unsupportedFeatures = false;
   bool isset_tracksPartitionsInCatalog = false;
   bool isset_schemaPreservesCase = false;
@@ -239,14 +229,14 @@ uint32_t CatalogTableObject::read(::apache::thrift::protocol::TProtocol* iprot) 
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->partitionColumns.clear();
-            uint32_t _size336;
-            ::apache::thrift::protocol::TType _etype339;
-            xfer += iprot->readListBegin(_etype339, _size336);
-            this->partitionColumns.resize(_size336);
-            uint32_t _i340;
-            for (_i340 = 0; _i340 < _size336; ++_i340)
+            uint32_t _size354;
+            ::apache::thrift::protocol::TType _etype357;
+            xfer += iprot->readListBegin(_etype357, _size354);
+            this->partitionColumns.resize(_size354);
+            uint32_t _i358;
+            for (_i358 = 0; _i358 < _size354; ++_i358)
             {
-              xfer += iprot->readString(this->partitionColumns[_i340]);
+              xfer += iprot->readString(this->partitionColumns[_i358]);
             }
             xfer += iprot->readListEnd();
           }
@@ -259,14 +249,14 @@ uint32_t CatalogTableObject::read(::apache::thrift::protocol::TProtocol* iprot) 
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->indexColumns.clear();
-            uint32_t _size341;
-            ::apache::thrift::protocol::TType _etype344;
-            xfer += iprot->readListBegin(_etype344, _size341);
-            this->indexColumns.resize(_size341);
-            uint32_t _i345;
-            for (_i345 = 0; _i345 < _size341; ++_i345)
+            uint32_t _size359;
+            ::apache::thrift::protocol::TType _etype362;
+            xfer += iprot->readListBegin(_etype362, _size359);
+            this->indexColumns.resize(_size359);
+            uint32_t _i363;
+            for (_i363 = 0; _i363 < _size359; ++_i363)
             {
-              xfer += iprot->readString(this->indexColumns[_i345]);
+              xfer += iprot->readString(this->indexColumns[_i363]);
             }
             xfer += iprot->readListEnd();
           }
@@ -279,14 +269,14 @@ uint32_t CatalogTableObject::read(::apache::thrift::protocol::TProtocol* iprot) 
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->primaryKeyColumns.clear();
-            uint32_t _size346;
-            ::apache::thrift::protocol::TType _etype349;
-            xfer += iprot->readListBegin(_etype349, _size346);
-            this->primaryKeyColumns.resize(_size346);
-            uint32_t _i350;
-            for (_i350 = 0; _i350 < _size346; ++_i350)
+            uint32_t _size364;
+            ::apache::thrift::protocol::TType _etype367;
+            xfer += iprot->readListBegin(_etype367, _size364);
+            this->primaryKeyColumns.resize(_size364);
+            uint32_t _i368;
+            for (_i368 = 0; _i368 < _size364; ++_i368)
             {
-              xfer += iprot->readString(this->primaryKeyColumns[_i350]);
+              xfer += iprot->readString(this->primaryKeyColumns[_i368]);
             }
             xfer += iprot->readListEnd();
           }
@@ -315,14 +305,14 @@ uint32_t CatalogTableObject::read(::apache::thrift::protocol::TProtocol* iprot) 
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->bucketOwners.clear();
-            uint32_t _size351;
-            ::apache::thrift::protocol::TType _etype354;
-            xfer += iprot->readListBegin(_etype354, _size351);
-            this->bucketOwners.resize(_size351);
-            uint32_t _i355;
-            for (_i355 = 0; _i355 < _size351; ++_i355)
+            uint32_t _size369;
+            ::apache::thrift::protocol::TType _etype372;
+            xfer += iprot->readListBegin(_etype372, _size369);
+            this->bucketOwners.resize(_size369);
+            uint32_t _i373;
+            for (_i373 = 0; _i373 < _size369; ++_i373)
             {
-              xfer += this->bucketOwners[_i355].read(iprot);
+              xfer += this->bucketOwners[_i373].read(iprot);
             }
             xfer += iprot->readListEnd();
           }
@@ -335,14 +325,14 @@ uint32_t CatalogTableObject::read(::apache::thrift::protocol::TProtocol* iprot) 
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->bucketColumns.clear();
-            uint32_t _size356;
-            ::apache::thrift::protocol::TType _etype359;
-            xfer += iprot->readListBegin(_etype359, _size356);
-            this->bucketColumns.resize(_size356);
-            uint32_t _i360;
-            for (_i360 = 0; _i360 < _size356; ++_i360)
+            uint32_t _size374;
+            ::apache::thrift::protocol::TType _etype377;
+            xfer += iprot->readListBegin(_etype377, _size374);
+            this->bucketColumns.resize(_size374);
+            uint32_t _i378;
+            for (_i378 = 0; _i378 < _size374; ++_i378)
             {
-              xfer += iprot->readString(this->bucketColumns[_i360]);
+              xfer += iprot->readString(this->bucketColumns[_i378]);
             }
             xfer += iprot->readListEnd();
           }
@@ -355,14 +345,14 @@ uint32_t CatalogTableObject::read(::apache::thrift::protocol::TProtocol* iprot) 
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->sortColumns.clear();
-            uint32_t _size361;
-            ::apache::thrift::protocol::TType _etype364;
-            xfer += iprot->readListBegin(_etype364, _size361);
-            this->sortColumns.resize(_size361);
-            uint32_t _i365;
-            for (_i365 = 0; _i365 < _size361; ++_i365)
+            uint32_t _size379;
+            ::apache::thrift::protocol::TType _etype382;
+            xfer += iprot->readListBegin(_etype382, _size379);
+            this->sortColumns.resize(_size379);
+            uint32_t _i383;
+            for (_i383 = 0; _i383 < _size379; ++_i383)
             {
-              xfer += iprot->readString(this->sortColumns[_i365]);
+              xfer += iprot->readString(this->sortColumns[_i383]);
             }
             xfer += iprot->readListEnd();
           }
@@ -399,17 +389,17 @@ uint32_t CatalogTableObject::read(::apache::thrift::protocol::TProtocol* iprot) 
         if (ftype == ::apache::thrift::protocol::T_MAP) {
           {
             this->properties.clear();
-            uint32_t _size366;
-            ::apache::thrift::protocol::TType _ktype367;
-            ::apache::thrift::protocol::TType _vtype368;
-            xfer += iprot->readMapBegin(_ktype367, _vtype368, _size366);
-            uint32_t _i370;
-            for (_i370 = 0; _i370 < _size366; ++_i370)
+            uint32_t _size384;
+            ::apache::thrift::protocol::TType _ktype385;
+            ::apache::thrift::protocol::TType _vtype386;
+            xfer += iprot->readMapBegin(_ktype385, _vtype386, _size384);
+            uint32_t _i388;
+            for (_i388 = 0; _i388 < _size384; ++_i388)
             {
-              std::string _key371;
-              xfer += iprot->readString(_key371);
-              std::string& _val372 = this->properties[_key371];
-              xfer += iprot->readString(_val372);
+              std::string _key389;
+              xfer += iprot->readString(_key389);
+              std::string& _val390 = this->properties[_key389];
+              xfer += iprot->readString(_val390);
             }
             xfer += iprot->readMapEnd();
           }
@@ -419,65 +409,14 @@ uint32_t CatalogTableObject::read(::apache::thrift::protocol::TProtocol* iprot) 
         }
         break;
       case 19:
-        if (ftype == ::apache::thrift::protocol::T_I64) {
-          xfer += iprot->readI64(this->sizeInBytes);
-          this->__isset.sizeInBytes = true;
+        if (ftype == ::apache::thrift::protocol::T_STRUCT) {
+          xfer += this->stats.read(iprot);
+          this->__isset.stats = true;
         } else {
           xfer += iprot->skip(ftype);
         }
         break;
       case 20:
-        if (ftype == ::apache::thrift::protocol::T_I64) {
-          xfer += iprot->readI64(this->rowCount);
-          this->__isset.rowCount = true;
-        } else {
-          xfer += iprot->skip(ftype);
-        }
-        break;
-      case 21:
-        if (ftype == ::apache::thrift::protocol::T_LIST) {
-          {
-            this->colStats.clear();
-            uint32_t _size373;
-            ::apache::thrift::protocol::TType _etype376;
-            xfer += iprot->readListBegin(_etype376, _size373);
-            this->colStats.resize(_size373);
-            uint32_t _i377;
-            for (_i377 = 0; _i377 < _size373; ++_i377)
-            {
-              {
-                this->colStats[_i377].clear();
-                uint32_t _size378;
-                ::apache::thrift::protocol::TType _ktype379;
-                ::apache::thrift::protocol::TType _vtype380;
-                xfer += iprot->readMapBegin(_ktype379, _vtype380, _size378);
-                uint32_t _i382;
-                for (_i382 = 0; _i382 < _size378; ++_i382)
-                {
-                  std::string _key383;
-                  xfer += iprot->readString(_key383);
-                  std::string& _val384 = this->colStats[_i377][_key383];
-                  xfer += iprot->readString(_val384);
-                }
-                xfer += iprot->readMapEnd();
-              }
-            }
-            xfer += iprot->readListEnd();
-          }
-          isset_colStats = true;
-        } else {
-          xfer += iprot->skip(ftype);
-        }
-        break;
-      case 22:
-        if (ftype == ::apache::thrift::protocol::T_BOOL) {
-          xfer += iprot->readBool(this->isBroadcastable);
-          isset_isBroadcastable = true;
-        } else {
-          xfer += iprot->skip(ftype);
-        }
-        break;
-      case 23:
         if (ftype == ::apache::thrift::protocol::T_STRING) {
           xfer += iprot->readString(this->viewOriginalText);
           this->__isset.viewOriginalText = true;
@@ -485,7 +424,7 @@ uint32_t CatalogTableObject::read(::apache::thrift::protocol::TProtocol* iprot) 
           xfer += iprot->skip(ftype);
         }
         break;
-      case 24:
+      case 21:
         if (ftype == ::apache::thrift::protocol::T_STRING) {
           xfer += iprot->readString(this->viewText);
           this->__isset.viewText = true;
@@ -493,7 +432,7 @@ uint32_t CatalogTableObject::read(::apache::thrift::protocol::TProtocol* iprot) 
           xfer += iprot->skip(ftype);
         }
         break;
-      case 25:
+      case 22:
         if (ftype == ::apache::thrift::protocol::T_STRING) {
           xfer += iprot->readString(this->comment);
           this->__isset.comment = true;
@@ -501,18 +440,18 @@ uint32_t CatalogTableObject::read(::apache::thrift::protocol::TProtocol* iprot) 
           xfer += iprot->skip(ftype);
         }
         break;
-      case 26:
+      case 23:
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->unsupportedFeatures.clear();
-            uint32_t _size385;
-            ::apache::thrift::protocol::TType _etype388;
-            xfer += iprot->readListBegin(_etype388, _size385);
-            this->unsupportedFeatures.resize(_size385);
-            uint32_t _i389;
-            for (_i389 = 0; _i389 < _size385; ++_i389)
+            uint32_t _size391;
+            ::apache::thrift::protocol::TType _etype394;
+            xfer += iprot->readListBegin(_etype394, _size391);
+            this->unsupportedFeatures.resize(_size391);
+            uint32_t _i395;
+            for (_i395 = 0; _i395 < _size391; ++_i395)
             {
-              xfer += iprot->readString(this->unsupportedFeatures[_i389]);
+              xfer += iprot->readString(this->unsupportedFeatures[_i395]);
             }
             xfer += iprot->readListEnd();
           }
@@ -521,7 +460,7 @@ uint32_t CatalogTableObject::read(::apache::thrift::protocol::TProtocol* iprot) 
           xfer += iprot->skip(ftype);
         }
         break;
-      case 27:
+      case 24:
         if (ftype == ::apache::thrift::protocol::T_BOOL) {
           xfer += iprot->readBool(this->tracksPartitionsInCatalog);
           isset_tracksPartitionsInCatalog = true;
@@ -529,10 +468,33 @@ uint32_t CatalogTableObject::read(::apache::thrift::protocol::TProtocol* iprot) 
           xfer += iprot->skip(ftype);
         }
         break;
-      case 28:
+      case 25:
         if (ftype == ::apache::thrift::protocol::T_BOOL) {
           xfer += iprot->readBool(this->schemaPreservesCase);
           isset_schemaPreservesCase = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 26:
+        if (ftype == ::apache::thrift::protocol::T_MAP) {
+          {
+            this->ignoredProperties.clear();
+            uint32_t _size396;
+            ::apache::thrift::protocol::TType _ktype397;
+            ::apache::thrift::protocol::TType _vtype398;
+            xfer += iprot->readMapBegin(_ktype397, _vtype398, _size396);
+            uint32_t _i400;
+            for (_i400 = 0; _i400 < _size396; ++_i400)
+            {
+              std::string _key401;
+              xfer += iprot->readString(_key401);
+              std::string& _val402 = this->ignoredProperties[_key401];
+              xfer += iprot->readString(_val402);
+            }
+            xfer += iprot->readMapEnd();
+          }
+          this->__isset.ignoredProperties = true;
         } else {
           xfer += iprot->skip(ftype);
         }
@@ -573,10 +535,6 @@ uint32_t CatalogTableObject::read(::apache::thrift::protocol::TProtocol* iprot) 
   if (!isset_lastAccessTime)
     throw TProtocolException(TProtocolException::INVALID_DATA);
   if (!isset_properties)
-    throw TProtocolException(TProtocolException::INVALID_DATA);
-  if (!isset_colStats)
-    throw TProtocolException(TProtocolException::INVALID_DATA);
-  if (!isset_isBroadcastable)
     throw TProtocolException(TProtocolException::INVALID_DATA);
   if (!isset_unsupportedFeatures)
     throw TProtocolException(TProtocolException::INVALID_DATA);
@@ -620,10 +578,10 @@ uint32_t CatalogTableObject::write(::apache::thrift::protocol::TProtocol* oprot)
   xfer += oprot->writeFieldBegin("partitionColumns", ::apache::thrift::protocol::T_LIST, 7);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->partitionColumns.size()));
-    std::vector<std::string> ::const_iterator _iter390;
-    for (_iter390 = this->partitionColumns.begin(); _iter390 != this->partitionColumns.end(); ++_iter390)
+    std::vector<std::string> ::const_iterator _iter403;
+    for (_iter403 = this->partitionColumns.begin(); _iter403 != this->partitionColumns.end(); ++_iter403)
     {
-      xfer += oprot->writeString((*_iter390));
+      xfer += oprot->writeString((*_iter403));
     }
     xfer += oprot->writeListEnd();
   }
@@ -632,10 +590,10 @@ uint32_t CatalogTableObject::write(::apache::thrift::protocol::TProtocol* oprot)
   xfer += oprot->writeFieldBegin("indexColumns", ::apache::thrift::protocol::T_LIST, 8);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->indexColumns.size()));
-    std::vector<std::string> ::const_iterator _iter391;
-    for (_iter391 = this->indexColumns.begin(); _iter391 != this->indexColumns.end(); ++_iter391)
+    std::vector<std::string> ::const_iterator _iter404;
+    for (_iter404 = this->indexColumns.begin(); _iter404 != this->indexColumns.end(); ++_iter404)
     {
-      xfer += oprot->writeString((*_iter391));
+      xfer += oprot->writeString((*_iter404));
     }
     xfer += oprot->writeListEnd();
   }
@@ -644,10 +602,10 @@ uint32_t CatalogTableObject::write(::apache::thrift::protocol::TProtocol* oprot)
   xfer += oprot->writeFieldBegin("primaryKeyColumns", ::apache::thrift::protocol::T_LIST, 9);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->primaryKeyColumns.size()));
-    std::vector<std::string> ::const_iterator _iter392;
-    for (_iter392 = this->primaryKeyColumns.begin(); _iter392 != this->primaryKeyColumns.end(); ++_iter392)
+    std::vector<std::string> ::const_iterator _iter405;
+    for (_iter405 = this->primaryKeyColumns.begin(); _iter405 != this->primaryKeyColumns.end(); ++_iter405)
     {
-      xfer += oprot->writeString((*_iter392));
+      xfer += oprot->writeString((*_iter405));
     }
     xfer += oprot->writeListEnd();
   }
@@ -666,10 +624,10 @@ uint32_t CatalogTableObject::write(::apache::thrift::protocol::TProtocol* oprot)
   xfer += oprot->writeFieldBegin("bucketOwners", ::apache::thrift::protocol::T_LIST, 12);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->bucketOwners.size()));
-    std::vector<BucketOwners> ::const_iterator _iter393;
-    for (_iter393 = this->bucketOwners.begin(); _iter393 != this->bucketOwners.end(); ++_iter393)
+    std::vector<BucketOwners> ::const_iterator _iter406;
+    for (_iter406 = this->bucketOwners.begin(); _iter406 != this->bucketOwners.end(); ++_iter406)
     {
-      xfer += (*_iter393).write(oprot);
+      xfer += (*_iter406).write(oprot);
     }
     xfer += oprot->writeListEnd();
   }
@@ -678,10 +636,10 @@ uint32_t CatalogTableObject::write(::apache::thrift::protocol::TProtocol* oprot)
   xfer += oprot->writeFieldBegin("bucketColumns", ::apache::thrift::protocol::T_LIST, 13);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->bucketColumns.size()));
-    std::vector<std::string> ::const_iterator _iter394;
-    for (_iter394 = this->bucketColumns.begin(); _iter394 != this->bucketColumns.end(); ++_iter394)
+    std::vector<std::string> ::const_iterator _iter407;
+    for (_iter407 = this->bucketColumns.begin(); _iter407 != this->bucketColumns.end(); ++_iter407)
     {
-      xfer += oprot->writeString((*_iter394));
+      xfer += oprot->writeString((*_iter407));
     }
     xfer += oprot->writeListEnd();
   }
@@ -690,10 +648,10 @@ uint32_t CatalogTableObject::write(::apache::thrift::protocol::TProtocol* oprot)
   xfer += oprot->writeFieldBegin("sortColumns", ::apache::thrift::protocol::T_LIST, 14);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->sortColumns.size()));
-    std::vector<std::string> ::const_iterator _iter395;
-    for (_iter395 = this->sortColumns.begin(); _iter395 != this->sortColumns.end(); ++_iter395)
+    std::vector<std::string> ::const_iterator _iter408;
+    for (_iter408 = this->sortColumns.begin(); _iter408 != this->sortColumns.end(); ++_iter408)
     {
-      xfer += oprot->writeString((*_iter395));
+      xfer += oprot->writeString((*_iter408));
     }
     xfer += oprot->writeListEnd();
   }
@@ -714,86 +672,70 @@ uint32_t CatalogTableObject::write(::apache::thrift::protocol::TProtocol* oprot)
   xfer += oprot->writeFieldBegin("properties", ::apache::thrift::protocol::T_MAP, 18);
   {
     xfer += oprot->writeMapBegin(::apache::thrift::protocol::T_STRING, ::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->properties.size()));
-    std::map<std::string, std::string> ::const_iterator _iter396;
-    for (_iter396 = this->properties.begin(); _iter396 != this->properties.end(); ++_iter396)
+    std::map<std::string, std::string> ::const_iterator _iter409;
+    for (_iter409 = this->properties.begin(); _iter409 != this->properties.end(); ++_iter409)
     {
-      xfer += oprot->writeString(_iter396->first);
-      xfer += oprot->writeString(_iter396->second);
+      xfer += oprot->writeString(_iter409->first);
+      xfer += oprot->writeString(_iter409->second);
     }
     xfer += oprot->writeMapEnd();
   }
   xfer += oprot->writeFieldEnd();
 
-  if (this->__isset.sizeInBytes) {
-    xfer += oprot->writeFieldBegin("sizeInBytes", ::apache::thrift::protocol::T_I64, 19);
-    xfer += oprot->writeI64(this->sizeInBytes);
+  if (this->__isset.stats) {
+    xfer += oprot->writeFieldBegin("stats", ::apache::thrift::protocol::T_STRUCT, 19);
+    xfer += this->stats.write(oprot);
     xfer += oprot->writeFieldEnd();
   }
-  if (this->__isset.rowCount) {
-    xfer += oprot->writeFieldBegin("rowCount", ::apache::thrift::protocol::T_I64, 20);
-    xfer += oprot->writeI64(this->rowCount);
-    xfer += oprot->writeFieldEnd();
-  }
-  xfer += oprot->writeFieldBegin("colStats", ::apache::thrift::protocol::T_LIST, 21);
-  {
-    xfer += oprot->writeListBegin(::apache::thrift::protocol::T_MAP, static_cast<uint32_t>(this->colStats.size()));
-    std::vector<std::map<std::string, std::string> > ::const_iterator _iter397;
-    for (_iter397 = this->colStats.begin(); _iter397 != this->colStats.end(); ++_iter397)
-    {
-      {
-        xfer += oprot->writeMapBegin(::apache::thrift::protocol::T_STRING, ::apache::thrift::protocol::T_STRING, static_cast<uint32_t>((*_iter397).size()));
-        std::map<std::string, std::string> ::const_iterator _iter398;
-        for (_iter398 = (*_iter397).begin(); _iter398 != (*_iter397).end(); ++_iter398)
-        {
-          xfer += oprot->writeString(_iter398->first);
-          xfer += oprot->writeString(_iter398->second);
-        }
-        xfer += oprot->writeMapEnd();
-      }
-    }
-    xfer += oprot->writeListEnd();
-  }
-  xfer += oprot->writeFieldEnd();
-
-  xfer += oprot->writeFieldBegin("isBroadcastable", ::apache::thrift::protocol::T_BOOL, 22);
-  xfer += oprot->writeBool(this->isBroadcastable);
-  xfer += oprot->writeFieldEnd();
-
   if (this->__isset.viewOriginalText) {
-    xfer += oprot->writeFieldBegin("viewOriginalText", ::apache::thrift::protocol::T_STRING, 23);
+    xfer += oprot->writeFieldBegin("viewOriginalText", ::apache::thrift::protocol::T_STRING, 20);
     xfer += oprot->writeString(this->viewOriginalText);
     xfer += oprot->writeFieldEnd();
   }
   if (this->__isset.viewText) {
-    xfer += oprot->writeFieldBegin("viewText", ::apache::thrift::protocol::T_STRING, 24);
+    xfer += oprot->writeFieldBegin("viewText", ::apache::thrift::protocol::T_STRING, 21);
     xfer += oprot->writeString(this->viewText);
     xfer += oprot->writeFieldEnd();
   }
   if (this->__isset.comment) {
-    xfer += oprot->writeFieldBegin("comment", ::apache::thrift::protocol::T_STRING, 25);
+    xfer += oprot->writeFieldBegin("comment", ::apache::thrift::protocol::T_STRING, 22);
     xfer += oprot->writeString(this->comment);
     xfer += oprot->writeFieldEnd();
   }
-  xfer += oprot->writeFieldBegin("unsupportedFeatures", ::apache::thrift::protocol::T_LIST, 26);
+  xfer += oprot->writeFieldBegin("unsupportedFeatures", ::apache::thrift::protocol::T_LIST, 23);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->unsupportedFeatures.size()));
-    std::vector<std::string> ::const_iterator _iter399;
-    for (_iter399 = this->unsupportedFeatures.begin(); _iter399 != this->unsupportedFeatures.end(); ++_iter399)
+    std::vector<std::string> ::const_iterator _iter410;
+    for (_iter410 = this->unsupportedFeatures.begin(); _iter410 != this->unsupportedFeatures.end(); ++_iter410)
     {
-      xfer += oprot->writeString((*_iter399));
+      xfer += oprot->writeString((*_iter410));
     }
     xfer += oprot->writeListEnd();
   }
   xfer += oprot->writeFieldEnd();
 
-  xfer += oprot->writeFieldBegin("tracksPartitionsInCatalog", ::apache::thrift::protocol::T_BOOL, 27);
+  xfer += oprot->writeFieldBegin("tracksPartitionsInCatalog", ::apache::thrift::protocol::T_BOOL, 24);
   xfer += oprot->writeBool(this->tracksPartitionsInCatalog);
   xfer += oprot->writeFieldEnd();
 
-  xfer += oprot->writeFieldBegin("schemaPreservesCase", ::apache::thrift::protocol::T_BOOL, 28);
+  xfer += oprot->writeFieldBegin("schemaPreservesCase", ::apache::thrift::protocol::T_BOOL, 25);
   xfer += oprot->writeBool(this->schemaPreservesCase);
   xfer += oprot->writeFieldEnd();
 
+  if (this->__isset.ignoredProperties) {
+    xfer += oprot->writeFieldBegin("ignoredProperties", ::apache::thrift::protocol::T_MAP, 26);
+    {
+      xfer += oprot->writeMapBegin(::apache::thrift::protocol::T_STRING, ::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->ignoredProperties.size()));
+      std::map<std::string, std::string> ::const_iterator _iter411;
+      for (_iter411 = this->ignoredProperties.begin(); _iter411 != this->ignoredProperties.end(); ++_iter411)
+      {
+        xfer += oprot->writeString(_iter411->first);
+        xfer += oprot->writeString(_iter411->second);
+      }
+      xfer += oprot->writeMapEnd();
+    }
+    xfer += oprot->writeFieldEnd();
+  }
   xfer += oprot->writeFieldStop();
   xfer += oprot->writeStructEnd();
   return xfer;
@@ -819,143 +761,133 @@ void swap(CatalogTableObject &a, CatalogTableObject &b) {
   swap(a.createTime, b.createTime);
   swap(a.lastAccessTime, b.lastAccessTime);
   swap(a.properties, b.properties);
-  swap(a.sizeInBytes, b.sizeInBytes);
-  swap(a.rowCount, b.rowCount);
-  swap(a.colStats, b.colStats);
-  swap(a.isBroadcastable, b.isBroadcastable);
+  swap(a.stats, b.stats);
   swap(a.viewOriginalText, b.viewOriginalText);
   swap(a.viewText, b.viewText);
   swap(a.comment, b.comment);
   swap(a.unsupportedFeatures, b.unsupportedFeatures);
   swap(a.tracksPartitionsInCatalog, b.tracksPartitionsInCatalog);
   swap(a.schemaPreservesCase, b.schemaPreservesCase);
+  swap(a.ignoredProperties, b.ignoredProperties);
   swap(a.__isset, b.__isset);
 }
 
-CatalogTableObject::CatalogTableObject(const CatalogTableObject& other400) {
-  tableName = other400.tableName;
-  schemaName = other400.schemaName;
-  tableType = other400.tableType;
-  storage = other400.storage;
-  tableSchema = other400.tableSchema;
-  provider = other400.provider;
-  partitionColumns = other400.partitionColumns;
-  indexColumns = other400.indexColumns;
-  primaryKeyColumns = other400.primaryKeyColumns;
-  numBuckets = other400.numBuckets;
-  redundancy = other400.redundancy;
-  bucketOwners = other400.bucketOwners;
-  bucketColumns = other400.bucketColumns;
-  sortColumns = other400.sortColumns;
-  owner = other400.owner;
-  createTime = other400.createTime;
-  lastAccessTime = other400.lastAccessTime;
-  properties = other400.properties;
-  sizeInBytes = other400.sizeInBytes;
-  rowCount = other400.rowCount;
-  colStats = other400.colStats;
-  isBroadcastable = other400.isBroadcastable;
-  viewOriginalText = other400.viewOriginalText;
-  viewText = other400.viewText;
-  comment = other400.comment;
-  unsupportedFeatures = other400.unsupportedFeatures;
-  tracksPartitionsInCatalog = other400.tracksPartitionsInCatalog;
-  schemaPreservesCase = other400.schemaPreservesCase;
-  __isset = other400.__isset;
+CatalogTableObject::CatalogTableObject(const CatalogTableObject& other412) {
+  tableName = other412.tableName;
+  schemaName = other412.schemaName;
+  tableType = other412.tableType;
+  storage = other412.storage;
+  tableSchema = other412.tableSchema;
+  provider = other412.provider;
+  partitionColumns = other412.partitionColumns;
+  indexColumns = other412.indexColumns;
+  primaryKeyColumns = other412.primaryKeyColumns;
+  numBuckets = other412.numBuckets;
+  redundancy = other412.redundancy;
+  bucketOwners = other412.bucketOwners;
+  bucketColumns = other412.bucketColumns;
+  sortColumns = other412.sortColumns;
+  owner = other412.owner;
+  createTime = other412.createTime;
+  lastAccessTime = other412.lastAccessTime;
+  properties = other412.properties;
+  stats = other412.stats;
+  viewOriginalText = other412.viewOriginalText;
+  viewText = other412.viewText;
+  comment = other412.comment;
+  unsupportedFeatures = other412.unsupportedFeatures;
+  tracksPartitionsInCatalog = other412.tracksPartitionsInCatalog;
+  schemaPreservesCase = other412.schemaPreservesCase;
+  ignoredProperties = other412.ignoredProperties;
+  __isset = other412.__isset;
 }
-CatalogTableObject::CatalogTableObject( CatalogTableObject&& other401) noexcept {
-  tableName = std::move(other401.tableName);
-  schemaName = std::move(other401.schemaName);
-  tableType = std::move(other401.tableType);
-  storage = std::move(other401.storage);
-  tableSchema = std::move(other401.tableSchema);
-  provider = std::move(other401.provider);
-  partitionColumns = std::move(other401.partitionColumns);
-  indexColumns = std::move(other401.indexColumns);
-  primaryKeyColumns = std::move(other401.primaryKeyColumns);
-  numBuckets = std::move(other401.numBuckets);
-  redundancy = std::move(other401.redundancy);
-  bucketOwners = std::move(other401.bucketOwners);
-  bucketColumns = std::move(other401.bucketColumns);
-  sortColumns = std::move(other401.sortColumns);
-  owner = std::move(other401.owner);
-  createTime = std::move(other401.createTime);
-  lastAccessTime = std::move(other401.lastAccessTime);
-  properties = std::move(other401.properties);
-  sizeInBytes = std::move(other401.sizeInBytes);
-  rowCount = std::move(other401.rowCount);
-  colStats = std::move(other401.colStats);
-  isBroadcastable = std::move(other401.isBroadcastable);
-  viewOriginalText = std::move(other401.viewOriginalText);
-  viewText = std::move(other401.viewText);
-  comment = std::move(other401.comment);
-  unsupportedFeatures = std::move(other401.unsupportedFeatures);
-  tracksPartitionsInCatalog = std::move(other401.tracksPartitionsInCatalog);
-  schemaPreservesCase = std::move(other401.schemaPreservesCase);
-  __isset = std::move(other401.__isset);
+CatalogTableObject::CatalogTableObject( CatalogTableObject&& other413) noexcept {
+  tableName = std::move(other413.tableName);
+  schemaName = std::move(other413.schemaName);
+  tableType = std::move(other413.tableType);
+  storage = std::move(other413.storage);
+  tableSchema = std::move(other413.tableSchema);
+  provider = std::move(other413.provider);
+  partitionColumns = std::move(other413.partitionColumns);
+  indexColumns = std::move(other413.indexColumns);
+  primaryKeyColumns = std::move(other413.primaryKeyColumns);
+  numBuckets = std::move(other413.numBuckets);
+  redundancy = std::move(other413.redundancy);
+  bucketOwners = std::move(other413.bucketOwners);
+  bucketColumns = std::move(other413.bucketColumns);
+  sortColumns = std::move(other413.sortColumns);
+  owner = std::move(other413.owner);
+  createTime = std::move(other413.createTime);
+  lastAccessTime = std::move(other413.lastAccessTime);
+  properties = std::move(other413.properties);
+  stats = std::move(other413.stats);
+  viewOriginalText = std::move(other413.viewOriginalText);
+  viewText = std::move(other413.viewText);
+  comment = std::move(other413.comment);
+  unsupportedFeatures = std::move(other413.unsupportedFeatures);
+  tracksPartitionsInCatalog = std::move(other413.tracksPartitionsInCatalog);
+  schemaPreservesCase = std::move(other413.schemaPreservesCase);
+  ignoredProperties = std::move(other413.ignoredProperties);
+  __isset = std::move(other413.__isset);
 }
-CatalogTableObject& CatalogTableObject::operator=(const CatalogTableObject& other402) {
-  tableName = other402.tableName;
-  schemaName = other402.schemaName;
-  tableType = other402.tableType;
-  storage = other402.storage;
-  tableSchema = other402.tableSchema;
-  provider = other402.provider;
-  partitionColumns = other402.partitionColumns;
-  indexColumns = other402.indexColumns;
-  primaryKeyColumns = other402.primaryKeyColumns;
-  numBuckets = other402.numBuckets;
-  redundancy = other402.redundancy;
-  bucketOwners = other402.bucketOwners;
-  bucketColumns = other402.bucketColumns;
-  sortColumns = other402.sortColumns;
-  owner = other402.owner;
-  createTime = other402.createTime;
-  lastAccessTime = other402.lastAccessTime;
-  properties = other402.properties;
-  sizeInBytes = other402.sizeInBytes;
-  rowCount = other402.rowCount;
-  colStats = other402.colStats;
-  isBroadcastable = other402.isBroadcastable;
-  viewOriginalText = other402.viewOriginalText;
-  viewText = other402.viewText;
-  comment = other402.comment;
-  unsupportedFeatures = other402.unsupportedFeatures;
-  tracksPartitionsInCatalog = other402.tracksPartitionsInCatalog;
-  schemaPreservesCase = other402.schemaPreservesCase;
-  __isset = other402.__isset;
+CatalogTableObject& CatalogTableObject::operator=(const CatalogTableObject& other414) {
+  tableName = other414.tableName;
+  schemaName = other414.schemaName;
+  tableType = other414.tableType;
+  storage = other414.storage;
+  tableSchema = other414.tableSchema;
+  provider = other414.provider;
+  partitionColumns = other414.partitionColumns;
+  indexColumns = other414.indexColumns;
+  primaryKeyColumns = other414.primaryKeyColumns;
+  numBuckets = other414.numBuckets;
+  redundancy = other414.redundancy;
+  bucketOwners = other414.bucketOwners;
+  bucketColumns = other414.bucketColumns;
+  sortColumns = other414.sortColumns;
+  owner = other414.owner;
+  createTime = other414.createTime;
+  lastAccessTime = other414.lastAccessTime;
+  properties = other414.properties;
+  stats = other414.stats;
+  viewOriginalText = other414.viewOriginalText;
+  viewText = other414.viewText;
+  comment = other414.comment;
+  unsupportedFeatures = other414.unsupportedFeatures;
+  tracksPartitionsInCatalog = other414.tracksPartitionsInCatalog;
+  schemaPreservesCase = other414.schemaPreservesCase;
+  ignoredProperties = other414.ignoredProperties;
+  __isset = other414.__isset;
   return *this;
 }
-CatalogTableObject& CatalogTableObject::operator=(CatalogTableObject&& other403) noexcept {
-  tableName = std::move(other403.tableName);
-  schemaName = std::move(other403.schemaName);
-  tableType = std::move(other403.tableType);
-  storage = std::move(other403.storage);
-  tableSchema = std::move(other403.tableSchema);
-  provider = std::move(other403.provider);
-  partitionColumns = std::move(other403.partitionColumns);
-  indexColumns = std::move(other403.indexColumns);
-  primaryKeyColumns = std::move(other403.primaryKeyColumns);
-  numBuckets = std::move(other403.numBuckets);
-  redundancy = std::move(other403.redundancy);
-  bucketOwners = std::move(other403.bucketOwners);
-  bucketColumns = std::move(other403.bucketColumns);
-  sortColumns = std::move(other403.sortColumns);
-  owner = std::move(other403.owner);
-  createTime = std::move(other403.createTime);
-  lastAccessTime = std::move(other403.lastAccessTime);
-  properties = std::move(other403.properties);
-  sizeInBytes = std::move(other403.sizeInBytes);
-  rowCount = std::move(other403.rowCount);
-  colStats = std::move(other403.colStats);
-  isBroadcastable = std::move(other403.isBroadcastable);
-  viewOriginalText = std::move(other403.viewOriginalText);
-  viewText = std::move(other403.viewText);
-  comment = std::move(other403.comment);
-  unsupportedFeatures = std::move(other403.unsupportedFeatures);
-  tracksPartitionsInCatalog = std::move(other403.tracksPartitionsInCatalog);
-  schemaPreservesCase = std::move(other403.schemaPreservesCase);
-  __isset = std::move(other403.__isset);
+CatalogTableObject& CatalogTableObject::operator=(CatalogTableObject&& other415) noexcept {
+  tableName = std::move(other415.tableName);
+  schemaName = std::move(other415.schemaName);
+  tableType = std::move(other415.tableType);
+  storage = std::move(other415.storage);
+  tableSchema = std::move(other415.tableSchema);
+  provider = std::move(other415.provider);
+  partitionColumns = std::move(other415.partitionColumns);
+  indexColumns = std::move(other415.indexColumns);
+  primaryKeyColumns = std::move(other415.primaryKeyColumns);
+  numBuckets = std::move(other415.numBuckets);
+  redundancy = std::move(other415.redundancy);
+  bucketOwners = std::move(other415.bucketOwners);
+  bucketColumns = std::move(other415.bucketColumns);
+  sortColumns = std::move(other415.sortColumns);
+  owner = std::move(other415.owner);
+  createTime = std::move(other415.createTime);
+  lastAccessTime = std::move(other415.lastAccessTime);
+  properties = std::move(other415.properties);
+  stats = std::move(other415.stats);
+  viewOriginalText = std::move(other415.viewOriginalText);
+  viewText = std::move(other415.viewText);
+  comment = std::move(other415.comment);
+  unsupportedFeatures = std::move(other415.unsupportedFeatures);
+  tracksPartitionsInCatalog = std::move(other415.tracksPartitionsInCatalog);
+  schemaPreservesCase = std::move(other415.schemaPreservesCase);
+  ignoredProperties = std::move(other415.ignoredProperties);
+  __isset = std::move(other415.__isset);
   return *this;
 }
 void CatalogTableObject::printTo(std::ostream& out) const {
@@ -979,16 +911,14 @@ void CatalogTableObject::printTo(std::ostream& out) const {
   out << ", " << "createTime=" << to_string(createTime);
   out << ", " << "lastAccessTime=" << to_string(lastAccessTime);
   out << ", " << "properties=" << to_string(properties);
-  out << ", " << "sizeInBytes="; (__isset.sizeInBytes ? (out << to_string(sizeInBytes)) : (out << "<null>"));
-  out << ", " << "rowCount="; (__isset.rowCount ? (out << to_string(rowCount)) : (out << "<null>"));
-  out << ", " << "colStats=" << to_string(colStats);
-  out << ", " << "isBroadcastable=" << to_string(isBroadcastable);
+  out << ", " << "stats="; (__isset.stats ? (out << to_string(stats)) : (out << "<null>"));
   out << ", " << "viewOriginalText="; (__isset.viewOriginalText ? (out << to_string(viewOriginalText)) : (out << "<null>"));
   out << ", " << "viewText="; (__isset.viewText ? (out << to_string(viewText)) : (out << "<null>"));
   out << ", " << "comment="; (__isset.comment ? (out << to_string(comment)) : (out << "<null>"));
   out << ", " << "unsupportedFeatures=" << to_string(unsupportedFeatures);
   out << ", " << "tracksPartitionsInCatalog=" << to_string(tracksPartitionsInCatalog);
   out << ", " << "schemaPreservesCase=" << to_string(schemaPreservesCase);
+  out << ", " << "ignoredProperties="; (__isset.ignoredProperties ? (out << to_string(ignoredProperties)) : (out << "<null>"));
   out << ")";
 }
 

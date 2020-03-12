@@ -309,6 +309,8 @@ class CatalogStorage;
 
 class CatalogSchemaObject;
 
+class CatalogStats;
+
 class CatalogTableObject;
 
 class CatalogFunctionObject;

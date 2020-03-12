@@ -2030,22 +2030,25 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 		PreparedStatement s = getPreparedQuery(queryName);
 		s.setString(1, swapNull(catalog));
 		s.setString(2, swapNull(schemaPattern));
-                s.setString(3, swapNull(tableNamePattern));
-                s.setString(4, swapNull(columnNamePattern));
+		s.setString(3, swapNull(tableNamePattern));
+		s.setString(4, swapNull(tableNamePattern));
+		s.setString(5, swapNull(columnNamePattern));
 		// GemStone changes BEGIN
 		// for #51194, using sysaliases
-		s.setString(5, swapNull(catalog));
-		s.setString(6, swapNull(schemaPattern));
-		s.setString(7, swapNull(tableNamePattern));
-		s.setString(8, swapNull(columnNamePattern));
+		s.setString(6, swapNull(catalog));
+		s.setString(7, swapNull(schemaPattern));
+		s.setString(8, swapNull(tableNamePattern));
+		s.setString(9, swapNull(tableNamePattern));
+		s.setString(10, swapNull(columnNamePattern));
 		// for hive external tables
-		s.setString(9, swapNull(schemaPattern));
-		s.setString(10, swapNull(tableNamePattern));
-		s.setString(11, swapNull(columnNamePattern));
+		s.setString(11, swapNull(schemaPattern));
+		s.setString(12, swapNull(tableNamePattern));
+		s.setString(13, swapNull(columnNamePattern));
+		s.setString(14, swapNull(tableNamePattern));
 		// for VTIs
-		s.setString(12, swapNull(schemaPattern));
-		s.setString(13, swapNull(tableNamePattern));
-		s.setString(14, swapNull(columnNamePattern));
+		s.setString(15, swapNull(schemaPattern));
+		s.setString(16, swapNull(tableNamePattern));
+		s.setString(17, swapNull(columnNamePattern));
 		// GemStone changes END
 		return s.executeQuery();
 	}
@@ -2134,10 +2137,11 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 		s.setString(1, swapNull(catalog));
 		s.setString(2, swapNull(schemaPattern));
 		s.setString(3, swapNull(tableNamePattern));
-		s.setString(4, swapNull(schemaPattern));
-		s.setString(5, swapNull(tableNamePattern));
-		s.setString(6, swapNull(schemaPattern));
-		s.setString(7, swapNull(tableNamePattern));
+		s.setString(4, swapNull(tableNamePattern));
+		s.setString(5, swapNull(schemaPattern));
+		s.setString(6, swapNull(tableNamePattern));
+		s.setString(7, swapNull(schemaPattern));
+		s.setString(8, swapNull(tableNamePattern));
 		return s.executeQuery();
 	}
 

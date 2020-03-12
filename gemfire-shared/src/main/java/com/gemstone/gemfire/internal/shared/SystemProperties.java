@@ -207,6 +207,8 @@ public final class SystemProperties {
           "io.snappydata.gemxd.SnappyDataVersion".equals(frameCls) ||
           "org.apache.spark.sql.SnappySession$".equals(frameCls) ||
           "org.apache.spark.sql.SnappySession".equals(frameCls) ||
+          "org.apache.spark.sql.SparkSupport$".equals(frameCls) ||
+          "org.apache.spark.sql.SparkSupport".equals(frameCls) ||
           "io.snappydata.gemxd.ClusterCallbacksImpl$".equals(frameCls)) {
         return true;
       }

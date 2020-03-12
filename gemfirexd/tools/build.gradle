@@ -51,6 +51,7 @@ dependencies {
   compileOnly "xalan:xalan:${xalanVersion}"
   compileOnly "xalan:serializer:${xalanVersion}"
   compileOnly "com.pivotal:pxf-api:${pxfVersion}"
+  compileOnly "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 
   compileOnly "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
   compileOnly "org.apache.hadoop:hadoop-auth:${hadoopVersion}"

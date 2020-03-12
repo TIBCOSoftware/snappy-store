@@ -87,6 +87,8 @@ import org.eclipse.collections.impl.map.mutable.primitive.IntObjectHashMap;
 
 public final class JGroupMembershipManager implements MembershipManager {
 
+  public static final String DEFAULT_LEADER_MEMBER_WEIGHT_NAME = "gemfire.member-weight";
+
   /** product version to use for multicast serialization */
   volatile boolean disableMulticastForRollingUpgrade;
   
@@ -1506,7 +1508,7 @@ public final class JGroupMembershipManager implements MembershipManager {
     properties = replaceStrings(properties, "PARTITION_THRESHOLD",
         String.valueOf(threshold));
     
-    int weight = Integer.getInteger("gemfire.member-weight", 0);
+    int weight = Integer.getInteger(DEFAULT_LEADER_MEMBER_WEIGHT_NAME, 0);
     properties = replaceStrings(properties, "MEMBER_WEIGHT", String.valueOf(weight));
     
     if (theLogger.fineEnabled()) {

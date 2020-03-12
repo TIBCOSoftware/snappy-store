@@ -31,22 +31,23 @@
 #include "snappydata_struct_BucketOwners.h"
 #include "snappydata_struct_CatalogStorage.h"
 #include "snappydata_struct_CatalogSchemaObject.h"
+#include "snappydata_struct_CatalogStats.h"
 
 #include "snappydata_types.h"
 
 namespace io { namespace snappydata { namespace thrift {
 
 typedef struct _CatalogTableObject__isset {
-  _CatalogTableObject__isset() : schemaName(false), provider(false), numBuckets(false), redundancy(false), sizeInBytes(false), rowCount(false), viewOriginalText(false), viewText(false), comment(false) {}
+  _CatalogTableObject__isset() : schemaName(false), provider(false), numBuckets(false), redundancy(false), stats(false), viewOriginalText(false), viewText(false), comment(false), ignoredProperties(false) {}
   bool schemaName :1;
   bool provider :1;
   bool numBuckets :1;
   bool redundancy :1;
-  bool sizeInBytes :1;
-  bool rowCount :1;
+  bool stats :1;
   bool viewOriginalText :1;
   bool viewText :1;
   bool comment :1;
+  bool ignoredProperties :1;
 } _CatalogTableObject__isset;
 
 class CatalogTableObject {
@@ -56,7 +57,7 @@ class CatalogTableObject {
   CatalogTableObject(CatalogTableObject&&) noexcept;
   CatalogTableObject& operator=(const CatalogTableObject&);
   CatalogTableObject& operator=(CatalogTableObject&&) noexcept;
-  CatalogTableObject() : tableName(), schemaName(), tableType(), tableSchema(), provider(), numBuckets(0), redundancy(0), owner(), createTime(0), lastAccessTime(0), sizeInBytes(0), rowCount(0), isBroadcastable(0), viewOriginalText(), viewText(), comment(), tracksPartitionsInCatalog(0), schemaPreservesCase(0) {
+  CatalogTableObject() : tableName(), schemaName(), tableType(), tableSchema(), provider(), numBuckets(0), redundancy(0), owner(), createTime(0), lastAccessTime(0), viewOriginalText(), viewText(), comment(), tracksPartitionsInCatalog(0), schemaPreservesCase(0) {
   }
 
   virtual ~CatalogTableObject() noexcept;
@@ -78,16 +79,14 @@ class CatalogTableObject {
   int64_t createTime;
   int64_t lastAccessTime;
   std::map<std::string, std::string>  properties;
-  int64_t sizeInBytes;
-  int64_t rowCount;
-  std::vector<std::map<std::string, std::string> >  colStats;
-  bool isBroadcastable;
+  CatalogStats stats;
   std::string viewOriginalText;
   std::string viewText;
   std::string comment;
   std::vector<std::string>  unsupportedFeatures;
   bool tracksPartitionsInCatalog;
   bool schemaPreservesCase;
+  std::map<std::string, std::string>  ignoredProperties;
 
   _CatalogTableObject__isset __isset;
 
@@ -127,13 +126,7 @@ class CatalogTableObject {
 
   void __set_properties(const std::map<std::string, std::string> & val);
 
-  void __set_sizeInBytes(const int64_t val);
-
-  void __set_rowCount(const int64_t val);
-
-  void __set_colStats(const std::vector<std::map<std::string, std::string> > & val);
-
-  void __set_isBroadcastable(const bool val);
+  void __set_stats(const CatalogStats& val);
 
   void __set_viewOriginalText(const std::string& val);
 
@@ -146,6 +139,8 @@ class CatalogTableObject {
   void __set_tracksPartitionsInCatalog(const bool val);
 
   void __set_schemaPreservesCase(const bool val);
+
+  void __set_ignoredProperties(const std::map<std::string, std::string> & val);
 
   bool operator == (const CatalogTableObject & rhs) const
   {
@@ -193,17 +188,9 @@ class CatalogTableObject {
       return false;
     if (!(properties == rhs.properties))
       return false;
-    if (__isset.sizeInBytes != rhs.__isset.sizeInBytes)
+    if (__isset.stats != rhs.__isset.stats)
       return false;
-    else if (__isset.sizeInBytes && !(sizeInBytes == rhs.sizeInBytes))
-      return false;
-    if (__isset.rowCount != rhs.__isset.rowCount)
-      return false;
-    else if (__isset.rowCount && !(rowCount == rhs.rowCount))
-      return false;
-    if (!(colStats == rhs.colStats))
-      return false;
-    if (!(isBroadcastable == rhs.isBroadcastable))
+    else if (__isset.stats && !(stats == rhs.stats))
       return false;
     if (__isset.viewOriginalText != rhs.__isset.viewOriginalText)
       return false;
@@ -222,6 +209,10 @@ class CatalogTableObject {
     if (!(tracksPartitionsInCatalog == rhs.tracksPartitionsInCatalog))
       return false;
     if (!(schemaPreservesCase == rhs.schemaPreservesCase))
+      return false;
+    if (__isset.ignoredProperties != rhs.__isset.ignoredProperties)
+      return false;
+    else if (__isset.ignoredProperties && !(ignoredProperties == rhs.ignoredProperties))
       return false;
     return true;
   }

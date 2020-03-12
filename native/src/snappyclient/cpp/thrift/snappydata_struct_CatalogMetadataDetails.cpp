@@ -77,6 +77,11 @@ void CatalogMetadataDetails::__set_catalogPartitions(const std::vector<CatalogPa
 __isset.catalogPartitions = true;
 }
 
+void CatalogMetadataDetails::__set_catalogStats(const CatalogStats& val) {
+  this->catalogStats = val;
+__isset.catalogStats = true;
+}
+
 uint32_t CatalogMetadataDetails::read(::apache::thrift::protocol::TProtocol* iprot) {
 
   uint32_t xfer = 0;
@@ -101,14 +106,14 @@ uint32_t CatalogMetadataDetails::read(::apache::thrift::protocol::TProtocol* ipr
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->names.clear();
-            uint32_t _size446;
-            ::apache::thrift::protocol::TType _etype449;
-            xfer += iprot->readListBegin(_etype449, _size446);
-            this->names.resize(_size446);
-            uint32_t _i450;
-            for (_i450 = 0; _i450 < _size446; ++_i450)
+            uint32_t _size458;
+            ::apache::thrift::protocol::TType _etype461;
+            xfer += iprot->readListBegin(_etype461, _size458);
+            this->names.resize(_size458);
+            uint32_t _i462;
+            for (_i462 = 0; _i462 < _size458; ++_i462)
             {
-              xfer += iprot->readString(this->names[_i450]);
+              xfer += iprot->readString(this->names[_i462]);
             }
             xfer += iprot->readListEnd();
           }
@@ -121,26 +126,26 @@ uint32_t CatalogMetadataDetails::read(::apache::thrift::protocol::TProtocol* ipr
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->properties.clear();
-            uint32_t _size451;
-            ::apache::thrift::protocol::TType _etype454;
-            xfer += iprot->readListBegin(_etype454, _size451);
-            this->properties.resize(_size451);
-            uint32_t _i455;
-            for (_i455 = 0; _i455 < _size451; ++_i455)
+            uint32_t _size463;
+            ::apache::thrift::protocol::TType _etype466;
+            xfer += iprot->readListBegin(_etype466, _size463);
+            this->properties.resize(_size463);
+            uint32_t _i467;
+            for (_i467 = 0; _i467 < _size463; ++_i467)
             {
               {
-                this->properties[_i455].clear();
-                uint32_t _size456;
-                ::apache::thrift::protocol::TType _ktype457;
-                ::apache::thrift::protocol::TType _vtype458;
-                xfer += iprot->readMapBegin(_ktype457, _vtype458, _size456);
-                uint32_t _i460;
-                for (_i460 = 0; _i460 < _size456; ++_i460)
+                this->properties[_i467].clear();
+                uint32_t _size468;
+                ::apache::thrift::protocol::TType _ktype469;
+                ::apache::thrift::protocol::TType _vtype470;
+                xfer += iprot->readMapBegin(_ktype469, _vtype470, _size468);
+                uint32_t _i472;
+                for (_i472 = 0; _i472 < _size468; ++_i472)
                 {
-                  std::string _key461;
-                  xfer += iprot->readString(_key461);
-                  std::string& _val462 = this->properties[_i455][_key461];
-                  xfer += iprot->readString(_val462);
+                  std::string _key473;
+                  xfer += iprot->readString(_key473);
+                  std::string& _val474 = this->properties[_i467][_key473];
+                  xfer += iprot->readString(_val474);
                 }
                 xfer += iprot->readMapEnd();
               }
@@ -156,26 +161,26 @@ uint32_t CatalogMetadataDetails::read(::apache::thrift::protocol::TProtocol* ipr
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->newProperties.clear();
-            uint32_t _size463;
-            ::apache::thrift::protocol::TType _etype466;
-            xfer += iprot->readListBegin(_etype466, _size463);
-            this->newProperties.resize(_size463);
-            uint32_t _i467;
-            for (_i467 = 0; _i467 < _size463; ++_i467)
+            uint32_t _size475;
+            ::apache::thrift::protocol::TType _etype478;
+            xfer += iprot->readListBegin(_etype478, _size475);
+            this->newProperties.resize(_size475);
+            uint32_t _i479;
+            for (_i479 = 0; _i479 < _size475; ++_i479)
             {
               {
-                this->newProperties[_i467].clear();
-                uint32_t _size468;
-                ::apache::thrift::protocol::TType _ktype469;
-                ::apache::thrift::protocol::TType _vtype470;
-                xfer += iprot->readMapBegin(_ktype469, _vtype470, _size468);
-                uint32_t _i472;
-                for (_i472 = 0; _i472 < _size468; ++_i472)
+                this->newProperties[_i479].clear();
+                uint32_t _size480;
+                ::apache::thrift::protocol::TType _ktype481;
+                ::apache::thrift::protocol::TType _vtype482;
+                xfer += iprot->readMapBegin(_ktype481, _vtype482, _size480);
+                uint32_t _i484;
+                for (_i484 = 0; _i484 < _size480; ++_i484)
                 {
-                  std::string _key473;
-                  xfer += iprot->readString(_key473);
-                  std::string& _val474 = this->newProperties[_i467][_key473];
-                  xfer += iprot->readString(_val474);
+                  std::string _key485;
+                  xfer += iprot->readString(_key485);
+                  std::string& _val486 = this->newProperties[_i479][_key485];
+                  xfer += iprot->readString(_val486);
                 }
                 xfer += iprot->readMapEnd();
               }
@@ -207,14 +212,14 @@ uint32_t CatalogMetadataDetails::read(::apache::thrift::protocol::TProtocol* ipr
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->otherFlags.clear();
-            uint32_t _size475;
-            ::apache::thrift::protocol::TType _etype478;
-            xfer += iprot->readListBegin(_etype478, _size475);
-            this->otherFlags.resize(_size475);
-            uint32_t _i479;
-            for (_i479 = 0; _i479 < _size475; ++_i479)
+            uint32_t _size487;
+            ::apache::thrift::protocol::TType _etype490;
+            xfer += iprot->readListBegin(_etype490, _size487);
+            this->otherFlags.resize(_size487);
+            uint32_t _i491;
+            for (_i491 = 0; _i491 < _size487; ++_i491)
             {
-              xfer += iprot->readI32(this->otherFlags[_i479]);
+              xfer += iprot->readI32(this->otherFlags[_i491]);
             }
             xfer += iprot->readListEnd();
           }
@@ -251,18 +256,26 @@ uint32_t CatalogMetadataDetails::read(::apache::thrift::protocol::TProtocol* ipr
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->catalogPartitions.clear();
-            uint32_t _size480;
-            ::apache::thrift::protocol::TType _etype483;
-            xfer += iprot->readListBegin(_etype483, _size480);
-            this->catalogPartitions.resize(_size480);
-            uint32_t _i484;
-            for (_i484 = 0; _i484 < _size480; ++_i484)
+            uint32_t _size492;
+            ::apache::thrift::protocol::TType _etype495;
+            xfer += iprot->readListBegin(_etype495, _size492);
+            this->catalogPartitions.resize(_size492);
+            uint32_t _i496;
+            for (_i496 = 0; _i496 < _size492; ++_i496)
             {
-              xfer += this->catalogPartitions[_i484].read(iprot);
+              xfer += this->catalogPartitions[_i496].read(iprot);
             }
             xfer += iprot->readListEnd();
           }
           this->__isset.catalogPartitions = true;
+        } else {
+          xfer += iprot->skip(ftype);
+        }
+        break;
+      case 11:
+        if (ftype == ::apache::thrift::protocol::T_STRUCT) {
+          xfer += this->catalogStats.read(iprot);
+          this->__isset.catalogStats = true;
         } else {
           xfer += iprot->skip(ftype);
         }
@@ -287,10 +300,10 @@ uint32_t CatalogMetadataDetails::write(::apache::thrift::protocol::TProtocol* op
     xfer += oprot->writeFieldBegin("names", ::apache::thrift::protocol::T_LIST, 1);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->names.size()));
-      std::vector<std::string> ::const_iterator _iter485;
-      for (_iter485 = this->names.begin(); _iter485 != this->names.end(); ++_iter485)
+      std::vector<std::string> ::const_iterator _iter497;
+      for (_iter497 = this->names.begin(); _iter497 != this->names.end(); ++_iter497)
       {
-        xfer += oprot->writeString((*_iter485));
+        xfer += oprot->writeString((*_iter497));
       }
       xfer += oprot->writeListEnd();
     }
@@ -300,16 +313,16 @@ uint32_t CatalogMetadataDetails::write(::apache::thrift::protocol::TProtocol* op
     xfer += oprot->writeFieldBegin("properties", ::apache::thrift::protocol::T_LIST, 2);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_MAP, static_cast<uint32_t>(this->properties.size()));
-      std::vector<std::map<std::string, std::string> > ::const_iterator _iter486;
-      for (_iter486 = this->properties.begin(); _iter486 != this->properties.end(); ++_iter486)
+      std::vector<std::map<std::string, std::string> > ::const_iterator _iter498;
+      for (_iter498 = this->properties.begin(); _iter498 != this->properties.end(); ++_iter498)
       {
         {
-          xfer += oprot->writeMapBegin(::apache::thrift::protocol::T_STRING, ::apache::thrift::protocol::T_STRING, static_cast<uint32_t>((*_iter486).size()));
-          std::map<std::string, std::string> ::const_iterator _iter487;
-          for (_iter487 = (*_iter486).begin(); _iter487 != (*_iter486).end(); ++_iter487)
+          xfer += oprot->writeMapBegin(::apache::thrift::protocol::T_STRING, ::apache::thrift::protocol::T_STRING, static_cast<uint32_t>((*_iter498).size()));
+          std::map<std::string, std::string> ::const_iterator _iter499;
+          for (_iter499 = (*_iter498).begin(); _iter499 != (*_iter498).end(); ++_iter499)
           {
-            xfer += oprot->writeString(_iter487->first);
-            xfer += oprot->writeString(_iter487->second);
+            xfer += oprot->writeString(_iter499->first);
+            xfer += oprot->writeString(_iter499->second);
           }
           xfer += oprot->writeMapEnd();
         }
@@ -322,16 +335,16 @@ uint32_t CatalogMetadataDetails::write(::apache::thrift::protocol::TProtocol* op
     xfer += oprot->writeFieldBegin("newProperties", ::apache::thrift::protocol::T_LIST, 3);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_MAP, static_cast<uint32_t>(this->newProperties.size()));
-      std::vector<std::map<std::string, std::string> > ::const_iterator _iter488;
-      for (_iter488 = this->newProperties.begin(); _iter488 != this->newProperties.end(); ++_iter488)
+      std::vector<std::map<std::string, std::string> > ::const_iterator _iter500;
+      for (_iter500 = this->newProperties.begin(); _iter500 != this->newProperties.end(); ++_iter500)
       {
         {
-          xfer += oprot->writeMapBegin(::apache::thrift::protocol::T_STRING, ::apache::thrift::protocol::T_STRING, static_cast<uint32_t>((*_iter488).size()));
-          std::map<std::string, std::string> ::const_iterator _iter489;
-          for (_iter489 = (*_iter488).begin(); _iter489 != (*_iter488).end(); ++_iter489)
+          xfer += oprot->writeMapBegin(::apache::thrift::protocol::T_STRING, ::apache::thrift::protocol::T_STRING, static_cast<uint32_t>((*_iter500).size()));
+          std::map<std::string, std::string> ::const_iterator _iter501;
+          for (_iter501 = (*_iter500).begin(); _iter501 != (*_iter500).end(); ++_iter501)
           {
-            xfer += oprot->writeString(_iter489->first);
-            xfer += oprot->writeString(_iter489->second);
+            xfer += oprot->writeString(_iter501->first);
+            xfer += oprot->writeString(_iter501->second);
           }
           xfer += oprot->writeMapEnd();
         }
@@ -354,10 +367,10 @@ uint32_t CatalogMetadataDetails::write(::apache::thrift::protocol::TProtocol* op
     xfer += oprot->writeFieldBegin("otherFlags", ::apache::thrift::protocol::T_LIST, 6);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_I32, static_cast<uint32_t>(this->otherFlags.size()));
-      std::vector<int32_t> ::const_iterator _iter490;
-      for (_iter490 = this->otherFlags.begin(); _iter490 != this->otherFlags.end(); ++_iter490)
+      std::vector<int32_t> ::const_iterator _iter502;
+      for (_iter502 = this->otherFlags.begin(); _iter502 != this->otherFlags.end(); ++_iter502)
       {
-        xfer += oprot->writeI32((*_iter490));
+        xfer += oprot->writeI32((*_iter502));
       }
       xfer += oprot->writeListEnd();
     }
@@ -382,13 +395,18 @@ uint32_t CatalogMetadataDetails::write(::apache::thrift::protocol::TProtocol* op
     xfer += oprot->writeFieldBegin("catalogPartitions", ::apache::thrift::protocol::T_LIST, 10);
     {
       xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRUCT, static_cast<uint32_t>(this->catalogPartitions.size()));
-      std::vector<CatalogPartitionObject> ::const_iterator _iter491;
-      for (_iter491 = this->catalogPartitions.begin(); _iter491 != this->catalogPartitions.end(); ++_iter491)
+      std::vector<CatalogPartitionObject> ::const_iterator _iter503;
+      for (_iter503 = this->catalogPartitions.begin(); _iter503 != this->catalogPartitions.end(); ++_iter503)
       {
-        xfer += (*_iter491).write(oprot);
+        xfer += (*_iter503).write(oprot);
       }
       xfer += oprot->writeListEnd();
     }
+    xfer += oprot->writeFieldEnd();
+  }
+  if (this->__isset.catalogStats) {
+    xfer += oprot->writeFieldBegin("catalogStats", ::apache::thrift::protocol::T_STRUCT, 11);
+    xfer += this->catalogStats.write(oprot);
     xfer += oprot->writeFieldEnd();
   }
   xfer += oprot->writeFieldStop();
@@ -408,61 +426,66 @@ void swap(CatalogMetadataDetails &a, CatalogMetadataDetails &b) {
   swap(a.catalogTable, b.catalogTable);
   swap(a.catalogFunction, b.catalogFunction);
   swap(a.catalogPartitions, b.catalogPartitions);
+  swap(a.catalogStats, b.catalogStats);
   swap(a.__isset, b.__isset);
 }
 
-CatalogMetadataDetails::CatalogMetadataDetails(const CatalogMetadataDetails& other492) {
-  names = other492.names;
-  properties = other492.properties;
-  newProperties = other492.newProperties;
-  catalogSchemaVersion = other492.catalogSchemaVersion;
-  exists = other492.exists;
-  otherFlags = other492.otherFlags;
-  catalogSchema = other492.catalogSchema;
-  catalogTable = other492.catalogTable;
-  catalogFunction = other492.catalogFunction;
-  catalogPartitions = other492.catalogPartitions;
-  __isset = other492.__isset;
+CatalogMetadataDetails::CatalogMetadataDetails(const CatalogMetadataDetails& other504) {
+  names = other504.names;
+  properties = other504.properties;
+  newProperties = other504.newProperties;
+  catalogSchemaVersion = other504.catalogSchemaVersion;
+  exists = other504.exists;
+  otherFlags = other504.otherFlags;
+  catalogSchema = other504.catalogSchema;
+  catalogTable = other504.catalogTable;
+  catalogFunction = other504.catalogFunction;
+  catalogPartitions = other504.catalogPartitions;
+  catalogStats = other504.catalogStats;
+  __isset = other504.__isset;
 }
-CatalogMetadataDetails::CatalogMetadataDetails( CatalogMetadataDetails&& other493) noexcept {
-  names = std::move(other493.names);
-  properties = std::move(other493.properties);
-  newProperties = std::move(other493.newProperties);
-  catalogSchemaVersion = std::move(other493.catalogSchemaVersion);
-  exists = std::move(other493.exists);
-  otherFlags = std::move(other493.otherFlags);
-  catalogSchema = std::move(other493.catalogSchema);
-  catalogTable = std::move(other493.catalogTable);
-  catalogFunction = std::move(other493.catalogFunction);
-  catalogPartitions = std::move(other493.catalogPartitions);
-  __isset = std::move(other493.__isset);
+CatalogMetadataDetails::CatalogMetadataDetails( CatalogMetadataDetails&& other505) noexcept {
+  names = std::move(other505.names);
+  properties = std::move(other505.properties);
+  newProperties = std::move(other505.newProperties);
+  catalogSchemaVersion = std::move(other505.catalogSchemaVersion);
+  exists = std::move(other505.exists);
+  otherFlags = std::move(other505.otherFlags);
+  catalogSchema = std::move(other505.catalogSchema);
+  catalogTable = std::move(other505.catalogTable);
+  catalogFunction = std::move(other505.catalogFunction);
+  catalogPartitions = std::move(other505.catalogPartitions);
+  catalogStats = std::move(other505.catalogStats);
+  __isset = std::move(other505.__isset);
 }
-CatalogMetadataDetails& CatalogMetadataDetails::operator=(const CatalogMetadataDetails& other494) {
-  names = other494.names;
-  properties = other494.properties;
-  newProperties = other494.newProperties;
-  catalogSchemaVersion = other494.catalogSchemaVersion;
-  exists = other494.exists;
-  otherFlags = other494.otherFlags;
-  catalogSchema = other494.catalogSchema;
-  catalogTable = other494.catalogTable;
-  catalogFunction = other494.catalogFunction;
-  catalogPartitions = other494.catalogPartitions;
-  __isset = other494.__isset;
+CatalogMetadataDetails& CatalogMetadataDetails::operator=(const CatalogMetadataDetails& other506) {
+  names = other506.names;
+  properties = other506.properties;
+  newProperties = other506.newProperties;
+  catalogSchemaVersion = other506.catalogSchemaVersion;
+  exists = other506.exists;
+  otherFlags = other506.otherFlags;
+  catalogSchema = other506.catalogSchema;
+  catalogTable = other506.catalogTable;
+  catalogFunction = other506.catalogFunction;
+  catalogPartitions = other506.catalogPartitions;
+  catalogStats = other506.catalogStats;
+  __isset = other506.__isset;
   return *this;
 }
-CatalogMetadataDetails& CatalogMetadataDetails::operator=(CatalogMetadataDetails&& other495) noexcept {
-  names = std::move(other495.names);
-  properties = std::move(other495.properties);
-  newProperties = std::move(other495.newProperties);
-  catalogSchemaVersion = std::move(other495.catalogSchemaVersion);
-  exists = std::move(other495.exists);
-  otherFlags = std::move(other495.otherFlags);
-  catalogSchema = std::move(other495.catalogSchema);
-  catalogTable = std::move(other495.catalogTable);
-  catalogFunction = std::move(other495.catalogFunction);
-  catalogPartitions = std::move(other495.catalogPartitions);
-  __isset = std::move(other495.__isset);
+CatalogMetadataDetails& CatalogMetadataDetails::operator=(CatalogMetadataDetails&& other507) noexcept {
+  names = std::move(other507.names);
+  properties = std::move(other507.properties);
+  newProperties = std::move(other507.newProperties);
+  catalogSchemaVersion = std::move(other507.catalogSchemaVersion);
+  exists = std::move(other507.exists);
+  otherFlags = std::move(other507.otherFlags);
+  catalogSchema = std::move(other507.catalogSchema);
+  catalogTable = std::move(other507.catalogTable);
+  catalogFunction = std::move(other507.catalogFunction);
+  catalogPartitions = std::move(other507.catalogPartitions);
+  catalogStats = std::move(other507.catalogStats);
+  __isset = std::move(other507.__isset);
   return *this;
 }
 void CatalogMetadataDetails::printTo(std::ostream& out) const {
@@ -478,6 +501,7 @@ void CatalogMetadataDetails::printTo(std::ostream& out) const {
   out << ", " << "catalogTable="; (__isset.catalogTable ? (out << to_string(catalogTable)) : (out << "<null>"));
   out << ", " << "catalogFunction="; (__isset.catalogFunction ? (out << to_string(catalogFunction)) : (out << "<null>"));
   out << ", " << "catalogPartitions="; (__isset.catalogPartitions ? (out << to_string(catalogPartitions)) : (out << "<null>"));
+  out << ", " << "catalogStats="; (__isset.catalogStats ? (out << to_string(catalogStats)) : (out << "<null>"));
   out << ")";
 }
 

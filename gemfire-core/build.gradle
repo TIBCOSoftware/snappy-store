@@ -123,6 +123,7 @@ dependencies {
   }
   compileOnly "com.jcraft:jsch:${jschVersion}"
   compileOnly "org.apache.ant:ant:${antVersion}"
+  compileOnly "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
 
   compile project(subprojectBase + 'gemfire-jgroups')
   compile project(subprojectBase + 'gemfire-util')

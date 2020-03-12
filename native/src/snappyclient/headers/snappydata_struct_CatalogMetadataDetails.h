@@ -31,6 +31,7 @@
 #include "snappydata_struct_BucketOwners.h"
 #include "snappydata_struct_CatalogStorage.h"
 #include "snappydata_struct_CatalogSchemaObject.h"
+#include "snappydata_struct_CatalogStats.h"
 #include "snappydata_struct_CatalogTableObject.h"
 #include "snappydata_struct_CatalogFunctionObject.h"
 #include "snappydata_struct_CatalogPartitionObject.h"
@@ -41,7 +42,7 @@
 namespace io { namespace snappydata { namespace thrift {
 
 typedef struct _CatalogMetadataDetails__isset {
-  _CatalogMetadataDetails__isset() : names(false), properties(false), newProperties(false), catalogSchemaVersion(false), exists(false), otherFlags(false), catalogSchema(false), catalogTable(false), catalogFunction(false), catalogPartitions(false) {}
+  _CatalogMetadataDetails__isset() : names(false), properties(false), newProperties(false), catalogSchemaVersion(false), exists(false), otherFlags(false), catalogSchema(false), catalogTable(false), catalogFunction(false), catalogPartitions(false), catalogStats(false) {}
   bool names :1;
   bool properties :1;
   bool newProperties :1;
@@ -52,6 +53,7 @@ typedef struct _CatalogMetadataDetails__isset {
   bool catalogTable :1;
   bool catalogFunction :1;
   bool catalogPartitions :1;
+  bool catalogStats :1;
 } _CatalogMetadataDetails__isset;
 
 class CatalogMetadataDetails {
@@ -75,6 +77,7 @@ class CatalogMetadataDetails {
   CatalogTableObject catalogTable;
   CatalogFunctionObject catalogFunction;
   std::vector<CatalogPartitionObject>  catalogPartitions;
+  CatalogStats catalogStats;
 
   _CatalogMetadataDetails__isset __isset;
 
@@ -97,6 +100,8 @@ class CatalogMetadataDetails {
   void __set_catalogFunction(const CatalogFunctionObject& val);
 
   void __set_catalogPartitions(const std::vector<CatalogPartitionObject> & val);
+
+  void __set_catalogStats(const CatalogStats& val);
 
   bool operator == (const CatalogMetadataDetails & rhs) const
   {
@@ -139,6 +144,10 @@ class CatalogMetadataDetails {
     if (__isset.catalogPartitions != rhs.__isset.catalogPartitions)
       return false;
     else if (__isset.catalogPartitions && !(catalogPartitions == rhs.catalogPartitions))
+      return false;
+    if (__isset.catalogStats != rhs.__isset.catalogStats)
+      return false;
+    else if (__isset.catalogStats && !(catalogStats == rhs.catalogStats))
       return false;
     return true;
   }

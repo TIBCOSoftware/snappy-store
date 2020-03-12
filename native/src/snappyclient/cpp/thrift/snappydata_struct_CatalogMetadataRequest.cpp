@@ -82,17 +82,17 @@ uint32_t CatalogMetadataRequest::read(::apache::thrift::protocol::TProtocol* ipr
         if (ftype == ::apache::thrift::protocol::T_MAP) {
           {
             this->properties.clear();
-            uint32_t _size434;
-            ::apache::thrift::protocol::TType _ktype435;
-            ::apache::thrift::protocol::TType _vtype436;
-            xfer += iprot->readMapBegin(_ktype435, _vtype436, _size434);
-            uint32_t _i438;
-            for (_i438 = 0; _i438 < _size434; ++_i438)
+            uint32_t _size446;
+            ::apache::thrift::protocol::TType _ktype447;
+            ::apache::thrift::protocol::TType _vtype448;
+            xfer += iprot->readMapBegin(_ktype447, _vtype448, _size446);
+            uint32_t _i450;
+            for (_i450 = 0; _i450 < _size446; ++_i450)
             {
-              std::string _key439;
-              xfer += iprot->readString(_key439);
-              std::string& _val440 = this->properties[_key439];
-              xfer += iprot->readString(_val440);
+              std::string _key451;
+              xfer += iprot->readString(_key451);
+              std::string& _val452 = this->properties[_key451];
+              xfer += iprot->readString(_val452);
             }
             xfer += iprot->readMapEnd();
           }
@@ -131,11 +131,11 @@ uint32_t CatalogMetadataRequest::write(::apache::thrift::protocol::TProtocol* op
     xfer += oprot->writeFieldBegin("properties", ::apache::thrift::protocol::T_MAP, 3);
     {
       xfer += oprot->writeMapBegin(::apache::thrift::protocol::T_STRING, ::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->properties.size()));
-      std::map<std::string, std::string> ::const_iterator _iter441;
-      for (_iter441 = this->properties.begin(); _iter441 != this->properties.end(); ++_iter441)
+      std::map<std::string, std::string> ::const_iterator _iter453;
+      for (_iter453 = this->properties.begin(); _iter453 != this->properties.end(); ++_iter453)
       {
-        xfer += oprot->writeString(_iter441->first);
-        xfer += oprot->writeString(_iter441->second);
+        xfer += oprot->writeString(_iter453->first);
+        xfer += oprot->writeString(_iter453->second);
       }
       xfer += oprot->writeMapEnd();
     }
@@ -154,30 +154,30 @@ void swap(CatalogMetadataRequest &a, CatalogMetadataRequest &b) {
   swap(a.__isset, b.__isset);
 }
 
-CatalogMetadataRequest::CatalogMetadataRequest(const CatalogMetadataRequest& other442) {
-  schemaName = other442.schemaName;
-  nameOrPattern = other442.nameOrPattern;
-  properties = other442.properties;
-  __isset = other442.__isset;
+CatalogMetadataRequest::CatalogMetadataRequest(const CatalogMetadataRequest& other454) {
+  schemaName = other454.schemaName;
+  nameOrPattern = other454.nameOrPattern;
+  properties = other454.properties;
+  __isset = other454.__isset;
 }
-CatalogMetadataRequest::CatalogMetadataRequest( CatalogMetadataRequest&& other443) noexcept {
-  schemaName = std::move(other443.schemaName);
-  nameOrPattern = std::move(other443.nameOrPattern);
-  properties = std::move(other443.properties);
-  __isset = std::move(other443.__isset);
+CatalogMetadataRequest::CatalogMetadataRequest( CatalogMetadataRequest&& other455) noexcept {
+  schemaName = std::move(other455.schemaName);
+  nameOrPattern = std::move(other455.nameOrPattern);
+  properties = std::move(other455.properties);
+  __isset = std::move(other455.__isset);
 }
-CatalogMetadataRequest& CatalogMetadataRequest::operator=(const CatalogMetadataRequest& other444) {
-  schemaName = other444.schemaName;
-  nameOrPattern = other444.nameOrPattern;
-  properties = other444.properties;
-  __isset = other444.__isset;
+CatalogMetadataRequest& CatalogMetadataRequest::operator=(const CatalogMetadataRequest& other456) {
+  schemaName = other456.schemaName;
+  nameOrPattern = other456.nameOrPattern;
+  properties = other456.properties;
+  __isset = other456.__isset;
   return *this;
 }
-CatalogMetadataRequest& CatalogMetadataRequest::operator=(CatalogMetadataRequest&& other445) noexcept {
-  schemaName = std::move(other445.schemaName);
-  nameOrPattern = std::move(other445.nameOrPattern);
-  properties = std::move(other445.properties);
-  __isset = std::move(other445.__isset);
+CatalogMetadataRequest& CatalogMetadataRequest::operator=(CatalogMetadataRequest&& other457) noexcept {
+  schemaName = std::move(other457.schemaName);
+  nameOrPattern = std::move(other457.nameOrPattern);
+  properties = std::move(other457.properties);
+  __isset = std::move(other457.__isset);
   return *this;
 }
 void CatalogMetadataRequest::printTo(std::ostream& out) const {

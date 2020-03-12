@@ -55,7 +55,6 @@ import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedM
 import com.gemstone.gemfire.i18n.LogWriterI18n;
 import com.gemstone.gemfire.internal.GemFireStatSampler;
 import com.gemstone.gemfire.internal.InsufficientDiskSpaceException;
-import com.gemstone.gemfire.internal.LocalLogWriter;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.NoDataStoreAvailableException;
@@ -69,7 +68,6 @@ import com.gemstone.gemfire.internal.shared.ClientSharedUtils;
 import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
-import com.gemstone.gemfire.internal.util.DebuggerSupport;
 import com.pivotal.gemfirexd.Attribute;
 import com.pivotal.gemfirexd.Constants;
 import com.pivotal.gemfirexd.auth.callback.UserAuthenticator;
@@ -81,7 +79,6 @@ import com.pivotal.gemfirexd.internal.engine.sql.conn.GfxdHeapThresholdListener;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.error.DerbySQLException;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
-import com.pivotal.gemfirexd.internal.iapi.jdbc.AuthenticationService;
 import com.pivotal.gemfirexd.internal.iapi.reference.SQLState;
 import com.pivotal.gemfirexd.internal.iapi.services.context.ContextService;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
@@ -109,14 +106,6 @@ public abstract class Misc {
 
   /** no instance allowed */
   private Misc() {
-  }
-
-  /**
-   * misc utilities
-   */
-  public static void waitForDebugger() {
-    DebuggerSupport.waitForJavaDebugger(new LocalLogWriter(
-        LocalLogWriter.ALL_LEVEL));
   }
 
   /**
@@ -756,14 +745,10 @@ public abstract class Misc {
    * Only LDAP scheme is supported currently.
    */
   public static boolean isSecurityEnabled() {
-    AuthenticationService authService = Misc.getMemStoreBooting()
+    AuthenticationServiceBase authService = Misc.getMemStoreBooting()
         .getDatabase().getAuthenticationService();
-    if (authService != null) {
-      UserAuthenticator auth = ((AuthenticationServiceBase)authService)
-          .getAuthenticationScheme();
-      return auth instanceof LDAPAuthenticationSchemeImpl;
-    }
-    return false;
+    return authService != null &&
+        authService.getAuthenticationScheme() instanceof LDAPAuthenticationSchemeImpl;
   }
 
   /* Returns true if LDAP Security is Enabled */
@@ -779,8 +764,8 @@ public abstract class Misc {
   public static boolean checkLDAPGroupOwnership(String schemaName, String ldapGroupName, String user)
       throws StandardException {
     if (ldapGroupName.startsWith(Constants.LDAP_GROUP_PREFIX)) {
-      UserAuthenticator auth = ((AuthenticationServiceBase)Misc.getMemStoreBooting()
-          .getDatabase().getAuthenticationService()).getAuthenticationScheme();
+      UserAuthenticator auth = Misc.getMemStoreBooting()
+          .getDatabase().getAuthenticationService().getAuthenticationScheme();
       if (auth instanceof LDAPAuthenticationSchemeImpl) {
         String group = ldapGroupName.substring(Constants.LDAP_GROUP_PREFIX.length());
         try {
@@ -862,7 +847,7 @@ public abstract class Misc {
       // check if this VM is shutting down
       getGemFireCache().getCancelCriterion().checkCancelInProgress(thr);
       // if everything else fails, wrap in unexpected exception
-      member = StandardException.fixUpRemoteException(t, member);
+      StandardException.fixUpRemoteException(t, member);
       stdEx = StandardException.newException(
           SQLState.LANG_UNEXPECTED_USER_EXCEPTION, thr, thr.toString());
     }
@@ -934,7 +919,7 @@ public abstract class Misc {
             .toLocalizedString();
       expected = expected.substring(0, expected.indexOf('.'));
       String msgThis = gfeex.getLocalizedMessage();
-      if (msgThis.indexOf(expected) != -1
+      if (msgThis.contains(expected)
           || msgThis.contains(LocalizedStrings
               .PRHARRedundancyProvider_ALLOCATE_ENOUGH_MEMBERS_TO_HOST_BUCKET
                 .toLocalizedString())
@@ -987,7 +972,7 @@ public abstract class Misc {
         expected = expected.substring(0, expected.indexOf('.'));
 
         String msgThis = partialExceptionCause.getLocalizedMessage();
-        if (msgThis.indexOf(expected) != -1
+        if (msgThis.contains(expected)
             || partialExceptionCause
                 .getLocalizedMessage()
                 .contains(
@@ -1022,7 +1007,7 @@ public abstract class Misc {
           gfeex);
     }
     Throwable innerCause = gfeex.getCause();
-    if (innerCause != null && innerCause instanceof GemFireException) {
+    if (innerCause instanceof GemFireException) {
       StandardException se = processKnownGemFireException(
           (GemFireException)innerCause, innerCause, op, false);
       if (se != null) {
@@ -1093,7 +1078,7 @@ public abstract class Misc {
   public static StandardException wrapRemoteSQLException(
       final SQLException sqle, final Throwable remoteEx,
       DistributedMember member) {
-    member = StandardException.fixUpRemoteException(sqle, member);
+    StandardException.fixUpRemoteException(sqle, member);
     return wrapSQLException(sqle, remoteEx);
   }
 

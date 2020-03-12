@@ -720,6 +720,14 @@ struct CatalogSchemaObject {
   4: required map<string, string>                          properties
 }
 
+// encapsulates Spark's CatalogStatistics/Statistics
+struct CatalogStats {
+  1: required i64                                          sizeInBytes
+  2: optional i64                                          rowCount
+ // statistics for each column of the table (or empty if none)
+  3: required list<map<string, string>>                    colStats
+}
+
 // encapsulates Spark's CatalogTable and SnappyData extensions like BucketOwners, indexColumns etc
 struct CatalogTableObject {
   1: required string                                       tableName
@@ -741,17 +749,14 @@ struct CatalogTableObject {
  16: required i64                                          createTime
  17: required i64                                          lastAccessTime
  18: required map<string, string>                          properties
- 19: optional i64                                          sizeInBytes
- 20: optional i64                                          rowCount
- // statistics for each column of the table (or empty if none)
- 21: required list<map<string, string>>                    colStats
- 22: required bool                                         isBroadcastable
- 23: optional string                                       viewOriginalText
- 24: optional string                                       viewText
- 25: optional string                                       comment
- 26: required list<string>                                 unsupportedFeatures
- 27: required bool                                         tracksPartitionsInCatalog
- 28: required bool                                         schemaPreservesCase
+ 19: optional CatalogStats                                 stats
+ 20: optional string                                       viewOriginalText
+ 21: optional string                                       viewText
+ 22: optional string                                       comment
+ 23: required list<string>                                 unsupportedFeatures
+ 24: required bool                                         tracksPartitionsInCatalog
+ 25: required bool                                         schemaPreservesCase
+ 26: optional map<string, string>                          ignoredProperties
 }
 
 // encapsulates Spark's CatalogFunction
@@ -788,6 +793,8 @@ struct CatalogMetadataDetails {
   8: optional CatalogTableObject                           catalogTable
   9: optional CatalogFunctionObject                        catalogFunction
  10: optional list<CatalogPartitionObject>                 catalogPartitions
+ 11: optional CatalogStats                                 catalogStats
+ 12: optional string                                       newSchema
 }
 
 // different types of get operations returning CatalogMetadataDetails
@@ -810,17 +817,20 @@ const i32 CATALOG_DROP_SCHEMA                              = 102
 const i32 CATALOG_CREATE_TABLE                             = 103
 const i32 CATALOG_DROP_TABLE                               = 104
 const i32 CATALOG_ALTER_TABLE                              = 105
-const i32 CATALOG_RENAME_TABLE                             = 106
-const i32 CATALOG_LOAD_TABLE                               = 107
-const i32 CATALOG_CREATE_FUNCTION                          = 108
-const i32 CATALOG_DROP_FUNCTION                            = 109
-const i32 CATALOG_RENAME_FUNCTION                          = 110
-const i32 CATALOG_CREATE_PARTITIONS                        = 111
-const i32 CATALOG_DROP_PARTITIONS                          = 112
-const i32 CATALOG_ALTER_PARTITIONS                         = 113
-const i32 CATALOG_RENAME_PARTITIONS                        = 114
-const i32 CATALOG_LOAD_PARTITION                           = 115
-const i32 CATALOG_LOAD_DYNAMIC_PARTITIONS                  = 116
+const i32 CATALOG_ALTER_TABLE_STATS                        = 106
+const i32 CATALOG_RENAME_TABLE                             = 107
+const i32 CATALOG_LOAD_TABLE                               = 108
+const i32 CATALOG_CREATE_FUNCTION                          = 109
+const i32 CATALOG_DROP_FUNCTION                            = 110
+const i32 CATALOG_ALTER_FUNCTION                           = 111
+const i32 CATALOG_RENAME_FUNCTION                          = 112
+const i32 CATALOG_CREATE_PARTITIONS                        = 113
+const i32 CATALOG_DROP_PARTITIONS                          = 114
+const i32 CATALOG_ALTER_PARTITIONS                         = 115
+const i32 CATALOG_RENAME_PARTITIONS                        = 116
+const i32 CATALOG_LOAD_PARTITION                           = 117
+const i32 CATALOG_LOAD_DYNAMIC_PARTITIONS                  = 118
+const i32 CATALOG_ALTER_TABLE_SCHEMA                       = 119
 
 // type IDs for EntityId used by bulkClose API
 const byte BULK_CLOSE_RESULTSET                            = 1

@@ -95,14 +95,14 @@ uint32_t CatalogFunctionObject::read(::apache::thrift::protocol::TProtocol* ipro
         if (ftype == ::apache::thrift::protocol::T_LIST) {
           {
             this->resources.clear();
-            uint32_t _size404;
-            ::apache::thrift::protocol::TType _etype407;
-            xfer += iprot->readListBegin(_etype407, _size404);
-            this->resources.resize(_size404);
-            uint32_t _i408;
-            for (_i408 = 0; _i408 < _size404; ++_i408)
+            uint32_t _size416;
+            ::apache::thrift::protocol::TType _etype419;
+            xfer += iprot->readListBegin(_etype419, _size416);
+            this->resources.resize(_size416);
+            uint32_t _i420;
+            for (_i420 = 0; _i420 < _size416; ++_i420)
             {
-              xfer += iprot->readString(this->resources[_i408]);
+              xfer += iprot->readString(this->resources[_i420]);
             }
             xfer += iprot->readListEnd();
           }
@@ -149,10 +149,10 @@ uint32_t CatalogFunctionObject::write(::apache::thrift::protocol::TProtocol* opr
   xfer += oprot->writeFieldBegin("resources", ::apache::thrift::protocol::T_LIST, 4);
   {
     xfer += oprot->writeListBegin(::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->resources.size()));
-    std::vector<std::string> ::const_iterator _iter409;
-    for (_iter409 = this->resources.begin(); _iter409 != this->resources.end(); ++_iter409)
+    std::vector<std::string> ::const_iterator _iter421;
+    for (_iter421 = this->resources.begin(); _iter421 != this->resources.end(); ++_iter421)
     {
-      xfer += oprot->writeString((*_iter409));
+      xfer += oprot->writeString((*_iter421));
     }
     xfer += oprot->writeListEnd();
   }
@@ -172,34 +172,34 @@ void swap(CatalogFunctionObject &a, CatalogFunctionObject &b) {
   swap(a.__isset, b.__isset);
 }
 
-CatalogFunctionObject::CatalogFunctionObject(const CatalogFunctionObject& other410) {
-  functionName = other410.functionName;
-  schemaName = other410.schemaName;
-  className = other410.className;
-  resources = other410.resources;
-  __isset = other410.__isset;
+CatalogFunctionObject::CatalogFunctionObject(const CatalogFunctionObject& other422) {
+  functionName = other422.functionName;
+  schemaName = other422.schemaName;
+  className = other422.className;
+  resources = other422.resources;
+  __isset = other422.__isset;
 }
-CatalogFunctionObject::CatalogFunctionObject( CatalogFunctionObject&& other411) noexcept {
-  functionName = std::move(other411.functionName);
-  schemaName = std::move(other411.schemaName);
-  className = std::move(other411.className);
-  resources = std::move(other411.resources);
-  __isset = std::move(other411.__isset);
+CatalogFunctionObject::CatalogFunctionObject( CatalogFunctionObject&& other423) noexcept {
+  functionName = std::move(other423.functionName);
+  schemaName = std::move(other423.schemaName);
+  className = std::move(other423.className);
+  resources = std::move(other423.resources);
+  __isset = std::move(other423.__isset);
 }
-CatalogFunctionObject& CatalogFunctionObject::operator=(const CatalogFunctionObject& other412) {
-  functionName = other412.functionName;
-  schemaName = other412.schemaName;
-  className = other412.className;
-  resources = other412.resources;
-  __isset = other412.__isset;
+CatalogFunctionObject& CatalogFunctionObject::operator=(const CatalogFunctionObject& other424) {
+  functionName = other424.functionName;
+  schemaName = other424.schemaName;
+  className = other424.className;
+  resources = other424.resources;
+  __isset = other424.__isset;
   return *this;
 }
-CatalogFunctionObject& CatalogFunctionObject::operator=(CatalogFunctionObject&& other413) noexcept {
-  functionName = std::move(other413.functionName);
-  schemaName = std::move(other413.schemaName);
-  className = std::move(other413.className);
-  resources = std::move(other413.resources);
-  __isset = std::move(other413.__isset);
+CatalogFunctionObject& CatalogFunctionObject::operator=(CatalogFunctionObject&& other425) noexcept {
+  functionName = std::move(other425.functionName);
+  schemaName = std::move(other425.schemaName);
+  className = std::move(other425.className);
+  resources = std::move(other425.resources);
+  __isset = std::move(other425.__isset);
   return *this;
 }
 void CatalogFunctionObject::printTo(std::ostream& out) const {

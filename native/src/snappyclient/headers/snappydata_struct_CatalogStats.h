@@ -5,8 +5,8 @@
  *  @generated
  */
 
-#ifndef SNAPPYDATA_STRUCT_CATALOGPARTITIONOBJECT_H
-#define SNAPPYDATA_STRUCT_CATALOGPARTITIONOBJECT_H
+#ifndef SNAPPYDATA_STRUCT_CATALOGSTATS_H
+#define SNAPPYDATA_STRUCT_CATALOGSTATS_H
 
 
 #include "snappydata_struct_Decimal.h"
@@ -31,51 +31,56 @@
 #include "snappydata_struct_BucketOwners.h"
 #include "snappydata_struct_CatalogStorage.h"
 #include "snappydata_struct_CatalogSchemaObject.h"
-#include "snappydata_struct_CatalogStats.h"
-#include "snappydata_struct_CatalogTableObject.h"
-#include "snappydata_struct_CatalogFunctionObject.h"
 
 #include "snappydata_types.h"
 
 namespace io { namespace snappydata { namespace thrift {
 
+typedef struct _CatalogStats__isset {
+  _CatalogStats__isset() : rowCount(false) {}
+  bool rowCount :1;
+} _CatalogStats__isset;
 
-class CatalogPartitionObject {
+class CatalogStats {
  public:
 
-  CatalogPartitionObject(const CatalogPartitionObject&);
-  CatalogPartitionObject(CatalogPartitionObject&&) noexcept;
-  CatalogPartitionObject& operator=(const CatalogPartitionObject&);
-  CatalogPartitionObject& operator=(CatalogPartitionObject&&) noexcept;
-  CatalogPartitionObject() {
+  CatalogStats(const CatalogStats&);
+  CatalogStats(CatalogStats&&) noexcept;
+  CatalogStats& operator=(const CatalogStats&);
+  CatalogStats& operator=(CatalogStats&&) noexcept;
+  CatalogStats() : sizeInBytes(0), rowCount(0) {
   }
 
-  virtual ~CatalogPartitionObject() noexcept;
-  std::map<std::string, std::string>  spec;
-  CatalogStorage storage;
-  std::map<std::string, std::string>  parameters;
+  virtual ~CatalogStats() noexcept;
+  int64_t sizeInBytes;
+  int64_t rowCount;
+  std::vector<std::map<std::string, std::string> >  colStats;
 
-  void __set_spec(const std::map<std::string, std::string> & val);
+  _CatalogStats__isset __isset;
 
-  void __set_storage(const CatalogStorage& val);
+  void __set_sizeInBytes(const int64_t val);
 
-  void __set_parameters(const std::map<std::string, std::string> & val);
+  void __set_rowCount(const int64_t val);
 
-  bool operator == (const CatalogPartitionObject & rhs) const
+  void __set_colStats(const std::vector<std::map<std::string, std::string> > & val);
+
+  bool operator == (const CatalogStats & rhs) const
   {
-    if (!(spec == rhs.spec))
+    if (!(sizeInBytes == rhs.sizeInBytes))
       return false;
-    if (!(storage == rhs.storage))
+    if (__isset.rowCount != rhs.__isset.rowCount)
       return false;
-    if (!(parameters == rhs.parameters))
+    else if (__isset.rowCount && !(rowCount == rhs.rowCount))
+      return false;
+    if (!(colStats == rhs.colStats))
       return false;
     return true;
   }
-  bool operator != (const CatalogPartitionObject &rhs) const {
+  bool operator != (const CatalogStats &rhs) const {
     return !(*this == rhs);
   }
 
-  bool operator < (const CatalogPartitionObject & ) const;
+  bool operator < (const CatalogStats & ) const;
 
   uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
   uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
@@ -83,9 +88,9 @@ class CatalogPartitionObject {
   virtual void printTo(std::ostream& out) const;
 };
 
-void swap(CatalogPartitionObject &a, CatalogPartitionObject &b);
+void swap(CatalogStats &a, CatalogStats &b);
 
-inline std::ostream& operator<<(std::ostream& out, const CatalogPartitionObject& obj)
+inline std::ostream& operator<<(std::ostream& out, const CatalogStats& obj)
 {
   obj.printTo(out);
   return out;

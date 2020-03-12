@@ -66,17 +66,17 @@ uint32_t CatalogPartitionObject::read(::apache::thrift::protocol::TProtocol* ipr
         if (ftype == ::apache::thrift::protocol::T_MAP) {
           {
             this->spec.clear();
-            uint32_t _size414;
-            ::apache::thrift::protocol::TType _ktype415;
-            ::apache::thrift::protocol::TType _vtype416;
-            xfer += iprot->readMapBegin(_ktype415, _vtype416, _size414);
-            uint32_t _i418;
-            for (_i418 = 0; _i418 < _size414; ++_i418)
+            uint32_t _size426;
+            ::apache::thrift::protocol::TType _ktype427;
+            ::apache::thrift::protocol::TType _vtype428;
+            xfer += iprot->readMapBegin(_ktype427, _vtype428, _size426);
+            uint32_t _i430;
+            for (_i430 = 0; _i430 < _size426; ++_i430)
             {
-              std::string _key419;
-              xfer += iprot->readString(_key419);
-              std::string& _val420 = this->spec[_key419];
-              xfer += iprot->readString(_val420);
+              std::string _key431;
+              xfer += iprot->readString(_key431);
+              std::string& _val432 = this->spec[_key431];
+              xfer += iprot->readString(_val432);
             }
             xfer += iprot->readMapEnd();
           }
@@ -97,17 +97,17 @@ uint32_t CatalogPartitionObject::read(::apache::thrift::protocol::TProtocol* ipr
         if (ftype == ::apache::thrift::protocol::T_MAP) {
           {
             this->parameters.clear();
-            uint32_t _size421;
-            ::apache::thrift::protocol::TType _ktype422;
-            ::apache::thrift::protocol::TType _vtype423;
-            xfer += iprot->readMapBegin(_ktype422, _vtype423, _size421);
-            uint32_t _i425;
-            for (_i425 = 0; _i425 < _size421; ++_i425)
+            uint32_t _size433;
+            ::apache::thrift::protocol::TType _ktype434;
+            ::apache::thrift::protocol::TType _vtype435;
+            xfer += iprot->readMapBegin(_ktype434, _vtype435, _size433);
+            uint32_t _i437;
+            for (_i437 = 0; _i437 < _size433; ++_i437)
             {
-              std::string _key426;
-              xfer += iprot->readString(_key426);
-              std::string& _val427 = this->parameters[_key426];
-              xfer += iprot->readString(_val427);
+              std::string _key438;
+              xfer += iprot->readString(_key438);
+              std::string& _val439 = this->parameters[_key438];
+              xfer += iprot->readString(_val439);
             }
             xfer += iprot->readMapEnd();
           }
@@ -141,11 +141,11 @@ uint32_t CatalogPartitionObject::write(::apache::thrift::protocol::TProtocol* op
   xfer += oprot->writeFieldBegin("spec", ::apache::thrift::protocol::T_MAP, 1);
   {
     xfer += oprot->writeMapBegin(::apache::thrift::protocol::T_STRING, ::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->spec.size()));
-    std::map<std::string, std::string> ::const_iterator _iter428;
-    for (_iter428 = this->spec.begin(); _iter428 != this->spec.end(); ++_iter428)
+    std::map<std::string, std::string> ::const_iterator _iter440;
+    for (_iter440 = this->spec.begin(); _iter440 != this->spec.end(); ++_iter440)
     {
-      xfer += oprot->writeString(_iter428->first);
-      xfer += oprot->writeString(_iter428->second);
+      xfer += oprot->writeString(_iter440->first);
+      xfer += oprot->writeString(_iter440->second);
     }
     xfer += oprot->writeMapEnd();
   }
@@ -158,11 +158,11 @@ uint32_t CatalogPartitionObject::write(::apache::thrift::protocol::TProtocol* op
   xfer += oprot->writeFieldBegin("parameters", ::apache::thrift::protocol::T_MAP, 3);
   {
     xfer += oprot->writeMapBegin(::apache::thrift::protocol::T_STRING, ::apache::thrift::protocol::T_STRING, static_cast<uint32_t>(this->parameters.size()));
-    std::map<std::string, std::string> ::const_iterator _iter429;
-    for (_iter429 = this->parameters.begin(); _iter429 != this->parameters.end(); ++_iter429)
+    std::map<std::string, std::string> ::const_iterator _iter441;
+    for (_iter441 = this->parameters.begin(); _iter441 != this->parameters.end(); ++_iter441)
     {
-      xfer += oprot->writeString(_iter429->first);
-      xfer += oprot->writeString(_iter429->second);
+      xfer += oprot->writeString(_iter441->first);
+      xfer += oprot->writeString(_iter441->second);
     }
     xfer += oprot->writeMapEnd();
   }
@@ -180,26 +180,26 @@ void swap(CatalogPartitionObject &a, CatalogPartitionObject &b) {
   swap(a.parameters, b.parameters);
 }
 
-CatalogPartitionObject::CatalogPartitionObject(const CatalogPartitionObject& other430) {
-  spec = other430.spec;
-  storage = other430.storage;
-  parameters = other430.parameters;
+CatalogPartitionObject::CatalogPartitionObject(const CatalogPartitionObject& other442) {
+  spec = other442.spec;
+  storage = other442.storage;
+  parameters = other442.parameters;
 }
-CatalogPartitionObject::CatalogPartitionObject( CatalogPartitionObject&& other431) noexcept {
-  spec = std::move(other431.spec);
-  storage = std::move(other431.storage);
-  parameters = std::move(other431.parameters);
+CatalogPartitionObject::CatalogPartitionObject( CatalogPartitionObject&& other443) noexcept {
+  spec = std::move(other443.spec);
+  storage = std::move(other443.storage);
+  parameters = std::move(other443.parameters);
 }
-CatalogPartitionObject& CatalogPartitionObject::operator=(const CatalogPartitionObject& other432) {
-  spec = other432.spec;
-  storage = other432.storage;
-  parameters = other432.parameters;
+CatalogPartitionObject& CatalogPartitionObject::operator=(const CatalogPartitionObject& other444) {
+  spec = other444.spec;
+  storage = other444.storage;
+  parameters = other444.parameters;
   return *this;
 }
-CatalogPartitionObject& CatalogPartitionObject::operator=(CatalogPartitionObject&& other433) noexcept {
-  spec = std::move(other433.spec);
-  storage = std::move(other433.storage);
-  parameters = std::move(other433.parameters);
+CatalogPartitionObject& CatalogPartitionObject::operator=(CatalogPartitionObject&& other445) noexcept {
+  spec = std::move(other445.spec);
+  storage = std::move(other445.storage);
+  parameters = std::move(other445.parameters);
   return *this;
 }
 void CatalogPartitionObject::printTo(std::ostream& out) const {

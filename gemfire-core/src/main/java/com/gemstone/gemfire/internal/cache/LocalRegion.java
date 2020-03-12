@@ -9596,11 +9596,14 @@ public class LocalRegion extends AbstractRegion
       final GemFireCacheImpl.StaticSystemCallbacks sysCb =
           GemFireCacheImpl.FactoryStatics.systemCallbacks;
       if (sysCb != null && sysCb.destroyExistingRegionInCreate(dsi, this)) {
-        LogWriter logger = getCache().getLogger();
-        if (logger.infoEnabled()) {
-          logger.info("Destroying existing region: " + getFullPath() + " in create");
+        try {
+          dsi.destroyRegion(getFullPath(), true);
+          LogWriter logger = getCache().getLogger();
+          if (logger.infoEnabled()) {
+            logger.info("Destroyed existing disk region: " + this + " in create");
+          }
+        } catch (IllegalArgumentException ignored) {
         }
-        dsi.destroyRegion(getFullPath(), false);
       }
 
       DiskRegionStats stats;

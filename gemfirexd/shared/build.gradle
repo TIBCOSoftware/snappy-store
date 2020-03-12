@@ -17,6 +17,7 @@
 
 dependencies {
   compileOnly "org.apache.thrift:libthrift:${thriftVersion}"
+  compileOnly "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
   compile "net.java.dev.jna:jna:${jnaVersion}"
   compile "commons-io:commons-io:${commonsIoVersion}"
 

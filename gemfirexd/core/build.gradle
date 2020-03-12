@@ -27,9 +27,10 @@ dependencies {
   compileOnly "xalan:xalan:${xalanVersion}"
   compileOnly "xalan:serializer:${xalanVersion}"
   compileOnly "com.pivotal:pxf-api:${pxfVersion}"
+  compileOnly "org.apache.spark:spark-unsafe_${scalaBinaryVersion}:${sparkVersion}"
   compile "org.osgi:org.osgi.core:${osgiVersion}"
   compile "org.apache.ant:ant:${antVersion}"
-  compile "javax.servlet:javax.servlet-api:${servletAPIVersion}"
+  compile "javax.servlet:javax.servlet-api:${javaxServletVersion}"
   compile "org.apache.thrift:libthrift:${thriftVersion}"
   compile "com.esotericsoftware:kryo-shaded:${kryoVersion}"
 

@@ -52,7 +52,7 @@ dependencies {
   compile "com.vmware:vijava:${vijavaVersion}"
   compile "org.jdom:jdom:${jdomVersion}"
   compile "com.oracle:ojdbc6:${ojdbc6Version}"
-  compile "javax.servlet:javax.servlet-api:${servletAPIVersion}"
+  compile "javax.servlet:javax.servlet-api:${javaxServletVersion}"
   compile "org.eclipse.jetty:jetty-server:${jettyVersion}"
   compile "org.eclipse.jetty:jetty-servlet:${jettyVersion}"
   compile "org.eclipse.jetty:jetty-util:${jettyVersion}"

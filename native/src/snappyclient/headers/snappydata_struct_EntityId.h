@@ -31,6 +31,7 @@
 #include "snappydata_struct_BucketOwners.h"
 #include "snappydata_struct_CatalogStorage.h"
 #include "snappydata_struct_CatalogSchemaObject.h"
+#include "snappydata_struct_CatalogStats.h"
 #include "snappydata_struct_CatalogTableObject.h"
 #include "snappydata_struct_CatalogFunctionObject.h"
 #include "snappydata_struct_CatalogPartitionObject.h"
