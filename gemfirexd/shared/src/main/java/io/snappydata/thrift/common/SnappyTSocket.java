@@ -57,8 +57,6 @@ import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import io.snappydata.thrift.HostAddress;
 import org.apache.thrift.transport.TNonblockingTransport;
 import org.apache.thrift.transport.TTransportException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * A custom TSocket allowing to increase input/output buffer sizes and use NIO
@@ -112,6 +110,7 @@ public final class SnappyTSocket extends TNonblockingTransport implements
    *
    * @param srvChannel Already created socket object from server accept
    * @param params     Socket parameters like buffer sizes, keep-alive settings
+   *
    * @throws TTransportException if there is an error setting up the streams
    */
   public SnappyTSocket(SocketChannel srvChannel, boolean useSSL,
@@ -185,13 +184,13 @@ public final class SnappyTSocket extends TNonblockingTransport implements
   /**
    * Initializes the socket object
    */
-  private static SocketChannel initSocket(boolean blocking)
-      throws TTransportException, IOException {
+  private static SocketChannel initSocket(boolean blocking) throws IOException {
     SocketChannel socketChannel = SocketChannel.open();
     socketChannel.configureBlocking(blocking);
     return socketChannel;
   }
 
+  @SuppressWarnings("SameParameterValue")
   private ByteChannel initChannel(String id, SelectionKey key, boolean ssl,
       SocketParameters params, boolean forClient)
       throws TTransportException, IOException {
@@ -199,7 +198,8 @@ public final class SnappyTSocket extends TNonblockingTransport implements
       // setup the SSL engine
       SSLEngine engine = SSLFactory.createEngine(this.socketAddress.getHostName(),
           this.socketAddress.getPort(), params, forClient);
-      return SSLSocketChannel.create(id, socketChannel, key, engine, true);
+      return SSLSocketChannel.create(id, socketChannel, key, engine,
+          UnsafeHolder.hasUnsafe());
     } else {
       return this.socketChannel;
     }
@@ -249,7 +249,7 @@ public final class SnappyTSocket extends TNonblockingTransport implements
    * @param params Socket parameters like buffer sizes, keep-alive settings
    */
   protected void setProperties(Socket socket, int timeout,
-      SocketParameters params) throws TTransportException, IOException {
+      SocketParameters params) throws IOException {
     this.inputBufferSize = params.getInputBufferSize();
     this.outputBufferSize = params.getOutputBufferSize();
     socket.setSoLinger(false, 0);
