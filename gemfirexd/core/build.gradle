@@ -193,6 +193,16 @@ task odbcMeta {
     // move generated odbc_metadata.properties as metadata.properties
     file("${metaDir}/odbc_metadata.properties").
       renameTo("${metaDir}/metadata.properties")
+
+    javaexec {
+      main = 'org.apache.derbyBuild.ODBCMetadataGenerator'
+      args = ["metadata_lc.properties"]
+      classpath = sourceSets.main.compileClasspath
+      workingDir = metaDir
+    }
+    // move generated odbc_metadata_lc.properties as metadata_lc.properties
+    file("${metaDir}/odbc_metadata_lc.properties").
+        renameTo("${metaDir}/metadata_lc.properties")
   }
 }
 

@@ -171,7 +171,7 @@ public class ODBCMetadataGenerator {
 	 * Initializes SQL fragments used for generation, and
 	 * then opens the output file,
 	 */
-	public ODBCMetadataGenerator() throws IOException {
+	public ODBCMetadataGenerator(String metadataFile) throws IOException {
 
 		// SQL fragments.
 		odbcFragments = new Properties();
@@ -179,7 +179,7 @@ public class ODBCMetadataGenerator {
 			"odbcgen_fragments.properties"));
 
 		// Prep output file.
-		odbcMetaFile = new FileWriter("odbc_metadata.properties");
+		odbcMetaFile = new FileWriter("odbc_" + metadataFile);
 
 	}
 
@@ -197,10 +197,17 @@ public class ODBCMetadataGenerator {
 	 */
 	public static void main(String [] args) throws IOException {
 
-		ODBCMetadataGenerator odbcGen = new ODBCMetadataGenerator();
+		String metadataFile;
+		if (args.length == 0){
+			metadataFile = "metadata.properties";
+		} else {
+			metadataFile = args[0];
+		}
+
+		ODBCMetadataGenerator odbcGen = new ODBCMetadataGenerator(metadataFile);
 		odbcGen.initChanges();
 		odbcGen.generateODBCQueries(odbcGen.getClass().getResourceAsStream(
-			"/com/pivotal/gemfirexd/internal/impl/jdbc/metadata.properties"));
+			"/com/pivotal/gemfirexd/internal/impl/jdbc/" + metadataFile));
 
 	}
 

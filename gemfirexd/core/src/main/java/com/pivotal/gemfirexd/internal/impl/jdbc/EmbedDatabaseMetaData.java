@@ -40,9 +40,6 @@
 
 package com.pivotal.gemfirexd.internal.impl.jdbc;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.PrintStream;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -186,7 +183,7 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 		String[] files = {
 			"metadata.properties",
 			"/com/pivotal/gemfirexd/internal/impl/sql/catalog/metadata_net.properties",
-			"/com/pivotal/gemfirexd/internal/impl/sql/catalog/metadata_lc.properties",
+			"metadata_lc.properties",
 		};
         Properties[] props = new Properties[files.length];
         for (int i = 0; i < files.length; ++i) {
