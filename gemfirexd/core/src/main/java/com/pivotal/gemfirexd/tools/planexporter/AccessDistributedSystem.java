@@ -69,6 +69,8 @@ import com.pivotal.gemfirexd.internal.jdbc.InternalDriver;
 import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 
+import static com.pivotal.gemfirexd.internal.impl.jdbc.EmbedDatabaseMetaData.METADATACASE_LOWER_PROP;
+
 /**
  * This class will perform the distributed system connection establishment,
  * querying the member nodes required, close the connection.
@@ -536,7 +538,7 @@ public final class AccessDistributedSystem {
     boolean found = false;
     ResultSet result = conn.getMetaData().getSchemas();
     while (result.next()) {
-      boolean schemaMatches = lcc.isQueryRoutingFlagTrue() ?
+      boolean schemaMatches = System.getProperty(METADATACASE_LOWER_PROP) != null && lcc.isQueryRoutingFlagTrue() ?
           result.getString(1).equalsIgnoreCase(schema) : result.getString(1).equals(schema);
       if (schemaMatches) {
         found = true;

@@ -108,7 +108,7 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 	implements DatabaseMetaData, java.security.PrivilegedAction {
 
 	private static final int ILLEGAL_UDT_TYPE = 0;
-	public static final String METADATACASE_UPPER_PROP = "metadatacase.upper";
+	public static final String METADATACASE_LOWER_PROP = "metadatacase.lower";
 
 	/*
 	** Property and values related to using
@@ -165,7 +165,7 @@ public class EmbedDatabaseMetaData extends ConnectionChild
 		Properties p;
 		if (net) {
 			p = queryDescriptions_net;
-		} else if (System.getProperty(METADATACASE_UPPER_PROP) == null
+		} else if (System.getProperty(METADATACASE_LOWER_PROP) != null
 			&& getLanguageConnectionContext().isQueryRoutingFlagTrue()) {
 			p = queryDescriptions_lc;
 		} else {
