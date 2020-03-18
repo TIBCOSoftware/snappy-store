@@ -31,13 +31,15 @@ import org.apache.log4j.spi.LoggingEvent;
  */
 public class PatternLayout extends org.apache.log4j.PatternLayout {
 
+  private static final Field threadNameField;
   private static final long threadNameOffset;
 
   static {
     try {
-      Field f = LoggingEvent.class.getDeclaredField("threadName");
-      f.setAccessible(true);
-      threadNameOffset = UnsafeHolder.getUnsafe().objectFieldOffset(f);
+      threadNameField = LoggingEvent.class.getDeclaredField("threadName");
+      threadNameField.setAccessible(true);
+      threadNameOffset = UnsafeHolder.hasUnsafe()
+          ? UnsafeHolder.getUnsafe().objectFieldOffset(threadNameField) : -1L;
     } catch (NoSuchFieldException nse) {
       throw new ExceptionInInitializerError(nse);
     }
@@ -57,15 +59,23 @@ public class PatternLayout extends org.apache.log4j.PatternLayout {
   }
 
   static LoggingEvent addThreadIdToEvent(LoggingEvent event) {
-    final sun.misc.Unsafe unsafe = UnsafeHolder.getUnsafe();
-    String currentName = (String)unsafe.getObject(event, threadNameOffset);
-    if (currentName == null ||
-        currentName.charAt(currentName.length() - 1) != '>' ||
-        !currentName.contains("<tid=0x")) {
-      Thread currentThread = Thread.currentThread();
-      String threadNameAndId = currentThread.getName() + "<tid=0x" +
-          Long.toHexString(currentThread.getId()) + '>';
-      unsafe.putObject(event, threadNameOffset, threadNameAndId);
+    try {
+      String currentName = threadNameOffset != -1L
+          ? (String)UnsafeHolder.getUnsafe().getObject(event, threadNameOffset)
+          : (String)threadNameField.get(event);
+      if (currentName == null ||
+          currentName.charAt(currentName.length() - 1) != '>' ||
+          !currentName.contains("<tid=0x")) {
+        Thread currentThread = Thread.currentThread();
+        String threadNameAndId = currentThread.getName() + "<tid=0x" +
+            Long.toHexString(currentThread.getId()) + '>';
+        if (threadNameOffset != -1L) {
+          UnsafeHolder.getUnsafe().putObject(event, threadNameOffset, threadNameAndId);
+        } else {
+          threadNameField.set(event, threadNameAndId);
+        }
+      }
+    } catch (IllegalArgumentException | IllegalAccessException ignored) {
     }
     return event;
   }

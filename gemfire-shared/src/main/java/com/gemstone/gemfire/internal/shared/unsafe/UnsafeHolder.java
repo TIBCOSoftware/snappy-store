@@ -175,7 +175,7 @@ public abstract class UnsafeHolder {
       Wrapper.init();
       v = true;
     } catch (LinkageError le) {
-      le.printStackTrace();
+      System.out.println(le.getMessage());
       v = false;
     }
     hasUnsafe = v;
@@ -219,6 +219,9 @@ public abstract class UnsafeHolder {
 
   public static ByteBuffer allocateDirectBuffer(long address, int size,
       FreeMemory.Factory factory) {
+    if (!hasUnsafe) {
+      throw new IllegalStateException("allocateDirectBuffer: Unsafe API unavailable");
+    }
     try {
       ByteBuffer buffer = (ByteBuffer)Wrapper.directBufferConstructor
           .newInstance(address, size);
@@ -235,11 +238,17 @@ public abstract class UnsafeHolder {
   }
 
   public static long getDirectBufferAddress(ByteBuffer buffer) {
+    if (!hasUnsafe) {
+      throw new IllegalStateException("getDirectBufferAddress: Unsafe API unavailable");
+    }
     return ((sun.nio.ch.DirectBuffer)buffer).address();
   }
 
   public static ByteBuffer reallocateDirectBuffer(ByteBuffer buffer,
       final int newLength, Class<?> expectedClass, FreeMemory.Factory factory) {
+    if (!hasUnsafe) {
+      throw new IllegalStateException("reallocateDirectBuffer: Unsafe API unavailable");
+    }
     sun.nio.ch.DirectBuffer directBuffer = (sun.nio.ch.DirectBuffer)buffer;
     long newAddress = 0L;
 
@@ -299,6 +308,9 @@ public abstract class UnsafeHolder {
       ByteBuffer buffer, int size, Class<? extends FreeMemory> from,
       Class<? extends FreeMemory> to, FreeMemory.Factory factory,
       final BiConsumer<String, Object> changeOwner) throws IllegalAccessException {
+    if (!hasUnsafe) {
+      throw new IllegalStateException("changeDirectBufferCleaner: Unsafe API unavailable");
+    }
     sun.nio.ch.DirectBuffer directBuffer = (sun.nio.ch.DirectBuffer)buffer;
     final sun.misc.Cleaner cleaner = directBuffer.cleaner();
     if (cleaner != null) {
@@ -328,6 +340,7 @@ public abstract class UnsafeHolder {
    * this directly rather use BufferAllocator.allocate/release where possible.
    */
   public static void releaseDirectBuffer(ByteBuffer buffer) {
+    if (!hasUnsafe) return;
     sun.misc.Cleaner cleaner = ((sun.nio.ch.DirectBuffer)buffer).cleaner();
     if (cleaner != null) {
       cleaner.clean();
@@ -344,6 +357,7 @@ public abstract class UnsafeHolder {
         sun.misc.SharedSecrets.getJavaLangRefAccess();
     while (refAccess.tryHandlePendingReference()) ;
     */
+    if (!hasUnsafe) return;
     final Method handlePendingRefs = Wrapper.handlePendingRefs;
     if (handlePendingRefs != null) {
       try {
@@ -357,12 +371,13 @@ public abstract class UnsafeHolder {
   }
 
   public static long getDirectReservedMemory() {
-    final AtomicLong reserved = Wrapper.directReservedMemory;
-    return reserved != null ? reserved.get() : 0L;
+    return hasUnsafe && Wrapper.directReservedMemory != null
+        ? Wrapper.directReservedMemory.get() : 0L;
   }
 
   public static sun.misc.Unsafe getUnsafe() {
-    return Wrapper.unsafe;
+    if (hasUnsafe) return Wrapper.unsafe;
+    else throw new IllegalStateException("getUnsafe: Unsafe API unavailable");
   }
 
   public static boolean tryMonitorEnter(Object obj, boolean checkSelf) {

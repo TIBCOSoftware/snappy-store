@@ -36,6 +36,8 @@
 package com.pivotal.gemfirexd.internal.engine.distributed.utils;
 
 import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.security.AlgorithmParameters;
 import java.security.PrivilegedActionException;
 import java.sql.Connection;
@@ -165,6 +167,7 @@ import com.pivotal.gemfirexd.internal.shared.common.reference.SQLState;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.AssertFailure;
 import com.pivotal.gemfirexd.internal.shared.common.sanity.SanityManager;
 import org.apache.log4j.Logger;
+import org.apache.spark.unsafe.Platform;
 import org.apache.spark.unsafe.hash.Murmur3_x86_32;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
@@ -1194,6 +1197,44 @@ public final class GemFireXDUtils {
       }
     }
     return intersect;
+  }
+
+  public static boolean equalBuffers(final byte[] bytes,
+      final ByteBuffer buffer) {
+    final int len = bytes.length;
+    if (len != buffer.remaining()) {
+      return false;
+    }
+    // read in longs to minimize ByteBuffer get() calls
+    int pos = buffer.position();
+    final int endPos = (pos + len);
+    final boolean sameOrder = ByteOrder.nativeOrder() == buffer.order();
+    // round off to nearest factor of 8 to read in longs
+    final int endRound8Pos = (len % 8) != 0 ? (endPos - 8) : endPos;
+    long indexPos = Platform.BYTE_ARRAY_OFFSET;
+    while (pos < endRound8Pos) {
+      // splitting into longs is faster than reading one byte at a time even
+      // though it costs more operations (about 20% in micro-benchmarks)
+      final long s = Platform.getLong(bytes, indexPos);
+      final long v = buffer.getLong(pos);
+      if (sameOrder) {
+        if (s != v) {
+          return false;
+        }
+      } else if (s != Long.reverseBytes(v)) {
+        return false;
+      }
+      pos += 8;
+      indexPos += 8;
+    }
+    while (pos < endPos) {
+      if (Platform.getByte(bytes, indexPos) != buffer.get(pos)) {
+        return false;
+      }
+      pos++;
+      indexPos++;
+    }
+    return true;
   }
 
   /**

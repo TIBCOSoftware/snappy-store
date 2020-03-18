@@ -49,7 +49,6 @@ import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.net.*;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.channels.Channel;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Files;
@@ -74,7 +73,6 @@ import org.apache.log4j.Appender;
 import org.apache.log4j.FileAppender;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.PropertyConfigurator;
-import org.apache.spark.unsafe.Platform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1939,44 +1937,6 @@ public abstract class ClientSharedUtils {
     }
 
     return tokenFound;
-  }
-
-  public static boolean equalBuffers(final byte[] bytes,
-      final ByteBuffer buffer) {
-    final int len = bytes.length;
-    if (len != buffer.remaining()) {
-      return false;
-    }
-    // read in longs to minimize ByteBuffer get() calls
-    int pos = buffer.position();
-    final int endPos = (pos + len);
-    final boolean sameOrder = ByteOrder.nativeOrder() == buffer.order();
-    // round off to nearest factor of 8 to read in longs
-    final int endRound8Pos = (len % 8) != 0 ? (endPos - 8) : endPos;
-    long indexPos = Platform.BYTE_ARRAY_OFFSET;
-    while (pos < endRound8Pos) {
-      // splitting into longs is faster than reading one byte at a time even
-      // though it costs more operations (about 20% in micro-benchmarks)
-      final long s = Platform.getLong(bytes, indexPos);
-      final long v = buffer.getLong(pos);
-      if (sameOrder) {
-        if (s != v) {
-          return false;
-        }
-      } else if (s != Long.reverseBytes(v)) {
-        return false;
-      }
-      pos += 8;
-      indexPos += 8;
-    }
-    while (pos < endPos) {
-      if (Platform.getByte(bytes, indexPos) != buffer.get(pos)) {
-        return false;
-      }
-      pos++;
-      indexPos++;
-    }
-    return true;
   }
 
   /**
