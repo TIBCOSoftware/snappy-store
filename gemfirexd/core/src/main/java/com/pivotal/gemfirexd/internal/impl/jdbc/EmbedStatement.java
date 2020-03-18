@@ -86,6 +86,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 // GemStone changes END
@@ -881,12 +882,13 @@ public class EmbedStatement extends ConnectionChild
 	  // send a message to cancel the query on all other data nodes
 	  QueryCancelFunctionArgs args = QueryCancelFunction
 	      .newQueryCancelFunctionArgs(this.statementID, lcc.getConnectionId());
-	  Set<DistributedMember> dataStores = GemFireXDUtils.getGfxdAdvisor().adviseDataStores(null);
-	  final DistributedMember myId = GemFireStore.getMyId();
+	  Set<DistributedMember> targetMembers = GemFireXDUtils.getGfxdAdvisor().adviseDataStores(null);
+		Optional<DistributedMember> primaryLead = Misc.getPrimaryLead();
+		primaryLead.ifPresent(targetMembers::add);
 	  // add self too for the wrapper connection
-	  dataStores.add(myId);
-	  if (dataStores.size() > 0) {
-	    FunctionService.onMembers(dataStores).withArgs(args).execute(
+	  targetMembers.add(GemFireStore.getMyId());
+	  if (targetMembers.size() > 0) {
+	    FunctionService.onMembers(targetMembers).withArgs(args).execute(
 	        QueryCancelFunction.ID);
 	  }
 	}

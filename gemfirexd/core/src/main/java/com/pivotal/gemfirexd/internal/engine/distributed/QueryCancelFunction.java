@@ -29,13 +29,14 @@ import com.gemstone.gemfire.cache.execute.Function;
 import com.gemstone.gemfire.cache.execute.FunctionContext;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.GfxdDataSerializable;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
-import com.pivotal.gemfirexd.internal.iapi.services.context.ContextService;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
 import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedStatement;
+import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
 
 /**
  * A function to cancel a given statement <i>asynchronously</i> on all nodes. This will
@@ -107,7 +108,11 @@ public final class QueryCancelFunction implements Function, Declarable {
       }
       return;
     }
-    
+
+    if(Misc.isPrimaryLead()){
+      CallbackFactoryProvider.getClusterCallbacks().cancelJobGroup(String.valueOf(args.statementId));
+    }
+
     if (lcc != null) {
       ArrayList<?> activationList = lcc.getAllActivations();
       Activation activation = null;

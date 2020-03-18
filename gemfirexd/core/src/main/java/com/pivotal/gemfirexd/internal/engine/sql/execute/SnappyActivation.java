@@ -37,6 +37,7 @@ import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
+import com.pivotal.gemfirexd.internal.iapi.sql.Activation;
 import com.pivotal.gemfirexd.internal.iapi.sql.ParameterValueSet;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultDescription;
 import com.pivotal.gemfirexd.internal.iapi.sql.ResultSet;
@@ -202,7 +203,7 @@ public class SnappyActivation extends BaseActivation {
       throws StandardException {
     boolean enableStreaming = this.lcc.streamingEnabled();
     GfxdResultCollector<Object> rc = getResultCollector(enableStreaming, rs);
-    executeOnLeadNode(rs, rc, enableStreaming, this.getConnectionID(),
+    executeOnLeadNode(rs, rc, enableStreaming, this,
       this.lcc, execObj);
   }
 
@@ -319,11 +320,13 @@ public class SnappyActivation extends BaseActivation {
   }
 
   static void executeOnLeadNode(SnappySelectResultSet rs, GfxdResultCollector<Object> rc,
-       boolean enableStreaming, long connId, LanguageConnectionContext lcc, LeadNodeExecutionObject execObj)
+      boolean enableStreaming, Activation activation, LanguageConnectionContext lcc,
+      LeadNodeExecutionObject execObj)
       throws StandardException {
     // TODO: KN probably username, statement id and connId to be sent in
     // execution and of course tx id when transaction will be supported.
-    LeadNodeExecutionContext ctx = new LeadNodeExecutionContext(connId);
+    LeadNodeExecutionContext ctx = new LeadNodeExecutionContext(activation.getConnectionID(),
+        activation.getStatementID());
 
     LeadNodeExecutorMsg msg = new LeadNodeExecutorMsg(ctx, rc, execObj);
     // release all locks before sending the message else it can lead to deadlocks

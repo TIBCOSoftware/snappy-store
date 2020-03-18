@@ -71,4 +71,6 @@ public interface ClusterCallbacks {
   String getClusterType();
 
   void setLeadClassLoader();
+
+  void cancelJobGroup(String groupId);
 }

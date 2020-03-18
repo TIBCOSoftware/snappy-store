@@ -392,7 +392,7 @@ public final class GemFireInsertResultSet extends AbstractGemFireResultSet {
           rs.setupRC(rc);
           LeadNodeExecutionObject execObj = new SampleInsertExecutionObject(
              this.gfContainer.getQualifiedTableName(), batchRows);
-          SnappyActivation.executeOnLeadNode(rs,rc, false, this.activation.getConnectionID(),
+          SnappyActivation.executeOnLeadNode(rs,rc, false, this.activation,
             this.lcc, execObj);
         }
       } finally {

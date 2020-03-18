@@ -111,6 +111,10 @@ public abstract class CallbackFactoryProvider {
     @Override
     public void setLeadClassLoader() {
     }
+
+    @Override
+    public void cancelJobGroup(String groupId){
+    }
   };
 
   public static ClusterCallbacks getClusterCallbacks() {

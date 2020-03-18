@@ -255,6 +255,7 @@ public abstract class Misc {
     }
   }
 
+  //todo[vatsal]: should this method be renamed to getLeadNodes?
   public static Set<DistributedMember> getLeadNode() {
     GfxdDistributionAdvisor advisor = GemFireXDUtils.getGfxdAdvisor();
     InternalDistributedSystem ids = Misc.getDistributedSystem();
@@ -273,6 +274,19 @@ public abstract class Misc {
       }
     }
     throw new NoMemberFoundException("SnappyData Lead node is not available");
+  }
+
+  /**
+   *
+   * @return Optional of DistributedMember representing primary lead node if primary lead exists in cluster
+   *         Optional#empty if primary lead node does not exist in cluster
+   */
+  public static Optional<DistributedMember> getPrimaryLead(){
+    return getLeadNode().stream().filter(dm -> GemFireXDUtils.getGfxdProfile(dm).hasSparkURL()).findFirst();
+  }
+
+  public static boolean isPrimaryLead(){
+    return GemFireXDUtils.getGfxdAdvisor().getMyProfile().hasSparkURL();
   }
 
   /**
