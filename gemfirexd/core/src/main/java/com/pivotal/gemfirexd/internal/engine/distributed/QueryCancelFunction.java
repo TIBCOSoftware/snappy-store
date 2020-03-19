@@ -109,7 +109,7 @@ public final class QueryCancelFunction implements Function, Declarable {
       return;
     }
 
-    if(Misc.isPrimaryLead()){
+    if (Misc.isPrimaryLead()) {
       CallbackFactoryProvider.getClusterCallbacks().cancelJobGroup(String.valueOf(args.statementId));
     }
 
