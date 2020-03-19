@@ -69,7 +69,7 @@ public class GetLeadNodeInfoMsg extends MemberExecutorMessage<Object> {
 
   @Override
   public Set<DistributedMember> getMembers() {
-    return Misc.getLeadNode();
+    return Misc.getLeadNodes();
   }
 
   @Override

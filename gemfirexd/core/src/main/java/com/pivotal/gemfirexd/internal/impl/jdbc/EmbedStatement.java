@@ -883,8 +883,8 @@ public class EmbedStatement extends ConnectionChild
 	  QueryCancelFunctionArgs args = QueryCancelFunction
 	      .newQueryCancelFunctionArgs(this.statementID, lcc.getConnectionId());
 	  Set<DistributedMember> targetMembers = GemFireXDUtils.getGfxdAdvisor().adviseDataStores(null);
-		Optional<DistributedMember> primaryLead = Misc.getPrimaryLead();
-		primaryLead.ifPresent(targetMembers::add);
+	  Optional<DistributedMember> primaryLead = Misc.getPrimaryLead();
+	  primaryLead.ifPresent(targetMembers::add);
 	  // add self too for the wrapper connection
 	  targetMembers.add(GemFireStore.getMyId());
 	  if (targetMembers.size() > 0) {

@@ -64,7 +64,7 @@ public class SnappyTableStatsVTI extends GfxdVTITemplate
       try {
         if (logger.isDebugEnabled()) {
           logger.debug("SnappyTableStatsVTI: getting table stats from lead " +
-              Misc.getLeadNode());
+              Misc.getLeadNodes());
         }
         GfxdSingleResultCollector collector = new GfxdSingleResultCollector();
         LeadNodeGetStatsMessage msg = new LeadNodeGetStatsMessage(collector);
