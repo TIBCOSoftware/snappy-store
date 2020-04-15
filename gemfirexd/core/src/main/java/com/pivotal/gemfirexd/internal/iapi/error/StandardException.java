@@ -362,8 +362,7 @@ public class StandardException extends Exception
 
 		int lseverity = ExceptionSeverity.NO_APPLICABLE_SEVERITY;
 
-		switch (messageID.length()) {
-		case 5:
+		if (messageID.length() == 5) {
 			switch (messageID.charAt(0)) {
 			case '0':
 				switch (messageID.charAt(1)) {
@@ -378,7 +377,7 @@ public class StandardException extends Exception
 					lseverity = ExceptionSeverity.SESSION_SEVERITY;
 					break;
 				}
-				break;	
+				break;
 			case '2':
 			case '3':
 				lseverity = ExceptionSeverity.STATEMENT_SEVERITY;
@@ -392,11 +391,10 @@ public class StandardException extends Exception
 					lseverity = ExceptionSeverity.STATEMENT_SEVERITY;
 					break;
 				}
-				break;	
+				break;
 			}
-			break;
-
-		default:
+		}
+		if (messageID.length() >= 7) {
 			switch (messageID.charAt(6)) {
 			case 'M':
 				lseverity = ExceptionSeverity.SYSTEM_SEVERITY;
@@ -417,7 +415,6 @@ public class StandardException extends Exception
 				lseverity = ExceptionSeverity.NO_APPLICABLE_SEVERITY;
 				break;
 			}
-			break;
 		}
 
 		return lseverity;
