@@ -58,7 +58,7 @@ public interface Limits {
    * Trigger, Column, Schema, Savepoint, Table and View names)
    * are limited to 128 */
   public static final int MAX_IDENTIFIER_LENGTH = 128;
-  public static final int DB2_CHAR_MAXWIDTH = 254;
+  public static final int DB2_CHAR_MAXWIDTH = 255;
   public static final int DB2_VARCHAR_MAXWIDTH = 32672;
   public static final int DB2_LOB_MAXWIDTH = 2147483647;
   public static final int DB2_LONGVARCHAR_MAXWIDTH = 32700;
