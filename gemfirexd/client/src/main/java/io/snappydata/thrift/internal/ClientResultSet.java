@@ -1303,7 +1303,8 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
 
     final int maxRows;
     if (rows >= 0
-        && ((maxRows = this.statement.getMaxRows()) == 0 || rows <= maxRows)) {
+        && ((maxRows = this.statement == null ? 0 : this.statement.getMaxRows()) == 0
+        || rows <= maxRows)) {
       this.fetchSize = rows;
     }
     else {
