@@ -118,7 +118,7 @@ allprojects {
     snappyDunitVersion = '1.0.3.6'
 
     // product and release properties
-    PRODUCT_NAME = 'TIBCO ComputeDB RowStore'
+    PRODUCT_NAME = 'SnappyData RowStore'
 
     GEMFIRE_PRODUCT = 'Pivotal GemFire'
     GEMFIRE_VERSION = '7.5.Beta'
