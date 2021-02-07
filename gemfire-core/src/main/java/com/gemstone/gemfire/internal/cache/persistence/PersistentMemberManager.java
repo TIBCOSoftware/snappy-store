@@ -30,6 +30,7 @@ import com.gemstone.gemfire.distributed.internal.MembershipListener;
 import com.gemstone.gemfire.distributed.internal.ProfileListener;
 import com.gemstone.gemfire.distributed.internal.membership.InternalDistributedMember;
 import com.gemstone.gemfire.i18n.LogWriterI18n;
+import com.gemstone.gemfire.internal.CopyOnWriteHashSet;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.util.TransformUtils;
@@ -47,7 +48,7 @@ public class PersistentMemberManager {
   private Map<PersistentMemberPattern, PendingRevokeListener> pendingRevokes 
       = new HashMap<PersistentMemberPattern, PendingRevokeListener>();
 
-  private final Set<PersistentMemberPattern> doNotWait = new HashSet();
+  private final Set<PersistentMemberPattern> doNotWait = new CopyOnWriteHashSet();
   private volatile boolean unblockNonHostingBuckets = false;
 
   private static final Object TOKEN = new Object();
@@ -69,7 +70,7 @@ public class PersistentMemberManager {
   }
 
   public boolean doNotWaitOnMember(PersistentMemberID id) {
-    synchronized (this) {
+    if (this.unblockNonHostingBuckets) {
       for (PersistentMemberPattern p : this.doNotWait) {
         if (p.matches(id))
           return true;
