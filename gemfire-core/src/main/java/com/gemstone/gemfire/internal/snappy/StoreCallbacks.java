@@ -60,7 +60,7 @@ public interface StoreCallbacks {
    */
   CloseableIterator<ColumnTableEntry> columnTableScan(String qualifiedTable,
       int[] projection, byte[] serializedFilters,
-      Set<Integer> bucketIds) throws SQLException;
+      Set<Integer> bucketIds, boolean useKryoSerializer) throws SQLException;
 
   void registerCatalogSchemaChange();
 

@@ -2065,11 +2065,12 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
     }
     {
       // COLUMN_TABLE_SCAN(String,String,String,Blob,ResultSet[])
-      String[] arg_names = new String[] { "TABLE", "PROJECTION", "FILTERS" };
+      String[] arg_names = new String[] { "TABLE", "PROJECTION", "FILTERS", "USE_KRYO_SERIALIZER" };
       TypeDescriptor[] arg_types = new TypeDescriptor[] {
           DataTypeDescriptor.getCatalogType(Types.VARCHAR),
           DataTypeDescriptor.getCatalogType(Types.VARCHAR),
-          DataTypeDescriptor.getCatalogType(Types.BLOB)
+          DataTypeDescriptor.getCatalogType(Types.BLOB),
+          DataTypeDescriptor.getCatalogType(Types.BOOLEAN)
       };
       super.createSystemProcedureOrFunction("COLUMN_TABLE_SCAN", sysUUID,
           arg_names, arg_types, 0, 1, RoutineAliasInfo.READS_SQL_DATA, null,

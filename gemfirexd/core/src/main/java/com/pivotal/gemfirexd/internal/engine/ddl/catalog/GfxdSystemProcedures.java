@@ -3118,7 +3118,7 @@ public class GfxdSystemProcedures extends SystemProcedures {
   };
 
   public static void COLUMN_TABLE_SCAN(String columnTable, String projection,
-      Blob filters, ResultSet[] result) throws SQLException {
+      Blob filters, Boolean useKryoSerializer, ResultSet[] result) throws SQLException {
     try {
       // split the projection into column indexes (1-based)
       final TIntArrayList columnsList = new TIntArrayList(4);
@@ -3134,12 +3134,12 @@ public class GfxdSystemProcedures extends SystemProcedures {
       byte[] batchFilters = null;
       if (filters != null) {
         batchFilters = filters.getBytes(1, (int)filters.length());
-        filters.free();
+        // filters.free();
       }
       Set<Integer> bucketIds = lcc.getBucketIdsForLocalExecution();
       final CloseableIterator<ColumnTableEntry> iter =
           CallbackFactoryProvider.getStoreCallbacks().columnTableScan(
-              columnTable, columns, batchFilters, bucketIds);
+              columnTable, columns, batchFilters, bucketIds, useKryoSerializer);
       if (GemFireXDUtils.TraceExecution) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_EXECUTION,
             "COLUMN_TABLE_SCAN table=" + columnTable +
