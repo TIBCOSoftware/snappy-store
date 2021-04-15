@@ -48,17 +48,7 @@ namespace client {
 
   class UpdatableRow : public Row {
   private:
-    UpdatableRow(bool updatable) : Row(updatable) {
-    }
-
-    // IMPORTANT NOTE: DO NOT ADD ANY ADDITIONAL FIELDS IN THIS CLASS.
-    // If need be then add to thrift::Row since higher layers use
-    // placement new to freely up-convert thrift::Row to this type
     thrift::ColumnValue* getColumnValueForUpdate(const uint32_t columnIndex);
-
-    // no copy constructor or assignment
-    UpdatableRow(const UpdatableRow& other) = delete;
-    UpdatableRow& operator=(const UpdatableRow& other) = delete;
 
     friend class ResultSet;
 
@@ -66,12 +56,26 @@ namespace client {
     UpdatableRow() : Row() {
     }
 
-    UpdatableRow(UpdatableRow&& other) : Row(std::move(other)) {
+    UpdatableRow(const UpdatableRow &other) : Row(other) {
     }
 
-    UpdatableRow& operator=(UpdatableRow&& other) {
+    UpdatableRow(UpdatableRow &&other) : Row(std::move(other)) {
+    }
+
+    UpdatableRow(thrift::Row &&other) : Row(std::move(other)) {
+    }
+
+    UpdatableRow& operator=(const UpdatableRow &other) {
+      Row::operator =(other);
+      return *this;
+    }
+
+    UpdatableRow& operator=(UpdatableRow &&other) {
       Row::operator =(std::move(other));
       return *this;
+    }
+
+    virtual ~UpdatableRow() {
     }
 
     inline DynamicBitSet* getChangedColumns() {

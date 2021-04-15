@@ -39,7 +39,6 @@
 
 #include "Result.h"
 
-#include "ResultSet.h"
 #include "Row.h"
 #include "PreparedStatement.h"
 #include "StatementAttributes.h"
@@ -64,20 +63,22 @@ void Result::getResultSetArgs(const StatementAttributes& attrs,
   scrollable = (attrs.getResultSetType() != ResultSetType::FORWARD_ONLY);
 }
 
-ResultSet* Result::newResultSet(thrift::RowSet& rowSet) {
+std::shared_ptr<ResultSet> Result::newResultSet(thrift::RowSet &rowSet) {
   int32_t batchSize;
   bool updatable, scrollable;
   getResultSetArgs(m_attrs, batchSize, updatable, scrollable);
-  // the RowSet data will continue to be owned by this object
-  return new ResultSet(&rowSet, m_service, m_attrs, batchSize, updatable,
-      scrollable, false /* isOwner */);
+  return std::make_shared<ResultSet>(&rowSet, m_service, m_attrs, batchSize,
+      updatable, scrollable, false /* isOwner */);
 }
 
-std::unique_ptr<ResultSet> Result::getResultSet() {
+std::shared_ptr<ResultSet> Result::getResultSet() {
   if (m_result.__isset.resultSet) {
-    return std::unique_ptr<ResultSet>(newResultSet(m_result.resultSet));
+    if (!m_resultSet) {
+      m_resultSet = newResultSet(m_result.resultSet);
+    }
+    return m_resultSet;
   } else {
-    return std::unique_ptr<ResultSet>();
+    return std::shared_ptr<ResultSet>();
   }
 }
 
@@ -94,11 +95,14 @@ const std::map<int32_t, thrift::ColumnValue>& Result::getOutputParameters()
   return m_result.procedureOutParams;
 }
 
-std::unique_ptr<ResultSet> Result::getGeneratedKeys() {
+std::shared_ptr<ResultSet> Result::getGeneratedKeys() {
   if (m_result.__isset.generatedKeys) {
-    return std::unique_ptr<ResultSet>(newResultSet(m_result.generatedKeys));
+    if (!m_generatedKeys) {
+      m_generatedKeys = newResultSet(m_result.generatedKeys);
+    }
+    return m_generatedKeys;
   } else {
-    return std::unique_ptr<ResultSet>();
+    return std::shared_ptr<ResultSet>();
   }
 }
 

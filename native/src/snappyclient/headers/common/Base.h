@@ -107,6 +107,7 @@
 
 #include <cstdint>
 #include <string>
+#include <memory>
 
 #define BOOST_FILESYSTEM_NO_DEPRECATED
 #define BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS

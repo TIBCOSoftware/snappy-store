@@ -72,7 +72,7 @@ namespace client {
   class SQLException : std::exception {
   public:
     SQLException(const char* file, int line, const SQLState& state,
-        const std::string& reason, SQLException* next = NULL);
+        const std::string& reason, SQLException* next = nullptr);
 
     SQLException(const char* file, int line,
         const thrift::SnappyException& se);
@@ -160,7 +160,7 @@ namespace client {
         const thrift::SnappyExceptionData& snappyExceptionData) :
         m_reason(snappyExceptionData.reason),
         m_state(snappyExceptionData.sqlState),
-        m_severity(snappyExceptionData.errorCode), m_next(NULL),
+        m_severity(snappyExceptionData.errorCode), m_next(nullptr),
         m_file(file), m_line(line) {
       init();
     }
@@ -172,7 +172,7 @@ namespace client {
 #endif
         ) :
         m_reason(reason), m_state(state), m_severity(severity),
-        m_next(NULL), m_file(file), m_line(line) {
+        m_next(nullptr), m_file(file), m_line(line) {
 #ifdef __GNUC__
       copyStack(stack, stackSize);
 #endif
@@ -225,7 +225,7 @@ namespace client {
   class SQLWarning : public SQLException {
   public:
     SQLWarning(const char* file, int line, const SQLState& state,
-        const std::string& reason, SQLWarning* next = NULL);
+        const std::string& reason, SQLWarning* next = nullptr);
 
     SQLWarning(const char* file, int line,
         const thrift::SnappyExceptionData& snappyExceptionData) :

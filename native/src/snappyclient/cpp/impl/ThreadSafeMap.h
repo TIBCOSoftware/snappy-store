@@ -33,8 +33,8 @@
  * LICENSE file.
  */
 
-#ifndef THREADSAFECONTAINER_H_
-#define THREADSAFECONTAINER_H_
+#ifndef THREADSAFEMAP_H_
+#define THREADSAFEMAP_H_
 
 #include "common/Base.h"
 
@@ -58,6 +58,8 @@ namespace snappydata {
    * <p>
    * A generic concurrent segemented map will be better
    * but no pressing need so far.
+   * <p>
+   * TODO: provide move semantics
    */
   template<typename K, typename V,
       typename TMAP = std::unordered_map<K, V> >
@@ -82,7 +84,7 @@ namespace snappydata {
 
       typename TMAP::const_iterator search = m_map.find(k);
       if (search != m_map.end()) {
-        if (result != NULL) {
+        if (result) {
           *result = search->second;
         }
         return true;
@@ -134,7 +136,7 @@ namespace snappydata {
 
       typename TMAP::iterator search = m_map.find(k);
       if (search != m_map.end()) {
-        if (oldValue != NULL) {
+        if (oldValue) {
           *oldValue = search->second;
         }
         m_map.erase(search);
@@ -172,7 +174,7 @@ namespace snappydata {
       if (result.second) {
         return true;
       } else {
-        if (oldValue != NULL) {
+        if (oldValue) {
           *oldValue = (result.first)->second;
         }
         (result.first)->second = v;
@@ -210,7 +212,7 @@ namespace snappydata {
       if (result.second) {
         return true;
       } else {
-        if (oldValue != NULL) {
+        if (oldValue) {
           *oldValue = (result.first)->second;
         }
         return false;
@@ -341,4 +343,4 @@ namespace snappydata {
 } /* namespace snappydata */
 } /* namespace io */
 
-#endif /* THREADSAFECONTAINER_H_ */
+#endif /* THREADSAFEMAP_H_ */

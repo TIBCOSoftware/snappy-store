@@ -38,8 +38,7 @@
 
 #include "ClientBase.h"
 
-#include <boost/shared_ptr.hpp>
-#include <boost/thread/mutex.hpp>
+#include <mutex>
 #include <thrift/transport/TSSLSocket.h>
 
 #include "../thrift/SnappyDataService.h"
@@ -70,7 +69,7 @@ namespace io {
         public:
           SnappyDataClient(protocol::TProtocol* prot) :
               thrift::SnappyDataServiceClient(
-                  boost::shared_ptr<protocol::TProtocol>(prot)) {
+                  std::shared_ptr<protocol::TProtocol>(prot)) {
           }
 
           inline protocol::TProtocol* getProtocol() const noexcept {
@@ -79,8 +78,8 @@ namespace io {
 
         private:
           void resetProtocols(
-              const boost::shared_ptr<protocol::TProtocol>& iprot,
-              const boost::shared_ptr<protocol::TProtocol>& oprot) {
+              const std::shared_ptr<protocol::TProtocol>& iprot,
+              const std::shared_ptr<protocol::TProtocol>& oprot) {
             piprot_ = iprot;
             poprot_ = oprot;
             iprot_ = iprot.get();
@@ -99,7 +98,7 @@ namespace io {
           bool m_useFramedTransport;
           std::set<std::string> m_serverGroups;
 
-          boost::shared_ptr<ClientTransport> m_transport;
+          std::shared_ptr<ClientTransport> m_transport;
           SnappyDataClient m_client;
 
           thrift::HostAddress m_currentHostAddr;
@@ -113,9 +112,7 @@ namespace io {
           IsolationLevel m_isolationLevel;
           std::map<thrift::TransactionAttribute::type, bool> m_currentTXAttrs;
 
-          // using boost::mutex and not std::mutex due to superior implementation on
-          // Windows compared to that provided by VS (which always does kernel call)
-          boost::mutex m_lock;
+          std::mutex m_lock;
 
           // no copy constructor or assignment operator due to obvious issues
           // with usage of same connection by multiple threads concurrently
@@ -133,7 +130,7 @@ namespace io {
               thrift::HostAddress& hostAddr,
               const thrift::ServerType::type serverType,
               const bool useFramedTransport,
-              boost::shared_ptr<ClientTransport>& returnTransport);
+              std::shared_ptr<ClientTransport>& returnTransport);
 
           inline std::string getSSLPropertyName(SSLProperty sslProperty) {
             return m_sslParams.getSSLPropertyName(sslProperty);
@@ -225,7 +222,7 @@ namespace io {
           // the static hostName and hostId used by all connections
           static std::string s_hostName;
           static std::string s_hostId;
-          static boost::mutex s_globalLock;
+          static std::mutex s_globalLock;
           static bool s_initialized;
           SSLParameters m_sslParams;
           /**
@@ -256,13 +253,13 @@ namespace io {
             return m_isOpen;
           }
 
-          inline const boost::shared_ptr<ClientTransport>& getTransport() const
+          inline const std::shared_ptr<ClientTransport>& getTransport() const
               noexcept {
             return m_transport;
           }
 
           const char* getTokenStr() const noexcept {
-            return m_token.empty() ? NULL : m_token.c_str();
+            return m_token.empty() ? nullptr : m_token.c_str();
           }
 
           const thrift::HostAddress& getCurrentHostAddress() const noexcept {
@@ -278,7 +275,7 @@ namespace io {
             return m_isolationLevel;
           }
 
-          boost::shared_ptr<TSSLSocket> createSSLSocket(
+          std::shared_ptr<TSSLSocket> createSSLSocket(
               const std::string& host, int port);
 
           void execute(thrift::StatementResult& result,

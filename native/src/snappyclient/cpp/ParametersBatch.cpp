@@ -49,12 +49,14 @@ ParametersBatch::ParametersBatch(const PreparedStatement& pstmt) :
     m_batch(), m_numParams(pstmt.getParameterCount()) {
 }
 
-Parameters& ParametersBatch::createParameters() {
-  const size_t currentSize = m_batch.size();
-  m_batch.resize(currentSize + 1);
-  thrift::Row& trow = m_batch[currentSize];
-  if (m_numParams > 0) {
-    trow.resize(m_numParams);
-  }
-  return *(new (&trow) Parameters(true));
+void ParametersBatch::reserve(size_t newCapacity) {
+  m_batch.reserve(newCapacity);
+}
+
+void ParametersBatch::moveParameters(Parameters& params) {
+  m_batch.push_back(std::move(params));
+}
+
+Parameters ParametersBatch::parametersAt(size_t index) {
+  return Parameters(m_batch.at(index));
 }

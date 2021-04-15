@@ -64,7 +64,7 @@ SQLException::SQLException(const char* file, int line,
 	const thrift::SnappyException& se) :
     m_reason(se.exceptionData.reason),
     m_state(se.exceptionData.sqlState),
-    m_severity(se.exceptionData.errorCode), m_next(NULL),
+    m_severity(se.exceptionData.errorCode), m_next(nullptr),
     m_file(file), m_line(line) {
   initNextException(se.nextExceptions);
   init();
@@ -74,13 +74,13 @@ SQLException::SQLException(const char* file, int line,
     const std::exception& stde) :
     m_reason(stde.what()), m_state(SQLState::UNKNOWN_EXCEPTION.getSQLState()),
     m_severity(static_cast<int32_t>(ExceptionSeverity::SESSION_SEVERITY)),
-    m_next(NULL), m_file(file), m_line(line) {
+    m_next(nullptr), m_file(file), m_line(line) {
   init();
 }
 
 SQLException::SQLException(const SQLException& other) :
     m_reason(other.m_reason), m_state(other.m_state),
-    m_severity(other.m_severity), m_next(NULL),
+    m_severity(other.m_severity), m_next(nullptr),
     m_file(other.m_file), m_line(other.m_line) {
 #ifdef __GNUC__
   copyStack(other.m_stack, other.m_stackSize);
@@ -92,7 +92,7 @@ SQLException::SQLException(SQLException&& other) :
     m_reason(std::move(other.m_reason)), m_state(std::move(other.m_state)),
     m_severity(other.m_severity), m_next(other.m_next),
     m_file(other.m_file), m_line(other.m_line) {
-  other.m_next = NULL;
+  other.m_next = nullptr;
 #ifdef __GNUC__
   copyStack(other.m_stack, other.m_stackSize);
   other.m_stackSize = 0;
@@ -105,7 +105,7 @@ SQLException* SQLException::clone() const {
 
 #ifdef __GNUC__
 void SQLException::copyStack(void* const * stack, size_t stackSize) {
-  if (stack != NULL && stackSize > 0) {
+  if (stack && stackSize > 0) {
     for (size_t i = 0; i < stackSize; i++) {
       m_stack[i] = stack[i];
     }
@@ -126,7 +126,7 @@ void SQLException::init() {
 void SQLException::initNextException(
     const std::vector<thrift::SnappyExceptionData>& nextExceptions) {
   if (nextExceptions.size() > 0) {
-    SQLException* next = NULL;
+    SQLException* next = nullptr;
     SQLException* current;
     // create from the end prepending to the list at the front
     for (auto iter = nextExceptions.rbegin(); iter != nextExceptions.rend();
@@ -137,7 +137,7 @@ void SQLException::initNextException(
     }
     m_next = next;
   } else {
-    m_next = NULL;
+    m_next = nullptr;
   }
 }
 
@@ -145,7 +145,7 @@ void SQLException::initNextException(const SQLException& other) {
   // re-create the next chain
   const SQLException* onext = &other;
   SQLException* next = this;
-  while ((onext = onext->m_next) != NULL) {
+  while ((onext = onext->m_next)) {
     next->m_next = createNextException(onext->m_file, onext->m_line,
         onext->m_reason, onext->m_state.c_str(), onext->m_severity
 #ifdef __GNUC__
@@ -162,14 +162,14 @@ std::ostream& SQLException::printStackTrace(std::ostream& out) const {
 #ifdef __GNUC__
   char** stackStrings;
   const size_t skip = skipFrames();
-  if (m_stack != NULL && m_stackSize > skip) {
-    if ((stackStrings = ::backtrace_symbols(m_stack, m_stackSize)) != NULL) {
+  if (m_stack && m_stackSize > skip) {
+    if ((stackStrings = ::backtrace_symbols(m_stack, m_stackSize))) {
       impl::FreePointer freeStrings(stackStrings);
       std::string stackStr, function;
       size_t begin, end;
       char* demangledName;
       for (size_t i = skip; i < m_stackSize; i++) {
-        demangledName = NULL;
+        demangledName = nullptr;
         stackStr.assign(stackStrings[i]);
 
         // locate the mangled name after the parentheses and address
@@ -184,7 +184,7 @@ std::ostream& SQLException::printStackTrace(std::ostream& out) const {
           // demangle the name
           demangledName = Utils::gnuDemangledName(function.c_str());
         }
-        if (demangledName != NULL) {
+        if (demangledName) {
           impl::FreePointer freeName(demangledName);
           out << "\tat " << stackStr.substr(0, begin + 1) << demangledName;
           if (end != std::string::npos) {
@@ -210,14 +210,14 @@ void SQLException::toString(std::ostream& out) const {
 SQLException::~SQLException() {
   SQLException* next = m_next;
   SQLException* pnext;
-  while (next != NULL) {
+  while (next) {
     // iteratively go at the next and start deleting/clearing
     pnext = next->m_next;
-    next->m_next = NULL;
+    next->m_next = nullptr;
     delete next;
     next = pnext;
   }
-  m_next = NULL;
+  m_next = nullptr;
 }
 
 SQLWarning::SQLWarning(const char* file, int line, const SQLState& state,
@@ -227,7 +227,7 @@ SQLWarning::SQLWarning(const char* file, int line, const SQLState& state,
 
 const SQLWarning* SQLWarning::getNextWarning() const {
   const SQLException* next = getNextException();
-  return next != NULL ? dynamic_cast<const SQLWarning*>(next) : NULL;
+  return next ? dynamic_cast<const SQLWarning*>(next) : nullptr;
 }
 
 void SQLWarning::setNextWarning(SQLWarning* next) {

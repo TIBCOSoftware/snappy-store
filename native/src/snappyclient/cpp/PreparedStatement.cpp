@@ -66,7 +66,7 @@ PreparedStatement::PreparedStatement(
 
 void PreparedStatement::registerOutParameter(const int32_t parameterIndex,
     const SQLType type) {
-  if (m_outParams == NULL) {
+  if (!m_outParams) {
     m_outParams.reset(new std::map<int32_t, thrift::OutputParameter>());
   }
   thrift::OutputParameter outParam;
@@ -76,7 +76,7 @@ void PreparedStatement::registerOutParameter(const int32_t parameterIndex,
 
 void PreparedStatement::registerOutParameter(const int32_t parameterIndex,
     const SQLType type, const int32_t scale) {
-  if (m_outParams == NULL) {
+  if (!m_outParams) {
     m_outParams.reset(new std::map<int32_t, thrift::OutputParameter>());
   }
   thrift::OutputParameter outParam;
@@ -86,7 +86,7 @@ void PreparedStatement::registerOutParameter(const int32_t parameterIndex,
 }
 
 bool PreparedStatement::unregisterOutParameter(const int32_t parameterIndex) {
-  if (m_outParams != NULL) {
+  if (m_outParams) {
     return (m_outParams->erase(parameterIndex) > 0);
   } else {
     return false;
@@ -97,7 +97,7 @@ std::unique_ptr<Result> PreparedStatement::execute(const Parameters& params) {
   std::unique_ptr<Result> result(new Result(m_service, m_attrs));
 
   m_service->executePrepared(result->m_result, m_prepResult, params,
-      m_outParams == NULL ? EMPTY_OUT_PARAMS : *m_outParams,
+      !m_outParams ? EMPTY_OUT_PARAMS : *m_outParams,
       m_attrs.getAttrs());
   if (result->m_result.__isset.resultSet) {
     m_cursorId = result->m_result.resultSet.cursorId;
@@ -139,14 +139,14 @@ std::unique_ptr<ResultSet> PreparedStatement::executeQuery(
 
   thrift::RowSet* rs = new thrift::RowSet();
   // resize the vectors to some reasonable values
-  rs->rows.reserve(4);
-  rs->metadata.reserve(10);
-  std::unique_ptr<ResultSet> resultSet(
-      new ResultSet(rs, m_service, m_attrs, batchSize, updatable,
-          scrollable));
+  rs->rows.reserve(8);
+  rs->metadata.reserve(16);
   m_service->executePreparedQuery(*rs, m_prepResult, params,
       m_attrs.getAttrs());
   m_cursorId = rs->cursorId;
+  std::unique_ptr<ResultSet> resultSet(
+      new ResultSet(rs, m_service, m_attrs, batchSize, updatable,
+          scrollable));
   if (resultSet->hasWarnings()) {
     // set back in PreparedStatement
     m_warnings = resultSet->getWarnings();
@@ -168,7 +168,7 @@ std::vector<int32_t> PreparedStatement::executeBatch(
   } else {
     m_warnings.reset();
   }
-  return std::move(result.batchUpdateCounts);
+  return result.batchUpdateCounts;
 }
 
 std::unique_ptr<ResultSet> PreparedStatement::getNextResults(
@@ -179,13 +179,12 @@ std::unique_ptr<ResultSet> PreparedStatement::getNextResults(
     Result::getResultSetArgs(m_attrs, batchSize, updatable, scrollable);
 
     thrift::RowSet* rs = new thrift::RowSet();
-    std::unique_ptr<ResultSet> resultSet(
-        new ResultSet(rs, m_service, m_attrs, batchSize, updatable,
-            scrollable));
-
     m_service->getNextResultSet(*rs, m_cursorId,
         static_cast<int8_t>(behaviour));
     m_cursorId = rs->cursorId;
+    std::unique_ptr<ResultSet> resultSet(
+        new ResultSet(rs, m_service, m_attrs, batchSize, updatable,
+            scrollable));
     // check for empty ResultSet
     if (rs->metadata.empty()) {
       return std::unique_ptr<ResultSet>(nullptr);
@@ -204,7 +203,7 @@ std::unique_ptr<ResultSet> PreparedStatement::getNextResults(
 }
 
 std::unique_ptr<SQLWarning> PreparedStatement::getWarnings() {
-  if (m_warnings != NULL) {
+  if (m_warnings) {
     return std::unique_ptr<SQLWarning>(new SQLWarning(*m_warnings));
   } else if (m_prepResult.__isset.warnings) {
     return std::unique_ptr<SQLWarning>(new GET_SQLWARNING(

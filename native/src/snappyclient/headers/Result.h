@@ -45,6 +45,7 @@
 
 #include "Types.h"
 #include "PreparedStatement.h"
+#include "ResultSet.h"
 
 #include <memory>
 
@@ -59,6 +60,8 @@ namespace client {
     std::shared_ptr<ClientService> m_service;
     StatementAttributes m_attrs;
     thrift::StatementResult m_result;
+    std::shared_ptr<ResultSet> m_resultSet;
+    std::shared_ptr<ResultSet> m_generatedKeys;
 
     Result(const std::shared_ptr<ClientService>& service,
         const StatementAttributes& attrs);
@@ -72,12 +75,12 @@ namespace client {
     static void getResultSetArgs(const StatementAttributes& attrs,
         int32_t& batchSize, bool& updatable, bool& scrollable) noexcept;
 
-    ResultSet* newResultSet(thrift::RowSet& rowSet);
+    std::shared_ptr<ResultSet> newResultSet(thrift::RowSet& rowSet);
 
   public:
     ~Result();
 
-    std::unique_ptr<ResultSet> getResultSet();
+    std::shared_ptr<ResultSet> getResultSet();
 
     int32_t getUpdateCount() const noexcept;
 
@@ -91,7 +94,7 @@ namespace client {
     const std::map<int32_t, thrift::ColumnValue>& getOutputParameters()
         const noexcept;
 
-    std::unique_ptr<ResultSet> getGeneratedKeys();
+    std::shared_ptr<ResultSet> getGeneratedKeys();
 
     const StatementAttributes& getAttributes() const noexcept {
       return m_attrs;

@@ -84,9 +84,6 @@
     <ClCompile Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.h">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\impl\ThreadSafeList.h">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\impl\ThreadSafeMap.h">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -450,9 +447,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\snappyclient\cpp\impl\ThreadSafeList.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\snappyclient\cpp\impl\ThreadSafeMap.h">

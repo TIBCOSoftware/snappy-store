@@ -40,12 +40,12 @@
 
 using namespace io::snappydata::client;
 
-SQLMessageBase::SQLMessageBase() : MessageBase(), m_sqlState(NULL) {
+SQLMessageBase::SQLMessageBase() : MessageBase(), m_sqlState(nullptr) {
 }
 
 void SQLMessageBase::initialize(const char* messageId) {
   MessageBase::initialize(messageId);
-  m_sqlState = NULL;
+  m_sqlState = nullptr;
 }
 
 void SQLMessageBase::initialize(const SQLState& sqlState,

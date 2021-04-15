@@ -77,7 +77,7 @@ void MessageRegistry::removeMessage(const MessageBase& msg) {
 }
 
 MessageBase* MessageRegistry::lookup(const std::string& messageId) const {
-  MessageBase* result = NULL;
+  MessageBase* result = nullptr;
   m_allMessages.get(messageId, &result);
   return result;
 }

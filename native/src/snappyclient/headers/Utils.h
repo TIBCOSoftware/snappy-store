@@ -50,7 +50,6 @@ extern "C" {
 
 #include <exception>
 #include <typeinfo>
-#include <boost/config.hpp>
 
 namespace io {
 namespace snappydata {
@@ -136,10 +135,8 @@ namespace client {
     }
 
     template <typename T>
-    static std::vector<T> singleVector(const T& elem) {
-      std::vector<T> vec(1);
-      vec.push_back(elem);
-      return vec;
+    inline static std::vector<T> singleVector(const T& elem) {
+      return std::vector<T>(1, elem);
     }
 
     inline static bool supportsThreadNames() {
@@ -155,7 +152,7 @@ namespace client {
 #ifdef _LINUX
       char threadName[32];
       if (::prctl(PR_GET_NAME, threadName) == 0) {
-        if (header != NULL) {
+        if (header) {
           result.append(header);
         }
         result.append(threadName);
@@ -173,7 +170,7 @@ namespace client {
 #ifdef _LINUX
       char threadName[32];
       if (::prctl(PR_GET_NAME, threadName) == 0) {
-        if (header != NULL) {
+        if (header) {
           out << header;
         }
         out << threadName;
@@ -187,7 +184,7 @@ namespace client {
     }
 
     inline static std::ostream& threadName(std::ostream& out) {
-      getCurrentThreadName(NULL, out);
+      getCurrentThreadName(nullptr, out);
       return out;
     }
 
@@ -311,10 +308,10 @@ namespace client {
 template<typename TPROC>
 bool io::snappydata::client::Utils::convertUTF8ToUTF16(
   const char* utf8Chars, const int utf8Len, TPROC& process) {
-  const char* endChars = (utf8Len < 0) ? NULL : (utf8Chars + utf8Len);
+  const char* endChars = (utf8Len < 0) ? nullptr : (utf8Chars + utf8Len);
   bool nonASCII = false;
   int ch;
-  while ((endChars == NULL || utf8Chars < endChars)
+  while ((!endChars || utf8Chars < endChars)
       && (ch = (*utf8Chars++ & 0xFF)) != 0) {
     // get next byte unsigned
     const int k = (ch >> 5);

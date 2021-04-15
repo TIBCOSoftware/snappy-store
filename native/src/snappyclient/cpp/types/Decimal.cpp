@@ -327,7 +327,7 @@ size_t Decimal::toByteArray(std::string& str) const {
   if (nbytes > 0) {
     str.resize(len + nbytes);
     char* resultChars = const_cast<char*>(str.data()) + len;
-    mpz_export(resultChars, NULL, 1,
+    mpz_export(resultChars, nullptr, 1,
         1 /* size of each element i.e. byte in byte[] */, 1 /* big endian */, 0,
         m_bigInt);
   }
@@ -341,7 +341,7 @@ bool Decimal::wholeDigits(uint8_t* bytes, const size_t maxLen,
   // calculate the required length
   actualLen = (mpz_sizeinbase(*intVal, 2) + 7) / 8;
   if (actualLen <= maxLen) {
-    mpz_export(bytes, NULL, 1, 1 /* size of each element i.e. byte in byte[] */,
+    mpz_export(bytes, nullptr, 1, 1 /* size of each element i.e. byte in byte[] */,
         1 /* big endian */, 0, *intVal);
     return true;
   } else {

@@ -55,7 +55,21 @@ ResultSet::ResultSet(thrift::RowSet* rows,
     bool scrollable, bool isOwner) :
     m_rows(rows), m_service(service), m_attrs(attrs), m_batchSize(batchSize),
     m_updatable(updatable), m_scrollable(scrollable), m_isOwner(isOwner),
-    m_descriptors(NULL), m_columnPositionMap(NULL) {
+    m_descriptors(nullptr), m_columnPositionMap(nullptr) {
+  initRowData(false);
+}
+
+void ResultSet::initRowData(bool clearData) {
+  if (clearData) m_rowData.clear();
+
+  auto &rows = m_rows->rows;
+  auto numRows = rows.size();
+  if (numRows > 0) {
+    m_rowData.reserve(numRows);
+    for (thrift::Row& row : rows) {
+      m_rowData.push_back(std::move(row));
+    }
+  }
 }
 
 bool ResultSet::moveToNextRowSet(int32_t offset) {
@@ -67,7 +81,8 @@ bool ResultSet::moveToNextRowSet(int32_t offset) {
 
   m_service->scrollCursor(*m_rows, m_rows->cursorId, offset, false, false,
       m_batchSize);
-  return (m_rows->rows.size() > 0);
+  initRowData(true);
+  return !m_rowData.empty();
 }
 
 bool ResultSet::moveToRowSet(int32_t offset, int32_t batchSize,
@@ -81,7 +96,8 @@ bool ResultSet::moveToRowSet(int32_t offset, int32_t batchSize,
 
   m_service->scrollCursor(*m_rows, m_rows->cursorId, offset, offsetIsAbsolute,
       false, batchSize);
-  return (m_rows->rows.size() > 0);
+  initRowData(true);
+  return !m_rowData.empty();
 }
 
 struct ClearUpdates {
@@ -98,11 +114,11 @@ public:
 
 void ResultSet::insertRow(UpdatableRow* row, int32_t rowIndex) {
   checkOpen("insertRow");
-  if (row != NULL && row->getChangedColumns() != NULL) {
+  if (row && row->getChangedColumns()) {
     ClearUpdates clearRow(row);
     std::vector<int32_t> changedColumns(
         std::move(row->getChangedColumnsAsVector()));
-    if (changedColumns.size() > 0) {
+    if (!changedColumns.empty()) {
       m_service->executeCursorUpdate(m_rows->cursorId,
           thrift::CursorUpdateOperation::INSERT_OP, *row, changedColumns,
           rowIndex);
@@ -115,11 +131,11 @@ void ResultSet::insertRow(UpdatableRow* row, int32_t rowIndex) {
 
 void ResultSet::updateRow(UpdatableRow* row, int32_t rowIndex) {
   checkOpen("updateRow");
-  if (row != NULL && row->getChangedColumns() != NULL) {
+  if (row && row->getChangedColumns()) {
     ClearUpdates clearRow(row);
     std::vector<int32_t> changedColumns(
         std::move(row->getChangedColumnsAsVector()));
-    if (changedColumns.size() > 0) {
+    if (!changedColumns.empty()) {
       m_service->executeCursorUpdate(m_rows->cursorId,
           thrift::CursorUpdateOperation::UPDATE_OP, *row, changedColumns,
           rowIndex);
@@ -159,10 +175,10 @@ ResultSet::iterator ResultSet::begin(int32_t offset) {
 
 uint32_t ResultSet::getColumnPosition(const std::string& name) const {
   checkOpen("getColumnPosition");
-  if (m_columnPositionMap == NULL) {
+  if (!m_columnPositionMap) {
     // populate the map on first call
     const std::vector<thrift::ColumnDescriptor>* descriptors =
-        m_descriptors != NULL ? &m_rows->metadata : m_descriptors;
+        m_descriptors ? &m_rows->metadata : m_descriptors;
     m_columnPositionMap = new std::map<std::string, uint32_t>();
     uint32_t index = 1;
     for (std::vector<thrift::ColumnDescriptor>::const_iterator iter =
@@ -228,23 +244,18 @@ ColumnDescriptor ResultSet::getColumnDescriptor(
 
 ColumnDescriptor ResultSet::getColumnDescriptor(const uint32_t columnIndex) {
   checkOpen("getColumnDescriptor");
-  return getColumnDescriptor(
-      m_descriptors == NULL ? m_rows->metadata : *m_descriptors,
+  return getColumnDescriptor(!m_descriptors ? m_rows->metadata : *m_descriptors,
       columnIndex, "column number in result set");
 }
 
 int32_t ResultSet::getRow() const {
-  if (m_rows != NULL) {
-    return m_rows->offset;
-  } else {
-    return 0;
-  }
+  return m_rows ? m_rows->offset : 0;
 }
 
 std::string ResultSet::getCursorName() const {
   checkOpen("getCursorName");
   const thrift::RowSet* rs = m_rows;
-  return rs != NULL && rs->__isset.cursorName ? rs->cursorName : "";
+  return rs && rs->__isset.cursorName ? rs->cursorName : "";
 }
 
 std::unique_ptr<ResultSet> ResultSet::getNextResults(
@@ -253,12 +264,11 @@ std::unique_ptr<ResultSet> ResultSet::getNextResults(
 
   if (m_rows->cursorId != thrift::snappydataConstants::INVALID_ID) {
     thrift::RowSet* rs = new thrift::RowSet();
+    m_service->getNextResultSet(*rs, m_rows->cursorId,
+        static_cast<int8_t>(behaviour));
     std::unique_ptr<ResultSet> resultSet(
         new ResultSet(rs, m_service, m_attrs, m_batchSize, m_updatable,
             m_scrollable));
-
-    m_service->getNextResultSet(*rs, m_rows->cursorId,
-        static_cast<int8_t>(behaviour));
     // check for empty ResultSet
     if (rs->metadata.empty()) {
       return std::unique_ptr<ResultSet>(nullptr);
@@ -283,13 +293,13 @@ std::unique_ptr<SQLWarning> ResultSet::getWarnings() const {
 
 std::unique_ptr<ResultSet> ResultSet::clone() const {
   checkOpen("clone");
-  if (m_rows != NULL) {
+  if (m_rows) {
     /* clone the contained object */
     thrift::RowSet* rs = new thrift::RowSet(*m_rows);
     std::unique_ptr<ResultSet> resultSet(
         new ResultSet(rs, m_service, m_attrs, m_batchSize, m_updatable,
             m_scrollable, true /* isOwner */));
-    if (m_descriptors != NULL) {
+    if (m_descriptors) {
       resultSet->m_descriptors = new std::vector<thrift::ColumnDescriptor>(
           *m_descriptors);
     }
@@ -300,18 +310,18 @@ std::unique_ptr<ResultSet> ResultSet::clone() const {
 }
 
 void ResultSet::cleanupRS() {
-  if (m_descriptors != NULL) {
+  if (m_descriptors) {
     delete m_descriptors;
-    m_descriptors = NULL;
+    m_descriptors = nullptr;
   }
-  if (m_columnPositionMap != NULL) {
+  if (m_columnPositionMap) {
     delete m_columnPositionMap;
-    m_columnPositionMap = NULL;
+    m_columnPositionMap = nullptr;
   }
 }
 
 bool ResultSet::cancelStatement() {
-  if (m_rows != NULL) {
+  if (m_rows) {
     const auto statementId = m_rows->statementId;
     if (statementId != thrift::snappydataConstants::INVALID_ID) {
       m_service->cancelStatement(statementId);
@@ -340,7 +350,7 @@ void ResultSet::close(bool closeStatement) {
   if (m_isOwner && m_rows) {
     delete m_rows;
   }
-  m_rows = NULL;
+  m_rows = nullptr;
   cleanupRS();
 }
 

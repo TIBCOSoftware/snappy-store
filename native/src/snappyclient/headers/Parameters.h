@@ -48,20 +48,10 @@ namespace client {
 
   class Parameters : public Row {
   private:
-    // IMPORTANT NOTE: DO NOT ADD ANY ADDITIONAL FIELDS IN THIS CLASS.
-    // If need be then add to thrift::Row since higher layers use
-    // placement new to freely up-convert thrift::Row to this type
-    /**
-     * No copy constructor or assignment operator because its expensive
-     * and implicit shallow copy can have unexpected behaviour for the
-     * users. Use clone()/shallowClone() as required.
-     */
-    Parameters(const Parameters&) = delete;
-    Parameters operator=(const Parameters&) = delete;
+    Parameters(const thrift::Row &other) : Row(other) {
+    }
 
-    // for placement new skip initialization of m_values
-    Parameters(bool skipInitialize) :
-        Row(false) {
+    Parameters(thrift::Row &&other) : Row(std::move(other)) {
     }
 
     inline void checkBounds(uint32_t paramIndex) const {
@@ -88,10 +78,13 @@ namespace client {
     friend class ParametersBatch;
 
   public:
-    Parameters() : Row() { }
+    Parameters() : Row() {
+    }
 
-    Parameters(Parameters&& other) :
-        Row(std::move(other)) {
+    Parameters(const Parameters &other) : Row(other) {
+    }
+
+    Parameters(Parameters &&other) : Row(std::move(other)) {
     }
 
     Parameters& operator=(Parameters&& other) {

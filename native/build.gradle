@@ -45,22 +45,18 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
   }
 
   String distDir = "${rootProject.projectDir}/dist"
-  String thriftVersion = '1.0.0-1'
-  String boostVersion = '1.59.0'
+  String thriftVersion = '1.0.0-2'
+  String boostVersion = '1.69.0'
   String mpirVersion = '2.7.2'
   String opensslVersion = '1.1.1'
-  String unixodbcVersion = '2.3.4'
   String googletestVersion = '1.7.0'
-  String newThriftVersion = '1.0.0-2'
-  thriftVersion = newThriftVersion
-  String oldReleasesDir = "https://github.com/SnappyDataInc/thrift/releases/download/${thriftVersion}"
-  
-  String releasesDir = oldReleasesDir
 
-  String newBoostVersion = '1.65.1'
-  String newUnixodbcVersion = '2.3.4'
-  String newGoogletestVersion = '1.8.0'
-  String newReleasesDir = "https://github.com/SnappyDataInc/thrift/releases/download/${newThriftVersion}"
+  String releasesDir = "https://github.com/TIBCOSoftware/snappy-thrift/releases/download/${thriftVersion}"
+
+  String newThriftVersion = '0.12.0'
+  String newBoostVersion = '1.72.0'
+  String newGoogletestVersion = '1.10.0'
+  String newReleasesDir = "https://github.com/TIBCOSoftware/snappy-thrift/releases/download/${newThriftVersion}"
 
   List<String> dependencies = []
 
@@ -82,39 +78,38 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
       getLinuxFlavour(out)
       flavour = out.toString().replaceAll('[ \r\n\f]', '').toLowerCase()
     }
-    if (flavour.startsWith('ubuntu14') || flavour.startsWith('linuxmint17') ||
-        flavour.startsWith('elementary0.3')) {
-      dependencies += [ "thrift-${newThriftVersion}-ubuntu14.04.tar.bz2",
-                        "boost-${boostVersion}-ubuntu14.04.tar.bz2",
-                        "unixODBC-${unixodbcVersion}-ubuntu14.04.tar.bz2",
-                        "googletest-${googletestVersion}-ubuntu14.04.tar.bz2" ]
-    } else if (flavour.startsWith('ubuntu16') || flavour.startsWith('ubuntu17') || flavour.startsWith('ubuntu18') ||
+
+    thriftVersion = newThriftVersion
+    boostVersion = newBoostVersion
+    googletestVersion = newGoogletestVersion
+    releasesDir = newReleasesDir
+    if (flavour.startsWith('ubuntu16') || flavour.startsWith('ubuntu17') ||
         flavour.startsWith('linuxmint18') || flavour.startsWith('linuxmint19') ||
-        flavour.startsWith('elementary0.4') || flavour.startsWith('elementary5')) {
-      boostVersion = newBoostVersion
-      unixodbcVersion = newUnixodbcVersion
-      googletestVersion = newGoogletestVersion
-      releasesDir = newReleasesDir
-      dependencies += [ "thrift-${newThriftVersion}-ubuntu16.04.tar.bz2",
+        flavour.startsWith('elementary0.4')) {
+      dependencies += [ "thrift-${thriftVersion}-ubuntu16.04.tar.bz2",
                         "boost-${boostVersion}-ubuntu16.04.tar.bz2",
-                        "unixODBC-${unixodbcVersion}-ubuntu16.04.tar.bz2",
                         "googletest-${googletestVersion}-ubuntu16.04.tar.bz2" ]
-    } else if (flavour.startsWith('redhat6') || flavour.startsWith('redhat7') ||
-        flavour.startsWith('fedora') ||
-        flavour.startsWith('centos6') || flavour.startsWith('centos7')) {
-      boostVersion = newBoostVersion
-      unixodbcVersion = newUnixodbcVersion
-      googletestVersion = newGoogletestVersion
-      releasesDir = newReleasesDir
-      dependencies += [ "thrift-${newThriftVersion}-rhel6.tar.bz2",
+    } else if (flavour.startsWith('ubuntu18') || flavour.startsWith('ubuntu19') || flavour.startsWith('ubuntu20') ||
+        flavour.startsWith('linuxmint19') || flavour.startsWith('linuxmint20') ||
+        flavour.startsWith('archlinux') || flavour.startsWith('manjarolinux') ||
+        flavour.startsWith('elementary5')) {
+      dependencies += [ "thrift-${thriftVersion}-ubuntu18.04.tar.bz2",
+                        "boost-${boostVersion}-ubuntu18.04.tar.bz2",
+                        "googletest-${googletestVersion}-ubuntu18.04.tar.bz2" ]
+    } else if (flavour.startsWith('redhat6') || flavour.startsWith('centos6')) {
+      dependencies += [ "thrift-${thriftVersion}-rhel6.tar.bz2",
                         "boost-${boostVersion}-rhel6.tar.bz2",
-                        "unixODBC-${unixodbcVersion}-rhel6.tar.bz2",
                         "googletest-${googletestVersion}-rhel6.tar.bz2" ]
+    } else if (flavour.startsWith('redhat7') || flavour.startsWith('fedora') ||
+        flavour.startsWith('centos7')) {
+      dependencies += [ "thrift-${thriftVersion}-rhel7.tar.bz2",
+                        "boost-${boostVersion}-rhel7.tar.bz2",
+                        "googletest-${googletestVersion}-rhel7.tar.bz2" ]
     } else {
       throw new GradleException("Unhandled linux flavour ${flavour}. Use -PlinuxFlavour to force one")
     }
   } else {
-    dependencies += [ "thrift-${newThriftVersion}-${osName}.tar.bz2",
+    dependencies += [ "thrift-${thriftVersion}-${osName}.tar.bz2",
                       "boost-${boostVersion}-${osName}.tar.bz2",
                       "googletest-${googletestVersion}-${osName}.tar.bz2" ]
   }
@@ -179,7 +174,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
     }
 
     def boostLibs = [ 'boost_chrono', 'boost_date_time', 'boost_filesystem',
-                      'boost_log', 'boost_log_setup', 'boost_system', 'boost_thread' ]
+                      'boost_system', 'boost_thread' ]
 
     def getArch = { Platform platform ->
       return (platform == platforms.x64) ? "${osName}64" : "${osName}32"
@@ -220,10 +215,10 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
           }
         }
         thrift {
-          headers.srcDir "${distDir}/thrift-${newThriftVersion}/include"
+          headers.srcDir "${distDir}/thrift-${thriftVersion}/include"
           binaries.withType(StaticLibraryBinary) {
             staticLibraryFile = file(getLibPathForPlatform('thrift', 'thrift',
-                  newThriftVersion, true, false, targetPlatform))
+                  thriftVersion, true, false, targetPlatform))
           }
         }
         openssl {

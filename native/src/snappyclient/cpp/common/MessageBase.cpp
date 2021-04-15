@@ -43,7 +43,7 @@ MessageBase::MessageBase() : m_messageId(), m_messageParts() {
 
 void MessageBase::initialize(const char* messageId) {
   impl::MessageRegistry::instance().removeMessage(*this);
-  if (messageId != NULL) {
+  if (messageId) {
     m_messageId = messageId;
     impl::MessageRegistry::instance().addMessage(*this);
   } else {
@@ -65,7 +65,7 @@ MessageBase::~MessageBase() {
 }
 
 void MessageBase::addMessagePart(const char* messagePart) {
-  m_messageParts.push_back(messagePart);
+  m_messageParts.emplace_back(messagePart);
 }
 
 size_t MessageBase::getNumMessageParts() const noexcept {

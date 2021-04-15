@@ -179,7 +179,7 @@ void Utils::getHostPort(const std::string& hostPort, std::string& resultHost,
   }
   std::string parseError("{failed to split given host[port] string: ");
   parseError.append(hostPort);
-  throwDataFormatError(parseError.c_str(), 0, NULL);
+  throwDataFormatError(parseError.c_str(), 0, nullptr);
 }
 
 const char* Utils::getServerTypeString(
@@ -414,7 +414,9 @@ std::ostream& Utils::toStream(std::ostream& out,
   }
   out << '[' << hostAddr.port << ']';
   if (addServerType) {
-    out << '{' << serverType << '}';
+    out << '{';
+    io::snappydata::thrift::operator<<(out, serverType);
+    out << '}';
   }
   return out;
 }
@@ -422,7 +424,7 @@ std::ostream& Utils::toStream(std::ostream& out,
 std::ostream& Utils::toStream(std::ostream& out, const std::exception& stde) {
   demangleTypeName(typeid(stde).name(), out);
   const char* reason = stde.what();
-  if (reason != NULL) {
+  if (reason) {
     out << ": " << reason;
   }
   return out;
@@ -432,7 +434,7 @@ std::string Utils::toString(const std::exception& stde) {
   std::string str;
   demangleTypeName(typeid(stde).name(), str);
   const char* reason = stde.what();
-  if (reason != NULL) {
+  if (reason) {
     str.append(": ").append(reason);
   }
   return str;
@@ -444,7 +446,7 @@ void Utils::throwDataFormatError(const char* target,
   if (columnIndex > 0) {
     reason << " at column " << columnIndex;
   }
-  if (cause != NULL) {
+  if (cause) {
     reason << ": " << cause;
   }
   throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_FORMAT_EXCEPTION_MSG, target,
@@ -459,7 +461,7 @@ void Utils::throwDataFormatError(const char* target,
   if (columnIndex > 0) {
     reason << " at column " << columnIndex;
   }
-  if (cause != NULL) {
+  if (cause) {
     reason << ": " << cause;
   }
   throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_FORMAT_EXCEPTION_MSG, target,
@@ -483,7 +485,7 @@ void Utils::throwDataOutsideRangeError(const char* target,
   if (columnIndex > 0) {
     reason << " at column " << columnIndex;
   }
-  if (cause != NULL) {
+  if (cause) {
     reason << ": " << cause;
   }
   throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_OUTSIDE_RANGE_FOR_DATATYPE_MSG,
@@ -493,11 +495,12 @@ void Utils::throwDataOutsideRangeError(const char* target,
 #ifdef __GNUC__
 char* Utils::gnuDemangledName(const char* typeName) {
   int status;
-  char* demangledName = abi::__cxa_demangle(typeName, NULL, NULL, &status);
-  if (status == 0 && demangledName != NULL) {
+  char *demangledName = abi::__cxa_demangle(typeName, nullptr, nullptr,
+      &status);
+  if (status == 0 && demangledName) {
     return demangledName;
   } else {
-    return NULL;
+    return nullptr;
   }
 }
 #endif
@@ -505,7 +508,7 @@ char* Utils::gnuDemangledName(const char* typeName) {
 void Utils::demangleTypeName(const char* typeName, std::string& str) {
 #ifdef __GNUC__
   char* demangledName = gnuDemangledName(typeName);
-  if (demangledName != NULL) {
+  if (demangledName) {
     str.append(demangledName);
     ::free(demangledName);
     return;
@@ -517,7 +520,7 @@ void Utils::demangleTypeName(const char* typeName, std::string& str) {
 void Utils::demangleTypeName(const char* typeName, std::ostream& out) {
 #ifdef __GNUC__
   char* demangledName = gnuDemangledName(typeName);
-  if (demangledName != NULL) {
+  if (demangledName) {
     out << demangledName;
     ::free(demangledName);
     return;
@@ -552,8 +555,8 @@ void Utils::handleExceptionInDestructor(const char* operation,
 void Utils::handleExceptionInDestructor(const char* operation,
     const std::exception& se) {
   // ignore transport and protocol exceptions due to other side failing
-  if (dynamic_cast<const transport::TTransportException*>(&se) == NULL
-      && dynamic_cast<const protocol::TProtocolException*>(&se) == NULL) {
+  if (!dynamic_cast<const transport::TTransportException*>(&se)
+      && !dynamic_cast<const protocol::TProtocolException*>(&se)) {
     LogWriter::error() << "Exception in destructor of " << operation << ": "
         << stack(se);
   }

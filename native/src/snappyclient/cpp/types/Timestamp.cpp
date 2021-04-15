@@ -40,12 +40,9 @@
 #include "Types.h"
 #include "../impl/InternalUtils.h"
 
+#include <boost/chrono/io/time_point_io.hpp>
 #include <boost/date_time/time_duration.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-
-#include <boost/chrono/io/time_point_io.hpp>
-
-#include <boost/spirit/include/qi.hpp>
 
 using namespace io::snappydata::client;
 using namespace io::snappydata::client::impl;
@@ -155,7 +152,7 @@ std::string& Timestamp::toString(std::string& str, const bool utc) const {
 #ifdef _WINDOWS
     if (::localtime_s(&t, &tv) == 0) {
 #else
-    if (::localtime_r(&tv, &t) != NULL) {
+    if (::localtime_r(&tv, &t)) {
 #endif
       return DateTime::toString(uint16_t(t.tm_year + 1900), t.tm_mon + 1,
           t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, m_nanos, str);
@@ -202,7 +199,7 @@ std::ostream& operator <<(std::ostream& stream, Timestamp ts) {
 #ifdef _WINDOWS
     if (::localtime_s(&t, &tv) == 0) {
 #else
-    if (::localtime_r(&tv, &t) != NULL) {
+    if (::localtime_r(&tv, &t)) {
 #endif
       DateTime::toString(uint16_t(t.tm_year + 1900), t.tm_mon + 1, t.tm_mday,
           t.tm_hour, t.tm_min, t.tm_sec, ts.getNanos(), stream);

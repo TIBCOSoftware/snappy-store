@@ -138,7 +138,7 @@ namespace snappydata {
     /**
      * Clear value for given property name.
      *
-     * @return pointer to old value associated with name or NULL.
+     * @return true if property was present and was cleared
      */
     static bool clearProperty(const std::string& propName);
   };

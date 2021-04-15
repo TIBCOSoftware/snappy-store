@@ -69,9 +69,9 @@ Parameters& Parameters::setString(uint32_t paramNum, const char* v,
 
 Parameters& Parameters::setDecimal(uint32_t paramNum, const Decimal& v) {
   checkBounds(--paramNum);
-  auto dec = std::shared_ptr<thrift::Decimal>(new thrift::Decimal());
-  v.copyTo(*dec);
-  m_values[paramNum].set(dec);
+  thrift::Decimal dec;
+  v.copyTo(dec);
+  m_values[paramNum].setDecimal(std::move(dec));
   return *this;
 }
 
@@ -79,25 +79,25 @@ Parameters& Parameters::setDecimal(uint32_t paramNum, const int8_t signum,
     const int32_t scale, const int8_t* magnitude, const size_t maglen,
     const bool bigEndian) {
   checkBounds(--paramNum);
-  auto dec = std::shared_ptr<thrift::Decimal>(new thrift::Decimal());
+  thrift::Decimal dec;
 
-  dec->signum = signum;
-  dec->scale = scale;
+  dec.signum = signum;
+  dec.scale = scale;
   if (bigEndian) {
-    dec->magnitude.assign((const char*)magnitude, maglen);
+    dec.magnitude.assign((const char*)magnitude, maglen);
   } else {
     // need to inverse the bytes
     if (maglen > 0) {
-      dec->magnitude.resize(maglen);
+      dec.magnitude.resize(maglen);
       const int8_t* magp = magnitude + maglen - 1;
       for (uint32_t index = 0; index < maglen; index++, magp--) {
-        dec->magnitude[index] = *magp;
+        dec.magnitude[index] = *magp;
       }
     } else {
-      dec->magnitude.clear();
+      dec.magnitude.clear();
     }
   }
-  m_values[paramNum].set(dec);
+  m_values[paramNum].setDecimal(std::move(dec));
   return *this;
 }
 

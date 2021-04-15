@@ -23,8 +23,8 @@
 using namespace io::snappydata::client::impl;
 
 FramedClientTransport::FramedClientTransport(
-    const boost::shared_ptr<BufferedClientTransport>& transport, uint32_t wsz) :
-    TFramedTransport(boost::static_pointer_cast<TTransport>(transport), wsz) {
+    const std::shared_ptr<BufferedClientTransport>& transport, uint32_t wsz) :
+    TFramedTransport(std::static_pointer_cast<TTransport>(transport), wsz) {
   setMaxFrameSize(
       io::snappydata::thrift::snappydataConstants::DEFAULT_LOB_CHUNKSIZE * 2);
 }

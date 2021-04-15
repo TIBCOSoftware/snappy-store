@@ -50,7 +50,7 @@ extern "C" {
 using namespace io::snappydata::client::impl;
 
 BufferedClientTransport::BufferedClientTransport(
-    const boost::shared_ptr<TSocket>& socket, uint32_t rsz, uint32_t wsz,
+    const std::shared_ptr<TSocket>& socket, uint32_t rsz, uint32_t wsz,
     bool writeFramed) : TBufferedTransport(socket, rsz, wsz),
         m_writeFramed(writeFramed), m_doWriteFrameSize(true) {
   initStart();

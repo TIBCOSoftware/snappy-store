@@ -40,11 +40,10 @@
 #include "LogWriter.h"
 
 #include <fstream>
-#include <boost/make_shared.hpp>
+#include <thread>
 #include <boost/chrono/system_clocks.hpp>
 #include <boost/chrono/io/time_point_io.hpp>
 #include <boost/filesystem/fstream.hpp>
-#include <boost/thread/thread.hpp>
 
 #include "SQLException.h"
 #include "Utils.h"
@@ -128,7 +127,7 @@ TraceFlag::TraceFlag(const std::string& name, const int id,
 }
 
 void TraceFlag::addParentFlag(const TraceFlag* parent) {
-  if (parent != NULL) {
+  if (parent) {
     m_parentFlags.push_back(parent);
     parent->m_childFlags.push_back(this);
   }
@@ -194,14 +193,14 @@ void LogWriter::staticInitialize() {
 }
 
 LogWriter::LogWriter(const std::string& logFile, const LogLevel::type logLevel,
-    bool overwrite) : m_buffer(NULL) {
+    bool overwrite) : m_buffer(nullptr) {
   initTraceFlags();
   initialize(logFile, logLevel, overwrite);
 }
 
 LogWriter::LogWriter(std::ostream* logStream, const std::string& logFile,
     const LogLevel::type logLevel) : m_rawStream(logStream),
-        m_logFile(logFile), m_logLevel(logLevel), m_buffer(NULL) {
+        m_logFile(logFile), m_logLevel(logLevel), m_buffer(nullptr) {
   initTraceFlags();
   logStream->exceptions(std::ofstream::failbit | std::ofstream::badbit);
   // use local timezone for formatting
@@ -210,13 +209,13 @@ LogWriter::LogWriter(std::ostream* logStream, const std::string& logFile,
 
 LogWriter::~LogWriter() {
   close();
-  if (m_traceFlags != NULL) {
+  if (m_traceFlags) {
     delete[] m_traceFlags;
-    m_traceFlags = NULL;
+    m_traceFlags = nullptr;
   }
-  if (m_buffer != NULL) {
+  if (m_buffer) {
     delete[] m_buffer;
-    m_buffer = NULL;
+    m_buffer = nullptr;
   }
 }
 
@@ -252,10 +251,11 @@ void LogWriter::initialize(const std::string& logFile,
             const size_t dashIndex = targetFileName.find_last_of('-');
 
             if (dashIndex != std::string::npos) {
-              char* remaining = NULL;
+              char* remaining = nullptr;
               int rolloverIndex = ::strtol(
                   targetFileName.data() + dashIndex + 1, &remaining, 10);
-              if (remaining != NULL && (*remaining == '.' || *remaining == 0)) {
+              if (remaining
+                  && (*remaining == '.' || *remaining == 0)) {
                 targetFileName = targetFileName.substr(0, dashIndex + 1).append(
                     std::to_string(rolloverIndex + 1)).append(remaining);
                 rolledOver = true;
@@ -293,7 +293,7 @@ void LogWriter::initialize(const std::string& logFile,
       fs->open(logpath, std::ios::out | std::ios::binary |
           (overwrite ? std::ios::trunc : std::ios::ate));
       // increase buffer
-      if (m_buffer == NULL) {
+      if (!m_buffer) {
         m_buffer = new char[DEFAULT_BUFSIZE];
       }
       fs->rdbuf()->pubsetbuf(m_buffer, DEFAULT_BUFSIZE);
@@ -310,11 +310,11 @@ void LogWriter::initialize(const std::string& logFile,
 
 void LogWriter::close() {
   std::ostream* oldOut = m_rawStream.get();
-  if (oldOut != NULL) {
+  if (oldOut) {
     try {
       oldOut->flush();
       std::ofstream* oldFS = dynamic_cast<std::ofstream*>(oldOut);
-      if (oldFS != NULL) {
+      if (oldFS) {
         oldFS->close();
       }
     } catch (const std::exception& se) {
@@ -342,7 +342,7 @@ void LogWriter::close() {
 
 std::ostream& LogWriter::getRawStream() {
   std::ostream* stream = m_rawStream.get();
-  if (stream != NULL) {
+  if (stream) {
     return *stream;
   } else {
     // output to stdout by default
@@ -372,7 +372,7 @@ std::ostream& LogWriter::print(const LogLevel::type logLevel,
       if (Utils::getCurrentThreadName(" <", out)) {
         out << '>';
       }
-      out << " tid=0x" << std::hex << boost::this_thread::get_id() << std::dec
+      out << " tid=0x" << std::hex << std::this_thread::get_id() << std::dec
           << "] ";
       return out;
     } catch (const std::exception& se) {
@@ -397,7 +397,7 @@ std::ostream& LogWriter::print(const LogLevel::type logLevel,
 std::ostream& LogWriter::printCompact(const LogLevel::type logLevel,
     const char* flag) {
   std::ostream& out = getRawStream();
-  const boost::thread::id tid = boost::this_thread::get_id();
+  const std::thread::id tid = std::this_thread::get_id();
 
   impl::InternalLogger::compactLogThreadName(out, tid);
   return impl::InternalLogger::printCompact_(out, logLevel, flag, tid);

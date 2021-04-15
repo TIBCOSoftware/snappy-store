@@ -41,17 +41,16 @@ using namespace io::snappydata;
 using namespace io::snappydata::client;
 using namespace io::snappydata::client::impl;
 
-ThreadSafeMap<boost::thread::id, std::string> InternalLogger::s_threadNames;
+ThreadSafeMap<std::thread::id, std::string> InternalLogger::s_threadNames;
 
 std::ostream& InternalLogger::printCompact_(std::ostream& os,
     const LogLevel::type logLevel, const char* flag,
-    const boost::thread::id tid) {
+    const std::thread::id tid) {
   std::ostream* ostr = &os;
   while (true) {
     std::ostream& out = *ostr;
     try {
-      const int64_t ticks =
-          boost::chrono::high_resolution_clock::now().time_since_epoch().count();
+      const int64_t ticks = NanoClock::now().time_since_epoch().count();
       out << '[' << LogLevel::toString(logLevel) << " TICKS=" << ticks
           << " SNAPPY:C_" << flag << " tid=0x" << std::hex << tid << std::dec
           << "] ";
@@ -76,12 +75,12 @@ std::ostream& InternalLogger::printCompact_(std::ostream& os,
 }
 
 void InternalLogger::compactLogThreadName(std::ostream& out,
-    const boost::thread::id tid) {
+    const std::thread::id tid) {
   if (!Utils::supportsThreadNames() || s_threadNames.containsKey(tid)) {
     return;
   }
   std::string tname;
-  if (Utils::getCurrentThreadName(NULL, tname)
+  if (Utils::getCurrentThreadName(nullptr, tname)
       && s_threadNames.putIfAbsent(tid, tname)) {
     printCompact_(out, LogLevel::info, "THREAD_NAME", tid) << tid << ' '
         << tname << _SNAPPY_NEWLINE;
@@ -89,12 +88,12 @@ void InternalLogger::compactLogThreadName(std::ostream& out,
 }
 
 void InternalLogger::compactHeader(std::ostream& out,
-    const boost::thread::id tid, const char* opId, const char* opSql,
+    const std::thread::id tid, const char* opId, const char* opSql,
     const int64_t sqlId, const bool isStart, const int64_t nanos,
     const int64_t milliTime, const int64_t connId, const std::string& token) {
   compactLogThreadName(out, tid);
   out << tid << ' ' << opId;
-  if (opSql != NULL) {
+  if (opSql) {
     out << ' ' << opSql;
   } else if (sqlId != thrift::snappydataConstants::INVALID_ID) {
     out << " ID=" << sqlId;
@@ -114,7 +113,7 @@ void InternalLogger::compactHeader(std::ostream& out,
   }
 }
 
-void InternalLogger::traceCompact(const boost::thread::id tid,
+void InternalLogger::traceCompact(const std::thread::id tid,
     const char* opId, const char* opSql, const int64_t sqlId,
     const bool isStart, const int64_t nanos, const int64_t connId,
     const std::string& token, const std::exception* se,
@@ -122,13 +121,13 @@ void InternalLogger::traceCompact(const boost::thread::id tid,
   std::ostream& out = LogWriter::global().getRawStream();
   compactHeader(out, tid, opId, opSql, sqlId, isStart, nanos, milliTime, connId,
       token);
-  if (se != NULL) {
+  if (se) {
     out << " STACK: " << stack(*se);
   }
   out << _SNAPPY_NEWLINE;
 }
 
-void InternalLogger::traceCompact(const boost::thread::id tid,
+void InternalLogger::traceCompact(const std::thread::id tid,
     const char* opId, const char* opSql, const int64_t sqlId,
     const bool isStart, const int64_t nanos, const int64_t connId,
     const std::string& token, const SQLException* sqle,
@@ -136,7 +135,7 @@ void InternalLogger::traceCompact(const boost::thread::id tid,
   std::ostream& out = LogWriter::global().getRawStream();
   compactHeader(out, tid, opId, opSql, sqlId, isStart, nanos, milliTime, connId,
       token);
-  if (sqle != NULL) {
+  if (sqle) {
     out << " STACK: " << stack(*sqle);
   }
   out << _SNAPPY_NEWLINE;

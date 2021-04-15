@@ -52,8 +52,7 @@ std::shared_ptr<Decimal> Row::getDecimal(const uint32_t columnNum,
   const thrift::ColumnValue& cv = getColumnValue(columnNum);
 
   if (cv.getType() == thrift::SnappyType::DECIMAL) {
-    return std::shared_ptr<Decimal>(
-        new Decimal(*cv.getPtr<thrift::Decimal>()));
+    return std::make_shared<Decimal>(*cv.getPtr<thrift::Decimal>());
   } else {
     return convertDecimal(cv, columnNum, realPrecision);
   }
@@ -165,44 +164,43 @@ namespace {
     }
 
     std::shared_ptr<std::string> operator()(const bool& v) const {
-      return std::shared_ptr<std::string>(
-          new std::string(v ? "true" : "false"));
+      return std::make_shared<std::string>(v ? "true" : "false");
     }
 
     std::shared_ptr<std::string> operator()(const int8_t& v) const {
-      std::shared_ptr<std::string> result(new std::string());
+      auto result = std::make_shared<std::string>();
       Utils::convertByteToString(v, *result);
-      return std::move(result);
+      return result;
     }
 
     std::shared_ptr<std::string> operator()(const int16_t& v) const {
-      std::shared_ptr<std::string> result(new std::string());
+      auto result = std::make_shared<std::string>();
       Utils::convertShortToString(v, *result);
-      return std::move(result);
+      return result;
     }
 
     std::shared_ptr<std::string> operator()(const int32_t& v) const {
-      std::shared_ptr<std::string> result(new std::string());
+      auto result = std::make_shared<std::string>();
       Utils::convertIntToString(v, *result);
-      return std::move(result);
+      return result;
     }
 
     std::shared_ptr<std::string> operator()(const int64_t& v) const {
-      std::shared_ptr<std::string> result(new std::string());
+      auto result = std::make_shared<std::string>();
       Utils::convertInt64ToString(v, *result);
-      return std::move(result);
+      return result;
     }
 
     std::shared_ptr<std::string> operator()(const float& v) const {
-      std::shared_ptr<std::string> result(new std::string());
+      auto result = std::make_shared<std::string>();
       Utils::convertFloatToString(v, *result, m_realPrecision);
-      return std::move(result);
+      return result;
     }
 
     std::shared_ptr<std::string> operator()(const double& v) const {
-      std::shared_ptr<std::string> result(new std::string());
+      auto result = std::make_shared<std::string>();
       Utils::convertDoubleToString(v, *result, m_realPrecision);
-      return std::move(result);
+      return result;
     }
 
     std::shared_ptr<std::string> operator()(
@@ -212,66 +210,62 @@ namespace {
 
     std::shared_ptr<std::string> operator()(
         const std::shared_ptr<thrift::Decimal>& v) const {
+      auto str = std::make_shared<std::string>();
       Decimal d(*v);
-      std::shared_ptr<std::string> str(new std::string());
       d.toString(*str);
-      return std::move(str);
+      return str;
     }
 
     std::shared_ptr<std::string> operator()(const thrift::Date& v) const {
-      std::shared_ptr<std::string> str(new std::string());
+      auto str = std::make_shared<std::string>();
       client::types::DateTime dt(v.m_elapsed);
       dt.toDate(*str);
-      return std::move(str);
+      return str;
     }
 
     std::shared_ptr<std::string> operator()(const thrift::Time& v) const {
-      std::shared_ptr<std::string> str(new std::string());
+      auto str = std::make_shared<std::string>();
       client::types::DateTime dt(v.m_elapsed);
       dt.toTime(*str);
-      return std::move(str);
-    }
-
-    std::shared_ptr<std::string> operator()(
-        const thrift::Timestamp& v) const {
-      std::shared_ptr<std::string> str(new std::string());
-      const int64_t elapsed = v.m_elapsed;
-      Timestamp ts(elapsed);
-      ts.toString(*str);
-      return std::move(str);
-    }
-
-    std::shared_ptr<std::string> operator()(
-        const std::shared_ptr<thrift::ClobChunk>& v) const {
-      return std::move(
-          Row::getFullClobData(v, m_cv, m_columnNum, "VARCHAR"));
-    }
-
-    std::shared_ptr<std::string> operator()(
-        const std::shared_ptr<thrift::Array>& v) const {
-      auto str = std::shared_ptr<std::string>(new std::string());
-      str->append("ARRAY(");
-      auto iter = v->cbegin();
-      auto iterEnd = v->cend();
-      if (iter != iterEnd) {
-        auto s = iter->visit(*this);
-        str->append(*s);
-        ++iter;
-        while (iter != iterEnd) {
-          str->append(", ");
-          s = iter->visit(*this);
-          str->append(*s);
-          ++iter;
-        }
-      }
-      str->append(1, ')');
       return str;
     }
 
     std::shared_ptr<std::string> operator()(
+        const thrift::Timestamp& v) const {
+      auto str = std::make_shared<std::string>();
+      Timestamp ts(v.m_elapsed);
+      ts.toString(*str);
+      return str;
+    }
+
+    std::shared_ptr<std::string> operator()(
+        const std::shared_ptr<thrift::ClobChunk>& v) const {
+      return Row::getFullClobData(v, m_cv, m_columnNum, "VARCHAR");
+    }
+
+    std::shared_ptr<std::string> operator()(
+        const std::shared_ptr<thrift::Array>& v) const {
+      std::string str;
+      str.append("ARRAY(");
+      auto iter = v->cbegin();
+      auto iterEnd = v->cend();
+      if (iter != iterEnd) {
+        str.append(*iter->visit(*this));
+        ++iter;
+        while (iter != iterEnd) {
+          str.append(", ");
+          str.append(*iter->visit(*this));
+          ++iter;
+        }
+      }
+      str.append(1, ')');
+      return std::make_shared<std::string>(std::move(str));
+    }
+
+    std::shared_ptr<std::string> operator()(
         const std::shared_ptr<thrift::Map>& v) const {
-      auto str = std::shared_ptr<std::string>(new std::string());
-      str->append("MAP(");
+      std::string str;
+      str.append("MAP(");
       auto iter = v->cbegin();
       auto iterEnd = v->cend();
       bool firstCall = true;
@@ -279,45 +273,41 @@ namespace {
         if (firstCall) {
           firstCall = false;
         } else {
-          str->append(", ");
+          str.append(", ");
         }
-        auto s = iter->first.visit(*this);
-        str->append(*s);
-        str->append(" = ");
-        s = iter->second.visit(*this);
-        str->append(*s);
+        str.append(*iter->first.visit(*this));
+        str.append(" = ");
+        str.append(*iter->second.visit(*this));
         ++iter;
       }
-      str->append(1, ')');
-      return str;
+      str.append(1, ')');
+      return std::make_shared<std::string>(std::move(str));
     }
 
     std::shared_ptr<std::string> operator()(
         const std::shared_ptr<thrift::Struct>& v) const {
-      auto str = std::shared_ptr<std::string>(new std::string());
-      str->append("STRUCT(");
+      std::string str;
+      str.append("STRUCT(");
       auto iter = v->cbegin();
       auto iterEnd = v->cend();
       if (iter != iterEnd) {
-        auto s = iter->visit(*this);
-        str->append(*s);
+        str.append(*iter->visit(*this));
         ++iter;
         while (iter != iterEnd) {
-          str->append(", ");
-          s = iter->visit(*this);
-          str->append(*s);
+          str.append(", ");
+          str.append(*iter->visit(*this));
           ++iter;
         }
       }
-      str->append(1, ')');
-      return str;
+      str.append(1, ')');
+      return std::make_shared<std::string>(std::move(str));
     }
 
     std::shared_ptr<std::string> operator()(const thrift::NullType& v) const {
       if (v.m_v) {
         return std::shared_ptr<std::string>();
       } else {
-        return std::shared_ptr<std::string>(new std::string());
+        return std::make_shared<std::string>();
       }
     }
 
@@ -682,28 +672,24 @@ std::shared_ptr<Decimal> Row::convertDecimal(const thrift::ColumnValue& cv,
     const uint32_t columnNum, const uint32_t realPrecision) const {
   switch (cv.getType()) {
     case thrift::SnappyType::SMALLINT:
-      return std::shared_ptr<Decimal>(new Decimal(cv.get<int16_t>()));
+      return std::make_shared<Decimal>(cv.get<int16_t>());
     case thrift::SnappyType::INTEGER:
-      return std::shared_ptr<Decimal>(new Decimal(cv.get<int32_t>()));
+      return std::make_shared<Decimal>(cv.get<int32_t>());
     case thrift::SnappyType::BIGINT:
-      return std::shared_ptr<Decimal>(new Decimal(cv.get<int64_t>()));
+      return std::make_shared<Decimal>(cv.get<int64_t>());
     case thrift::SnappyType::TINYINT:
-      return std::shared_ptr<Decimal>(new Decimal(cv.get<int8_t>()));
+      return std::make_shared<Decimal>(cv.get<int8_t>());
     case thrift::SnappyType::NULLTYPE:
       if (cv.isNull()) return std::shared_ptr<Decimal>();
-      else return std::shared_ptr<Decimal>(new Decimal((uint32_t)1));
+      else return std::make_shared<Decimal>((uint32_t)1);
     case thrift::SnappyType::BOOLEAN:
-      return std::shared_ptr<Decimal>(
-          new Decimal((uint32_t)(cv.get<bool>() ? 1 : 0)));
+      return std::make_shared<Decimal>((uint32_t)(cv.get<bool>() ? 1 : 0));
     case thrift::SnappyType::FLOAT:
-      return std::shared_ptr<Decimal>(
-          new Decimal(cv.get<float>(), realPrecision));
+      return std::make_shared<Decimal>(cv.get<float>(), realPrecision);
     case thrift::SnappyType::DOUBLE:
-      return std::shared_ptr<Decimal>(
-          new Decimal(cv.get<double>(), realPrecision));
+      return std::make_shared<Decimal>(cv.get<double>(), realPrecision);
     case thrift::SnappyType::VARCHAR:
-      return std::shared_ptr<Decimal>(
-          new Decimal(*cv.getString(), columnNum));
+      return std::make_shared<Decimal>(*cv.getString(), columnNum);
     default:
       break;
   }
@@ -717,62 +703,62 @@ std::shared_ptr<thrift::Decimal> Row::convertTDecimal(const thrift::ColumnValue&
   switch (cv.getType()) {
     case thrift::SnappyType::SMALLINT: {
       Decimal dec(cv.get<int16_t>());
-      std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
+      auto tdec = std::make_shared<thrift::Decimal>();
       dec.copyTo(*tdec);
-      return std::move(tdec);
+      return tdec;
     }
     case thrift::SnappyType::INTEGER: {
       Decimal dec(cv.get<int32_t>());
-      std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
+      auto tdec = std::make_shared<thrift::Decimal>();
       dec.copyTo(*tdec);
-      return std::move(tdec);
+      return tdec;
     }
     case thrift::SnappyType::BIGINT: {
       Decimal dec(cv.get<int64_t>());
-      std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
+      auto tdec = std::make_shared<thrift::Decimal>();
       dec.copyTo(*tdec);
-      return std::move(tdec);
+      return tdec;
     }
     case thrift::SnappyType::TINYINT: {
       Decimal dec(cv.get<int8_t>());
-      std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
+      auto tdec = std::make_shared<thrift::Decimal>();
       dec.copyTo(*tdec);
-      return std::move(tdec);
+      return tdec;
     }
     case thrift::SnappyType::NULLTYPE:
       if (cv.isNull()) {
         return std::shared_ptr<thrift::Decimal>();
       } else {
-        std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
+        auto tdec = std::make_shared<thrift::Decimal>();
         Decimal::ONE.copyTo(*tdec);
-        return std::move(tdec);
+        return tdec;
       }
     case thrift::SnappyType::BOOLEAN: {
-      std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
+      auto tdec = std::make_shared<thrift::Decimal>();
       if (cv.get<bool>()) {
         Decimal::ONE.copyTo(*tdec);
       } else {
         Decimal::ZERO.copyTo(*tdec);
       }
-      return std::move(tdec);
+      return tdec;
     }
     case thrift::SnappyType::FLOAT: {
       Decimal dec(cv.get<float>(), realPrecision);
-      std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
+      auto tdec = std::make_shared<thrift::Decimal>();
       dec.copyTo(*tdec);
-      return std::move(tdec);
+      return tdec;
     }
     case thrift::SnappyType::DOUBLE: {
       Decimal dec(cv.get<double>(), realPrecision);
-      std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
+      auto tdec = std::make_shared<thrift::Decimal>();
       dec.copyTo(*tdec);
-      return std::move(tdec);
+      return tdec;
     }
     case thrift::SnappyType::VARCHAR: {
       Decimal dec(*cv.getString(), columnNum);
-      std::shared_ptr<thrift::Decimal> tdec(new thrift::Decimal());
+      auto tdec = std::make_shared<thrift::Decimal>();
       dec.copyTo(*tdec);
-      return std::move(tdec);
+      return tdec;
     }
     default:
       break;
@@ -848,7 +834,7 @@ std::shared_ptr<std::string> Row::convertBinary(const thrift::ColumnValue& cv,
           "VARBINARY");
     case thrift::SnappyType::NULLTYPE:
       if (cv.isNull()) return std::shared_ptr<std::string>();
-      else return std::shared_ptr<std::string>(new std::string());
+      else return std::make_shared<std::string>();
     case thrift::SnappyType::VARCHAR: {
       return cv.getString();
     default:
@@ -863,10 +849,11 @@ std::shared_ptr<std::string> Row::getFullBlobData(
     const thrift::ColumnValue& cv, const uint32_t columnNum,
     const char* forType) {
   // TODO: add proper BLOB/CLOB support
-  if (blob != NULL) {
+  if (blob) {
     if (blob->last) {
-      // TODO: SW: fix BlobChunk to have std::shared_ptr<std::string> as chunk
-      return std::shared_ptr<std::string>(new std::string(blob->chunk));
+      // TODO: SW: either fix BlobChunk to have std::shared_ptr<std::string>
+      // as chunk or ensure that calls use std::move semantics where possible
+      return std::make_shared<std::string>(blob->chunk);
     } else {
       throw GET_DATACONVERSION_ERROR(cv, forType, columnNum);
     }
@@ -882,11 +869,13 @@ std::shared_ptr<std::string> Row::getFullClobData(
   // TODO: add proper BLOB/CLOB support
   // TODO: also add support for passing in char* to fill in (e.g. from ODBC)
   // instead of having to create a copy here from multiple chunks and then
-  // ODBC/... driver has to make another copy; also explore C++11 std::move
-  if (clob != NULL) {
+  // ODBC/... driver has to make another copy; also see if std::move can be
+  // used in the API itself so that the call below can avoid the same
+  if (clob) {
     if (clob->last) {
-      // TODO: SW: fix ClobChunk to have std::shared_ptr<std::string> as chunk
-      return std::shared_ptr<std::string>(new std::string(clob->chunk));
+      // TODO: SW: either fix ClobChunk to have std::shared_ptr<std::string>
+      // as chunk or ensure that calls use std::move semantics where possible
+      return std::make_shared<std::string>(clob->chunk);
     } else {
       throw GET_DATACONVERSION_ERROR(cv, forType, columnNum);
     }

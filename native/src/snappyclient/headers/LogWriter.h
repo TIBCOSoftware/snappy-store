@@ -139,8 +139,8 @@ namespace client {
     static const int getNextId() noexcept;
 
     TraceFlag(const std::string& name, const int id,
-        const TraceFlag* parent1 = NULL, const TraceFlag* parent2 = NULL,
-        const TraceFlag* parent3 = NULL, const TraceFlag* parent4 = NULL);
+        const TraceFlag* parent1 = nullptr, const TraceFlag* parent2 = nullptr,
+        const TraceFlag* parent3 = nullptr, const TraceFlag* parent4 = nullptr);
 
     void addParentFlag(const TraceFlag* parent);
 

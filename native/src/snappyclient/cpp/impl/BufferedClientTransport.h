@@ -36,8 +36,6 @@
 #ifndef BUFFEREDCLIENTTRANSPORT_H_
 #define BUFFEREDCLIENTTRANSPORT_H_
 
-#include <boost/shared_ptr.hpp>
-
 #include <thrift/transport/TSocket.h>
 #include <thrift/transport/TBufferTransports.h>
 
@@ -60,7 +58,7 @@ namespace impl {
   class BufferedClientTransport : public TBufferedTransport,
       public ClientTransport {
   public:
-    BufferedClientTransport(const boost::shared_ptr<TSocket>& socket,
+    BufferedClientTransport(const std::shared_ptr<TSocket>& socket,
         uint32_t rsz, uint32_t wsz, bool writeFramed);
 
     virtual ~BufferedClientTransport() {

@@ -36,9 +36,10 @@
 #ifndef CONTROLCONNECTION_H_
 #define CONTROLCONNECTION_H_
 
-#include "ClientService.h"
-#include <boost/thread/mutex.hpp>
+#include <mutex>
 #include <boost/optional.hpp>
+
+#include "ClientService.h"
 #include "../thrift/LocatorService.h"
 //-----------namespaces-----
 
@@ -84,7 +85,7 @@ namespace io {
           std::unordered_set<thrift::HostAddress> m_controlHostSet;
           const std::set<std::string>& m_serverGroups;
 
-          boost::mutex m_lock;
+          std::mutex m_lock;
           bool m_framedTransport;
           /**
            * Since one DS is supposed to have one ControlConnection, so we expect the
@@ -92,7 +93,7 @@ namespace io {
            */
           static std::vector<std::unique_ptr<ControlConnection> > s_allConnections;
           /** Global lock for {@link allConnections} */
-          static boost::mutex s_allConnsLock;
+          static std::mutex s_allConnsLock;
 
           /*********Member functions**************/
           ControlConnection() :
@@ -107,8 +108,7 @@ namespace io {
               bool checkFailedControlHosts, const std::exception& failure,
               ClientService* service);
 
-          void refreshAllHosts(
-              const std::vector<thrift::HostAddress>& allHosts);
+          void refreshAllHosts(std::vector<thrift::HostAddress> &&allHosts);
 
           const thrift::SnappyException unexpectedError(
               const std::exception& e, const thrift::HostAddress& host);

@@ -81,7 +81,7 @@ namespace client {
     /* size of m_possibleValues array */
     int m_numPossibleValues;
     /**
-     * default value to be displayed, if m_possibleValues is NULL else
+     * default value to be displayed, if m_possibleValues is nullptr else
      * the first one from m_possibleValues is displayed
      */
     const char* m_defaultValue;
@@ -203,11 +203,11 @@ namespace client {
         const std::map<std::string, std::string>& properties);
 
     inline bool isOpen() const noexcept {
-      return m_service != NULL;
+      return m_service != nullptr;
     }
 
     inline ClientService& checkAndGetService() const {
-      if (m_service != NULL) {
+      if (m_service) {
         return *m_service;
       } else {
         throw GET_SQLEXCEPTION2(SQLStateMessage::NO_CURRENT_CONNECTION_MSG1);

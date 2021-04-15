@@ -34,10 +34,9 @@
  */
 
 //--------Headers----------
-#include <chrono>
-#include <boost/assign/list_of.hpp>
-#include <boost/assign.hpp>
-#include <boost/thread.hpp>
+#include <thread>
+#include <algorithm>
+
 #include <thrift/Thrift.h>
 #include <thrift/transport/TSSLSocket.h>
 #include <thrift/transport/TSocket.h>
@@ -47,8 +46,6 @@
 
 #include <SQLState.h>
 #include <Utils.h>
-#include <boost/range/algorithm.hpp>
-#include <boost/make_shared.hpp>
 #include "ControlConnection.h"
 #include "NetConnection.h"
 #include <map>
@@ -59,7 +56,7 @@ using namespace io::snappydata::thrift;
 
 //----private static data member initialiazation----
 std::vector<std::unique_ptr<ControlConnection> > ControlConnection::s_allConnections;
-boost::mutex ControlConnection::s_allConnsLock;
+std::mutex ControlConnection::s_allConnsLock;
 
 ControlConnection::ControlConnection(ClientService* service) :
     m_serverGroups(service->getServerGrps()) {
@@ -67,8 +64,7 @@ ControlConnection::ControlConnection(ClientService* service) :
   m_framedTransport = service->isFrameTransport();
   m_snappyServerType = service->getServerType();
   m_controlHost = service->getCurrentHostAddress();
-  boost::assign::insert(m_snappyServerTypeSet)(
-      service->getServerType());
+  m_snappyServerTypeSet.insert(service->getServerType());
   std::copy(m_locators.begin(), m_locators.end(),
       std::inserter(m_controlHostSet, m_controlHostSet.end()));
   m_controlLocator = nullptr;
@@ -81,15 +77,14 @@ const boost::optional<ControlConnection&> ControlConnection::getOrCreateControlC
   // loop through all ControlConnections since size of this global list is
   // expected to be in single digit (total number of distributed systems)
 
-  boost::lock_guard<boost::mutex> globalGuard(s_allConnsLock);
+  std::lock_guard<std::mutex> globalGuard(s_allConnsLock);
 
   signed short index = static_cast<signed short>(s_allConnections.size());
-  signed short allConnSize = index;
   while (--index >= 0) {
     const std::unique_ptr<ControlConnection>& controlConn =
         s_allConnections.at(index);
 
-    boost::lock_guard<boost::mutex> serviceGuard(controlConn->m_lock);
+    std::lock_guard<std::mutex> serviceGuard(controlConn->m_lock);
     std::vector<thrift::HostAddress> _locators = controlConn->m_locators;
     for (thrift::HostAddress hostAddr : hostAddrs) {
       auto result = std::find(_locators.begin(), _locators.end(), hostAddr);
@@ -134,7 +129,7 @@ const boost::optional<ControlConnection&> ControlConnection::getOrCreateControlC
     while (--index >= 0) {
       const std::unique_ptr<ControlConnection>& controlConn =
           s_allConnections.at(index);
-      boost::lock_guard<boost::mutex> serviceGuard(controlConn->m_lock);
+      std::lock_guard<std::mutex> serviceGuard(controlConn->m_lock);
       std::vector<thrift::HostAddress> _locators = controlConn->m_locators;
       auto result = std::find(_locators.begin(), _locators.end(),
           preferredServer);
@@ -169,11 +164,11 @@ void ControlConnection::getPreferredServer(
     std::set<thrift::HostAddress>& failedServers,
     std::set<std::string>& serverGroups, ClientService* service,
     bool forFailover) {
-  if (m_controlLocator == nullptr) {
+  if (!m_controlLocator) {
     failoverToAvailableHost(failedServers, false, failure, service);
     forFailover = true;
   }
-  boost::lock_guard<boost::mutex> localGuard(m_lock);
+  std::lock_guard<std::mutex> localGuard(m_lock);
   bool firstCall = true;
   while (true) {
     try {
@@ -184,10 +179,11 @@ void ControlConnection::getPreferredServer(
             prefServerAndAllHosts, m_snappyServerTypeSet, serverGroups,
             failedServers);
         if (!prefServerAndAllHosts.empty()) {
-          std::vector<HostAddress> allHosts(prefServerAndAllHosts.begin() + 1,
-              prefServerAndAllHosts.end());
-          refreshAllHosts(allHosts);
-          preferredServer = prefServerAndAllHosts.at(0);
+          preferredServer = prefServerAndAllHosts[0];
+          std::vector<HostAddress> allHosts(
+              std::make_move_iterator(prefServerAndAllHosts.begin() + 1),
+              std::make_move_iterator(prefServerAndAllHosts.end()));
+          refreshAllHosts(std::move(allHosts));
         }
       } else {
         getLocatorPreferredServer(preferredServer, failedServers,
@@ -268,7 +264,7 @@ void ControlConnection::failoverToAvailableHost(
     std::set<thrift::HostAddress>& failedServers,
     bool checkFailedControlHosts, const std::exception& failure,
     ClientService* service) {
-  boost::lock_guard<boost::mutex> localGuard(m_lock);
+  std::lock_guard<std::mutex> localGuard(m_lock);
   for (auto iterator = m_controlHostSet.begin();
       iterator != m_controlHostSet.end(); ++iterator) {
     thrift::HostAddress controlAddr = *iterator;
@@ -278,17 +274,17 @@ void ControlConnection::failoverToAvailableHost(
     }
     m_controlLocator.reset(nullptr);
 
-    boost::shared_ptr<TTransport> inTransport = nullptr;
-    boost::shared_ptr<TTransport> outTransport = nullptr;
-    boost::shared_ptr<TProtocol> inProtocol = nullptr;
-    boost::shared_ptr<TProtocol> outProtocol = nullptr;
+    std::shared_ptr<TTransport> inTransport = nullptr;
+    std::shared_ptr<TTransport> outTransport = nullptr;
+    std::shared_ptr<TProtocol> inProtocol = nullptr;
+    std::shared_ptr<TProtocol> outProtocol = nullptr;
 
     try {
       while (true) {
-        if (outTransport != nullptr) {
+        if (outTransport) {
           outTransport->close();
         }
-        boost::shared_ptr<TTransport> tTransport = nullptr;
+        std::shared_ptr<TTransport> tTransport = nullptr;
         if (m_snappyServerType == thrift::ServerType::THRIFT_LOCATOR_BP_SSL
             || m_snappyServerType == thrift::ServerType::THRIFT_LOCATOR_CP_SSL
             || m_snappyServerType == thrift::ServerType::THRIFT_SNAPPY_BP_SSL
@@ -299,7 +295,7 @@ void ControlConnection::failoverToAvailableHost(
             || m_snappyServerType == thrift::ServerType::THRIFT_LOCATOR_CP
             || m_snappyServerType == thrift::ServerType::THRIFT_SNAPPY_BP
             || m_snappyServerType == thrift::ServerType::THRIFT_SNAPPY_CP) {
-          tTransport = boost::make_shared<TSocket>(controlAddr.hostName,
+          tTransport = std::make_shared<TSocket>(controlAddr.hostName,
               controlAddr.port);
         }
         tTransport->open();
@@ -334,7 +330,7 @@ void ControlConnection::failoverToAvailableHost(
       }
     } catch (const TException&) {
       failedServers.insert(controlAddr);
-      if (outTransport != nullptr) {
+      if (outTransport) {
         outTransport->close();
       }
       continue;
@@ -371,12 +367,13 @@ const thrift::SnappyException ControlConnection::unexpectedError(
 }
 
 void ControlConnection::refreshAllHosts(
-    const std::vector<thrift::HostAddress>& allHosts) {
-  //refresh the locator list first(keep old but push current to front)
-  std::vector<thrift::HostAddress> locators = m_locators;
-  std::vector<thrift::HostAddress> newLocators(locators.size());
+    std::vector<thrift::HostAddress> &&allHosts) {
+  // refresh the locator list first(keep old but push current to front)
+  std::vector<thrift::HostAddress>& locators = m_locators;
+  std::vector<thrift::HostAddress> newLocators;
+  newLocators.reserve(locators.size());
 
-  for (HostAddress host : allHosts) {
+  for (HostAddress &host : allHosts) {
     thrift::ServerType::type sType = host.serverType;
     if (sType == ServerType::THRIFT_LOCATOR_BP
         || sType == ServerType::THRIFT_LOCATOR_BP_SSL
@@ -384,13 +381,13 @@ void ControlConnection::refreshAllHosts(
         || sType == ServerType::THRIFT_LOCATOR_CP_SSL
         || (std::find(locators.begin(), locators.end(), host)
             != locators.end())) {
-      newLocators.push_back(host);
+      newLocators.push_back(host); // no move here since it is used later
     }
   }
-  for (HostAddress host : locators) {
+  for (HostAddress &host : locators) {
     if (!(std::find(newLocators.begin(), newLocators.end(), host)
         != newLocators.end())) {
-      newLocators.push_back(host);
+      newLocators.push_back(std::move(host));
     }
   }
 
@@ -401,8 +398,10 @@ void ControlConnection::refreshAllHosts(
   // to prefer the ones coming as "allServers" with "isServer" flag
   // correctly set rather than the ones in "secondary-locators"
   m_controlHostSet.clear();
-  m_controlHostSet.insert(newLocators.begin(), newLocators.end());
-  m_controlHostSet.insert(allHosts.begin(), allHosts.end());
+  m_controlHostSet.insert(std::make_move_iterator(newLocators.begin()),
+      std::make_move_iterator(newLocators.end()));
+  m_controlHostSet.insert(std::make_move_iterator(allHosts.begin()),
+      std::make_move_iterator(allHosts.end()));
 }
 
 void ControlConnection::failoverExhausted(
@@ -434,7 +433,7 @@ void ControlConnection::failoverExhausted(
 
 void ControlConnection::getConnectedHost(thrift::HostAddress& hostAddr,
     thrift::HostAddress& connectedHost) {
-  boost::lock_guard<boost::mutex> controlConnLock(this->m_lock);
+  std::lock_guard<std::mutex> controlConnLock(this->m_lock);
 
   auto it = std::find(m_controlHostSet.begin(),m_controlHostSet.end(),hostAddr);//;m_controlHostSet.find(hostAddr);
   if (it != m_controlHostSet.end()) {
@@ -453,12 +452,12 @@ void ControlConnection::getConnectedHost(thrift::HostAddress& hostAddr,
 
 void ControlConnection::close(bool clearGlobal) {
   m_controlHost = thrift::HostAddress();
-  if (m_controlLocator != nullptr) {
+  if (m_controlLocator) {
     m_controlLocator->getOutputProtocol()->getTransport()->close();
     m_controlLocator.reset(nullptr);
   }
   if (clearGlobal) {
-    boost::lock_guard<boost::mutex> globalGuard(s_allConnsLock);
+    std::lock_guard<std::mutex> globalGuard(s_allConnsLock);
     auto thisPtr = std::unique_ptr<ControlConnection>(this);
     auto pos = std::find(s_allConnections.begin(), s_allConnections.end(),
         thisPtr);

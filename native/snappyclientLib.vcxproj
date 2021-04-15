@@ -106,7 +106,6 @@
     <ClCompile Include="src\snappyclient\cpp\impl\MessageRegistry.h"/>
     <ClCompile Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.cpp"/>
     <ClCompile Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.h"/>
-    <ClCompile Include="src\snappyclient\cpp\impl\ThreadSafeList.h"/>
     <ClCompile Include="src\snappyclient\cpp\impl\ThreadSafeMap.h"/>
     <ClCompile Include="src\snappyclient\cpp\LogWriter.cpp"/>
     <ClCompile Include="src\snappyclient\cpp\messages\SQLMessage.cpp"/>
@@ -230,7 +229,6 @@
     <ClInclude Include="src\snappyclient\cpp\impl\InternalUtils.h"/>
     <ClInclude Include="src\snappyclient\cpp\impl\MessageRegistry.h"/>
     <ClInclude Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.h"/>
-    <ClInclude Include="src\snappyclient\cpp\impl\ThreadSafeList.h"/>
     <ClInclude Include="src\snappyclient\cpp\impl\ThreadSafeMap.h"/>
     <ClInclude Include="src\snappyclient\cpp\thrift\LocatorService.h"/>
     <ClInclude Include="src\snappyclient\cpp\thrift\SnappyDataService.h"/>
