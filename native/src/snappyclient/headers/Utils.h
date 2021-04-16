@@ -70,18 +70,10 @@ namespace functor {
     std::string& m_str;
 
     inline void operator()(char c) {
-      m_str.append(1, c);
+      m_str.push_back(c);
     }
     inline void operator()(const char* buf, const size_t bufLen) {
       m_str.append(buf, bufLen);
-    }
-  };
-
-  struct WriteWString {
-    std::wstring& m_wstr;
-
-    inline void operator()(int c) {
-      m_wstr.append(1, (wchar_t)c);
     }
   };
 }
@@ -214,20 +206,14 @@ namespace client {
 
     template<typename TPROC>
     static bool convertUTF8ToUTF16(const char* utf8Chars,
-        const int utf8Len, TPROC& process);
+        const long utf8Len, TPROC& process);
 
-    static bool convertUTF8ToUTF16(const char* utf8Chars,
-        const int utf8Len, std::wstring& result);
+    static bool convertUTF8ToUTF16(const char *utf8Chars, const long utf8Len,
+        std::u16string &result);
 
     template<typename TWCHAR, typename TPROC>
     static void convertUTF16ToUTF8(const TWCHAR* utf16Chars,
-        const int utf16Len, TPROC& process);
-
-    static void convertUTF16ToUTF8(const wchar_t* utf16Chars,
-        const int utf16Len, std::string& result);
-
-    static void convertUTF16ToUTF8(const wchar_t* utf16Chars,
-        const int utf16Len, std::ostream& out);
+        const long utf16Len, TPROC& process);
 
     static void convertByteToString(const int8_t v, std::string& result);
     static void convertShortToString(const int16_t v, std::string& result);
@@ -305,9 +291,12 @@ namespace client {
 } /* namespace snappydata */
 } /* namespace io */
 
+// TODO: SW: check all the UTF8 conversions as to how they conform with
+// C standard way for surrogate chars like in Java
+
 template<typename TPROC>
 bool io::snappydata::client::Utils::convertUTF8ToUTF16(
-  const char* utf8Chars, const int utf8Len, TPROC& process) {
+  const char* utf8Chars, const long utf8Len, TPROC& process) {
   const char* endChars = (utf8Len < 0) ? nullptr : (utf8Chars + utf8Len);
   bool nonASCII = false;
   int ch;
@@ -362,34 +351,19 @@ bool io::snappydata::client::Utils::convertUTF8ToUTF16(
 
 template<typename TWCHAR, typename TPROC>
 void io::snappydata::client::Utils::convertUTF16ToUTF8(
-  const TWCHAR* utf16Chars, const int utf16Len, TPROC& process) {
+  const TWCHAR* utf16Chars, const long utf16Len, TPROC& process) {
+  const TWCHAR* endChars = utf16Len < 0 ? nullptr : (utf16Chars + utf16Len);
   TWCHAR wch;
-  if (utf16Len < 0) {
-    while ((wch = *utf16Chars++) != 0) {
-      if (wch > 0 && wch <= 0x7F) {
-        process((char)wch);
-      } else if (wch <= 0x7FF) {
-        process((char)(0xC0 + ((wch >> 6) & 0x1F)));
-        process((char)(0x80 + (wch & 0x3F)));
-      } else {
-        process((char)(0xE0 + ((wch >> 12) & 0xF)));
-        process((char)(0x80 + ((wch >> 6) & 0x3F)));
-        process((char)(0x80 + (wch & 0x3F)));
-      }
-    }
-  } else {
-    const TWCHAR* endChars = (utf16Chars + utf16Len);
-    while (utf16Chars < endChars && (wch = *utf16Chars++) != 0) {
-      if (wch > 0 && wch <= 0x7F) {
-        process((char)wch);
-      } else if (wch <= 0x7FF) {
-        process((char)(0xC0 + ((wch >> 6) & 0x1F)));
-        process((char)(0x80 + (wch & 0x3F)));
-      } else {
-        process((char)(0xE0 + ((wch >> 12) & 0xF)));
-        process((char)(0x80 + ((wch >> 6) & 0x3F)));
-        process((char)(0x80 + (wch & 0x3F)));
-      }
+  while ((!endChars || utf16Chars < endChars) && (wch = *utf16Chars++) != 0) {
+    if (wch > 0 && wch <= 0x7F) {
+      process((char)wch);
+    } else if (wch <= 0x7FF) {
+      process((char)(0xC0 + ((wch >> 6) & 0x1F)));
+      process((char)(0x80 + (wch & 0x3F)));
+    } else {
+      process((char)(0xE0 + ((wch >> 12) & 0xF)));
+      process((char)(0x80 + ((wch >> 6) & 0x3F)));
+      process((char)(0x80 + (wch & 0x3F)));
     }
   }
 }

@@ -36,8 +36,10 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/thrift-0.12.0/include}&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.other.pic.838987422" name="Position Independent Code (-fPIC)" superClass="gnu.cpp.compiler.option.other.pic" useByScannerDiscovery="false" value="true" valueType="boolean"/>
-								<option id="gnu.cpp.compiler.option.other.other.2000252051" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="false" value="-c -fmessage-length=0 -DPIC" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.other.other.2000252051" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="false" value="-c -fmessage-length=0 -DPIC -Wredundant-move" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.1286677433" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" useByScannerDiscovery="false"/>
+								<option id="gnu.cpp.compiler.option.debugging.sanitaddress.589354396" name="Sanitize address (-fsanitize=address)" superClass="gnu.cpp.compiler.option.debugging.sanitaddress" useByScannerDiscovery="false" value="true" valueType="boolean"/>
+								<option id="gnu.cpp.compiler.option.debugging.sanitpointers.602329795" name="Sanitize pointer operations (-fsanitize=pointer-compare -fsanitize=pointer-subtract)" superClass="gnu.cpp.compiler.option.debugging.sanitpointers" useByScannerDiscovery="false" value="true" valueType="boolean"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1500202210" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.so.debug.2113210665" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.so.debug">
@@ -117,9 +119,10 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/boost-1.72.0/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/snappydata-native/dist/thrift-0.12.0/include}&quot;"/>
 								</option>
-								<option id="gnu.cpp.compiler.option.other.other.1200452339" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="false" value="-c -fmessage-length=0 -DPIC" valueType="string"/>
+								<option id="gnu.cpp.compiler.option.other.other.1200452339" name="Other flags" superClass="gnu.cpp.compiler.option.other.other" useByScannerDiscovery="false" value="-c -fmessage-length=0 -DPIC -Wredundant-move" valueType="string"/>
 								<option id="gnu.cpp.compiler.option.other.pic.1438544754" name="Position Independent Code (-fPIC)" superClass="gnu.cpp.compiler.option.other.pic" useByScannerDiscovery="false" value="true" valueType="boolean"/>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.858343665" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" useByScannerDiscovery="false"/>
+								<option id="gnu.cpp.compiler.option.dialect.std.1473785229" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.893609956" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.so.release.267141941" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.so.release">

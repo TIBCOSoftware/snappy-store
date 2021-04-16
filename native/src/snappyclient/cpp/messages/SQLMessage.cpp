@@ -51,7 +51,7 @@ void SQLMessageBase::initialize(const char* messageId) {
 void SQLMessageBase::initialize(const SQLState& sqlState,
     const int idPerSQLState) {
   std::string id(sqlState.getSQLState());
-  id.append(1, '.');
+  id.push_back('.');
   Utils::convertIntToString(idPerSQLState, id);
   MessageBase::initialize(id);
   m_sqlState = &sqlState;

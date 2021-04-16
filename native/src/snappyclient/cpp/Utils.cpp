@@ -220,22 +220,12 @@ void Utils::toHexString(const char* bytes, const size_t bytesLen,
   impl::InternalUtils::toHexString(bytes, bytesLen, proc);
 }
 
-bool Utils::convertUTF8ToUTF16(const char* utf8Chars, const int utf8Len,
-    std::wstring& result) {
-  functor::WriteWString proc = { result };
+bool Utils::convertUTF8ToUTF16(const char *utf8Chars, const long utf8Len,
+    std::u16string &result) {
+  auto proc = [&](int c) {
+    result.push_back((char16_t)c);
+  };
   return convertUTF8ToUTF16(utf8Chars, utf8Len, proc);
-}
-
-void Utils::convertUTF16ToUTF8(const wchar_t* utf16Chars, const int utf16Len,
-    std::string& result) {
-  functor::WriteString proc = { result };
-  convertUTF16ToUTF8(utf16Chars, utf16Len, proc);
-}
-
-void Utils::convertUTF16ToUTF8(const wchar_t* utf16Chars, const int utf16Len,
-    std::ostream& out) {
-  functor::WriteStream proc = { out };
-  convertUTF16ToUTF8(utf16Chars, utf16Len, proc);
 }
 
 
@@ -567,7 +557,8 @@ void Utils::handleExceptionInDestructor(const char* operation) {
 }
 
 std::ostream& operator <<(std::ostream& out, const wchar_t* wstr) {
-  Utils::convertUTF16ToUTF8(wstr, -1, out);
+  functor::WriteStream proc = { out };
+  Utils::convertUTF16ToUTF8(wstr, -1, proc);
   return out;
 }
 

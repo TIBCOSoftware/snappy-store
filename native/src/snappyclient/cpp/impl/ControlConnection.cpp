@@ -265,9 +265,7 @@ void ControlConnection::failoverToAvailableHost(
     bool checkFailedControlHosts, const std::exception& failure,
     ClientService* service) {
   std::lock_guard<std::mutex> localGuard(m_lock);
-  for (auto iterator = m_controlHostSet.begin();
-      iterator != m_controlHostSet.end(); ++iterator) {
-    thrift::HostAddress controlAddr = *iterator;
+  for (auto &controlAddr : m_controlHostSet) {
     if (checkFailedControlHosts && !failedServers.empty()
         && (failedServers.find(controlAddr) != failedServers.end())) {
       continue;
@@ -431,19 +429,18 @@ void ControlConnection::failoverExhausted(
   throw snappyEx;
 }
 
-void ControlConnection::getConnectedHost(thrift::HostAddress& hostAddr,
-    thrift::HostAddress& connectedHost) {
+void ControlConnection::getConnectedHost(thrift::HostAddress &hostAddr,
+    thrift::HostAddress &connectedHost) {
   std::lock_guard<std::mutex> controlConnLock(this->m_lock);
 
-  auto it = std::find(m_controlHostSet.begin(),m_controlHostSet.end(),hostAddr);//;m_controlHostSet.find(hostAddr);
+  auto it = std::find(m_controlHostSet.begin(), m_controlHostSet.end(),
+      hostAddr);
   if (it != m_controlHostSet.end()) {
     connectedHost = *it;
     return;
   }
 
-  for (auto iterator = m_controlHostSet.begin();
-      iterator != m_controlHostSet.end(); ++iterator) {
-    auto host = *iterator;
+  for (auto &host : m_controlHostSet) {
     if (host.__isset.isCurrent && host.isCurrent) {
       connectedHost = host;
     }

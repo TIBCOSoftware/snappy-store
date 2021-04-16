@@ -59,7 +59,7 @@ using namespace io::snappydata::client::impl;
 static const char* TRUE_FALSE[] = { "true", "false", nullptr };
 static const char* FALSE_TRUE[] = { "false", "true", nullptr };
 static const char* LOG_LEVELS[] = { "none", "fatal", "error", "warn", "info",
-                                    "debug", "trace", "all" };
+                                    "debug", "trace", "all", nullptr };
 static const char* SECURITY_MODES[] = { "plain", "diffie-hellman", nullptr };
 static const char* SSL_MODES[] = { "none", "basic", "peer-auth", nullptr };
 
@@ -626,7 +626,8 @@ std::unique_ptr<ResultSet> Connection::getUDTs(DatabaseMetaDataArgs& args,
 
   thrift::RowSet* rs = new thrift::RowSet();
   args.m_args.driverType = static_cast<int8_t>(DRIVER_TYPE);
-  std::vector<thrift::SnappyType::type> thriftTypes(types.size());
+  std::vector<thrift::SnappyType::type> thriftTypes;
+  thriftTypes.reserve(types.size());
   for (auto type : types) {
     thriftTypes.push_back(static_cast<thrift::SnappyType::type>(type));
   }

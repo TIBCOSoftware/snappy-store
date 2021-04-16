@@ -258,7 +258,7 @@ namespace {
           ++iter;
         }
       }
-      str.append(1, ')');
+      str.push_back(')');
       return std::make_shared<std::string>(std::move(str));
     }
 
@@ -280,7 +280,7 @@ namespace {
         str.append(*iter->second.visit(*this));
         ++iter;
       }
-      str.append(1, ')');
+      str.push_back(')');
       return std::make_shared<std::string>(std::move(str));
     }
 
@@ -299,7 +299,7 @@ namespace {
           ++iter;
         }
       }
-      str.append(1, ')');
+      str.push_back(')');
       return std::make_shared<std::string>(std::move(str));
     }
 
