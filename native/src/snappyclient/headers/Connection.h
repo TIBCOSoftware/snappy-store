@@ -70,9 +70,9 @@ namespace client {
   class ConnectionProperty {
   private:
     /** name of the connection property */
-    const std::string m_propName;
+    std::string m_propName;
     /** help message for the property */
-    const std::string m_helpMessage;
+    std::string m_helpMessage;
     /**
      * list of all possible values for the property,
      * if the property can only take on a set of fixed values
@@ -86,16 +86,13 @@ namespace client {
      */
     const char* m_defaultValue;
     /** any {@link Flags} for the property */
-    const int m_flags;
+    int m_flags;
 
     static std::map<std::string, ConnectionProperty> s_properties;
 
     static void staticInitialize();
 
     friend class impl::ClientService;
-
-    // disable assignment operator
-    const ConnectionProperty& operator=(const ConnectionProperty&) = delete;
 
   public:
     /** flags for the property */
@@ -121,6 +118,8 @@ namespace client {
       /** if the property is a file or directory name */
       F_IS_FILENAME = 0x100
     };
+
+    ConnectionProperty();
 
     ConnectionProperty(const std::string& propName, const char* helpMessage,
         const char** possibleValues, const char* defaultValue, const int flags);

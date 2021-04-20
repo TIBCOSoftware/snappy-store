@@ -63,6 +63,11 @@ static const char* LOG_LEVELS[] = { "none", "fatal", "error", "warn", "info",
 static const char* SECURITY_MODES[] = { "plain", "diffie-hellman", nullptr };
 static const char* SSL_MODES[] = { "none", "basic", "peer-auth", nullptr };
 
+ConnectionProperty::ConnectionProperty() : m_propName(), m_helpMessage(),
+    m_possibleValues(nullptr), m_numPossibleValues(0), m_defaultValue(nullptr),
+    m_flags(0) {
+}
+
 ConnectionProperty::ConnectionProperty(const std::string& propName,
     const char* helpMessage, const char** possibleValues,
     const char* defaultValue, const int flags) :

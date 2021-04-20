@@ -154,6 +154,12 @@ namespace client {
 
     Parameters& setString(uint32_t paramNum, const char* v, const size_t len);
 
+    Parameters& appendString(uint32_t paramNum, const std::string &v);
+
+    Parameters& appendString(uint32_t paramNum, const char *v);
+
+    Parameters& appendString(uint32_t paramNum, const char *v, const size_t len);
+
     // TODO: somehow have an efficient move version; right now a full
     // transformation copy happens from public Decimal to thrift's Decimal
 
@@ -174,6 +180,9 @@ namespace client {
     Parameters& setBinary(uint32_t paramNum, std::string&& v);
 
     Parameters& setBinary(uint32_t paramNum, const int8_t* v,
+        const size_t len);
+
+    Parameters& appendBinary(uint32_t paramNum, const int8_t *v,
         const size_t len);
 
     Parameters& setArray(uint32_t paramNum, const thrift::Array& v);

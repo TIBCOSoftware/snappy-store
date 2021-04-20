@@ -67,6 +67,40 @@ Parameters& Parameters::setString(uint32_t paramNum, const char* v,
   return *this;
 }
 
+Parameters& Parameters::appendString(uint32_t paramNum, const std::string &v) {
+  checkBounds(--paramNum);
+  thrift::ColumnValue &cv = m_values[paramNum];
+  if (cv.getType() == thrift::SnappyType::VARCHAR) {
+    cv.getString()->append(v);
+  } else {
+    cv.setString(v);
+  }
+  return *this;
+}
+
+Parameters& Parameters::appendString(uint32_t paramNum, const char *v) {
+  checkBounds(--paramNum);
+  thrift::ColumnValue &cv = m_values[paramNum];
+  if (cv.getType() == thrift::SnappyType::VARCHAR) {
+    cv.getString()->append(v);
+  } else {
+    cv.setString(v);
+  }
+  return *this;
+}
+
+Parameters& Parameters::appendString(uint32_t paramNum, const char *v,
+    const size_t len) {
+  checkBounds(--paramNum);
+  thrift::ColumnValue &cv = m_values[paramNum];
+  if (cv.getType() == thrift::SnappyType::VARCHAR) {
+    cv.getString()->append(v, len);
+  } else {
+    cv.setString(v, len);
+  }
+  return *this;
+}
+
 Parameters& Parameters::setDecimal(uint32_t paramNum, const Decimal& v) {
   checkBounds(--paramNum);
   thrift::Decimal dec;
@@ -135,6 +169,18 @@ Parameters& Parameters::setBinary(uint32_t paramNum, const int8_t* v,
     const size_t len) {
   checkBounds(--paramNum);
   m_values[paramNum].setBinary(std::move(std::string((const char*)v, len)));
+  return *this;
+}
+
+Parameters& Parameters::appendBinary(uint32_t paramNum, const int8_t *v,
+    const size_t len) {
+  checkBounds(--paramNum);
+  thrift::ColumnValue &cv = m_values[paramNum];
+  if (cv.getType() == thrift::SnappyType::VARBINARY) {
+    cv.getPtr<thrift::Binary>()->append((const char*)v, len);
+  } else {
+    cv.setBinary(std::move(std::string((const char*)v, len)));
+  }
   return *this;
 }
 
