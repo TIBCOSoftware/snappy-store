@@ -1,5 +1,65 @@
 # entries for basic LDAP authentication first
 
+dn: uid=snappydatauser1,ou=ldapTesting,dc=pune,dc=gemstone,dc=com
+objectClass: person
+objectClass: inetOrgPerson
+uid: snappydatauser1
+sn: SNAPPYDATAUSER1
+givenName: SnappyDataUser1
+cn: SNAPPYDATAUSER1
+displayName: SNAPPYDATAUSER1
+userPassword:: e1NTSEF9M2J4NkhTcHJ4VlBhTjRPdzZlbURoYi81R3h5SUZzOEtEQWgxS1E9PQ==
+
+dn: uid=snappydatauser2,ou=ldapTesting,dc=pune,dc=gemstone,dc=com
+objectClass: person
+objectClass: inetOrgPerson
+uid: snappydatauser2
+sn: SNAPPYDATAUSER2
+givenName: SnappyDataUser2
+cn: SNAPPYDATAUSER2
+displayName: SNAPPYDATAUSER2
+userPassword:: e1NTSEF9K000cTJnNGNVTStmcllxWlJVb3o5RDdXYXZsSWRUVm1HM3JXY3c9PQ==
+
+dn: uid=snappydatauser3,ou=ldapTesting,dc=pune,dc=gemstone,dc=com
+objectClass: person
+objectClass: inetOrgPerson
+uid: snappydatauser3
+sn: SNAPPYDATAUSER3
+givenName: SnappyDataUser3
+cn: SNAPPYDATAUSER3
+displayName: SNAPPYDATAUSER3
+userPassword:: e1NTSEF9V0htMnZQelFOUk1PalNGNTdoTThnb01NMHdNVXRZZzJYUlU3bGc9PQ==
+
+dn: uid=snappydatauser4,ou=ldapTesting,dc=pune,dc=gemstone,dc=com
+objectClass: person
+objectClass: inetOrgPerson
+uid: snappydatauser4
+sn: SNAPPYDATAUSER4
+givenName: SnappyDataUser4
+cn: SNAPPYDATAUSER4
+displayName: SNAPPYDATAUSER4
+userPassword:: e1NTSEF9WjRXUlNWMmdSSzVzQ3JFS3lRbnFVaXRMcjRSeHpadDdqbTBLOUE9PQ==
+
+dn: uid=snappydatauser5,ou=ldapTesting,dc=pune,dc=gemstone,dc=com
+objectClass: person
+objectClass: inetOrgPerson
+uid: snappydatauser5
+sn: SNAPPYDATAUSER5
+givenName: SnappyDataUser5
+cn: SNAPPYDATAUSER5
+displayName: SNAPPYDATAUSER5
+userPassword:: e1NTSEF9QWNGcjVibDl5MTdJN2NEdWVXbVAxYWdvVHliVzVGNS9yRTZzQ0E9PQ==
+
+dn: uid=snappyodbc,ou=ldapTesting,dc=pune,dc=gemstone,dc=com
+objectClass: person
+objectClass: inetOrgPerson
+uid: snappyodbc
+sn: SNAPPYODBC
+givenName: SnappyODBC
+cn: SNAPPYODBC
+displayName: SNAPPYODBC
+userPassword:: e1NTSEF9bzJyOUZ0R1ZWQ2NIbElMQWR1Q0J5ZGk4Rk5BWVRZSzFNV0JYenc9PQ==
+
 dn: uid=gemfire1,ou=ldapTesting,dc=pune,dc=gemstone,dc=com
 objectClass: person
 objectClass: inetOrgPerson
