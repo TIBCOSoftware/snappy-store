@@ -28,7 +28,9 @@ public class GenerateSHA1PasswordEntry {
     md.update(salt);
     byte[] hashedBytes = md.digest();
 
-    // add has bytes followed by salt at the end
+    // Add hash bytes followed by salt at the end.
+    // Hash value itself includes the salt (as expected) plus the encoded value has
+    // the salt separately at the end so that decoder can first extract the salt.
     byte[] hashAndSalt = new byte[hashedBytes.length + salt.length];
     System.arraycopy(hashedBytes, 0, hashAndSalt, 0, hashedBytes.length);
     System.arraycopy(salt, 0, hashAndSalt, hashedBytes.length, salt.length);
