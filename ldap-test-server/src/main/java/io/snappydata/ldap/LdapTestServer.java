@@ -117,13 +117,25 @@ public class LdapTestServer {
   }
 
   public static void main(String[] args) throws Exception {
-    if (args.length != 1) {
-      System.err.println("Require LDIF file. Usage: LdapTestServer <ldif-path>");
+    final String portOption = "--port=";
+    if (args.length < 1 || args.length > 2) {
+      System.err.println("Require LDIF file. Usage: LdapTestServer [" + portOption
+          + "<port>] <ldif-path>");
       System.exit(1);
     }
-    LdapTestServer server = LdapTestServer.getInstance(args[0]);
+
+    final String ldifFile;
+    final int port;
+    if (args.length == 2 && args[0].startsWith(portOption)) {
+      port = Integer.parseInt(args[0].substring(portOption.length()));
+      ldifFile = args[1];
+    } else {
+      port = new java.util.Random().nextInt(30000) + 10000;
+      ldifFile = args[0];
+    }
+
+    LdapTestServer server = LdapTestServer.getInstance(ldifFile);
     if (!server.isServerStarted()) {
-      int port = new java.util.Random().nextInt(30000) + 10000;
       server.startServer("0.0.0.0", port);
     }
     InetAddress myHost = InetAddress.getLocalHost();
