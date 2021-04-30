@@ -28,7 +28,7 @@ public class GenerateSHA1PasswordEntry {
     md.update(salt);
     byte[] hashedBytes = md.digest();
 
-    // add hash bytes at the end
+    // add has bytes followed by salt at the end
     byte[] hashAndSalt = new byte[hashedBytes.length + salt.length];
     System.arraycopy(hashedBytes, 0, hashAndSalt, 0, hashedBytes.length);
     System.arraycopy(salt, 0, hashAndSalt, hashedBytes.length, salt.length);
