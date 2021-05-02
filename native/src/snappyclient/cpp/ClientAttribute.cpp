@@ -56,6 +56,7 @@ const std::string ClientAttribute::KEEPALIVE_INTVL = ClientAttribute::addToHashS
 const std::string ClientAttribute::KEEPALIVE_CNT = ClientAttribute::addToHashSet("keepalive-count");
 const std::string ClientAttribute::LOAD_BALANCE = ClientAttribute::addToHashSet("load-balance");
 const std::string ClientAttribute::SECONDARY_LOCATORS = ClientAttribute::addToHashSet("secondary-locators");
+const std::string ClientAttribute::DEFAULT_SCHEMA = ClientAttribute::addToHashSet("default-schema");
 const std::string ClientAttribute::SERVER_GROUPS = ClientAttribute::addToHashSet("server-groups");
 const std::string ClientAttribute::SINGLE_HOP_ENABLED = ClientAttribute::addToHashSet("single-hop-enabled");
 const std::string ClientAttribute::SINGLE_HOP_MAX_CONNECTIONS = ClientAttribute::addToHashSet("single-hop-max-connections");

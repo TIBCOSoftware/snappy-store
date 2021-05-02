@@ -118,7 +118,7 @@ void SQLStateMessage::staticInitialize() {
   NO_CURRENT_ROW_MSG.initialize(SQLState::INVALID_CURSOR_STATE, 1,
       "No current row.");
   ALREADY_CLOSED_MSG.initialize(SQLState::ALREADY_CLOSED, 1,
-      "PreparedStatement already closed");
+      "Connection or Statement already closed");
   CONNECTION_IN_USE_MSG.initialize(SQLState::CONNECTION_IN_USE, 1,
       "The specified handle had already been "
           "used to establish a connection with a data source, and the "

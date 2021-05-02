@@ -126,6 +126,11 @@ void ConnectionProperty::staticInitialize() {
   addProperty_(ClientAttribute::SECONDARY_LOCATORS,
       "Specify additional locators or servers to try for initial "
           "connection before giving up", nullptr, nullptr, F_IS_UTF8);
+  addProperty_(ClientAttribute::DEFAULT_SCHEMA,
+      "The default schema to set on the connection (equivalent to 'USE' / "
+          "'SET SCHEMA' SQL commands). If not specified, the default schema "
+          "is the user name or 'APP' if no user name has been speficied.",
+      nullptr, nullptr, F_IS_UTF8);
   addProperty_(ClientAttribute::READ_TIMEOUT, readTimeoutHelp, nullptr,
       nullptr, F_NONE);
   addProperty_(ClientAttribute::KEEPALIVE_IDLE, keepAliveIdleHelp, nullptr,
