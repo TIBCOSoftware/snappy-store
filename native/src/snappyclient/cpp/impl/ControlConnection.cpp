@@ -34,8 +34,11 @@
  */
 
 //--------Headers----------
-#include <thread>
+
+#include "ControlConnection.h"
+
 #include <algorithm>
+#include <thread>
 
 #include <thrift/Thrift.h>
 #include <thrift/transport/TSSLSocket.h>
@@ -44,57 +47,68 @@
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/protocol/TCompactProtocol.h>
 
-#include <SQLState.h>
-#include <Utils.h>
-#include "ControlConnection.h"
 #include "NetConnection.h"
-#include <map>
+#include "SQLState.h"
+#include "Utils.h"
+
 using namespace io::snappydata;
 using namespace io::snappydata::client;
 using namespace io::snappydata::client::impl;
 using namespace io::snappydata::thrift;
 
 //----private static data member initialiazation----
-std::vector<std::unique_ptr<ControlConnection> > ControlConnection::s_allConnections;
-std::mutex ControlConnection::s_allConnsLock;
+GlobalConnectionHolder ControlConnection::s_allConnections;
 
-ControlConnection::ControlConnection(ClientService* service) :
-    m_serverGroups(service->getServerGrps()) {
-  m_locators = service->getLocators();
-  m_framedTransport = service->isFrameTransport();
-  m_snappyServerType = service->getServerType();
-  m_controlHost = service->getCurrentHostAddress();
-  m_snappyServerTypeSet.insert(service->getServerType());
-  std::copy(m_locators.begin(), m_locators.end(),
-      std::inserter(m_controlHostSet, m_controlHostSet.end()));
-  m_controlLocator = nullptr;
+GlobalConnectionHolder::~GlobalConnectionHolder() {
+  // this destructor will only be invoked when the app/library is shutting
+  // down, so set the TSSLSocketFactory's setInExit flag
+  TSSLSocketFactory::setInExit(true);
 }
 
-const boost::optional<ControlConnection&> ControlConnection::getOrCreateControlConnection(
-    const std::vector<thrift::HostAddress>& hostAddrs,
-    ClientService* service, const std::exception& failure) {
+ControlConnection::ControlConnection(ClientService *service) :
+    m_snappyServerType(service->getServerType()),
+    m_locators(service->getLocators()),
+    m_controlHost(service->getCurrentHostAddress()),
+    m_serverGroups(service->getServerGrps()),
+    m_framedTransport(service->isFrameTransport()) {
+  m_snappyServerTypeSet.insert(service->getServerType());
+  m_controlHostSet.insert(m_locators.begin(), m_locators.end());
+}
+
+void ControlConnection::staticInitialize() {
+  // dummy, invoked from ClientService to ensure statics are initialized
+}
+
+ControlConnection& ControlConnection::getOrCreateControlConnection(
+    const std::vector<thrift::HostAddress> &hostAddrs, ClientService *service,
+    const char *failure) {
 
   // loop through all ControlConnections since size of this global list is
   // expected to be in single digit (total number of distributed systems)
 
-  std::lock_guard<std::mutex> globalGuard(s_allConnsLock);
+  std::lock_guard<std::mutex> globalGuard(s_allConnections.m_lock);
 
-  signed short index = static_cast<signed short>(s_allConnections.size());
-  while (--index >= 0) {
-    const std::unique_ptr<ControlConnection>& controlConn =
-        s_allConnections.at(index);
+  auto &allConnections = s_allConnections.m_map;
+  const auto result = allConnections.find(service);
+  if (result != allConnections.end()) {
+    return *result->second;
+  }
 
-    std::lock_guard<std::mutex> serviceGuard(controlConn->m_lock);
-    std::vector<thrift::HostAddress> _locators = controlConn->m_locators;
-    for (thrift::HostAddress hostAddr : hostAddrs) {
-      auto result = std::find(_locators.begin(), _locators.end(), hostAddr);
+  for (const auto &kv : allConnections) {
+    const std::shared_ptr<ControlConnection> &controlConn = kv.second;
 
-      if (result == _locators.end()) {
+    std::lock_guard<std::recursive_mutex> lockGuard(controlConn->m_lock);
+    const std::vector<thrift::HostAddress> &locators = controlConn->m_locators;
+    for (const auto &hostAddr : hostAddrs) {
+      auto result = std::find(locators.begin(), locators.end(), hostAddr);
+
+      if (result == locators.end()) {
         continue;
       } else {
         auto serviceServerType = service->getServerType();
         auto contrConnServerType = controlConn->m_snappyServerType;
         if (contrConnServerType == serviceServerType) {
+          allConnections.emplace(service, controlConn);
           return *controlConn;
         } else {
           thrift::SnappyException ex;
@@ -118,28 +132,27 @@ const boost::optional<ControlConnection&> ControlConnection::getOrCreateControlC
     }
   }
 
-  {  // first attempt of creating connection
-    // if we reached here, then need to create a new ControlConnection
-    std::unique_ptr<ControlConnection> controlConn(
-        new ControlConnection(service));
+  // if we reached here, then need to create a new ControlConnection
+  std::shared_ptr<ControlConnection> newControlConn(
+      new ControlConnection(service));
+  {
     thrift::HostAddress preferredServer;
-    controlConn->getPreferredServer(preferredServer, failure, service ,true);
-    // check again if new control host already exist
-    index = static_cast<signed short>(s_allConnections.size());
-    while (--index >= 0) {
-      const std::unique_ptr<ControlConnection>& controlConn =
-          s_allConnections.at(index);
-      std::lock_guard<std::mutex> serviceGuard(controlConn->m_lock);
-      std::vector<thrift::HostAddress> _locators = controlConn->m_locators;
-      auto result = std::find(_locators.begin(), _locators.end(),
+    newControlConn->getPreferredServer(preferredServer, failure, service, true);
+    // check again if new control host already exists
+    for (const auto &kv : allConnections) {
+      const std::shared_ptr<ControlConnection> &controlConn = kv.second;
+      std::lock_guard<std::recursive_mutex> lockGuard(controlConn->m_lock);
+      const std::vector<thrift::HostAddress> &locators = controlConn->m_locators;
+      auto result = std::find(locators.begin(), locators.end(),
           preferredServer);
-      if (result == _locators.end()) {
+      if (result != locators.end()) {
+        allConnections.emplace(service, controlConn);
         return *controlConn;
       }
     }
-    s_allConnections.push_back(std::move(controlConn));
   }
-  return *s_allConnections.back();
+  allConnections.emplace(service, newControlConn);
+  return *newControlConn;
 }
 
 void ControlConnection::getLocatorPreferredServer(
@@ -150,25 +163,23 @@ void ControlConnection::getLocatorPreferredServer(
       serverGroups, failedServers);
 }
 
-void ControlConnection::getPreferredServer(
-    thrift::HostAddress& preferredServer, const std::exception& failure,
-    ClientService* service, bool forFailover) {
+void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
+    const char *failure, ClientService *service, bool forFailover) {
   std::set<thrift::HostAddress> failedServers;
   std::set<std::string> serverGroups;
   return getPreferredServer(preferredServer, failure, failedServers,
       serverGroups, service, forFailover);
 }
 
-void ControlConnection::getPreferredServer(
-    thrift::HostAddress& preferredServer, const std::exception& failure,
-    std::set<thrift::HostAddress>& failedServers,
-    std::set<std::string>& serverGroups, ClientService* service,
+void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
+    const char *failure, std::set<thrift::HostAddress> &failedServers,
+    std::set<std::string> &serverGroups, ClientService *service,
     bool forFailover) {
   if (!m_controlLocator) {
     failoverToAvailableHost(failedServers, false, failure, service);
     forFailover = true;
   }
-  std::lock_guard<std::mutex> localGuard(m_lock);
+  std::lock_guard<std::recursive_mutex> localGuard(m_lock);
   bool firstCall = true;
   while (true) {
     try {
@@ -212,21 +223,22 @@ void ControlConnection::getPreferredServer(
       FailoverStatus status = NetConnection::getFailoverStatus(
           snEx.exceptionData.sqlState, snEx.exceptionData.errorCode, snEx);
       if (status == FailoverStatus::NONE) {
-        throw unexpectedError(snEx, m_controlHost);
+        throw snEx;
       } else if (status == FailoverStatus::RETRY) {
         forFailover = true;
         continue;
       }
     } catch (const TException &tex) {
-      //Search for a new host for locator query
-      // for the first call do not mark controlhost as failed but retry(e.g. for a reconnect case)
+      // Search for a new host for locator query.
+      // For the first call do not mark m_controlHost as failed but retry
+      // (e.g. for a reconnect case).
       if (firstCall) {
         firstCall = false;
       } else {
         failedServers.insert(m_controlHost);
       }
-      m_controlLocator->getOutputProtocol()->getTransport()->close();
-      failoverToAvailableHost(failedServers, true, tex, service);
+      close();
+      failoverToAvailableHost(failedServers, true, tex.what(), service);
     } catch (std::exception &ex) {
       throw unexpectedError(ex, m_controlHost);
     }
@@ -235,14 +247,15 @@ void ControlConnection::getPreferredServer(
 }
 
 void ControlConnection::searchRandomServer(
-    const std::set<thrift::HostAddress>& skipServers,
-    const std::exception& failure, thrift::HostAddress& hostAddress) {
+    const std::set<thrift::HostAddress> &skipServers, const char *failure,
+    thrift::HostAddress &hostAddress) {
 
   std::vector<thrift::HostAddress> searchServers;
   // Note: Do not use unordered_set -- reason is http://www.cplusplus.com/forum/general/198319/
-  std::copy(m_controlHostSet.begin(), m_controlHostSet.end(),
-      std::inserter(searchServers, searchServers.end()));
+  searchServers.insert(searchServers.end(), m_controlHostSet.begin(),
+      m_controlHostSet.end());
   if (searchServers.size() > 2) {
+    // need random iterator here hence the vector above for searchServers
     std::random_shuffle(searchServers.begin(), searchServers.end());
   }
   bool findIt = false;
@@ -261,16 +274,15 @@ void ControlConnection::searchRandomServer(
 }
 
 void ControlConnection::failoverToAvailableHost(
-    std::set<thrift::HostAddress>& failedServers,
-    bool checkFailedControlHosts, const std::exception& failure,
-    ClientService* service) {
-  std::lock_guard<std::mutex> localGuard(m_lock);
+    std::set<thrift::HostAddress> &failedServers, bool checkFailedControlHosts,
+    const char *failure, ClientService *service) {
+  std::lock_guard<std::recursive_mutex> lockGuard(m_lock);
   for (auto &controlAddr : m_controlHostSet) {
     if (checkFailedControlHosts && !failedServers.empty()
         && (failedServers.find(controlAddr) != failedServers.end())) {
       continue;
     }
-    m_controlLocator.reset(nullptr);
+    m_controlLocator = nullptr;
 
     std::shared_ptr<TTransport> inTransport = nullptr;
     std::shared_ptr<TTransport> outTransport = nullptr;
@@ -288,7 +300,11 @@ void ControlConnection::failoverToAvailableHost(
             || m_snappyServerType == thrift::ServerType::THRIFT_SNAPPY_BP_SSL
             || m_snappyServerType
                 == thrift::ServerType::THRIFT_SNAPPY_CP_SSL) {
-          tTransport = service->createSSLSocket(controlAddr.hostName, controlAddr.port);
+          if (!m_sslFactory) { // m_lock has already been locked before
+            m_sslFactory.reset(new SSLSocketFactory(service->m_sslParams));
+          }
+          tTransport = service->createSSLSocket(controlAddr.hostName,
+              controlAddr.port, *m_sslFactory);
         } else if (m_snappyServerType == thrift::ServerType::THRIFT_LOCATOR_BP
             || m_snappyServerType == thrift::ServerType::THRIFT_LOCATOR_CP
             || m_snappyServerType == thrift::ServerType::THRIFT_SNAPPY_BP
@@ -346,7 +362,7 @@ void ControlConnection::failoverToAvailableHost(
 const thrift::SnappyException ControlConnection::unexpectedError(
     const std::exception& ex, const thrift::HostAddress& host) {
 
-  close(false);
+  close();
   thrift::SnappyException snappyEx;
   SnappyExceptionData snappyExData;
   snappyExData.__set_sqlState(
@@ -396,15 +412,17 @@ void ControlConnection::refreshAllHosts(
   // to prefer the ones coming as "allServers" with "isServer" flag
   // correctly set rather than the ones in "secondary-locators"
   m_controlHostSet.clear();
-  m_controlHostSet.insert(std::make_move_iterator(newLocators.begin()),
-      std::make_move_iterator(newLocators.end()));
+  // allHosts is inserted first since it is the more "authoritative" list
+  // having proper serverTypes etc
   m_controlHostSet.insert(std::make_move_iterator(allHosts.begin()),
       std::make_move_iterator(allHosts.end()));
+  m_controlHostSet.insert(std::make_move_iterator(newLocators.begin()),
+      std::make_move_iterator(newLocators.end()));
 }
 
 void ControlConnection::failoverExhausted(
-    const std::set<thrift::HostAddress>& failedServers,
-    const std::exception& failure) {
+    const std::set<thrift::HostAddress> &failedServers,
+    const char *failure) {
 
   std::string failedServerString;
   for (thrift::HostAddress host : failedServers) {
@@ -419,9 +437,9 @@ void ControlConnection::failoverExhausted(
       std::string(SQLState::DATA_CONTAINER_CLOSED.getSQLState()));
   std::string reason = "Failed after trying all available servers: {";
   reason.append(failedServerString).append("}");
-  // failure is not empty exception
-  if (std::string(failure.what()).compare("std::exception") != 0) {
-    reason.append(" and ").append(failure.what());
+  // add to own message if original failure is not a null message
+  if (failure) {
+    reason.append(" and ").append(failure);
   }
   snappyExData.__set_reason(reason);
   snappyEx.__set_exceptionData(snappyExData);
@@ -429,39 +447,43 @@ void ControlConnection::failoverExhausted(
   throw snappyEx;
 }
 
-void ControlConnection::getConnectedHost(thrift::HostAddress &hostAddr,
-    thrift::HostAddress &connectedHost) {
-  std::lock_guard<std::mutex> controlConnLock(this->m_lock);
+thrift::HostAddress ControlConnection::getConnectedHost(
+    const thrift::HostAddress &hostAddr) {
+  std::lock_guard<std::recursive_mutex> lockGuard(m_lock);
 
   auto it = std::find(m_controlHostSet.begin(), m_controlHostSet.end(),
       hostAddr);
   if (it != m_controlHostSet.end()) {
-    connectedHost = *it;
-    return;
+    return *it;
   }
 
   for (auto &host : m_controlHostSet) {
     if (host.__isset.isCurrent && host.isCurrent) {
-      connectedHost = host;
+      return host;
     }
   }
+  return hostAddr;
 }
 
-void ControlConnection::close(bool clearGlobal) {
+void ControlConnection::close() {
+  std::lock_guard<std::recursive_mutex> lockGuard(m_lock);
+
   m_controlHost = thrift::HostAddress();
   if (m_controlLocator) {
     m_controlLocator->getOutputProtocol()->getTransport()->close();
-    m_controlLocator.reset(nullptr);
+    m_controlLocator = nullptr;
   }
-  if (clearGlobal) {
-    std::lock_guard<std::mutex> globalGuard(s_allConnsLock);
-    auto thisPtr = std::unique_ptr<ControlConnection>(this);
-    auto pos = std::find(s_allConnections.begin(), s_allConnections.end(),
-        thisPtr);
-    // don't delete "this" here
-    thisPtr.release();
-    if (pos != s_allConnections.end()) {
-      s_allConnections.erase(pos);
-    }
-  }
+}
+
+ControlConnection::~ControlConnection() {
+  // destructor should *never* throw an exception
+  Utils::handleExceptionsInDestructor("control connection", [&]() {
+    close();
+  });
+}
+
+bool ControlConnection::removeService(ClientService *service) {
+  std::lock_guard<std::mutex> globalGuard(s_allConnections.m_lock);
+  auto &allConnections = s_allConnections.m_map;
+  return !allConnections.empty() && allConnections.erase(service) != 0;
 }

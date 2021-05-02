@@ -52,12 +52,12 @@ namespace snappydata {
 namespace client {
 namespace impl {
 
-  enum class FailoverStatus :unsigned char{
+  enum class FailoverStatus : unsigned char {
     NONE,         /** no failover to be done */
     NEW_SERVER,   /** failover to a new server */
     RETRY         /** retry to the same server */
   };
-  class NetConnection{
+  class NetConnection {
   private:
     /** set of SQLState strings that denote failover should be done */
     static std::set<std::string> failoverSQLStateSet;

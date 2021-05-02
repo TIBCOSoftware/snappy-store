@@ -99,6 +99,9 @@ namespace io {
           std::set<std::string> m_serverGroups;
 
           std::shared_ptr<ClientTransport> m_transport;
+          // THRIFT-4164: The factory MUST outlive any sockets it creates
+          // hence a reference is maintained here
+          std::unique_ptr<SSLSocketFactory> m_sslFactory;
           SnappyDataClient m_client;
 
           thrift::HostAddress m_currentHostAddr;
@@ -106,6 +109,7 @@ namespace io {
           int64_t m_connId;
           std::string m_token;
           bool m_isOpen;
+          bool m_connFailed;
 
           std::map<thrift::TransactionAttribute::type, bool> m_pendingTXAttrs;
           bool m_hasPendingTXAttrs;
@@ -129,8 +133,7 @@ namespace io {
           protocol::TProtocol* createProtocol(
               thrift::HostAddress& hostAddr,
               const thrift::ServerType::type serverType,
-              const bool useFramedTransport,
-              std::shared_ptr<ClientTransport>& returnTransport);
+              const bool useFramedTransport);
 
           inline std::string getSSLPropertyName(SSLProperty sslProperty) {
             return m_sslParams.getSSLPropertyName(sslProperty);
@@ -142,8 +145,10 @@ namespace io {
           }
 
           void updateFailedServersForCurrent(
-              std::set<thrift::HostAddress>& failedServers,
-              bool checkAllFailed, const std::exception& failure);
+              std::set<thrift::HostAddress> &failedServers,
+              bool checkAllFailed, const char *failure);
+
+          friend class ControlConnection;
 
         protected:
           virtual void checkConnection(const char* op);
@@ -154,7 +159,7 @@ namespace io {
               const thrift::SnappyException& se);
 
           virtual void handleStdException(const char* op,
-              const std::exception& stde);
+              const std::exception& stde, bool checkClosed = true);
 
           virtual void handleTTransportException(const char* op,
               bool tryFailover, bool ignoreNodeFailure,
@@ -173,14 +178,14 @@ namespace io {
               std::set<thrift::HostAddress>& failedServers,
               const TException& te);
 
-          virtual void handleUnknownException(const char* op);
+          virtual void handleUnknownException(const char* op,
+              bool checkClosed = true);
 
           BOOST_NORETURN void throwSQLExceptionForNodeFailure(const char* op,
               const std::exception& se);
 
-          void openConnection(thrift::HostAddress& hostAddr,
-              std::set<thrift::HostAddress>& failedServers,
-              const std::exception& te);
+          void openConnection(thrift::HostAddress &hostAddr,
+              std::set<thrift::HostAddress> &failedServers, const char *te);
 
           void flushPendingTransactionAttrs();
 
@@ -189,31 +194,20 @@ namespace io {
           void getTransactionAttributesNoLock(
               std::map<thrift::TransactionAttribute::type, bool>& result);
 
+          /**
+           * Should only be invoked for forceful closure of socket. This also
+           * marks "m_connFailed" as true so subsequent operations will fail.
+           */
           void destroyTransport() noexcept;
 
-          void newSnappyExceptionForConnectionClose(const char* op,
-              const thrift::HostAddress source,
-              std::set<thrift::HostAddress>& failedServers,
-              bool createNewConnection, const thrift::SnappyException& te);
-
-          void newSnappyExceptionForConnectionClose(const char* op,
-              const thrift::HostAddress& source);
-
-          void tryCreateNewConnection(thrift::HostAddress source,
-              std::set<thrift::HostAddress>& failedServers,
-              const thrift::SnappyException& te);
-
-          BOOST_NORETURN void throwSnappyExceptionForNodeFailure(
-              thrift::HostAddress source, const char* op,
-              std::set<thrift::HostAddress>& failedServers,
-              bool createNewConnection, const thrift::SnappyException& te);
-
-          BOOST_NORETURN void throwSnappyExceptionForNodeFailure(
-              thrift::HostAddress source, const char* op,
-              std::set<thrift::HostAddress>& failedServers,
-              bool createNewConnection, const std::exception& se);
-
-          virtual bool handleException(const char* op, bool tryFailover,
+          /**
+           * Generic handling for thrift layer exceptions. If this returns true,
+           * then caller should assume that an exception depending on the
+           * specific type of thrift exception should be thrown. If this returns
+           * false, then caller should skip throwing an exception. In other
+           * cases this method itself will throw the required exception.
+           */
+          virtual bool handleThriftException(const char* op, bool tryFailover,
               bool ignoreNodeFailure, bool createNewConnection,
               std::set<thrift::HostAddress>& failedServers,
               const TException& te);
@@ -253,9 +247,9 @@ namespace io {
             return m_isOpen;
           }
 
-          inline const std::shared_ptr<ClientTransport>& getTransport() const
-              noexcept {
-            return m_transport;
+          inline ClientTransport* getTransport() {
+            checkConnection("get transport");
+            return m_transport.get();
           }
 
           const char* getTokenStr() const noexcept {
@@ -275,8 +269,8 @@ namespace io {
             return m_isolationLevel;
           }
 
-          std::shared_ptr<TSSLSocket> createSSLSocket(
-              const std::string& host, int port);
+          std::shared_ptr<TSSLSocket> createSSLSocket(const std::string &host,
+              int port, SSLSocketFactory &sslSocketFactory);
 
           void execute(thrift::StatementResult& result,
               const std::string& sql,

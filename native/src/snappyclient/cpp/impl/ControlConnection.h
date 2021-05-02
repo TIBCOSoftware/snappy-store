@@ -37,10 +37,11 @@
 #define CONTROLCONNECTION_H_
 
 #include <mutex>
-#include <boost/optional.hpp>
+#include <unordered_map>
 
 #include "ClientService.h"
 #include "../thrift/LocatorService.h"
+
 //-----------namespaces-----
 
 using namespace apache::thrift;
@@ -66,6 +67,33 @@ namespace io {
   namespace snappydata {
     namespace client {
       namespace impl {
+
+        class ControlConnection;
+
+        /**
+         * Holds a global map of ClientService to ControlConnection mappings.
+         * Added to allow its (global) destructor call TSSLSocket::setInExit().
+         */
+        class GlobalConnectionHolder final {
+        private:
+          /**
+           * Map of each ClientService to its corresponding ControlConnection.
+           * This uses a reference-counted shared_ptr, so when all references to
+           * a ControlConnection are removed, then the ControlConnection will
+           * automatically get destroyed.
+           */
+          std::unordered_map<ClientService*, std::shared_ptr<ControlConnection> > m_map;
+          /**
+           * Lock used to access/update the map.
+           */
+          std::mutex m_lock;
+
+          friend class ControlConnection;
+
+        public:
+          ~GlobalConnectionHolder();
+        };
+
         /**
          * Holds locator, server information to use for failover. Also provides
          * convenience methods to actually search for an appropriate host for
@@ -73,27 +101,27 @@ namespace io {
          * <p>
          * One distributed system is supposed to have one ControlConnection.
          */
-        class ControlConnection {
+        class ControlConnection final {
         private:
           /**********Data members********/
           thrift::ServerType::type m_snappyServerType;
-          //const SSLSocketParameters& m_sslParams;
           std::set<thrift::ServerType::type> m_snappyServerTypeSet;
           std::vector<thrift::HostAddress> m_locators;
           thrift::HostAddress m_controlHost;
           std::unique_ptr<thrift::LocatorServiceClient> m_controlLocator;
+          // THRIFT-4164: The factory MUST outlive any sockets it creates
+          // hence a reference is maintained here
+          std::unique_ptr<SSLSocketFactory> m_sslFactory;
           std::unordered_set<thrift::HostAddress> m_controlHostSet;
           const std::set<std::string>& m_serverGroups;
 
-          std::mutex m_lock;
+          std::recursive_mutex m_lock;
           bool m_framedTransport;
           /**
            * Since one DS is supposed to have one ControlConnection, so we expect the
            * total size of this static global list to be small.
            */
-          static std::vector<std::unique_ptr<ControlConnection> > s_allConnections;
-          /** Global lock for {@link allConnections} */
-          static std::mutex s_allConnsLock;
+          static GlobalConnectionHolder s_allConnections;
 
           /*********Member functions**************/
           ControlConnection() :
@@ -104,9 +132,9 @@ namespace io {
           ControlConnection(ClientService* service);
 
           void failoverToAvailableHost(
-              std::set<thrift::HostAddress>& failedServers,
-              bool checkFailedControlHosts, const std::exception& failure,
-              ClientService* service);
+              std::set<thrift::HostAddress> &failedServers,
+              bool checkFailedControlHosts, const char *failure,
+              ClientService *service);
 
           void refreshAllHosts(std::vector<thrift::HostAddress> &&allHosts);
 
@@ -114,38 +142,46 @@ namespace io {
               const std::exception& e, const thrift::HostAddress& host);
 
           void failoverExhausted(
-              const std::set<thrift::HostAddress>& failedServers,
-              const std::exception& failure);
+              const std::set<thrift::HostAddress> &failedServers,
+              const char *failure);
 
           void getLocatorPreferredServer(thrift::HostAddress& prefHostAddr,
               std::set<thrift::HostAddress>& failedServers,
               std::set<std::string> serverGroups);
 
-          void getPreferredServer(thrift::HostAddress& preferredServer,
-              const std::exception& failure, ClientService* service,
+          void getPreferredServer(thrift::HostAddress &preferredServer,
+              const char *failure, ClientService *service,
               bool forFailover = false);
 
         public:
+          static void staticInitialize();
 
-          static const boost::optional<ControlConnection&> getOrCreateControlConnection(
-              const std::vector<thrift::HostAddress>& hostAddrs,
-              ClientService* service, const std::exception& failure);
+          static ControlConnection& getOrCreateControlConnection(
+              const std::vector<thrift::HostAddress> &hostAddrs,
+              ClientService *service, const char *failure);
 
-          void getPreferredServer(thrift::HostAddress& preferredServer,
-              const std::exception& failure,
-              std::set<thrift::HostAddress>& failedServers,
-              std::set<std::string>& serverGroups, ClientService* service,
+          void getPreferredServer(thrift::HostAddress &preferredServer,
+              const char *failure,
+              std::set<thrift::HostAddress> &failedServers,
+              std::set<std::string> &serverGroups, ClientService *service,
               bool forFailover = false);
 
           void searchRandomServer(
-              const std::set<thrift::HostAddress>& skipServers,
-              const std::exception& failure,
-              thrift::HostAddress& hostAddress);
+              const std::set<thrift::HostAddress> &skipServers,
+              const char *failure, thrift::HostAddress &hostAddress);
 
-          void getConnectedHost(thrift::HostAddress& hostAddr,
-              thrift::HostAddress& connectedHost);
+          thrift::HostAddress getConnectedHost(
+              const thrift::HostAddress &hostAddr);
 
-          void close(bool clearGlobal);
+          void close();
+
+          ~ControlConnection();
+
+          /**
+           * Remove ClientService from global map and destroy the corresponding
+           * ControlConnection if no other service uses it.
+           */
+          static bool removeService(ClientService *service);
         };
 
       } /* namespace impl */
