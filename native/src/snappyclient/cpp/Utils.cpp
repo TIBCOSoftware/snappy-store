@@ -221,16 +221,69 @@ void Utils::toHexString(const char* bytes, const size_t bytesLen,
 }
 
 bool Utils::convertUTF8ToUTF16(const char *utf8Chars, const long utf8Len,
+    std::function<void(int)> process) {
+  const char *endChars = (utf8Len < 0) ? nullptr : (utf8Chars + utf8Len);
+  bool nonASCII = false;
+  int ch;
+  while ((!endChars || utf8Chars < endChars)
+      && (ch = (*utf8Chars++ & 0xFF)) != 0) {
+    // get next byte unsigned
+    const int k = (ch >> 5);
+    // classify based on the high order 3 bits
+    switch (k) {
+      case 6: {
+        // two byte encoding
+        // 110yyyyy 10xxxxxx
+        // use low order 6 bits
+        const int y = ch & 0x1F;
+        // use low order 6 bits of the next byte
+        // It should have high order bits 10, which we don't check.
+        const int x = *utf8Chars++ & 0x3F;
+        // 00000yyy yyxxxxxx
+        process(y << 6 | x);
+        nonASCII = true;
+        break;
+      }
+      case 7: {
+        // three byte encoding
+        // 1110zzzz 10yyyyyy 10xxxxxx
+        //assert ( b & 0x10 )
+        //     == 0 : "UTF8Decoder does not handle 32-bit characters";
+        // use low order 4 bits
+        const int z = ch & 0x0F;
+        // use low order 6 bits of the next byte
+        // It should have high order bits 10, which we don't check.
+        const int y = *utf8Chars++ & 0x3F;
+        // use low order 6 bits of the next byte
+        // It should have high order bits 10, which we don't check.
+        const int x = *utf8Chars++ & 0x3F;
+        // zzzzyyyy yyxxxxxx
+        process(z << 12 | y << 6 | x);
+        nonASCII = true;
+        break;
+      }
+      default:
+        // one byte encoding
+        // 0xxxxxxx
+        // use just low order 7 bits
+        // 00000000 0xxxxxxx
+        process(ch & 0x7F);
+        break;
+    }
+  }
+  return nonASCII;
+}
+
+bool Utils::convertUTF8ToUTF16(const char *utf8Chars, const long utf8Len,
     std::u16string &result) {
-  auto proc = [&](int c) {
+  return convertUTF8ToUTF16(utf8Chars, utf8Len, [&](int c) {
     result.push_back((char16_t)c);
-  };
-  return convertUTF8ToUTF16(utf8Chars, utf8Len, proc);
+  });
 }
 
 
 template<typename TNum>
-class PrecisionPolicy : public boost::spirit::karma::real_policies<TNum> {
+class PrecisionPolicy final : public boost::spirit::karma::real_policies<TNum> {
 private:
   const size_t m_precision2;
   const TNum m_minFixed;
@@ -390,36 +443,6 @@ void Utils::convertDoubleToString(const double v, std::string& result,
   }
 }
 
-std::ostream& Utils::toStream(std::ostream& out,
-    const thrift::HostAddress& hostAddr) {
-  thrift::ServerType::type serverType = hostAddr.serverType;
-  bool addServerType = true;
-  if (!hostAddr.__isset.serverType || Utils::isServerTypeDefault(serverType)) {
-    addServerType = false;
-  }
-
-  out << hostAddr.hostName;
-  if (hostAddr.__isset.ipAddress) {
-    out << '/' << hostAddr.ipAddress;
-  }
-  out << '[' << hostAddr.port << ']';
-  if (addServerType) {
-    out << '{';
-    io::snappydata::thrift::operator<<(out, serverType);
-    out << '}';
-  }
-  return out;
-}
-
-std::ostream& Utils::toStream(std::ostream& out, const std::exception& stde) {
-  demangleTypeName(typeid(stde).name(), out);
-  const char* reason = stde.what();
-  if (reason) {
-    out << ": " << reason;
-  }
-  return out;
-}
-
 std::string Utils::toString(const std::exception& stde) {
   std::string str;
   demangleTypeName(typeid(stde).name(), str);
@@ -519,41 +542,45 @@ void Utils::demangleTypeName(const char* typeName, std::ostream& out) {
   out << typeName;
 }
 
-void Utils::handleExceptionInDestructor(const char* operation,
-    const SQLException& sqle) {
-  // ignore transport and protocol exceptions due to other side failing
-  const std::string& sqlState = sqle.getSQLState();
-  if (sqlState == SQLState::SNAPPY_NODE_SHUTDOWN.getSQLState()
-      || sqlState == SQLState::DATA_CONTAINER_CLOSED.getSQLState()
-      || sqlState == SQLState::THRIFT_PROTOCOL_ERROR.getSQLState()) {
-    return;
-  }
+void Utils::handleExceptionsInDestructor(const char *operation,
+    std::function<void()> body) noexcept {
   try {
-    LogWriter::error() << "Exception in destructor of " << operation << ": "
-        << stack(sqle);
+    body();
+  } catch (const SQLException &sqle) {
+    // ignore transport and protocol exceptions due to other side failing
+    const std::string &sqlState = sqle.getSQLState();
+    if (sqlState == SQLState::SNAPPY_NODE_SHUTDOWN.getSQLState()
+        || sqlState == SQLState::DATA_CONTAINER_CLOSED.getSQLState()
+        || sqlState == SQLState::THRIFT_PROTOCOL_ERROR.getSQLState()) {
+      return;
+    }
+    try {
+      LogWriter::error() << "Exception in destructor of " << operation << ": "
+          << stack(sqle);
+    } catch (...) {
+      std::cerr << "FAILURE in logging SQLException in destructor of "
+          << operation << std::endl;
+    }
+  } catch (const std::exception &se) {
+    // ignore transport and protocol exceptions due to other side failing
+    if (!dynamic_cast<const transport::TTransportException*>(&se)
+        && !dynamic_cast<const protocol::TProtocolException*>(&se)) {
+      try {
+        LogWriter::error() << "Exception in destructor of " << operation << ": "
+            << stack(se);
+      } catch (...) {
+        std::cerr << "FAILURE in logging std::exception in destructor of "
+            << operation << std::endl;
+      }
+    }
   } catch (...) {
     try {
-      std::cerr << "FAILURE in logging during exception in destructor of "
-          << operation << ": " << stack(sqle);
+      LogWriter::error() << "Unknown exception in destructor of " << operation;
     } catch (...) {
-      std::cerr << "FAILURE in logging an exception in destructor of "
+      std::cerr << "FAILURE in logging unknown exception in destructor of "
           << operation << std::endl;
     }
   }
-}
-
-void Utils::handleExceptionInDestructor(const char* operation,
-    const std::exception& se) {
-  // ignore transport and protocol exceptions due to other side failing
-  if (!dynamic_cast<const transport::TTransportException*>(&se)
-      && !dynamic_cast<const protocol::TProtocolException*>(&se)) {
-    LogWriter::error() << "Exception in destructor of " << operation << ": "
-        << stack(se);
-  }
-}
-
-void Utils::handleExceptionInDestructor(const char* operation) {
-  LogWriter::error() << "Unknown exception in destructor of " << operation;
 }
 
 std::ostream& operator <<(std::ostream& out, const wchar_t* wstr) {

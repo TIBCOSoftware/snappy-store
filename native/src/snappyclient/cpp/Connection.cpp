@@ -675,13 +675,7 @@ void Connection::close() {
 Connection::~Connection() {
   // destructor should *never* throw an exception
   // TODO: close from destructor should use bulkClose if valid handle
-  try {
+  Utils::handleExceptionsInDestructor("connection", [&]() {
     close();
-  } catch (const SQLException& sqle) {
-    Utils::handleExceptionInDestructor("connection", sqle);
-  } catch (const std::exception& stde) {
-    Utils::handleExceptionInDestructor("connection", stde);
-  } catch (...) {
-    Utils::handleExceptionInDestructor("connection");
-  }
+  });
 }

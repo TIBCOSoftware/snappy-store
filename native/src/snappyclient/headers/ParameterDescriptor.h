@@ -53,7 +53,7 @@ namespace client {
     MODE_OUT = 4
   };
 
-  class ParameterDescriptor: public ColumnDescriptorBase {
+  class ParameterDescriptor final : public ColumnDescriptorBase {
   private:
     ParameterDescriptor(thrift::ColumnDescriptor& descriptor,
         const uint32_t parameterIndex) :

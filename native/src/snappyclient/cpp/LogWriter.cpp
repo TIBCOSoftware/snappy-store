@@ -308,7 +308,7 @@ void LogWriter::initialize(const std::string& logFile,
   }
 }
 
-void LogWriter::close() {
+void LogWriter::close() noexcept {
   std::ostream* oldOut = m_rawStream.get();
   if (oldOut) {
     try {

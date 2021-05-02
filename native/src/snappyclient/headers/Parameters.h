@@ -94,6 +94,9 @@ namespace client {
 
     Parameters(const PreparedStatement& pstmt);
 
+    virtual ~Parameters() {
+    }
+
     Parameters& setBoolean(uint32_t paramNum, const bool v) {
       return set(paramNum, v);
     }

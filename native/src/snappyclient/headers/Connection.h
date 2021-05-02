@@ -67,7 +67,7 @@ namespace client {
    * the attribute name passed when creating a {@link Connection},
    * help message, possible values and flags for the attribute.
    */
-  class ConnectionProperty {
+  class ConnectionProperty final {
   private:
     /** name of the connection property */
     std::string m_propName;
@@ -158,7 +158,7 @@ namespace client {
     }
   };
 
-  class Connection {
+  class Connection final {
   private:
     std::shared_ptr<ClientService> m_service;
     std::unique_ptr<SQLWarning> m_warnings;

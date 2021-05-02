@@ -69,7 +69,7 @@ namespace client {
     }
 
   public:
-    ~ColumnDescriptorBase() {
+    virtual ~ColumnDescriptorBase() {
     }
 
     /**

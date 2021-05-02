@@ -53,7 +53,7 @@ namespace snappydata {
 namespace client {
 namespace types {
 
-  class Decimal {
+  class Decimal final {
   private:
     void initializeBigInteger(const int8_t signum,
         const int8_t* magnitude, const size_t maglen, const bool bigEndian);

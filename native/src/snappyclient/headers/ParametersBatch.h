@@ -49,7 +49,7 @@ namespace io {
 namespace snappydata {
 namespace client {
 
-  class ParametersBatch {
+  class ParametersBatch final {
   private:
     std::vector<thrift::Row> m_batch;
     const size_t m_numParams;

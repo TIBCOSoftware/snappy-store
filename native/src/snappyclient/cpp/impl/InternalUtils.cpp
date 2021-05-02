@@ -100,3 +100,32 @@ boost::filesystem::path InternalUtils::getPath(const std::string& pathStr) {
 #endif
   return boost::filesystem::path(pathStr);
 }
+
+void InternalUtils::splitCSV(const std::string &csv,
+    std::function<void(const std::string&)> proc) {
+  const size_t csvLen = csv.size();
+  if (csvLen > 0) {
+    uint32_t start = 0;
+    std::locale currLocale;
+    // skip leading spaces, if any
+    while (start < csvLen && std::isspace(csv[start], currLocale)) {
+      start++;
+    }
+    uint32_t current = start;
+    while (current < csvLen) {
+      if (csv[current] != ',') {
+        current++;
+      } else {
+        proc(csv.substr(start, current - start));
+        start = ++current;
+      }
+    }
+    // skip trailing spaces, if any
+    while (current > start && std::isspace(csv[current], currLocale)) {
+      current--;
+    }
+    if (current > start) {
+      proc(csv.substr(start, current - start));
+    }
+  }
+}

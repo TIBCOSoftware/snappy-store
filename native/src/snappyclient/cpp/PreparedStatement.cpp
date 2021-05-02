@@ -255,13 +255,7 @@ void PreparedStatement::close() {
 PreparedStatement::~PreparedStatement() {
   // destructor should *never* throw an exception
   // TODO: close from destructor should use bulkClose if valid handle
-  try {
+  Utils::handleExceptionsInDestructor("prepared statement", [&]() {
     close();
-  } catch (const SQLException& sqle) {
-    Utils::handleExceptionInDestructor("prepared statement", sqle);
-  } catch (const std::exception& stde) {
-    Utils::handleExceptionInDestructor("prepared statement", stde);
-  } catch (...) {
-    Utils::handleExceptionInDestructor("prepared statement");
-  }
+  });
 }

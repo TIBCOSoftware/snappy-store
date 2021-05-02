@@ -42,14 +42,12 @@ namespace io {
 namespace snappydata {
 
   /** Singleton system-wide shared properties. This class is thread-safe. */
-  class SystemProperties {
+  class SystemProperties final {
   private:
     /** disabled default, copy constructor and assignment operator */
-    SystemProperties();
-    SystemProperties(const SystemProperties&);
-    SystemProperties& operator=(const SystemProperties&);
-
-    ~SystemProperties();
+    SystemProperties() = delete;
+    SystemProperties(const SystemProperties&) = delete;
+    SystemProperties& operator=(const SystemProperties&) = delete;
 
   public:
 

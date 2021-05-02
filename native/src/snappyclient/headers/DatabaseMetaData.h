@@ -54,7 +54,7 @@ namespace client {
     ROWID_VALID_FOREVER = thrift::RowIdLifetime::ROWID_VALID_FOREVER
   };
 
-  class DatabaseMetaDataArgs {
+  class DatabaseMetaDataArgs final {
   private:
     thrift::ServiceMetaDataArgs m_args;
 
@@ -97,7 +97,7 @@ namespace client {
     DatabaseMetaDataArgs& setType(const SQLType& type);
   };
 
-  class DatabaseMetaData {
+  class DatabaseMetaData final {
   private:
     thrift::ServiceMetaData m_metadata;
 

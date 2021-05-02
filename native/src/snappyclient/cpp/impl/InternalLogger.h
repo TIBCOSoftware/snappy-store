@@ -46,10 +46,9 @@ namespace snappydata {
 namespace client {
 namespace impl {
 
-  class InternalLogger {
+  class InternalLogger final {
   private:
     InternalLogger() = delete; // no instance
-	~InternalLogger() = delete; // no instance
     InternalLogger(const InternalLogger&) = delete; // no instance
     InternalLogger& operator=(const InternalLogger&) = delete; // no instance
 

@@ -9,6 +9,8 @@
 #define SNAPPYDATA_STRUCT_HOSTADDRESS_H
 
 
+#include <sstream>
+
 #include "snappydata_struct_Decimal.h"
 #include "snappydata_struct_BlobChunk.h"
 #include "snappydata_struct_ClobChunk.h"
@@ -88,6 +90,12 @@ class HostAddress {
   uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
 
   virtual void printTo(std::ostream& out) const;
+
+  std::string toString() const {
+    std::ostringstream os;
+    printTo(os);
+    return os.str();
+  }
 };
 
 void swap(HostAddress &a, HostAddress &b);

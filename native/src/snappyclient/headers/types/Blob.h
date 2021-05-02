@@ -47,7 +47,7 @@ namespace snappydata {
 namespace client {
 namespace types {
 
-  class Blob : public LobBase {
+  class Blob final : public LobBase {
   public:
     Blob();
     ~Blob();

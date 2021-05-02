@@ -107,7 +107,7 @@ public:
     return *this;
   }
 
-  virtual ~Row();
+  virtual ~Row() noexcept;
 
   void clearChangedColumns();
 

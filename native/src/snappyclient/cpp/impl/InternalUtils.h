@@ -39,6 +39,8 @@
 #include "Types.h"
 #include "ClientService.h"
 
+#include <functional>
+
 #include <boost/chrono/system_clocks.hpp>
 #include <boost/chrono/thread_clock.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -67,7 +69,7 @@ namespace impl {
   typedef boost::chrono::high_resolution_clock::duration NanoDurationThread;
 #endif
 
-  class InternalUtils {
+  class InternalUtils final {
   public:
     /** array to convert bytes to hex */
     static const char s_hexDigits[];
@@ -90,30 +92,14 @@ namespace impl {
     static boost::filesystem::path getPath(const std::string& pathStr);
 
     /**
-     * Generic functor to add the split strings as per splitCSV
-     * call into a collection.
-     */
-    template<typename TCOLL>
-    struct CollectStrings {
-      TCOLL& m_strings;
-
-      CollectStrings(TCOLL& strings) : m_strings(strings) {
-      }
-
-      void operator()(const std::string& str) {
-        m_strings.insert(m_strings.end(), str);
-      }
-    };
-
-    /**
      * Invoke a given functor for each string in a comma separated
      * list of strings.
      */
-    template<typename TPROC>
-    static void splitCSV(const std::string& csv, TPROC& proc);
+    static void splitCSV(const std::string &csv,
+        std::function<void(const std::string&)> proc);
 
     template<typename TPROC>
-    static void toHexString(const char* bytes, const size_t bytesLen,
+    static void toHexString(const char *bytes, const size_t bytesLen,
         TPROC& proc);
 
     static boost::posix_time::ptime convertEpochSecsToPosixTime(
@@ -130,7 +116,6 @@ namespace impl {
 
   private:
     InternalUtils() = delete; // no instances
-    ~InternalUtils() = delete; // no instances
     InternalUtils(const InternalUtils&) = delete; // no instances
     InternalUtils operator=(const InternalUtils&) = delete; // no instances
 
@@ -139,7 +124,7 @@ namespace impl {
     friend class ClientService;
   };
 
-  class FreePointer {
+  class FreePointer final {
   private:
     void* m_p;
 
@@ -155,7 +140,7 @@ namespace impl {
     }
 
     ~FreePointer() {
-      if (m_p != 0) {
+      if (m_p) {
         ::free(m_p);
       }
     }
@@ -185,36 +170,6 @@ void io::snappydata::client::impl::InternalUtils::toHexString(
     for (size_t index = 0; index < bytesLen; index++) {
       proc(s_hexDigits[(bytes[index] >> 4) & 0x0f]);
       proc(s_hexDigits[bytes[index] & 0x0f]);
-    }
-  }
-}
-
-template<typename TPROC>
-void io::snappydata::client::impl::InternalUtils::splitCSV(
-    const std::string& csv, TPROC& proc) {
-  const size_t csvLen = csv.size();
-  if (csvLen > 0) {
-    uint32_t start = 0;
-    std::locale currLocale;
-    // skip leading spaces, if any
-    while (start < csvLen && std::isspace(csv[start], currLocale)) {
-      start++;
-    }
-    uint32_t current = start;
-    while (current < csvLen) {
-      if (csv[current] != ',') {
-        current++;
-      } else {
-        proc(csv.substr(start, current - start));
-        start = ++current;
-      }
-    }
-    // skip trailing spaces, if any
-    while (current > start && std::isspace(csv[current], currLocale)) {
-      current--;
-    }
-    if (current > start) {
-      proc(csv.substr(start, current - start));
     }
   }
 }

@@ -81,19 +81,22 @@ using namespace io::snappydata::client;
 using namespace io::snappydata::client::impl;
 
 namespace _snappy_impl {
-  struct CollectHostAddresses {
-    std::vector<thrift::HostAddress>& m_connHosts;
 
-    void operator()(const std::string& str) {
-      std::string host;
-      int port;
-      thrift::HostAddress hostAddr;
+struct CollectHostAddresses final {
+  std::vector<thrift::HostAddress> &m_connHosts;
 
-      Utils::getHostPort(str, host, port);
-      Utils::getHostAddress(host, port, hostAddr);
-      m_connHosts.push_back(hostAddr);
-    }
-  };
+  void operator()(const std::string &str) {
+    std::string host;
+    int port;
+
+    size_t oldSize = m_connHosts.size();
+    m_connHosts.resize(oldSize + 1);
+    thrift::HostAddress &hostAddr = m_connHosts[oldSize];
+    Utils::getHostPort(str, host, port);
+    Utils::getHostAddress(host, port, hostAddr);
+  }
+};
+
 }
 
 bool thrift::HostAddress::operator <(const HostAddress& other) const {
@@ -138,7 +141,7 @@ bool ClientService::globalInitialize() {
 #else
     s_hostId = std::to_string(::getpid());
 #endif
-    s_hostId.append(1, '|');
+    s_hostId.push_back('|');
     boost::posix_time::ptime currentTime =
         boost::posix_time::microsec_clock::universal_time();
     s_hostId.append(boost::posix_time::to_simple_string(currentTime));
@@ -194,33 +197,33 @@ void ClientService::staticInitialize(
   }
 }
 
-void ClientService::checkConnection(const char* op) {
-  protocol::TProtocol* protocol = m_client.getProtocol();
+void ClientService::checkConnection(const char *op) {
+  protocol::TProtocol *protocol = m_client.getProtocol();
   std::shared_ptr<transport::TTransport> transport;
   if (!protocol || !(transport = protocol->getTransport())
       || !transport->isOpen()) {
-    std::ostringstream server;
-    Utils::toStream(server, m_currentHostAddr);
     throw GET_SQLEXCEPTION2(SQLStateMessage::NO_CURRENT_CONNECTION_MSG2,
-        server.str().c_str(), op);
+        m_currentHostAddr.toString().c_str(), op);
   }
 }
 
 void ClientService::handleStdException(const char* op,
     const std::exception& stde) {
+  checkConnection(op);
+
   std::ostringstream reason;
-  reason << "(Server=";
-  Utils::toStream(reason, m_currentHostAddr) << ", operation=" << op << ") ";
-  Utils::toStream(reason, stde);
+  reason << "(Server=" << m_currentHostAddr << ", operation=" << op << ") "
+      << stde;
   throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, reason.str());
 }
 
 void ClientService::handleUnknownException(const char* op) {
   checkConnection(op);
 
-  std::string reason;
-  reason.append("Unknown exception in operation ").append(op);
-  throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, reason.c_str());
+  std::ostringstream reason;
+  reason << "Unknown exception (Server=" << m_currentHostAddr << ", operation="
+      << op << ')';
+  throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, reason.str());
 }
 
 void ClientService::handleSnappyException(const char* op, bool tryFailover,
@@ -324,16 +327,14 @@ void ClientService::handleTException(const char* op, bool tryFailover,
 
 void ClientService::throwSQLExceptionForNodeFailure(const char* op,
     const std::exception& se) {
-  std::ostringstream hostAddrStr;
-  Utils::toStream(hostAddrStr, m_currentHostAddr);
   if (m_isolationLevel == IsolationLevel::NONE) {
     // throw X0Z01 for this case
     throw GET_SQLEXCEPTION2(SQLStateMessage::SNAPPY_NODE_SHUTDOWN_MSG,
-        hostAddrStr.str().c_str(), se, op);
+        m_currentHostAddr.toString().c_str(), se, op);
   } else {
     // throw 40XD0 for this case
     throw GET_SQLEXCEPTION2(SQLStateMessage::DATA_CONTAINER_CLOSED_MSG,
-        hostAddrStr.str().c_str(), se, op);
+        m_currentHostAddr.toString().c_str(), se, op);
   }
 }
 
@@ -404,20 +405,20 @@ ClientService::ClientService(const std::string& host, const int port,
     // read the server groups to use for connection
     if ((propValue = props.find(ClientAttribute::SERVER_GROUPS))
         != props.end()) {
-      InternalUtils::CollectStrings<typename std::set<std::string> > cs(
-          m_serverGroups);
-      InternalUtils::splitCSV(propValue->second, cs);
+      InternalUtils::splitCSV(propValue->second, [&](const std::string &s) {
+        m_serverGroups.insert(s);
+      });
       props.erase(propValue);
     }
 
-    // read the AQP properties
+    // read and verify the AQP properties
     if ((propValue = props.find(ClientAttribute::AQP_ERROR)) != props.end()) {
       try {
         double errorVal = boost::lexical_cast<double>(propValue->second);
         if (errorVal < 0.0 || errorVal > 1.0) {
+          props.erase(propValue);
           throw std::invalid_argument(":Invalid AQP Error value:");
         }
-        props.erase(propValue);
       } catch (const boost::bad_lexical_cast& ex) {
         props.erase(propValue);
         throw ex;
@@ -428,18 +429,19 @@ ClientService::ClientService(const std::string& host, const int port,
       try {
         double errorVal = boost::lexical_cast<double>(propValue->second);
         if (errorVal < 0.0 || errorVal > 1.0) {
+          props.erase(propValue);
           throw std::invalid_argument(":Invalid AQP Confidence value:");
         }
-        props.erase(propValue);
       } catch (const boost::bad_lexical_cast& ex) {
+        props.erase(propValue);
         throw ex;
       }
     }
     if ((propValue = props.find(ClientAttribute::AQP_BEHAVIOR)) != props.end()) {
       if (propValue->second.empty()) {
+        props.erase(propValue);
         throw std::invalid_argument(":Invalid AQP Behavior value:");
       }
-      props.erase(propValue);
     }
     // now check for the protocol details like SSL etc
     // and reqd snappyServerType
@@ -583,22 +585,15 @@ void ClientService::openConnection(thrift::HostAddress& hostAddr,
 }
 
 void ClientService::destroyTransport() noexcept {
-  // destructor should *never* throw an exception
-  try {
-    ClientTransport* transport = m_transport.get();
+  Utils::handleExceptionsInDestructor("connection service", [&]() {
+    ClientTransport *transport = m_transport.get();
     if (transport) {
       if (transport->isTransportOpen()) {
         transport->closeTransport();
       }
       m_transport = nullptr;
     }
-  } catch (const SQLException& sqle) {
-    Utils::handleExceptionInDestructor("connection service", sqle);
-  } catch (const std::exception& stde) {
-    Utils::handleExceptionInDestructor("connection service", stde);
-  } catch (...) {
-    Utils::handleExceptionInDestructor("connection service");
-  }
+  });
 }
 
 ClientService::~ClientService() {
@@ -1747,20 +1742,20 @@ void ClientService::bulkClose(const std::vector<thrift::EntityId>& entities) {
 
     m_client.bulkClose(entities);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("closeResultSet", false, true, false, failedServers,
+    handleSnappyException("bulkClose", false, true, false, failedServers,
         sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("closeResultSet", false, true, false,
+    handleTTransportException("bulkClose", false, true, false,
         failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("closeResultSet", false, true, false,
+    handleTProtocolException("bulkClose", false, true, false,
         failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("closeResultSet", false, true, false, failedServers, te);
+    handleTException("bulkClose", false, true, false, failedServers, te);
   } catch (const std::exception& stde) {
-    handleStdException("closeResultSet", stde);
+    handleStdException("bulkClose", stde);
   } catch (...) {
-    handleUnknownException("closeResultSet");
+    handleUnknownException("bulkClose");
   }
 }
 
@@ -1769,6 +1764,7 @@ void ClientService::close() {
   try {
     std::lock_guard<std::mutex> sync(m_lock);
 
+    m_isOpen = false;
     ClientTransport* transport = m_transport.get();
     if (transport) {
       m_client.closeConnection(m_connId, true, m_token);
@@ -1825,18 +1821,14 @@ void ClientService::newSnappyExceptionForConnectionClose(const char* op,
     }
     throw GET_SQLEXCEPTION(snappyEx);
   }
-  std::ostringstream server;
-  Utils::toStream(server, source);
   throw GET_SQLEXCEPTION2(SQLStateMessage::NO_CURRENT_CONNECTION_MSG2,
-      server.str().c_str(), op);
+      source.toString().c_str(), op);
 }
 
 void ClientService::newSnappyExceptionForConnectionClose(const char* op,
     const thrift::HostAddress& source) {
-  std::ostringstream server;
-  Utils::toStream(server, source);
   throw GET_SQLEXCEPTION2(SQLStateMessage::NO_CURRENT_CONNECTION_MSG2,
-      server.str().c_str(), op);
+      source.toString().c_str(), op);
 }
 
 void ClientService::tryCreateNewConnection(thrift::HostAddress source,

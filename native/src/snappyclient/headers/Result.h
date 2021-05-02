@@ -55,7 +55,7 @@ namespace io {
 namespace snappydata {
 namespace client {
 
-  class Result {
+  class Result final {
   private:
     std::shared_ptr<ClientService> m_service;
     StatementAttributes m_attrs;

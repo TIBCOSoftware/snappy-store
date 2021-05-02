@@ -49,13 +49,14 @@ extern "C" {
 }
 
 #include <exception>
+#include <functional>
 #include <typeinfo>
 
 namespace io {
 namespace snappydata {
 
 namespace functor {
-  struct WriteStream {
+  struct WriteStream final {
     std::ostream& m_out;
 
     inline void operator()(char c) {
@@ -66,7 +67,7 @@ namespace functor {
     }
   };
 
-  struct WriteString {
+  struct WriteString final {
     std::string& m_str;
 
     inline void operator()(char c) {
@@ -80,7 +81,7 @@ namespace functor {
 
 /** used to destroy arrays on end of a block */
 template<typename ARR_TYPE>
-class DestroyArray {
+class DestroyArray final {
 private:
   const ARR_TYPE* m_arr;
 
@@ -94,13 +95,13 @@ public:
 
 namespace client {
 
-  union float2int_ {
+  union float2int_ final {
     float m_f;
     int32_t m_i32;
   };
 
   /** For I/O manipulator to get hex string. */
-  struct _SqleHex {
+  struct _SqleHex final {
     const std::string& m_str;
   };
 
@@ -110,7 +111,7 @@ namespace client {
     return h;
   }
 
-  class Utils {
+  class Utils final {
   public:
     static const char* getSQLTypeName(const thrift::ColumnValue& cv);
 
@@ -204,16 +205,15 @@ namespace client {
     static void toHexString(const char* bytes, const size_t bytesLen,
         std::string& result);
 
-    template<typename TPROC>
-    static bool convertUTF8ToUTF16(const char* utf8Chars,
-        const long utf8Len, TPROC& process);
+    static bool convertUTF8ToUTF16(const char *utf8Chars, const long utf8Len,
+        std::function<void(int)> process);
 
     static bool convertUTF8ToUTF16(const char *utf8Chars, const long utf8Len,
         std::u16string &result);
 
-    template<typename TWCHAR, typename TPROC>
-    static void convertUTF16ToUTF8(const TWCHAR* utf16Chars,
-        const long utf16Len, TPROC& process);
+    template<typename TWCHAR>
+    static void convertUTF16ToUTF8(const TWCHAR *utf16Chars, const long utf16Len,
+        std::function<void(char)> process);
 
     static void convertByteToString(const int8_t v, std::string& result);
     static void convertShortToString(const int16_t v, std::string& result);
@@ -224,12 +224,6 @@ namespace client {
         const size_t precision = DEFAULT_REAL_PRECISION);
     static void convertDoubleToString(const double v, std::string& result,
         const size_t precision = DEFAULT_REAL_PRECISION);
-
-    static std::ostream& toStream(std::ostream& out,
-        const thrift::HostAddress& hostAddr);
-
-    static std::ostream& toStream(std::ostream& out,
-        const std::exception& stde);
 
     static std::string toString(const std::exception& stde);
 
@@ -255,17 +249,13 @@ namespace client {
     static void demangleTypeName(const char* typeIdName,
         std::ostream& out);
 
-    static void handleExceptionInDestructor(const char* operation,
-        const SQLException& sqle);
-    static void handleExceptionInDestructor(const char* operation,
-        const std::exception& stde);
-    static void handleExceptionInDestructor(const char* operation);
+    static void handleExceptionsInDestructor(const char *operation,
+        std::function<void()> body) noexcept;
 
   private:
-    Utils(); // no instances
-    ~Utils(); // no instances
-    Utils(const Utils&);
-    Utils operator=(const Utils&);
+    Utils() = delete; // no instances
+    Utils(const Utils&) = delete;
+    Utils operator=(const Utils&) = delete;
   };
 
   /**
@@ -294,64 +284,9 @@ namespace client {
 // TODO: SW: check all the UTF8 conversions as to how they conform with
 // C standard way for surrogate chars like in Java
 
-template<typename TPROC>
-bool io::snappydata::client::Utils::convertUTF8ToUTF16(
-  const char* utf8Chars, const long utf8Len, TPROC& process) {
-  const char* endChars = (utf8Len < 0) ? nullptr : (utf8Chars + utf8Len);
-  bool nonASCII = false;
-  int ch;
-  while ((!endChars || utf8Chars < endChars)
-      && (ch = (*utf8Chars++ & 0xFF)) != 0) {
-    // get next byte unsigned
-    const int k = (ch >> 5);
-    // classify based on the high order 3 bits
-    switch (k) {
-      case 6: {
-        // two byte encoding
-        // 110yyyyy 10xxxxxx
-        // use low order 6 bits
-        const int y = ch & 0x1F;
-        // use low order 6 bits of the next byte
-        // It should have high order bits 10, which we don't check.
-        const int x = *utf8Chars++ & 0x3F;
-        // 00000yyy yyxxxxxx
-        process(y << 6 | x);
-        nonASCII = true;
-        break;
-      }
-      case 7: {
-        // three byte encoding
-        // 1110zzzz 10yyyyyy 10xxxxxx
-        //assert ( b & 0x10 )
-        //     == 0 : "UTF8Decoder does not handle 32-bit characters";
-        // use low order 4 bits
-        const int z = ch & 0x0F;
-        // use low order 6 bits of the next byte
-        // It should have high order bits 10, which we don't check.
-        const int y = *utf8Chars++ & 0x3F;
-        // use low order 6 bits of the next byte
-        // It should have high order bits 10, which we don't check.
-        const int x = *utf8Chars++ & 0x3F;
-        // zzzzyyyy yyxxxxxx
-        process(z << 12 | y << 6 | x);
-        nonASCII = true;
-        break;
-      }
-      default:
-        // one byte encoding
-        // 0xxxxxxx
-        // use just low order 7 bits
-        // 00000000 0xxxxxxx
-        process(ch & 0x7F);
-        break;
-    }
-  }
-  return nonASCII;
-}
-
-template<typename TWCHAR, typename TPROC>
-void io::snappydata::client::Utils::convertUTF16ToUTF8(
-  const TWCHAR* utf16Chars, const long utf16Len, TPROC& process) {
+template<typename TWCHAR>
+void io::snappydata::client::Utils::convertUTF16ToUTF8(const TWCHAR *utf16Chars,
+    const long utf16Len, std::function<void(char)> process) {
   const TWCHAR* endChars = utf16Len < 0 ? nullptr : (utf16Chars + utf16Len);
   TWCHAR wch;
   while ((!endChars || utf16Chars < endChars) && (wch = *utf16Chars++) != 0) {

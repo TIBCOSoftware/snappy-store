@@ -191,7 +191,7 @@ public:
   }
 };
 
-class ColumnValue {
+class ColumnValue final {
 private:
   // Types below should exactly match the types and be in the same order as in
   // snappydata.thrift for ColumnValue

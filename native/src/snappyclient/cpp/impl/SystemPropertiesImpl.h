@@ -44,7 +44,7 @@ namespace io {
 namespace snappydata {
 namespace impl {
 
-  class SystemPropertiesImpl {
+  class SystemPropertiesImpl final {
   private:
     ThreadSafeMap<std::string, std::string> m_props;
 

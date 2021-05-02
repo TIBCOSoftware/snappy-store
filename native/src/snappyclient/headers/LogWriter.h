@@ -54,11 +54,11 @@ namespace client {
 
   class LogWriter;
 
-  struct LogLevel {
+  class LogLevel final {
   private:
-    LogLevel(); // no instance
-    LogLevel(const LogLevel&); // no constructor
-    LogLevel& operator=(const LogLevel&); // no assignment
+    LogLevel() = delete; // no instance
+    LogLevel(const LogLevel&) = delete; // no constructor
+    LogLevel& operator=(const LogLevel&) = delete; // no assignment
 
   public:
     enum type {
@@ -115,7 +115,7 @@ namespace client {
         const LogWriter& logger);
   };
 
-  struct TraceFlag {
+  class TraceFlag final {
   private:
     TraceFlag(const LogLevel&) = delete; // no copy constructor
     TraceFlag& operator=(const LogLevel&) = delete; // no assignment
@@ -225,7 +225,7 @@ namespace client {
     LogWriter(std::ostream* logStream, const std::string& logFile,
         const LogLevel::type logLevel);
 
-    ~LogWriter();
+    virtual ~LogWriter();
 
     static const int DEFAULT_BUFSIZE = 16 * 1024;
 
@@ -242,7 +242,7 @@ namespace client {
     void initialize(const std::string& logFile,
         const LogLevel::type logLevel, bool overwrite = false);
 
-    void close();
+    void close() noexcept;
 
     std::ostream& getRawStream();
 

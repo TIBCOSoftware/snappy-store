@@ -264,7 +264,7 @@ std::ostream& operator<<(std::ostream& out, _SqleStack s) {
 }
 
 std::ostream& operator<<(std::ostream& out, const std::exception& stde) {
-  return Utils::toStream(out, stde);
+  return out << Utils::toString(stde);
 }
 
 std::ostream& operator<<(std::ostream& out, _StdeStack s) {

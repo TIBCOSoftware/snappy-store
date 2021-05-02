@@ -100,7 +100,7 @@ bool ResultSet::moveToRowSet(int32_t offset, int32_t batchSize,
   return !m_rowData.empty();
 }
 
-struct ClearUpdates {
+struct ClearUpdates final {
 private:
   UpdatableRow* m_row;
 
@@ -359,13 +359,7 @@ void ResultSet::close(bool closeStatement) {
 ResultSet::~ResultSet() {
   // destructor should *never* throw an exception
   // TODO: close from destructor should use bulkClose if valid handle
-  try {
+  Utils::handleExceptionsInDestructor("result set", [&]() {
     close(false);
-  } catch (const SQLException& sqle) {
-    Utils::handleExceptionInDestructor("result set", sqle);
-  } catch (const std::exception& stde) {
-    Utils::handleExceptionInDestructor("result set", stde);
-  } catch (...) {
-    Utils::handleExceptionInDestructor("result set");
-  }
+  });
 }

@@ -137,7 +137,7 @@ void BufferedClientTransport::writeSlow(const uint8_t* buf, uint32_t len) {
 }
 
 namespace _snappy_impl {
-  struct PositionInit {
+  struct PositionInit final {
     BufferedClientTransport& m_trans;
 
     PositionInit(BufferedClientTransport& trans) : m_trans(trans) {

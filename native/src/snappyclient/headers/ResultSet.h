@@ -49,7 +49,7 @@ namespace io {
 namespace snappydata {
 namespace client {
 
-  class ResultSet {
+  class ResultSet final {
   private:
     thrift::RowSet* m_rows;
     std::vector<UpdatableRow> m_rowData;
@@ -123,7 +123,7 @@ namespace client {
     void cleanupRS();
 
     template<typename TRow, typename TRowP, bool updatable>
-    class Itr {
+    class Itr final {
     private:
       ResultSet* m_resultSet;
       thrift::RowSet* m_rows;
@@ -688,7 +688,7 @@ namespace client {
 
     void close(bool closeStatement);
 
-    virtual ~ResultSet();
+    ~ResultSet();
 
   private:
     static const const_iterator ITR_END_CONST;

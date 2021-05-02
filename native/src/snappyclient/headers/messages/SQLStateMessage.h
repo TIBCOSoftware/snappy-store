@@ -48,7 +48,7 @@ namespace client {
     class ClientService;
   }
 
-  class SQLStateMessage {
+  class SQLStateMessage final {
   private:
     // no constructors or default operators
     SQLStateMessage() = delete;

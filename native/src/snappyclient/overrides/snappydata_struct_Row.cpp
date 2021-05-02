@@ -158,7 +158,7 @@ Row& Row::operator=(const Row& other) {
   return *this;
 }
 
-Row::~Row() {
+Row::~Row() noexcept {
   if (m_changedColumns) {
     delete m_changedColumns;
     m_changedColumns = nullptr;
