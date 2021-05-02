@@ -263,14 +263,15 @@ std::unique_ptr<ResultSet> ResultSet::getNextResults(
   checkOpen("getNextResults");
 
   if (m_rows->cursorId != thrift::snappydataConstants::INVALID_ID) {
-    thrift::RowSet* rs = new thrift::RowSet();
+    std::unique_ptr<thrift::RowSet> rs(new thrift::RowSet());
     m_service->getNextResultSet(*rs, m_rows->cursorId,
         static_cast<int8_t>(behaviour));
     std::unique_ptr<ResultSet> resultSet(
-        new ResultSet(rs, m_service, m_attrs, m_batchSize, m_updatable,
+        new ResultSet(rs.get(), m_service, m_attrs, m_batchSize, m_updatable,
             m_scrollable));
+    rs.release();
     // check for empty ResultSet
-    if (rs->metadata.empty()) {
+    if (resultSet->getColumnCount() == 0) {
       return std::unique_ptr<ResultSet>(nullptr);
     } else {
       return resultSet;
@@ -295,10 +296,11 @@ std::unique_ptr<ResultSet> ResultSet::clone() const {
   checkOpen("clone");
   if (m_rows) {
     /* clone the contained object */
-    thrift::RowSet* rs = new thrift::RowSet(*m_rows);
+    std::unique_ptr<thrift::RowSet> rs(new thrift::RowSet(*m_rows));
     std::unique_ptr<ResultSet> resultSet(
-        new ResultSet(rs, m_service, m_attrs, m_batchSize, m_updatable,
+        new ResultSet(rs.get(), m_service, m_attrs, m_batchSize, m_updatable,
             m_scrollable, true /* isOwner */));
+    rs.release();
     if (m_descriptors) {
       resultSet->m_descriptors = new std::vector<thrift::ColumnDescriptor>(
           *m_descriptors);

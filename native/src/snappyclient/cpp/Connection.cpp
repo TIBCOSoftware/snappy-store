@@ -395,17 +395,16 @@ std::unique_ptr<Result> Connection::execute(const std::string& sql,
     const StatementAttributes& attrs) {
   ClientService& service = checkAndGetService();
 
-  Result* result = new Result(m_service, attrs);
-  std::unique_ptr<Result> resultp(result);
+  std::unique_ptr<Result> result(new Result(m_service, attrs));
   if (outputParams.size() == 0) {
     service.execute(result->m_result, sql, EMPTY_OUT_PARAMS,
         attrs.getAttrs());
-    return resultp;
+    return result;
   } else {
     std::map<int32_t, thrift::OutputParameter> resultOutParams;
     convertOutputParameters(outputParams, resultOutParams);
     service.execute(result->m_result, sql, resultOutParams, attrs.getAttrs());
-    return resultp;
+    return result;
   }
 }
 
@@ -417,10 +416,12 @@ std::unique_ptr<ResultSet> Connection::executeQuery(const std::string& sql,
   bool updatable, scrollable;
   Result::getResultSetArgs(attrs, batchSize, updatable, scrollable);
 
-  thrift::RowSet* rs = new thrift::RowSet();
+  std::unique_ptr<thrift::RowSet> rs(new thrift::RowSet());
   service.executeQuery(*rs, sql, attrs.getAttrs());
   std::unique_ptr<ResultSet> result(
-      new ResultSet(rs, m_service, attrs, batchSize, updatable, scrollable));
+      new ResultSet(rs.get(), m_service, attrs, batchSize, updatable,
+          scrollable));
+  rs.release();
   return result;
 }
 
@@ -610,11 +611,12 @@ std::unique_ptr<ResultSet> Connection::getSchemaMetaData(
     const DatabaseMetaDataCall method, DatabaseMetaDataArgs& args) {
   ClientService& service = checkAndGetService();
 
-  thrift::RowSet* rs = new thrift::RowSet();
+  std::unique_ptr<thrift::RowSet> rs(new thrift::RowSet());
   args.m_args.driverType = static_cast<int8_t>(DRIVER_TYPE);
   service.getSchemaMetaData(*rs,
       static_cast<thrift::ServiceMetaDataCall::type>(method), args.m_args);
-  std::unique_ptr<ResultSet> resultSet(new ResultSet(rs, m_service));
+  std::unique_ptr<ResultSet> resultSet(new ResultSet(rs.get(), m_service));
+  rs.release();
   return resultSet;
 }
 
@@ -622,10 +624,11 @@ std::unique_ptr<ResultSet> Connection::getIndexInfo(
     DatabaseMetaDataArgs& args, bool unique, bool approximate) {
   ClientService& service = checkAndGetService();
 
-  thrift::RowSet* rs = new thrift::RowSet();
+  std::unique_ptr<thrift::RowSet> rs(new thrift::RowSet());
   args.m_args.driverType = static_cast<int8_t>(DRIVER_TYPE);
   service.getIndexInfo(*rs, args.m_args, unique, approximate);
-  std::unique_ptr<ResultSet> resultSet(new ResultSet(rs, m_service));
+  std::unique_ptr<ResultSet> resultSet(new ResultSet(rs.get(), m_service));
+  rs.release();
   return resultSet;
 }
 
@@ -634,7 +637,7 @@ std::unique_ptr<ResultSet> Connection::getUDTs(DatabaseMetaDataArgs& args,
     const std::vector<SQLType>& types) {
   ClientService& service = checkAndGetService();
 
-  thrift::RowSet* rs = new thrift::RowSet();
+  std::unique_ptr<thrift::RowSet> rs(new thrift::RowSet());
   args.m_args.driverType = static_cast<int8_t>(DRIVER_TYPE);
   std::vector<thrift::SnappyType::type> thriftTypes;
   thriftTypes.reserve(types.size());
@@ -642,7 +645,8 @@ std::unique_ptr<ResultSet> Connection::getUDTs(DatabaseMetaDataArgs& args,
     thriftTypes.push_back(static_cast<thrift::SnappyType::type>(type));
   }
   service.getUDTs(*rs, args.m_args, thriftTypes);
-  std::unique_ptr<ResultSet> resultSet(new ResultSet(rs, m_service));
+  std::unique_ptr<ResultSet> resultSet(new ResultSet(rs.get(), m_service));
+  rs.release();
   return resultSet;
 }
 
@@ -650,10 +654,11 @@ std::unique_ptr<ResultSet> Connection::getBestRowIdentifier(
     DatabaseMetaDataArgs& args, int32_t scope, bool nullable) {
   ClientService& service = checkAndGetService();
 
-  thrift::RowSet* rs = new thrift::RowSet();
+  std::unique_ptr<thrift::RowSet> rs(new thrift::RowSet());
   args.m_args.driverType = static_cast<int8_t>(DRIVER_TYPE);
   service.getBestRowIdentifier(*rs, args.m_args, scope, nullable);
-  std::unique_ptr<ResultSet> resultSet(new ResultSet(rs, m_service));
+  std::unique_ptr<ResultSet> resultSet(new ResultSet(rs.get(), m_service));
+  rs.release();
   return resultSet;
 }
 

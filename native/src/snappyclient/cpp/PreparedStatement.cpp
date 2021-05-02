@@ -137,7 +137,7 @@ std::unique_ptr<ResultSet> PreparedStatement::executeQuery(
   bool updatable, scrollable;
   Result::getResultSetArgs(m_attrs, batchSize, updatable, scrollable);
 
-  thrift::RowSet* rs = new thrift::RowSet();
+  std::unique_ptr<thrift::RowSet> rs(new thrift::RowSet());
   // resize the vectors to some reasonable values
   rs->rows.reserve(8);
   rs->metadata.reserve(16);
@@ -145,8 +145,9 @@ std::unique_ptr<ResultSet> PreparedStatement::executeQuery(
       m_attrs.getAttrs());
   m_cursorId = rs->cursorId;
   std::unique_ptr<ResultSet> resultSet(
-      new ResultSet(rs, m_service, m_attrs, batchSize, updatable,
+      new ResultSet(rs.get(), m_service, m_attrs, batchSize, updatable,
           scrollable));
+  rs.release();
   if (resultSet->hasWarnings()) {
     // set back in PreparedStatement
     m_warnings = resultSet->getWarnings();
@@ -178,15 +179,16 @@ std::unique_ptr<ResultSet> PreparedStatement::getNextResults(
     bool updatable, scrollable;
     Result::getResultSetArgs(m_attrs, batchSize, updatable, scrollable);
 
-    thrift::RowSet* rs = new thrift::RowSet();
+    std::unique_ptr<thrift::RowSet> rs(new thrift::RowSet());
     m_service->getNextResultSet(*rs, m_cursorId,
         static_cast<int8_t>(behaviour));
     m_cursorId = rs->cursorId;
     std::unique_ptr<ResultSet> resultSet(
-        new ResultSet(rs, m_service, m_attrs, batchSize, updatable,
+        new ResultSet(rs.get(), m_service, m_attrs, batchSize, updatable,
             scrollable));
+    rs.release();
     // check for empty ResultSet
-    if (rs->metadata.empty()) {
+    if (resultSet->getColumnCount() == 0) {
       return std::unique_ptr<ResultSet>(nullptr);
     } else {
       if (resultSet->hasWarnings()) {
