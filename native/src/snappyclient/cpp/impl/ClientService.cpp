@@ -127,12 +127,17 @@ bool ClientService::globalInitialize() {
     SQLState::staticInitialize();
     // then initialize the common message library
     SQLStateMessage::staticInitialize();
+    // static process/library addresses to enable manual translation
+    // of the addresses shown in the stacktrace
+    SQLException::staticInitialize();
     // dummy call to ensure ClientAttribute is loaded
     ClientAttribute::staticInitialize();
     // and the logger
     LogWriter::staticInitialize();
-    // lastly the ConnectionProperty class
+    // the ConnectionProperty class
     ConnectionProperty::staticInitialize();
+    // dummy call to ensure ControlConnection is loaded with its statics
+    // ControlConnection::staticInitialize();
 
     s_hostName = boost::asio::ip::host_name();
     // use process ID and timestamp for ID

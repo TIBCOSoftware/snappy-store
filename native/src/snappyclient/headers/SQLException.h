@@ -85,6 +85,8 @@ namespace client {
     // move constructor
     SQLException(SQLException&& other);
 
+    static void staticInitialize();
+
     virtual SQLException* clone() const;
 
     const std::string& getReason() const noexcept {
@@ -139,6 +141,9 @@ namespace client {
     virtual ~SQLException();
 
   protected:
+    static std::string s_processBaseAddress;
+    static std::string s_libraryBaseAddress;
+
     std::string m_reason;
     std::string m_state;
     int32_t m_severity;
@@ -286,10 +291,10 @@ namespace client {
   };
 
   /** For I/O manipulator to get the stack trace. */
-  struct _SqleStack {
+  struct _SqleStack final {
     const SQLException& m_sqle;
   };
-  struct _StdeStack {
+  struct _StdeStack final {
     const std::exception& m_stde;
   };
 

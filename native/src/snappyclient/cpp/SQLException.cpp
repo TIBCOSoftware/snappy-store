@@ -37,6 +37,8 @@
  * SQLException.cpp
  */
 
+#include <fstream>
+
 #include "SQLException.h"
 #include "Utils.h"
 #include "impl/InternalUtils.h"
@@ -44,6 +46,10 @@
 #include "thrift/snappydata_struct_SnappyException.h"
 
 extern "C" {
+#  ifndef _WINDOWS
+#    include <limits.h>
+#    include <unistd.h>
+#  endif
 #  ifdef __GNUC__
 #    include <execinfo.h>
 #  endif
@@ -51,6 +57,9 @@ extern "C" {
 
 using namespace io::snappydata;
 using namespace io::snappydata::client;
+
+std::string SQLException::s_processBaseAddress;
+std::string SQLException::s_libraryBaseAddress;
 
 SQLException::SQLException(const char* file, int line, const SQLState& state,
     const std::string& reason, SQLException* next) :
@@ -96,6 +105,37 @@ SQLException::SQLException(SQLException&& other) :
 #ifdef __GNUC__
   copyStack(other.m_stack, other.m_stackSize);
   other.m_stackSize = 0;
+#endif
+}
+
+void SQLException::staticInitialize() {
+#ifndef _WINDOWS
+  // initialize the process base address
+  char buffer[PATH_MAX];
+  int len = ::readlink("/proc/self/exe", buffer, PATH_MAX - 1);
+  if (len > 0) {
+    buffer[len] = '\0';
+    // search for the first instance of executable in /proc/self/maps
+    std::ifstream maps("/proc/self/maps");
+    if (maps.is_open()) {
+      std::string line;
+      while (std::getline(maps, line)) {
+        if (line.find(buffer) != std::string::npos) {
+          size_t addrEnd = line.find('-', 0);
+          if (addrEnd != std::string::npos) {
+            s_processBaseAddress.append(" 0x");
+            s_processBaseAddress.append(line.begin(), line.begin() + addrEnd);
+          }
+        } else if (line.find("snappyodbc") != std::string::npos) {
+          size_t addrEnd = line.find('-', 0);
+          if (addrEnd != std::string::npos) {
+            s_processBaseAddress.append(" 0x");
+            s_libraryBaseAddress.append(line.begin(), line.begin() + addrEnd);
+          }
+        }
+      }
+    }
+  }
 #endif
 }
 
@@ -194,6 +234,23 @@ std::ostream& SQLException::printStackTrace(std::ostream& out) const {
           out << "\tat " << stackStr;
         }
         out << _SNAPPY_NEWLINE;
+      }
+      bool hasBaseAddresses = false;
+      if (!s_processBaseAddress.empty()) {
+        out << "Process base addresses:" << s_processBaseAddress
+            << _SNAPPY_NEWLINE;
+        hasBaseAddresses = true;
+      }
+      if (!s_libraryBaseAddress.empty()) {
+        out << "ODBC library base addresses:" << s_libraryBaseAddress
+            << _SNAPPY_NEWLINE;
+        hasBaseAddresses = true;
+      }
+      if (hasBaseAddresses) {
+        out << "(Note: use addr2line/gdb to translate addresses shown in "
+            "square brackets to code file and line numbers after taking the "
+            "hex diff with the first base address of process or library)"
+            << _SNAPPY_NEWLINE;
       }
     }
   }
