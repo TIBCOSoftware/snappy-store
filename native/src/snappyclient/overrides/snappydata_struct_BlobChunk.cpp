@@ -42,7 +42,6 @@
 #include <thrift/protocol/TProtocol.h>
 #include <thrift/transport/TTransport.h>
 
-#include <thrift/stdcxx.h>
 #include "snappydata_struct_BlobChunk.h"
 
 #include <algorithm>
@@ -213,7 +212,7 @@ BlobChunk::BlobChunk(const BlobChunk& other4) {
   totalLength = other4.totalLength;
   __isset = other4.__isset;
 }
-BlobChunk::BlobChunk(BlobChunk&& other5) noexcept {
+BlobChunk::BlobChunk(BlobChunk&& other5) {
   chunk = std::move(other5.chunk);
   last = std::move(other5.last);
   lobId = std::move(other5.lobId);
@@ -230,7 +229,7 @@ BlobChunk& BlobChunk::operator=(const BlobChunk& other6) {
   __isset = other6.__isset;
   return *this;
 }
-BlobChunk& BlobChunk::operator=(BlobChunk&& other7) noexcept {
+BlobChunk& BlobChunk::operator=(BlobChunk&& other7) {
   chunk = std::move(other7.chunk);
   last = std::move(other7.last);
   lobId = std::move(other7.lobId);

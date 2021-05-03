@@ -6,7 +6,7 @@ set -e
 # version is updated then that code may also need to be updated correspondingly.
 
 if [ -z ${THRIFT_VERSION} ]; then
-  THRIFT_VERSION=0.12.0
+  THRIFT_VERSION=0.14.1
 fi
 if [ -z ${SOFTWARE_PREFIX} ]; then
   SOFTWARE_PREFIX=/export/shared/software

@@ -42,7 +42,6 @@
 #include <thrift/protocol/TProtocol.h>
 #include <thrift/transport/TTransport.h>
 
-#include <thrift/stdcxx.h>
 #include "snappydata_struct_ColumnValue.h"
 
 #include <algorithm>
@@ -386,11 +385,11 @@ s_typeMap[io::snappydata::VariadicCount<ColumnValue::UnionType>::count] = {
     std::make_pair(SnappyType::JAVA_OBJECT, "java_val")
 };
 
-ColumnValue& ColumnValue::operator=(const ColumnValue& other) noexcept {
+ColumnValue& ColumnValue::operator=(const ColumnValue& other) {
   m_val = other.m_val;
   return *this;
 }
-ColumnValue& ColumnValue::operator=(ColumnValue&& other) noexcept {
+ColumnValue& ColumnValue::operator=(ColumnValue&& other) {
   m_val = std::move(other.m_val);
   return *this;
 }

@@ -45,9 +45,9 @@ class HostAddress {
  public:
 
   HostAddress(const HostAddress&);
-  HostAddress(HostAddress&&) noexcept;
+  HostAddress(HostAddress&&);
   HostAddress& operator=(const HostAddress&);
-  HostAddress& operator=(HostAddress&&) noexcept;
+  HostAddress& operator=(HostAddress&&);
   HostAddress() : hostName(), port(0), ipAddress(), serverType((ServerType::type)0), isCurrent(0) {
   }
 

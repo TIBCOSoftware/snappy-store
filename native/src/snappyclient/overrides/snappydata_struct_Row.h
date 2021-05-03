@@ -94,13 +94,13 @@ public:
     m_values.reserve(initialCapacity);
   }
 
-  Row(Row&& other) noexcept : m_values(std::move(other.m_values)), m_updatable(
+  Row(Row&& other) : m_values(std::move(other.m_values)), m_updatable(
       other.m_updatable), m_changedColumns(other.m_changedColumns) {
     other.m_updatable = false;
     other.m_changedColumns = nullptr;
   }
 
-  Row& operator=(Row&& other) noexcept {
+  Row& operator=(Row&& other) {
     m_values.swap(other.m_values);
     std::swap(m_updatable, other.m_updatable);
     std::swap(m_changedColumns, other.m_changedColumns);

@@ -42,8 +42,6 @@
 #include <thrift/protocol/TProtocol.h>
 #include <thrift/transport/TTransport.h>
 
-#include <thrift/stdcxx.h>
-
 #include "snappydata_struct_Row.h"
 
 #include <boost/dynamic_bitset.hpp>

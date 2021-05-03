@@ -24,7 +24,6 @@
 #include <thrift/protocol/TProtocol.h>
 #include <thrift/transport/TTransport.h>
 
-#include <thrift/stdcxx.h>
 #include "snappydata_struct_HostAddress.h"
 #include "Utils.h"
 
@@ -199,7 +198,7 @@ HostAddress::HostAddress(const HostAddress& other129) {
   isCurrent = other129.isCurrent;
   __isset = other129.__isset;
 }
-HostAddress::HostAddress( HostAddress&& other130) noexcept {
+HostAddress::HostAddress( HostAddress&& other130) {
   hostName = std::move(other130.hostName);
   port = std::move(other130.port);
   ipAddress = std::move(other130.ipAddress);
@@ -216,7 +215,7 @@ HostAddress& HostAddress::operator=(const HostAddress& other131) {
   __isset = other131.__isset;
   return *this;
 }
-HostAddress& HostAddress::operator=(HostAddress&& other132) noexcept {
+HostAddress& HostAddress::operator=(HostAddress&& other132) {
   hostName = std::move(other132.hostName);
   port = std::move(other132.port);
   ipAddress = std::move(other132.ipAddress);

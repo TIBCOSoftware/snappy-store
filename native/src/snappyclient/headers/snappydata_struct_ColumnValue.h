@@ -228,17 +228,17 @@ private:
 
 public:
 
-  ColumnValue() noexcept : m_val() {
+  ColumnValue() : m_val() {
   }
 
-  ColumnValue(const ColumnValue& other) noexcept : m_val(other.m_val) {
+  ColumnValue(const ColumnValue& other) : m_val(other.m_val) {
   }
 
-  ColumnValue(ColumnValue&& other) noexcept : m_val(std::move(other.m_val)) {
+  ColumnValue(ColumnValue&& other) : m_val(std::move(other.m_val)) {
   }
 
-  ColumnValue& operator=(const ColumnValue& other) noexcept;
-  ColumnValue& operator=(ColumnValue&& other) noexcept;
+  ColumnValue& operator=(const ColumnValue& other);
+  ColumnValue& operator=(ColumnValue&& other);
 
   ~ColumnValue() noexcept {
   }
