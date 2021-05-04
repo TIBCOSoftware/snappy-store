@@ -1117,7 +1117,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
             "GemFire Cache successfully created.");
         if (props.containsKey(GfxdConstants.SNAPPY_PREFIX + CacheServerLauncher.RECOVER)) {
           String recoveryMode = props.getProperty(GfxdConstants.SNAPPY_PREFIX + CacheServerLauncher.RECOVER);
-          if (recoveryMode != null && recoveryMode.equals("true")) {
+          if (recoveryMode != null && recoveryMode.equalsIgnoreCase("true")) {
             this.gemFireCache.getLogger().info(
                 "GemFire Cache has come up in recovery mode.");
             this.gemFireCache.setRecoverMode(true);
