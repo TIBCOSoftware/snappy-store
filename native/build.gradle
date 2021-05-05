@@ -53,14 +53,14 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
   String googletestVersion = '1.7.0'
   String newThriftVersion = '1.0.0-2'
   thriftVersion = newThriftVersion
-  String oldReleasesDir = "https://github.com/SnappyDataInc/thrift/releases/download/${thriftVersion}"
+  String oldReleasesDir = "https://github.com/TIBCOSoftware/snappy-thrift/releases/download/${thriftVersion}"
   
   String releasesDir = oldReleasesDir
 
   String newBoostVersion = '1.65.1'
   String newUnixodbcVersion = '2.3.4'
   String newGoogletestVersion = '1.8.0'
-  String newReleasesDir = "https://github.com/SnappyDataInc/thrift/releases/download/${newThriftVersion}"
+  String newReleasesDir = "https://github.com/TIBCOSoftware/snappy-thrift/releases/download/${newThriftVersion}"
 
   List<String> dependencies = []
 
