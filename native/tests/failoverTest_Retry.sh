@@ -14,8 +14,8 @@ scriptDir=${scriptDir%"]"}
 _snappyNativeDir="$(dirname "$scriptDir")"
 distDir=${_snappyNativeDir}/dist
 
-THRIFT_VERSION=1.0.0-2
-BOOST_VERSION=1.65.1
+THRIFT_VERSION=0.14.1
+BOOST_VERSION=1.76.0
 
 thrftLibPath=${distDir}/thrift-${THRIFT_VERSION}/lin64/lib
 bostLibPath=${distDir}/boost-${BOOST_VERSION}/lin64/lib

@@ -68,7 +68,7 @@ namespace types {
      * and trailing zeros may be removed.
      */
     static std::string& toString(const uint16_t year, const uint16_t month,
-        const uint16_t day, const uint16_t hour, const uint16_t min,
+        const uint16_t day, const uint16_t hour, const uint16_t minute,
         const uint16_t sec, const uint32_t nanos, std::string& str);
 
   public:
@@ -97,42 +97,42 @@ namespace types {
      * Initialize with date-time provided as year, month, day,
      * hour, minutes, seconds.
      *
-     * @param year  number of years e.g. 1998
-     * @param month number of months since January, in the range 1 to 12
-     * @param day   day of the month, in the range 1 to 31
-     * @param hour  number of hours past midnight, in the range 0 to 23
-     * @param min   number of minutes after the hour,
-     *              in the range 0 to 59
-     * @param sec   number of seconds after the minute,
-     *              normally in the range 0 to 59, but can be up to 60
-     *              to allow for leap seconds
-     * @param utc   if true then the date-time is expressed in UTC
-     *              else in local timezone
+     * @param year    number of years e.g. 1998
+     * @param month   number of months since January, in the range 1 to 12
+     * @param day     day of the month, in the range 1 to 31
+     * @param hour    number of hours past midnight, in the range 0 to 23
+     * @param minute  number of minutes after the hour,
+     *                in the range 0 to 59
+     * @param sec     number of seconds after the minute,
+     *                normally in the range 0 to 59, but can be up to 60
+     *                to allow for leap seconds
+     * @param utc     if true then the date-time is expressed in UTC
+     *                else in local timezone
      */
     DateTime(const uint16_t year, const uint16_t month,
-        const uint16_t day, const uint16_t hour, const uint16_t min,
+        const uint16_t day, const uint16_t hour, const uint16_t minute,
         const uint16_t sec, const bool utc = false) {
-      init(year, month, day, hour, min, sec, utc);
+      init(year, month, day, hour, minute, sec, utc);
     }
 
     /**
      * Initialize this DateTime with local time as year, month, day,
      * hour, minutes, seconds.
      *
-     * @param year  number of years e.g. 1998
-     * @param month number of months since January, in the range 1 to 12
-     * @param day   day of the month, in the range 1 to 31
-     * @param hour  number of hours past midnight, in the range 0 to 23
-     * @param min   number of minutes after the hour,
-     *              in the range 0 to 59
-     * @param sec   number of seconds after the minute,
-     *              normally in the range 0 to 59, but can be up to 60
-     *              to allow for leap seconds
-     * @param utc   if true then the date-time is expressed in UTC
-     *              else in local timezone
+     * @param year    number of years e.g. 1998
+     * @param month   number of months since January, in the range 1 to 12
+     * @param day     day of the month, in the range 1 to 31
+     * @param hour    number of hours past midnight, in the range 0 to 23
+     * @param minute  number of minutes after the hour,
+     *                in the range 0 to 59
+     * @param sec     number of seconds after the minute,
+     *                normally in the range 0 to 59, but can be up to 60
+     *                to allow for leap seconds
+     * @param utc     if true then the date-time is expressed in UTC
+     *                else in local timezone
      */
     void init(const uint16_t year, const uint16_t month,
-        const uint16_t day, const uint16_t hour, const uint16_t min,
+        const uint16_t day, const uint16_t hour, const uint16_t minute,
         const uint16_t sec, const bool utc);
 
     /** Get the seconds since Epoch 1970-01-01 00:00:00 +0000 (UTC) */
@@ -196,7 +196,7 @@ namespace types {
      */
     static std::ostream& toString(const uint16_t year,
         const uint16_t month, const uint16_t day, const uint16_t hour,
-        const uint16_t min, const uint16_t sec, const uint32_t nanos,
+        const uint16_t minute, const uint16_t sec, const uint32_t nanos,
         std::ostream& stream);
 
     /**

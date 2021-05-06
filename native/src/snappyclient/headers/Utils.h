@@ -208,9 +208,6 @@ namespace client {
     static bool convertUTF8ToUTF16(const char *utf8Chars, const long utf8Len,
         std::function<void(int)> process);
 
-    static bool convertUTF8ToUTF16(const char *utf8Chars, const long utf8Len,
-        std::u16string &result);
-
     template<typename TWCHAR>
     static void convertUTF16ToUTF8(const TWCHAR *utf16Chars, const long utf16Len,
         std::function<void(char)> process);

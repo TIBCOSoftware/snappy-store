@@ -274,13 +274,6 @@ bool Utils::convertUTF8ToUTF16(const char *utf8Chars, const long utf8Len,
   return nonASCII;
 }
 
-bool Utils::convertUTF8ToUTF16(const char *utf8Chars, const long utf8Len,
-    std::u16string &result) {
-  return convertUTF8ToUTF16(utf8Chars, utf8Len, [&](int c) {
-    result.push_back((char16_t)c);
-  });
-}
-
 
 template<typename TNum>
 class PrecisionPolicy final : public boost::spirit::karma::real_policies<TNum> {

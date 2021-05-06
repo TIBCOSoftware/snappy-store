@@ -8,10 +8,10 @@ distDir=${_snappyNativeDir}/dist
 #echo "${distDir}"
 SNAPPY_HOME_DIR="$1"
 if [ -z ${THRIFT_VERSION} ]; then
-  THRIFT_VERSION=1.0.0-2
+  THRIFT_VERSION=0.14.1
 fi
 if [ -z ${BOOST_VERSION} ]; then
-  BOOST_VERSION=1.65.1
+  BOOST_VERSION=1.76.0
 fi
 
 thrftLibPath=${distDir}/thrift-${THRIFT_VERSION}/lin64/lib

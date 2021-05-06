@@ -168,25 +168,60 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
     def getArch = { Platform platform ->
       return (platform == platforms.x64) ? "${osName}64" : "${osName}32"
     }
-    def getArchDir = { String libName, String libVersion,
+    def getArchDir = { String libName, String libVersion, String libDir,
         Platform platform ->
-      return "${distDir}/${libName}-${libVersion}/${getArch(platform)}"
+      return libVersion.isEmpty() ? "${libDir}/${getArch(platform)}"
+          : "${libDir}/${libName}-${libVersion}/${getArch(platform)}"
     }
-    def getLibPathForPlatform = { String libName, String distName,
-        String libVersion, boolean isStatic, boolean isBoost, Platform platform ->
+    def getBuildTypeLibDir = { String libDir, BuildType buildType ->
+      if (buildType == buildTypes.debug) {
+        String debugLibDir = "${libDir}/debug"
+        if (file(debugLibDir).exists()) {
+          return debugLibDir
+        }
+      }
+      return libDir
+    }
+    def getLibPathForPlatform = { String libName, String distName, String libVersion,
+        String libDir, boolean isStatic, boolean isBoost,
+        BuildType buildType, Platform platform ->
       def os = platform.operatingSystem
-      String archDir = getArchDir(distName, libVersion, platform)
+      String archDir = getArchDir(distName, libVersion, libDir, platform)
       if (os.windows) {
         String extension = isStatic ? 'lib' : 'dll'
-        String extDir = isStatic ? 'lib' : 'bin'
-        return isBoost ? "${archDir}/${extDir}${libName}.${extension}"
-                       : "${archDir}/${extDir}/${libName}.${extension}"
+        if (isBoost) {
+          String platformName = (platform == platforms.x64) ? '64' : '32'
+          String suffix = "vc142-mt-x${platformName}-1_76"
+          String suffixd = suffix
+          if (buildType == buildTypes.debug) suffixd = "vc142-mt-gd-x${platformName}-1_76"
+          if (isStatic) libName = "lib${libName}"
+          String libFile = "${archDir}/lib/${libName}-${suffixd}.${extension}"
+          if (file(libFile).exists()) {
+            return libFile
+          } else {
+            return "${archDir}/lib/${libName}-${suffix}.${extension}"
+          }
+        } else {
+          String extDir = isStatic ? 'lib' : 'bin'
+          String libLoc = getBuildTypeLibDir("${archDir}/${extDir}", buildType)
+          String suffix = ''
+          if (buildType == buildTypes.debug) suffix = 'd'
+          String libFiled = "${libLoc}/${libName}${suffix}.${extension}"
+          String libFile = "${libLoc}/lib${libName}.${extension}"
+          if (file(libFiled).exists()) {
+            return libFiled
+          } else if (file(libFile).exists()) {
+            return libFile
+          } else {
+            return "${libLoc}/${libName}.${extension}"
+          }
+        }
       } else if (isStatic) {
-        return "${archDir}/lib${libName}.a"
+        return getBuildTypeLibDir("${archDir}/lib", buildType) + "/lib${libName}.a"
       } else if (os.macOsX) {
-        return "${archDir}/lib${libName}.dylib"
+        return getBuildTypeLibDir("${archDir}/lib", buildType) + "/lib${libName}.dylib"
       } else {
-        return "${archDir}/lib${libName}.so"
+        return getBuildTypeLibDir("${archDir}/lib", buildType) + "/lib${libName}.so"
       }
     }
 
@@ -199,29 +234,51 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
           libs.create(boostLib) {
             binaries.withType(StaticLibraryBinary) {
               staticLibraryFile = file(getLibPathForPlatform(boostLib, 'boost',
-                    boostVersion, true, true, targetPlatform))
+                    boostVersion, distDir, true, true, buildType, targetPlatform))
             }
           }
         }
         thrift {
-          headers.srcDir "${distDir}/thrift-${thriftVersion}/include"
           binaries.withType(StaticLibraryBinary) {
+            headers.srcDir getArchDir('thrift', thriftVersion, distDir, targetPlatform) + '/include'
             staticLibraryFile = file(getLibPathForPlatform('thrift', 'thrift',
-                  thriftVersion, true, false, targetPlatform))
+                  thriftVersion, distDir, true, false, buildType, targetPlatform))
           }
+        }
+        openssl_crypto {
+          binaries.withType(SharedLibraryBinary) {
+            sharedLibraryFile = file(getLibPathForPlatform('libcrypto', 'openssl',
+                  opensslVersion, distDir, false, false, buildType, targetPlatform))
+            sharedLibraryLinkFile = file(getLibPathForPlatform('libcrypto', 'openssl',
+                  opensslVersion, distDir, true, false, buildType, targetPlatform))
+          }
+          /*
+          binaries.withType(StaticLibraryBinary) {
+            staticLibraryFile = file(getLibPathForPlatform('libcrypto', 'openssl',
+                  opensslVersion, distDir, true, false, buildType, targetPlatform))
+          }
+          */
         }
         openssl {
-          headers.srcDir "${distDir}/openssl-${opensslVersion}/include"
-          binaries.withType(StaticLibraryBinary) {
-            staticLibraryFile = file(getLibPathForPlatform('openssl', 'openssl',
-                  opensslVersion, true, false, targetPlatform))
+          binaries.withType(SharedLibraryBinary) {
+            headers.srcDir getArchDir('openssl', opensslVersion, distDir, targetPlatform) + '/include'
+            sharedLibraryFile = file(getLibPathForPlatform('libssl', 'openssl',
+                  opensslVersion, distDir, false, false, buildType, targetPlatform))
+            sharedLibraryLinkFile = file(getLibPathForPlatform('libssl', 'openssl',
+                  opensslVersion, distDir, true, false, buildType, targetPlatform))
           }
+          /*
+          binaries.withType(StaticLibraryBinary) {
+            staticLibraryFile = file(getLibPathForPlatform('libssl', 'openssl',
+                  opensslVersion, distDir, true, false, buildType, targetPlatform))
+          }
+          */
         }
         mpir {
-          headers.srcDir "${distDir}/mpir-${mpirVersion}/include"
           binaries.withType(StaticLibraryBinary) {
+            headers.srcDir getArchDir('mpir', mpirVersion, distDir, targetPlatform) + '/include'
             staticLibraryFile = file(getLibPathForPlatform('mpir', 'mpir',
-                  mpirVersion, true, false, targetPlatform))
+                  mpirVersion, distDir, true, false, buildType, targetPlatform))
           }
         }
       }
@@ -240,7 +297,8 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
           }
           if (osName == 'win') {
             cpp.lib library: 'mpir', linkage: 'static'
-            cpp.lib library: 'openssl', linkage: 'static'
+            cpp.lib library: 'openssl_crypto', linkage: 'shared'
+            cpp.lib library: 'openssl', linkage: 'shared'
           }
         }
         // build only static libraries (not being shipped separately yet)
@@ -263,27 +321,15 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
             linker.args '-lcrypto', '-lssl', '-lgmp', '-lpthread', '-lrt',
                         '-rdynamic', '-ldl', '-z', 'defs'
           } else if (toolChain in VisualCpp) {
-            // explicitly include UCRT since its still not passed through by gradle
-            String VS_2015_INCLUDE_DIR = 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.10240.0/ucrt'
-            String VS_2015_LIB_DIR = 'C:/Program Files (x86)/Windows Kits/10/Lib/10.0.10240.0/ucrt'
-            String VS_2015_INCLUDE_DIR_UM = 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.10240.0/um'
-            String VS_2015_LIB_DIR_UM = 'C:/Program Files (x86)/Windows Kits/10/Lib/10.0.10240.0/um'
-            String VS_2015_INCLUDE_DIR_SHARED = 'C:/Program Files (x86)/Windows Kits/10/Include/10.0.10240.0/shared'
             cppCompiler.args '/W3', '/FS', '/Zc:inline', '/WX', '/EHsc',
-                             '/Fdsnappyclient.pdb', '/errorReport:prompt',
-                             "/I${VS_2015_INCLUDE_DIR_UM}", "/I${VS_2015_INCLUDE_DIR_SHARED}",
-                             "/I${VS_2015_INCLUDE_DIR}"
+                             '/Fdsnappyclient.pdb', '/errorReport:prompt'
             if (buildType == buildTypes.debug) {
               cppCompiler.define '_DEBUG'
-              cppCompiler.args '/Od', '/Gm', '/ZI', '/RTC1', '/MDd'
+              cppCompiler.args '/Od', '/ZI', '/RTC1', '/MDd'
               linker.args '/DEBUG'
             } else {
-              cppCompiler.args '/O2', '/GL', '/Oi', '/Gm-', '/Zi', '/MD'
-            }
-            if (targetPlatform == platforms.x64) {
-              linker.args "/LIBPATH:${VS_2015_LIB_DIR}/x64:${VS_2015_LIB_DIR_UM}/x64"
-            } else {
-              linker.args "/LIBPATH:${VS_2015_LIB_DIR}/x86:${VS_2015_LIB_DIR_UM}/x86"
+              cppCompiler.args '/O2', '/GL', '/Oi', '/Zi', '/MD'
+              linker.args '/LTCG'
             }
           }
         }

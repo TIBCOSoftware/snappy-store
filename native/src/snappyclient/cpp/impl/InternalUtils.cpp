@@ -92,9 +92,12 @@ boost::filesystem::path InternalUtils::getPath(const std::string& pathStr) {
   // provides an "open" which accepts UTF16 filename. So we need to
   // convert to wchar_t here on Windows (at least if filename is not ASCII).
 #ifdef _WINDOWS
-  std::u16string wlogFile;
-  if (Utils::convertUTF8ToUTF16(pathStr.c_str(),
-      boost::numeric_cast<int>(pathStr.size()), wlogFile)) {
+  std::wstring wlogFile;
+  bool result = Utils::convertUTF8ToUTF16(pathStr.c_str(),
+      boost::numeric_cast<long>(pathStr.size()), [&](int c) {
+    wlogFile.push_back((wchar_t)c);
+  });
+  if (result) {
     return boost::filesystem::path(wlogFile.begin(), wlogFile.end());
   }
 #endif
