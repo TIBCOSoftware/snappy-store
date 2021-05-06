@@ -540,7 +540,7 @@ subprojects {
             name PRODUCT_NAME
             packaging 'jar'
             // optionally artifactId can be defined here
-            description 'TIBCO ComputeDB store based off Pivotal GemFireXD'
+            description 'SnappyData store based off Pivotal GemFireXD'
             url 'http://www.snappydata.io'
 
             scm {
