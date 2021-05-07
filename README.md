@@ -1,3 +1,7 @@
+<span style="background-color:yellow">
+This repository is provided for legacy users and informational purposes only. It may contain security vulnerabilities in the code itself or its dependencies. TIBCO provides no updates, including security updates, to this code. Consistent with the terms of the Apache License 2.0 that apply to the TIBCO code in this repository, the code is provided on an "as is" basis, without any warranties or conditions of any kind and in no event and under no legal theory shall TIBCO be liable to you for damages arising as a result of the use or inability to use the code.
+</span>
+
 ## Overview
 SnappyStore is a row oriented, transactional, main-memory distributed data store that is designed for applications that have demanding scalability and availability requirements. You can use the store as a standalone high performance database or as a cache with automatic asynchronous write back to RDBs or as a operational store in "big data" analytic applications. You can manage data entirely using in-memory tables, or you can persist very large tables to local disk store files or to a Hadoop Distributed File System (HDFS) for big data deployments. It provides a low-latency SQL interface to in-memory table data, while seamlessly integrating data that is persisted in HDFS. A single SnappyStore distributed system can be easily scaled out using commodity hardware to support thousands of concurrent clients, and you can also replicate data between multiple clusters over a WAN interface. 
 
