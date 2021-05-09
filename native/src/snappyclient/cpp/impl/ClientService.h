@@ -135,18 +135,9 @@ namespace io {
               const thrift::ServerType::type serverType,
               const bool useFramedTransport);
 
-          inline std::string getSSLPropertyName(SSLProperty sslProperty) {
-            return m_sslParams.getSSLPropertyName(sslProperty);
-          }
-
-          inline std::string getSSLPropertyValue(
-              const std::string& propertyName) const {
-            return m_sslParams.getSSLPropertyValue(propertyName);
-          }
-
           void updateFailedServersForCurrent(
               std::set<thrift::HostAddress> &failedServers,
-              bool checkAllFailed, const char *failure);
+              bool checkAllFailed, std::string &failure);
 
           friend class ControlConnection;
 
@@ -185,7 +176,8 @@ namespace io {
               const std::exception& se);
 
           void openConnection(thrift::HostAddress &hostAddr,
-              std::set<thrift::HostAddress> &failedServers, const char *te);
+              std::set<thrift::HostAddress> &failedServers,
+              std::string &failure);
 
           void flushPendingTransactionAttrs();
 
@@ -218,7 +210,6 @@ namespace io {
           static std::string s_hostId;
           static std::mutex s_globalLock;
           static bool s_initialized;
-          SSLParameters m_sslParams;
           /**
            * Global initialization that is done only once.
            * The s_globalLock must be held in the invocation.

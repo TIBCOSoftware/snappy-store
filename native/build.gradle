@@ -125,10 +125,10 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
     dependsOn downloadDependencies
 
     inputs.files dependencies.collect { [ "${distDir}/${it}" ] }.flatten()
-   // outputs.files dependencies.collect { [ "${distDir}/${it.replaceAll('-[^-]*.tar.bz2', '')}" ] }.flatten()
+    outputs.dirs dependencies.collect { [ "${distDir}/${it.replaceAll('-[^-]*.tar.bz2', '')}" ] }.flatten()
 
     doLast {
-      outputs.files.each { d -> delete d }
+      inputs.files.each { tarball -> delete tarball.toString().replaceAll('-[^-]*.tar.bz2', '') }
       dependencies.each { tarball ->
         if (osName == 'win') {
           copy {
@@ -139,7 +139,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
           // gradle tarTree does not preserve symlinks (GRADLE-2844)
           exec {
             executable 'tar'
-            args 'xfj', "${distDir}/${tarball}"
+            args 'xjf', "${distDir}/${tarball}"
             workingDir = distDir
           }
         }
@@ -192,15 +192,9 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
         if (isBoost) {
           String platformName = (platform == platforms.x64) ? '64' : '32'
           String suffix = "vc142-mt-x${platformName}-1_76"
-          String suffixd = suffix
-          if (buildType == buildTypes.debug) suffixd = "vc142-mt-gd-x${platformName}-1_76"
+          if (buildType == buildTypes.debug) suffix = "vc142-mt-gd-x${platformName}-1_76"
           if (isStatic) libName = "lib${libName}"
-          String libFile = "${archDir}/lib/${libName}-${suffixd}.${extension}"
-          if (file(libFile).exists()) {
-            return libFile
-          } else {
-            return "${archDir}/lib/${libName}-${suffix}.${extension}"
-          }
+          return "${archDir}/lib/${libName}-${suffix}.${extension}"
         } else {
           String extDir = isStatic ? 'lib' : 'bin'
           String libLoc = getBuildTypeLibDir("${archDir}/${extDir}", buildType)

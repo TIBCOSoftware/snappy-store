@@ -48,6 +48,8 @@ private:
   std::map<std::string, std::string> m_sslPropValMap;
   SSLProperty m_currentProperty;
 
+  static std::string toSSLPropertyName(SSLProperty sslProperty);
+
   friend class SSLSocketFactory;
 
 public:
@@ -55,30 +57,48 @@ public:
       m_sslPropValMap(), m_currentProperty(SSLProperty::PROTOCOL) {
   }
 
-  void setSSLProperty(std::string &propertyName, std::string& value);
-  std::string getSSLPropertyName(SSLProperty sslProperty);
+  void setSSLProperty(const std::string &propertyName, const std::string &value);
+  inline std::string getSSLPropertyName(SSLProperty sslProperty) {
+    m_currentProperty = sslProperty;
+    return toSSLPropertyName(sslProperty);
+  }
   std::string getSSLPropertyValue(const std::string &propertyName) const;
-  void operator()(const std::string& str);
 };
 
 class SSLSocketFactory : public TSSLSocketFactory {
+private:
+  SSLParameters m_params;
+
+  static SSLProtocol getProtocol(const SSLParameters &params);
+
 public:
+  SSLSocketFactory();
+  SSLSocketFactory(const SSLParameters &params);
   /**
-   * Constructor
-   *
-   * @param params SSL parameters to use.
+   * Copy constructor to copy over the SSL parameters from the other factory.
    */
-  SSLSocketFactory(SSLParameters& params);
+  inline SSLSocketFactory(const SSLSocketFactory &factory) :
+      SSLSocketFactory(factory.m_params) {
+  }
+
   virtual ~SSLSocketFactory() {
+  }
+
+  inline void setSSLProperty(const std::string &propertyName,
+      const std::string &value) {
+    m_params.setSSLProperty(propertyName, value);
+  }
+
+  inline std::string getSSLPropertyName(SSLProperty sslProperty) {
+    return m_params.getSSLPropertyName(sslProperty);
+  }
+
+  inline std::string getSSLPropertyValue(const std::string &propertyName) const {
+    return m_params.getSSLPropertyValue(propertyName);
   }
 
 protected:
   virtual void getPassword(std::string& password, int size);
-
-private:
-  SSLParameters& m_params;
-
-  static SSLProtocol getProtocol(const SSLParameters& params);
 };
 
 } /* namespace impl */

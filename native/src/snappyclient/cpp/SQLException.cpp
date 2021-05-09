@@ -196,7 +196,7 @@ void SQLException::initNextException(const SQLException& other) {
   }
 }
 
-std::ostream& SQLException::printStackTrace(std::ostream& out) const {
+std::ostream& SQLException::printStackTrace(std::ostream& out, int level) const {
   toString(out);
   out << _SNAPPY_NEWLINE;
 #ifdef __GNUC__
@@ -235,23 +235,29 @@ std::ostream& SQLException::printStackTrace(std::ostream& out) const {
         }
         out << _SNAPPY_NEWLINE;
       }
-      bool hasBaseAddresses = false;
-      if (!s_processBaseAddress.empty()) {
-        out << "Process base addresses:" << s_processBaseAddress
-            << _SNAPPY_NEWLINE;
-        hasBaseAddresses = true;
-      }
-      if (!s_libraryBaseAddress.empty()) {
-        out << "ODBC library base addresses:" << s_libraryBaseAddress
-            << _SNAPPY_NEWLINE;
-        hasBaseAddresses = true;
-      }
-      if (hasBaseAddresses) {
-        out << "(Note: use addr2line/gdb to translate addresses shown in "
-            "square brackets to code file and line numbers after taking the "
-            "hex diff with the first base address of process or library)"
-            << _SNAPPY_NEWLINE;
-      }
+    }
+  }
+  if (m_next) {
+    out << "Caused by:" << _SNAPPY_NEWLINE;
+    m_next->printStackTrace(out, level + 1);
+  }
+  if (level == 0 && stackStrings) {
+    bool hasBaseAddresses = false;
+    if (!s_processBaseAddress.empty()) {
+      out << "Process base addresses:" << s_processBaseAddress
+          << _SNAPPY_NEWLINE;
+      hasBaseAddresses = true;
+    }
+    if (!s_libraryBaseAddress.empty()) {
+      out << "ODBC library base addresses:" << s_libraryBaseAddress
+          << _SNAPPY_NEWLINE;
+      hasBaseAddresses = true;
+    }
+    if (hasBaseAddresses) {
+      out << "(Note: use addr2line/gdb to translate addresses shown in "
+          "square brackets to code file and line numbers after taking the "
+          "hex diff with the first base address of process or library)"
+          << _SNAPPY_NEWLINE;
     }
   }
 #endif

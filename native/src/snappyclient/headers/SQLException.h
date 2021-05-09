@@ -122,7 +122,7 @@ namespace client {
     }
 
     /** Print the stack trace to given output stream. */
-    virtual std::ostream& printStackTrace(std::ostream& out) const;
+    virtual std::ostream& printStackTrace(std::ostream &out, int level = 0) const;
 
     inline std::string getStackTrace() const {
       std::ostringstream str;

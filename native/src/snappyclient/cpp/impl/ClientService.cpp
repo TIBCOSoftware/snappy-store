@@ -42,6 +42,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/filesystem.hpp>
 
 #include <thrift/transport/TTransportException.h>
 #include <thrift/transport/TSSLSocket.h>
@@ -136,7 +137,7 @@ bool ClientService::globalInitialize() {
     LogWriter::staticInitialize();
     // the ConnectionProperty class
     ConnectionProperty::staticInitialize();
-    // dummy call to ensure ControlConnection is loaded with its statics
+    // ensure ControlConnection is loaded with its statics
     ControlConnection::staticInitialize();
 
     s_hostName = boost::asio::ip::host_name();
@@ -386,7 +387,7 @@ ClientService::ClientService(const std::string& host, const int port,
         double errorVal = boost::lexical_cast<double>(propValue->second);
         if (errorVal < 0.0 || errorVal > 1.0) {
           props.erase(propValue);
-          throw std::invalid_argument(":Invalid AQP Error value:");
+          throw std::invalid_argument("Invalid AQP Error value:");
         }
       } catch (const boost::bad_lexical_cast& ex) {
         props.erase(propValue);
@@ -399,7 +400,7 @@ ClientService::ClientService(const std::string& host, const int port,
         double errorVal = boost::lexical_cast<double>(propValue->second);
         if (errorVal < 0.0 || errorVal > 1.0) {
           props.erase(propValue);
-          throw std::invalid_argument(":Invalid AQP Confidence value:");
+          throw std::invalid_argument("Invalid AQP Confidence value:");
         }
       } catch (const boost::bad_lexical_cast& ex) {
         props.erase(propValue);
@@ -409,7 +410,7 @@ ClientService::ClientService(const std::string& host, const int port,
     if ((propValue = props.find(ClientAttribute::AQP_BEHAVIOR)) != props.end()) {
       if (propValue->second.empty()) {
         props.erase(propValue);
-        throw std::invalid_argument(":Invalid AQP Behavior value:");
+        throw std::invalid_argument("Invalid AQP Behavior value:");
       }
     }
     // now check for the protocol details like SSL etc
@@ -435,7 +436,18 @@ ClientService::ClientService(const std::string& host, const int port,
     if ((propValue = props.find(ClientAttribute::SSL_PROPERTIES))
         != props.end()) {
       useSSL = true;
-      InternalUtils::splitCSV(propValue->second, m_sslParams);
+      SSLParameters sslParams;
+      InternalUtils::splitCSV(propValue->second, [&](const std::string &str) {
+        size_t spos;
+        if ((spos = str.find('=')) != std::string::npos) {
+          sslParams.setSSLProperty(str.substr(0, spos), str.substr(spos + 1));
+        } else {
+          sslParams.setSSLProperty(str, "");
+        }
+      });
+      if (!m_sslFactory) {
+        m_sslFactory.reset(new SSLSocketFactory(sslParams));
+      }
       props.erase(propValue);
     }
     m_reqdServerType = getServerType(true, binaryProtocol, useSSL);
@@ -443,11 +455,12 @@ ClientService::ClientService(const std::string& host, const int port,
   }
 
   std::set<thrift::HostAddress> failedServers;
-  openConnection(hostAddr, failedServers, nullptr);
+  std::string failure;
+  openConnection(hostAddr, failedServers, failure);
 }
 
 void ClientService::openConnection(thrift::HostAddress &hostAddr,
-    std::set<thrift::HostAddress> &failedServers, const char *failure) {
+    std::set<thrift::HostAddress> &failedServers, std::string &failure) {
   // open the connection
   std::thread::id tid;
   NanoTimeThread start;
@@ -664,10 +677,9 @@ protocol::TProtocol* ClientService::createProtocol(
 
   std::shared_ptr<TSocket> socket;
   if (useSSL) {
-    std::lock_guard<std::mutex> sync(m_lock);
-
+    // m_lock should be held by caller
     if (!m_sslFactory) {
-      m_sslFactory.reset(new SSLSocketFactory(m_sslParams));
+      m_sslFactory.reset(new SSLSocketFactory());
     }
     socket = createSSLSocket(hostAddr.hostName, hostAddr.port, *m_sslFactory);
   } else {
@@ -1765,7 +1777,7 @@ void ClientService::close() {
 
 void ClientService::updateFailedServersForCurrent(
     std::set<thrift::HostAddress> &failedServers, bool checkAllFailed,
-    const char *failure) {
+    std::string &failure) {
   thrift::HostAddress host = this->m_currentHostAddr;
 
   auto ret = failedServers.insert(host);
@@ -1794,7 +1806,8 @@ bool ClientService::handleThriftException(const char* op, bool tryFailover,
     tryFailover = false;
   }
   if (tryFailover && ignoreNodeFailure) {
-    updateFailedServersForCurrent(failedServers, true, te.what());
+    std::string failure(te.what());
+    updateFailedServersForCurrent(failedServers, true, failure);
     result = false;
   }
   /*
@@ -1812,17 +1825,18 @@ bool ClientService::handleThriftException(const char* op, bool tryFailover,
 
 std::shared_ptr<TSSLSocket> ClientService::createSSLSocket(
     const std::string &host, int port, SSLSocketFactory &sslSocketFactory) {
-  std::string sslProperty = getSSLPropertyName(SSLProperty::CLIENTAUTH);
-  std::string propVal = getSSLPropertyValue(sslProperty);
+  std::string sslProperty = sslSocketFactory.getSSLPropertyName(
+      SSLProperty::CLIENTAUTH);
+  std::string propVal = sslSocketFactory.getSSLPropertyValue(sslProperty);
   if (!propVal.empty() && boost::iequals(propVal, "true")) {
     sslSocketFactory.authenticate(true);
-    sslProperty = getSSLPropertyName(SSLProperty::KEYSTORE);
-    propVal = getSSLPropertyValue(sslProperty);
+    sslProperty = sslSocketFactory.getSSLPropertyName(SSLProperty::KEYSTORE);
+    propVal = sslSocketFactory.getSSLPropertyValue(sslProperty);
     if (!propVal.empty()) {
       sslSocketFactory.loadPrivateKey(propVal.c_str());
     }
-    sslProperty = getSSLPropertyName(SSLProperty::CERTIFICATE);
-    propVal = getSSLPropertyValue(sslProperty);
+    sslProperty = sslSocketFactory.getSSLPropertyName(SSLProperty::CERTIFICATE);
+    propVal = sslSocketFactory.getSSLPropertyValue(sslProperty);
     if (!propVal.empty()) {
       sslSocketFactory.loadCertificate(propVal.c_str());
     }
@@ -1830,13 +1844,20 @@ std::shared_ptr<TSSLSocket> ClientService::createSSLSocket(
     sslSocketFactory.authenticate(false);
   }
 
-  sslProperty = this->getSSLPropertyName(SSLProperty::TRUSTSTORE);
-  propVal = this->getSSLPropertyValue(sslProperty);
+  sslProperty = sslSocketFactory.getSSLPropertyName(SSLProperty::TRUSTSTORE);
+  propVal = sslSocketFactory.getSSLPropertyValue(sslProperty);
   if (!propVal.empty()) {
-    sslSocketFactory.loadTrustedCertificates(propVal.c_str());
+    // check if provided value is a directory
+    boost::filesystem::path certPath = InternalUtils::getPath(propVal);
+    if (boost::filesystem::exists(certPath)
+        && boost::filesystem::is_directory(certPath)) {
+      sslSocketFactory.loadTrustedCertificates(nullptr, propVal.c_str());
+    } else {
+      sslSocketFactory.loadTrustedCertificates(propVal.c_str(), nullptr);
+    }
   }
-  sslProperty = getSSLPropertyName(SSLProperty::CIPHERSUITES);
-  propVal = getSSLPropertyValue(sslProperty);
+  sslProperty = sslSocketFactory.getSSLPropertyName(SSLProperty::CIPHERSUITES);
+  propVal = sslSocketFactory.getSSLPropertyValue(sslProperty);
   if (!propVal.empty()) {
     sslSocketFactory.ciphers(propVal);
   } else {

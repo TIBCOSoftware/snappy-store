@@ -117,11 +117,6 @@ namespace io {
 
           std::recursive_mutex m_lock;
           bool m_framedTransport;
-          /**
-           * Since one DS is supposed to have one ControlConnection, so we expect the
-           * total size of this static global list to be small.
-           */
-          static GlobalConnectionHolder s_allConnections;
 
           /*********Member functions**************/
           ControlConnection() :
@@ -133,7 +128,7 @@ namespace io {
 
           void failoverToAvailableHost(
               std::set<thrift::HostAddress> &failedServers,
-              bool checkFailedControlHosts, const char *failure,
+              bool checkFailedControlHosts, std::string &failure,
               ClientService *service);
 
           void refreshAllHosts(std::vector<thrift::HostAddress> &&allHosts);
@@ -143,14 +138,14 @@ namespace io {
 
           void failoverExhausted(
               const std::set<thrift::HostAddress> &failedServers,
-              const char *failure);
+              std::string &failure);
 
           void getLocatorPreferredServer(thrift::HostAddress& prefHostAddr,
               std::set<thrift::HostAddress>& failedServers,
               std::set<std::string> serverGroups);
 
           void getPreferredServer(thrift::HostAddress &preferredServer,
-              const char *failure, ClientService *service,
+              std::string &failure, ClientService *service,
               bool forFailover = false);
 
         public:
@@ -158,17 +153,17 @@ namespace io {
 
           static ControlConnection& getOrCreateControlConnection(
               const std::vector<thrift::HostAddress> &hostAddrs,
-              ClientService *service, const char *failure);
+              ClientService *service, std::string &failure);
 
           void getPreferredServer(thrift::HostAddress &preferredServer,
-              const char *failure,
+              std::string &failure,
               std::set<thrift::HostAddress> &failedServers,
               std::set<std::string> &serverGroups, ClientService *service,
               bool forFailover = false);
 
           void searchRandomServer(
               const std::set<thrift::HostAddress> &skipServers,
-              const char *failure, thrift::HostAddress &hostAddress);
+              std::string &failure, thrift::HostAddress &hostAddress);
 
           thrift::HostAddress getConnectedHost(
               const thrift::HostAddress &hostAddr);

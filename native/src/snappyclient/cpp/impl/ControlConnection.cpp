@@ -56,8 +56,10 @@ using namespace io::snappydata::client;
 using namespace io::snappydata::client::impl;
 using namespace io::snappydata::thrift;
 
-//----private static data member initialiazation----
-GlobalConnectionHolder ControlConnection::s_allConnections;
+static GlobalConnectionHolder& getAllConnections() {
+  static GlobalConnectionHolder s_allConnections;
+  return s_allConnections;
+}
 
 GlobalConnectionHolder::~GlobalConnectionHolder() {
   // this destructor will only be invoked when the app/library is shutting
@@ -76,19 +78,25 @@ ControlConnection::ControlConnection(ClientService *service) :
 }
 
 void ControlConnection::staticInitialize() {
-  // dummy, invoked from ClientService to ensure statics are initialized
+  // initialize TSSLSocketFactory before GlobalConnectionHolder's static
+  // instance so that it's statics are destroyed after the GlobalConnectionHolder
+  TSSLSocketFactory::setInExit(false);
+  if (!getAllConnections().m_map.empty()) {
+    throw std::runtime_error("INITIALIZATION ERROR: "
+        "unexpected non-empty global control connection map");
+  }
 }
 
 ControlConnection& ControlConnection::getOrCreateControlConnection(
     const std::vector<thrift::HostAddress> &hostAddrs, ClientService *service,
-    const char *failure) {
+    std::string &failure) {
 
   // loop through all ControlConnections since size of this global list is
   // expected to be in single digit (total number of distributed systems)
 
-  std::lock_guard<std::mutex> globalGuard(s_allConnections.m_lock);
+  std::lock_guard<std::mutex> globalGuard(getAllConnections().m_lock);
 
-  auto &allConnections = s_allConnections.m_map;
+  auto &allConnections = getAllConnections().m_map;
   const auto result = allConnections.find(service);
   if (result != allConnections.end()) {
     return *result->second;
@@ -164,7 +172,7 @@ void ControlConnection::getLocatorPreferredServer(
 }
 
 void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
-    const char *failure, ClientService *service, bool forFailover) {
+    std::string &failure, ClientService *service, bool forFailover) {
   std::set<thrift::HostAddress> failedServers;
   std::set<std::string> serverGroups;
   return getPreferredServer(preferredServer, failure, failedServers,
@@ -172,7 +180,7 @@ void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
 }
 
 void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
-    const char *failure, std::set<thrift::HostAddress> &failedServers,
+    std::string &failure, std::set<thrift::HostAddress> &failedServers,
     std::set<std::string> &serverGroups, ClientService *service,
     bool forFailover) {
   if (!m_controlLocator) {
@@ -226,6 +234,11 @@ void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
         throw snEx;
       } else if (status == FailoverStatus::RETRY) {
         forFailover = true;
+        if (failure.empty()) {
+          failure.assign(snEx.what());
+        } else {
+          failure.append(" and ").append(snEx.what());
+        }
         continue;
       }
     } catch (const TException &tex) {
@@ -238,7 +251,12 @@ void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
         failedServers.insert(m_controlHost);
       }
       close();
-      failoverToAvailableHost(failedServers, true, tex.what(), service);
+      if (failure.empty()) {
+        failure.assign(tex.what());
+      } else {
+        failure.append(" and ").append(tex.what());
+      }
+      failoverToAvailableHost(failedServers, true, failure, service);
     } catch (std::exception &ex) {
       throw unexpectedError(ex, m_controlHost);
     }
@@ -247,7 +265,7 @@ void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
 }
 
 void ControlConnection::searchRandomServer(
-    const std::set<thrift::HostAddress> &skipServers, const char *failure,
+    const std::set<thrift::HostAddress> &skipServers, std::string &failure,
     thrift::HostAddress &hostAddress) {
 
   std::vector<thrift::HostAddress> searchServers;
@@ -275,7 +293,7 @@ void ControlConnection::searchRandomServer(
 
 void ControlConnection::failoverToAvailableHost(
     std::set<thrift::HostAddress> &failedServers, bool checkFailedControlHosts,
-    const char *failure, ClientService *service) {
+    std::string &failure, ClientService *service) {
   std::lock_guard<std::recursive_mutex> lockGuard(m_lock);
   for (auto &controlAddr : m_controlHostSet) {
     if (checkFailedControlHosts && !failedServers.empty()
@@ -301,7 +319,7 @@ void ControlConnection::failoverToAvailableHost(
             || m_snappyServerType
                 == thrift::ServerType::THRIFT_SNAPPY_CP_SSL) {
           if (!m_sslFactory) { // m_lock has already been locked before
-            m_sslFactory.reset(new SSLSocketFactory(service->m_sslParams));
+            m_sslFactory.reset(new SSLSocketFactory(*service->m_sslFactory));
           }
           tTransport = service->createSSLSocket(controlAddr.hostName,
               controlAddr.port, *m_sslFactory);
@@ -342,10 +360,15 @@ void ControlConnection::failoverToAvailableHost(
         protocolFactory = 0;
         break;
       }
-    } catch (const TException&) {
+    } catch (const TException &tex) {
       failedServers.insert(controlAddr);
       if (outTransport) {
         outTransport->close();
+      }
+      if (failure.empty()) {
+        failure.assign(tex.what());
+      } else {
+        failure.append(" and ").append(tex.what());
       }
       continue;
     } catch (std::exception &ex) {
@@ -422,7 +445,7 @@ void ControlConnection::refreshAllHosts(
 
 void ControlConnection::failoverExhausted(
     const std::set<thrift::HostAddress> &failedServers,
-    const char *failure) {
+    std::string &failure) {
 
   std::string failedServerString;
   for (thrift::HostAddress host : failedServers) {
@@ -438,7 +461,7 @@ void ControlConnection::failoverExhausted(
   std::string reason = "Failed after trying all available servers: {";
   reason.append(failedServerString).append("}");
   // add to own message if original failure is not a null message
-  if (failure) {
+  if (!failure.empty()) {
     reason.append(" and ").append(failure);
   }
   snappyExData.__set_reason(reason);
@@ -483,7 +506,7 @@ ControlConnection::~ControlConnection() {
 }
 
 bool ControlConnection::removeService(ClientService *service) {
-  std::lock_guard<std::mutex> globalGuard(s_allConnections.m_lock);
-  auto &allConnections = s_allConnections.m_map;
+  std::lock_guard<std::mutex> globalGuard(getAllConnections().m_lock);
+  auto &allConnections = getAllConnections().m_map;
   return !allConnections.empty() && allConnections.erase(service) != 0;
 }

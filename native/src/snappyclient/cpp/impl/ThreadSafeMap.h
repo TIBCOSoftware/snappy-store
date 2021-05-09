@@ -169,8 +169,7 @@ namespace snappydata {
     bool put(const K& k, const V& v, V* oldValue) {
       LockGuard sync(m_lock);
 
-      std::pair<typename TMAP::iterator, bool> result = m_map.insert(
-          std::make_pair(k, v));
+      auto result = m_map.emplace(k, v);
       if (result.second) {
         return true;
       } else {
@@ -186,8 +185,7 @@ namespace snappydata {
     bool put(const K& k, const V& v, TPROC& oldValueProc) {
       LockGuard sync(m_lock);
 
-      std::pair<typename TMAP::iterator, bool> result = m_map.insert(
-          std::make_pair(k, v));
+      auto result = m_map.emplace(k, v);
       if (result.second) {
         return true;
       } else {
@@ -201,14 +199,13 @@ namespace snappydata {
     {
       LockGuard sync(m_lock);
 
-      return m_map.insert(std::make_pair(k, v)).second;
+      return m_map.emplace(k, v).second;
     }
 
     bool putIfAbsent(const K& k, const V& v, V* oldValue) {
       LockGuard sync(m_lock);
 
-      std::pair<typename TMAP::iterator, bool> result = m_map.insert(
-          std::make_pair(k, v));
+      auto result = m_map.emplace(k, v);
       if (result.second) {
         return true;
       } else {
@@ -223,8 +220,7 @@ namespace snappydata {
     bool putIfAbsent(const K& k, const V& v, PROC& oldValueProc) {
       LockGuard sync(m_lock);
 
-      std::pair<typename TMAP::iterator, bool> result = m_map.insert(
-          std::make_pair(k, v));
+      auto result = m_map.emplace(k, v);
       if (result.second) {
         return true;
       } else {

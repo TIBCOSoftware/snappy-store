@@ -124,7 +124,7 @@ void InternalUtils::splitCSV(const std::string &csv,
       }
     }
     // skip trailing spaces, if any
-    while (current > start && std::isspace(csv[current], currLocale)) {
+    while (current > start && std::isspace(csv[current - 1], currLocale)) {
       current--;
     }
     if (current > start) {

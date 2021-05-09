@@ -228,8 +228,8 @@ void ConnectionProperty::addProperty_(const std::string& propName,
   const std::unordered_set<std::string>& attrs =
       ClientAttribute::getAllAttributes();
   if (attrs.find(propName) != attrs.end()) {
-    s_properties.insert(std::make_pair(propName, ConnectionProperty(propName,
-        helpMessage, possibleValues, defaultValue, flags)));
+    s_properties.emplace(propName, ConnectionProperty(propName,
+        helpMessage, possibleValues, defaultValue, flags));
   } else {
     throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION,
         std::string("Unknown connection property in initialization: ")

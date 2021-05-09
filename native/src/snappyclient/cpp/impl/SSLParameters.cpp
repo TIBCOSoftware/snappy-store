@@ -28,32 +28,17 @@ const std::set<std::string> SSLParameters::s_sslProperties {
     "keystore-password", "certificate", "certificate-password", "truststore",
     "truststore-password" };
 
-void SSLParameters::operator()(const std::string& str) {
-  size_t spos;
-  if ((spos = str.find('=')) != std::string::npos) {
-    std::string propertyValue = str.substr(spos + 1);
-    std::string propertyName = str.substr(0, spos);
-    setSSLProperty(propertyName, propertyValue);
-    return;
-  }
-}
-
-void SSLParameters::setSSLProperty(std::string &propertyName,
-    std::string& value) {
+void SSLParameters::setSSLProperty(const std::string &propertyName,
+    const std::string &value) {
   auto itr = s_sslProperties.find(propertyName);
   if (itr != s_sslProperties.end()) {
-    auto mapItr = m_sslPropValMap.find(propertyName);
-    if (mapItr == m_sslPropValMap.end()) {
-      m_sslPropValMap.insert(
-          std::pair<std::string, std::string>(propertyName, value));
-    }
+    m_sslPropValMap.emplace(propertyName, value);
   } else {
-    throw std::invalid_argument(":Unknown SSL Property:" + propertyName);
+    throw std::invalid_argument("Unknown SSL Property: " + propertyName);
   }
 }
 
-std::string SSLParameters::getSSLPropertyName(SSLProperty sslProperty) {
-  m_currentProperty = sslProperty;
+std::string SSLParameters::toSSLPropertyName(SSLProperty sslProperty) {
   switch (sslProperty) {
     case SSLProperty::PROTOCOL:
       return "protocol";
@@ -75,7 +60,7 @@ std::string SSLParameters::getSSLPropertyName(SSLProperty sslProperty) {
       return "truststore-password";
     default:
       throw std::invalid_argument(
-          ":Unknown SSL Property enum: "
+          "Unknown SSL Property enum: "
               + std::to_string(static_cast<int>(sslProperty)));
   }
 }
@@ -91,17 +76,23 @@ std::string SSLParameters::getSSLPropertyValue(
       return "";
     }
   } else {
-    throw std::invalid_argument(":Unknown SSL Property: " + propertyName);
+    throw std::invalid_argument("Unknown SSL Property: " + propertyName);
   }
 }
 
-SSLSocketFactory::SSLSocketFactory(SSLParameters& params) :
+SSLSocketFactory::SSLSocketFactory() :
+    TSSLSocketFactory(SSLProtocol::SSLTLS), m_params() {
+  overrideDefaultPasswordCallback(); // use getPassword override
+}
+
+SSLSocketFactory::SSLSocketFactory(const SSLParameters &params) :
     TSSLSocketFactory(getProtocol(params)), m_params(params) {
   overrideDefaultPasswordCallback(); // use getPassword override
 }
 
-SSLProtocol SSLSocketFactory::getProtocol(const SSLParameters& params) {
-  std::string propVal = params.getSSLPropertyValue("protocol");
+SSLProtocol SSLSocketFactory::getProtocol(const SSLParameters &params) {
+  std::string propVal = params.getSSLPropertyValue(
+      SSLParameters::toSSLPropertyName(SSLProperty::PROTOCOL));
   if (!propVal.empty()) {
     if (boost::iequals(propVal, "SSLTLS")) {
       return SSLProtocol::SSLTLS;
@@ -114,7 +105,7 @@ SSLProtocol SSLSocketFactory::getProtocol(const SSLParameters& params) {
     } else if (boost::iequals(propVal, "TLS1.2")) {
       return SSLProtocol::TLSv1_2;
     } else {
-      throw std::invalid_argument(":Unknown SSL protocol: " + propVal);
+      throw std::invalid_argument("Unknown SSL protocol: " + propVal);
     }
   } else {
     return SSLProtocol::SSLTLS;
@@ -137,7 +128,7 @@ void SSLSocketFactory::getPassword(std::string& password, int size) {
       name = m_params.getSSLPropertyName(SSLProperty::TRUSTSTOREPASSWORD);
       break;
     default:
-      throw std::invalid_argument(":Expected password SSL Property: " + name);
+      throw std::invalid_argument("Expected password SSL Property: " + name);
   }
   password = m_params.getSSLPropertyValue(name);
 }
