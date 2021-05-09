@@ -49,8 +49,13 @@ extern "C" {
 
 #include <boost/config.hpp>
 #include <boost/lexical_cast.hpp>
+#ifndef _WINDOWS
+#include <boost/process.hpp>
+#endif
 #include <boost/spirit/include/karma.hpp>
+
 #include <cmath>
+#include <cstdlib>
 
 #include <thrift/Thrift.h>
 #include <thrift/protocol/TProtocolException.h>
@@ -59,6 +64,13 @@ extern "C" {
 #include "LogWriter.h"
 #include "SQLException.h"
 #include "impl/InternalUtils.h"
+
+#ifdef _WINDOWS
+extern "C" {
+#  include <windows.h>
+#  include <wincred.h>
+}
+#endif
 
 using namespace apache::thrift;
 using namespace io::snappydata;
@@ -218,6 +230,122 @@ void Utils::toHexString(const char* bytes, const size_t bytesLen,
     std::string& result) {
   functor::WriteString proc = { result };
   impl::InternalUtils::toHexString(bytes, bytesLen, proc);
+}
+
+std::string Utils::decryptPassword(const std::string &user,
+    const std::string &encryptedPassword) {
+#ifdef _WINDOWS
+  PCREDENTIAL pcred;
+  if (::CredRead(encryptedPassword.c_str(), CRED_TYPE_GENERIC, 0, &pcred)) {
+    std::unique_ptr<CREDENTIAL, decltype(&::CredFree)> p(pcred, ::CredFree);
+    std::string passwd;
+    if (pcred->CredentialBlobSize > 0) {
+      convertUTF16ToUTF8((wchar_t*)pcred->CredentialBlob,
+          pcred->CredentialBlobSize / sizeof(wchar_t), [&](char c) {
+        passwd.push_back(c);
+      });
+    }
+    return passwd;
+  } else {
+    std::string errMsg;
+    DWORD err = ::GetLastError();
+    switch (err) {
+    case ERROR_NOT_FOUND:
+      errMsg = "Missing credentials for ";
+      errMsg.append(user);
+      break;
+    case ERROR_NO_SUCH_LOGON_SESSION:
+      errMsg = "Login session not found to read credentials for ";
+      errMsg.append(user);
+      break;
+    default:
+      errMsg = "Credentials read failed for ";
+      errMsg.append(user).append(" with code = ").append(std::to_string(err));
+      break;
+    }
+    throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, errMsg);
+  }
+#elif defined(__APPLE__)
+  try {
+    boost::process::ipstream out, err;
+    std::stringstream outVal, errVal;
+
+    const char *user = ::getenv("USER");
+    if (!user) {
+      user = ::getenv("LOGNAME");
+    }
+    if (!user) {
+      throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION,
+          "Failed to get the user with USER or LOGNAME environment variables");
+    }
+    boost::process::child c(boost::process::search_path("security"),
+        "find-generic-password", "-w", "-a", user, "-s", encryptedPassword,
+        boost::process::std_out > out, boost::process::std_err > err);
+
+    while (out >> outVal.rdbuf()) {
+    }
+    while (err >> errVal.rdbuf()) {
+    }
+
+    c.wait();
+    int exitCode = c.exit_code();
+    if (exitCode != 0) {
+      throw std::runtime_error(
+          std::string("exit with error code ") + std::to_string(exitCode));
+    }
+    if (errVal.rdbuf()->in_avail() > 0) {
+      throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, errVal.str());
+    } else {
+      return outVal.str();
+    }
+  } catch (SQLException &sqle) {
+    throw sqle;
+  } catch (std::exception &ex) {
+    std::string err("Failure in 'security' tool for '");
+    err.append(encryptedPassword).append("' : ");
+    throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, err.append(ex.what()));
+  }
+#else
+  std::string attribute, value;
+  size_t colonPos = encryptedPassword.find(':');
+  if (colonPos == std::string::npos) {
+    attribute = encryptedPassword;
+  } else {
+    attribute = encryptedPassword.substr(0, colonPos);
+    value = encryptedPassword.substr(colonPos + 1);
+  }
+  try {
+    boost::process::ipstream out, err;
+    std::stringstream outVal, errVal;
+
+    boost::process::child c(boost::process::search_path("secret-tool"),
+        "lookup", attribute.c_str(), value.c_str(),
+        boost::process::std_out > out, boost::process::std_err > err);
+
+    while (out >> outVal.rdbuf()) {
+    }
+    while (err >> errVal.rdbuf()) {
+    }
+
+    c.wait();
+    int exitCode = c.exit_code();
+    if (exitCode != 0) {
+      throw std::runtime_error(
+          std::string("exit with error code ") + std::to_string(exitCode));
+    }
+    if (errVal.rdbuf()->in_avail() > 0) {
+      throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, errVal.str());
+    } else {
+      return outVal.str();
+    }
+  } catch (SQLException &sqle) {
+    throw sqle;
+  } catch (std::exception &ex) {
+    std::string err("Failure in 'secret-tool' for '");
+    err.append(attribute).append("':'").append(value).append("' : ");
+    throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, err.append(ex.what()));
+  }
+#endif
 }
 
 bool Utils::convertUTF8ToUTF16(const char *utf8Chars, const long utf8Len,

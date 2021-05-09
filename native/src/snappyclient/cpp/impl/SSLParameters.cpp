@@ -16,6 +16,7 @@
  */
 
 #include "SSLParameters.h"
+#include "Utils.h"
 
 #include <boost/algorithm/string.hpp>
 
@@ -80,13 +81,15 @@ std::string SSLParameters::getSSLPropertyValue(
   }
 }
 
-SSLSocketFactory::SSLSocketFactory() :
-    TSSLSocketFactory(SSLProtocol::SSLTLS), m_params() {
+SSLSocketFactory::SSLSocketFactory(bool encryptedPasswords) :
+    TSSLSocketFactory(SSLProtocol::SSLTLS), m_params(),
+    m_encryptedPasswords(encryptedPasswords) {
   overrideDefaultPasswordCallback(); // use getPassword override
 }
 
-SSLSocketFactory::SSLSocketFactory(const SSLParameters &params) :
-    TSSLSocketFactory(getProtocol(params)), m_params(params) {
+SSLSocketFactory::SSLSocketFactory(const SSLParameters &params,
+    bool encryptedPasswords) : TSSLSocketFactory(getProtocol(params)),
+    m_params(params), m_encryptedPasswords(encryptedPasswords) {
   overrideDefaultPasswordCallback(); // use getPassword override
 }
 
@@ -113,7 +116,7 @@ SSLProtocol SSLSocketFactory::getProtocol(const SSLParameters &params) {
 }
 
 void SSLSocketFactory::getPassword(std::string& password, int size) {
-  /* TODO: the password fields should be fetched from UI for ODBC */
+  /* TODO: the password fields can be fetched from UI for ODBC */
 
   SSLProperty sslProperty = m_params.m_currentProperty;
   std::string name = m_params.getSSLPropertyName(sslProperty);
@@ -130,5 +133,9 @@ void SSLSocketFactory::getPassword(std::string& password, int size) {
     default:
       throw std::invalid_argument("Expected password SSL Property: " + name);
   }
-  password = m_params.getSSLPropertyValue(name);
+  if (m_encryptedPasswords) {
+    password = Utils::decryptPassword(name, m_params.getSSLPropertyValue(name));
+  } else {
+    password = m_params.getSSLPropertyValue(name);
+  }
 }

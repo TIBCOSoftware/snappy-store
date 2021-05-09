@@ -335,9 +335,9 @@ ClientService::ClientService(const std::string& host, const int port,
     m_loadBalanceInitialized(false), m_reqdServerType(thrift::ServerType::THRIFT_SNAPPY_CP),
     m_useFramedTransport(false), m_serverGroups(), m_transport(),
     m_client(createDummyProtocol()), m_connHosts(), m_connId(0), m_token(),
-    m_isOpen(false), m_connFailed(false), m_pendingTXAttrs(),
-    m_hasPendingTXAttrs(false), m_isolationLevel(IsolationLevel::NONE),
-    m_lock() {
+    m_isOpen(false), m_connFailed(false), m_encryptedPasswords(false),
+    m_pendingTXAttrs(), m_hasPendingTXAttrs(false),
+    m_isolationLevel(IsolationLevel::NONE), m_lock() {
   std::map<std::string, std::string>& props = connArgs.properties;
   std::map<std::string, std::string>::iterator propValue;
 
@@ -351,6 +351,13 @@ ClientService::ClientService(const std::string& host, const int port,
   hostAddr.__set_isCurrent(true);
 
   {
+    // check if passwords are encrypted (including those of SSL keystore etc)
+    if ((propValue = props.find(
+        ClientAttribute::ENCRYPTED_PASSWORDS)) != props.end()) {
+      m_encryptedPasswords = boost::iequals(propValue->second, "true");
+      props.erase(propValue);
+    }
+
     // need to keep outside if (!props.empty()) as comes empty if user
     // doesn't give any property
     bool hasLoadBalance = ((propValue = props.find(
@@ -446,7 +453,7 @@ ClientService::ClientService(const std::string& host, const int port,
         }
       });
       if (!m_sslFactory) {
-        m_sslFactory.reset(new SSLSocketFactory(sslParams));
+        m_sslFactory.reset(new SSLSocketFactory(sslParams, m_encryptedPasswords));
       }
       props.erase(propValue);
     }
@@ -542,6 +549,8 @@ void ClientService::openConnection(thrift::HostAddress &hostAddr,
         }
       }
       return;
+    } catch (const SQLException &sqle) {
+      throw sqle;
     } catch (const thrift::SnappyException& sqle) {
       handleSnappyException("openConnection", true, false, false,
           failedServers, sqle);
@@ -598,6 +607,39 @@ thrift::OpenConnectionArgs& ClientService::initConnectionArgs(
   connArgs.__set_clientID(hostId.str());
   // TODO: fixed security mechanism for now
   connArgs.__set_security(thrift::SecurityMechanism::PLAIN);
+
+  auto &props = connArgs.properties;
+  auto propValue = props.find(ClientAttribute::ENCRYPTED_PASSWORDS);
+  // decrypt password if encrypted
+  if (propValue != props.end() && boost::iequals(propValue->second, "true")) {
+    std::string encryptedPassword;
+    if (connArgs.__isset.password) {
+      encryptedPassword = connArgs.password;
+    } else if ((propValue = props.find(
+        ClientAttribute::PASSWORD)) != props.end()) {
+      encryptedPassword = propValue->second;
+    }
+    if (!encryptedPassword.empty()) {
+      std::string user;
+      if (connArgs.__isset.userName) {
+        user = connArgs.userName;
+      } else if ((propValue = props.find(
+          ClientAttribute::USERNAME)) != props.end()) {
+        user = propValue->second;
+      } else if ((propValue = props.find(
+          ClientAttribute::USERNAME_ALT)) != props.end()) {
+        user = propValue->second;
+      }
+      if (connArgs.__isset.password) {
+        connArgs.__set_password(Utils::decryptPassword(
+            user, encryptedPassword));
+      } else {
+        props[ClientAttribute::PASSWORD] = Utils::decryptPassword(
+            user, encryptedPassword);
+      }
+    }
+  }
+
   return connArgs;
 }
 
@@ -679,7 +721,7 @@ protocol::TProtocol* ClientService::createProtocol(
   if (useSSL) {
     // m_lock should be held by caller
     if (!m_sslFactory) {
-      m_sslFactory.reset(new SSLSocketFactory());
+      m_sslFactory.reset(new SSLSocketFactory(m_encryptedPasswords));
     }
     socket = createSSLSocket(hostAddr.hostName, hostAddr.port, *m_sslFactory);
   } else {

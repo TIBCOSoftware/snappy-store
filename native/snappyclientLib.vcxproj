@@ -50,33 +50,33 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props"/>
   <PropertyGroup Label="UserMacros"/>
   <PropertyGroup Label="NMakeConfiguration" Condition="'$(Configuration)|$(Platform)'=='x86Release|Win32'">
-    <NMakeBuildCommandLine>gradlew.bat :snappyclientX86ReleaseStaticLibrary -PbothArch</NMakeBuildCommandLine>
-    <NMakeCleanCommandLine>gradlew.bat :clean -PbothArch</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>gradlew.bat :clean :snappyclientX86ReleaseStaticLibrary -PbothArch</NMakeReBuildCommandLine>
+    <NMakeBuildCommandLine>gradlew.bat :snappyclientX86ReleaseStaticLibrary -PbothArch=1</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>gradlew.bat :clean -PbothArch=1</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>gradlew.bat :clean :snappyclientX86ReleaseStaticLibrary -PbothArch=1</NMakeReBuildCommandLine>
     <NMakePreprocessorDefinitions></NMakePreprocessorDefinitions>
     <NMakeIncludeSearchPath>src\snappyclient\headers;dist\thrift-0.14.1\include;dist\boost-1.76.0\include;dist\mpir-2.7.2\include;dist\openssl-1.1.1k\include</NMakeIncludeSearchPath>
     <NMakeOutput>build-artifacts\win\libs\snappyclient\static\x86\release\snappyclient.lib</NMakeOutput>
   </PropertyGroup>
   <PropertyGroup Label="NMakeConfiguration" Condition="'$(Configuration)|$(Platform)'=='x86Debug|Win32'">
-    <NMakeBuildCommandLine>gradlew.bat :snappyclientX86DebugStaticLibrary -PbothArch</NMakeBuildCommandLine>
-    <NMakeCleanCommandLine>gradlew.bat :clean -PbothArch</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>gradlew.bat :clean :snappyclientX86DebugStaticLibrary -PbothArch</NMakeReBuildCommandLine>
+    <NMakeBuildCommandLine>gradlew.bat :snappyclientX86DebugStaticLibrary -PbothArch=1</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>gradlew.bat :clean -PbothArch=1</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>gradlew.bat :clean :snappyclientX86DebugStaticLibrary -PbothArch=1</NMakeReBuildCommandLine>
     <NMakePreprocessorDefinitions>_DEBUG</NMakePreprocessorDefinitions>
     <NMakeIncludeSearchPath>src\snappyclient\headers;dist\thrift-0.14.1\include;dist\boost-1.76.0\include;dist\mpir-2.7.2\include;dist\openssl-1.1.1k\include</NMakeIncludeSearchPath>
     <NMakeOutput>build-artifacts\win\libs\snappyclient\static\x86\debug\snappyclient.lib</NMakeOutput>
   </PropertyGroup>
   <PropertyGroup Label="NMakeConfiguration" Condition="'$(Configuration)|$(Platform)'=='x64Release|Win32'">
-    <NMakeBuildCommandLine>gradlew.bat :snappyclientX64ReleaseStaticLibrary -PbothArch</NMakeBuildCommandLine>
-    <NMakeCleanCommandLine>gradlew.bat :clean -PbothArch</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>gradlew.bat :clean :snappyclientX64ReleaseStaticLibrary -PbothArch</NMakeReBuildCommandLine>
+    <NMakeBuildCommandLine>gradlew.bat :snappyclientX64ReleaseStaticLibrary -PbothArch=1</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>gradlew.bat :clean -PbothArch=1</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>gradlew.bat :clean :snappyclientX64ReleaseStaticLibrary -PbothArch=1</NMakeReBuildCommandLine>
     <NMakePreprocessorDefinitions></NMakePreprocessorDefinitions>
     <NMakeIncludeSearchPath>src\snappyclient\headers;dist\thrift-0.14.1\include;dist\boost-1.76.0\include;dist\mpir-2.7.2\include;dist\openssl-1.1.1k\include</NMakeIncludeSearchPath>
     <NMakeOutput>build-artifacts\win\libs\snappyclient\static\x64\release\snappyclient.lib</NMakeOutput>
   </PropertyGroup>
   <PropertyGroup Label="NMakeConfiguration" Condition="'$(Configuration)|$(Platform)'=='x64Debug|Win32'">
-    <NMakeBuildCommandLine>gradlew.bat :snappyclientX64DebugStaticLibrary -PbothArch</NMakeBuildCommandLine>
-    <NMakeCleanCommandLine>gradlew.bat :clean -PbothArch</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>gradlew.bat :clean :snappyclientX64DebugStaticLibrary -PbothArch</NMakeReBuildCommandLine>
+    <NMakeBuildCommandLine>gradlew.bat :snappyclientX64DebugStaticLibrary -PbothArch=1</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>gradlew.bat :clean -PbothArch=1</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>gradlew.bat :clean :snappyclientX64DebugStaticLibrary -PbothArch=1</NMakeReBuildCommandLine>
     <NMakePreprocessorDefinitions>_DEBUG</NMakePreprocessorDefinitions>
     <NMakeIncludeSearchPath>src\snappyclient\headers;dist\thrift-0.14.1\include;dist\boost-1.76.0\include;dist\mpir-2.7.2\include;dist\openssl-1.1.1k\include</NMakeIncludeSearchPath>
     <NMakeOutput>build-artifacts\win\libs\snappyclient\static\x64\debug\snappyclient.lib</NMakeOutput>
@@ -104,6 +104,8 @@
     <ClCompile Include="src\snappyclient\cpp\impl\InternalUtils.h"/>
     <ClCompile Include="src\snappyclient\cpp\impl\MessageRegistry.cpp"/>
     <ClCompile Include="src\snappyclient\cpp\impl\MessageRegistry.h"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\SSLParameters.cpp"/>
+    <ClCompile Include="src\snappyclient\cpp\impl\SSLParameters.h"/>
     <ClCompile Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.cpp"/>
     <ClCompile Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.h"/>
     <ClCompile Include="src\snappyclient\cpp\impl\ThreadSafeMap.h"/>
@@ -228,6 +230,7 @@
     <ClInclude Include="src\snappyclient\cpp\impl\InternalLogger.h"/>
     <ClInclude Include="src\snappyclient\cpp\impl\InternalUtils.h"/>
     <ClInclude Include="src\snappyclient\cpp\impl\MessageRegistry.h"/>
+    <ClInclude Include="src\snappyclient\cpp\impl\SSLParameters.h"/>
     <ClInclude Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.h"/>
     <ClInclude Include="src\snappyclient\cpp\impl\ThreadSafeMap.h"/>
     <ClInclude Include="src\snappyclient\cpp\thrift\LocatorService.h"/>

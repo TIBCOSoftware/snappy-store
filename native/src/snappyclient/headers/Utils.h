@@ -205,6 +205,9 @@ namespace client {
     static void toHexString(const char* bytes, const size_t bytesLen,
         std::string& result);
 
+    static std::string decryptPassword(const std::string &user,
+        const std::string &encryptedPassword);
+
     static bool convertUTF8ToUTF16(const char *utf8Chars, const long utf8Len,
         std::function<void(int)> process);
 

@@ -119,6 +119,14 @@ void ConnectionProperty::staticInitialize() {
       F_IS_USER | F_IS_UTF8);
   addProperty_(ClientAttribute::PASSWORD, "Password of the user", nullptr,
       nullptr, F_IS_PASSWD | F_IS_UTF8);
+  addProperty_(ClientAttribute::ENCRYPTED_PASSWORDS,
+      "If set to true, then the passwords provided (user password as well as "
+          "SSL key store passwords) are stored encrypted in the system "
+          "credential manager. On Windows this uses the windows credential "
+          "manager (via wincred.h), on MacOSX it uses the 'security' "
+          "command-line tool while on Linux and others it uses the "
+          "'secret-tool' command-line tool (default disabled)", TRUE_FALSE,
+      nullptr, F_IS_BOOLEAN);
   addProperty_(ClientAttribute::LOAD_BALANCE,
       "Enable/Disable transparent load balancing of the connections "
           "on available servers (default enabled)", TRUE_FALSE, nullptr,

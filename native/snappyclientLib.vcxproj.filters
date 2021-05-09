@@ -78,6 +78,12 @@
     <ClCompile Include="src\snappyclient\cpp\impl\MessageRegistry.h">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\SSLParameters.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\SSLParameters.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -444,6 +450,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\snappyclient\cpp\impl\MessageRegistry.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\cpp\impl\SSLParameters.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.h">

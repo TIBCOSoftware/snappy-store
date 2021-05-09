@@ -68,17 +68,18 @@ public:
 class SSLSocketFactory : public TSSLSocketFactory {
 private:
   SSLParameters m_params;
+  bool m_encryptedPasswords;
 
   static SSLProtocol getProtocol(const SSLParameters &params);
 
 public:
-  SSLSocketFactory();
-  SSLSocketFactory(const SSLParameters &params);
+  SSLSocketFactory(bool encryptedPasswords);
+  SSLSocketFactory(const SSLParameters &params, bool encryptedPasswords);
   /**
    * Copy constructor to copy over the SSL parameters from the other factory.
    */
   inline SSLSocketFactory(const SSLSocketFactory &factory) :
-      SSLSocketFactory(factory.m_params) {
+      SSLSocketFactory(factory.m_params, factory.m_encryptedPasswords) {
   }
 
   virtual ~SSLSocketFactory() {
