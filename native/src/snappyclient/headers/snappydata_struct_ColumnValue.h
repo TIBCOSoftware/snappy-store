@@ -97,6 +97,9 @@ public:
   DateTime(int64_t elapsed): m_elapsed(elapsed) {
   }
 
+  virtual ~DateTime() {
+  }
+
   bool operator==(const DateTime& other) const {
     return m_elapsed == other.m_elapsed;
   }
@@ -105,25 +108,25 @@ public:
   }
 };
 
-class Date : public DateTime {
+class Date final : public DateTime {
 public:
   Date(int64_t secs) : DateTime(secs) {
   }
 };
 
-class Time : public DateTime {
+class Time final : public DateTime {
 public:
   Time(int64_t secs) : DateTime(secs) {
   }
 };
 
-class Timestamp : public DateTime {
+class Timestamp final : public DateTime {
 public:
   Timestamp(int64_t totalNanos) : DateTime(totalNanos) {
   }
 };
 
-class Binary : public std::string {
+class Binary final : public std::string {
 public:
   Binary() {
   }
@@ -132,15 +135,15 @@ public:
   Binary(const int8_t* bytes, int len) :
       std::string((const char*)bytes, len) {
   }
-  Binary(Binary&& other) : std::string(std::move(other)) {
+  Binary(Binary&& other) noexcept : std::string(std::move(other)) {
   }
-  Binary(std::string&& other) : std::string(std::move(other)) {
+  Binary(std::string&& other) noexcept : std::string(std::move(other)) {
   }
-  Binary& operator=(Binary&& other) {
+  Binary& operator=(Binary&& other) noexcept {
     std::string::operator=(std::move(other));
     return *this;
   }
-  Binary& operator=(std::string&& other) {
+  Binary& operator=(std::string&& other) noexcept {
     std::string::operator=(std::move(other));
     return *this;
   }
@@ -168,7 +171,7 @@ struct NullType {
   }
 };
 
-class JavaObject : public std::string {
+class JavaObject final : public std::string {
 public:
   JavaObject() {
   }
@@ -177,15 +180,15 @@ public:
   JavaObject(const int8_t* bytes, int len) :
       std::string((const char*)bytes, len) {
   }
-  JavaObject(JavaObject&& other) : std::string(std::move(other)) {
+  JavaObject(JavaObject&& other) noexcept : std::string(std::move(other)) {
   }
-  JavaObject(std::string&& other) : std::string(std::move(other)) {
+  JavaObject(std::string&& other) noexcept : std::string(std::move(other)) {
   }
-  JavaObject& operator=(JavaObject&& other) {
+  JavaObject& operator=(JavaObject&& other) noexcept {
     std::string::operator=(std::move(other));
     return *this;
   }
-  JavaObject& operator=(std::string&& other) {
+  JavaObject& operator=(std::string&& other) noexcept {
     std::string::operator=(std::move(other));
     return *this;
   }
@@ -234,11 +237,11 @@ public:
   ColumnValue(const ColumnValue& other) : m_val(other.m_val) {
   }
 
-  ColumnValue(ColumnValue&& other) : m_val(std::move(other.m_val)) {
+  ColumnValue(ColumnValue&& other) noexcept : m_val(std::move(other.m_val)) {
   }
 
   ColumnValue& operator=(const ColumnValue& other);
-  ColumnValue& operator=(ColumnValue&& other);
+  ColumnValue& operator=(ColumnValue&& other) noexcept;
 
   ~ColumnValue() noexcept {
   }

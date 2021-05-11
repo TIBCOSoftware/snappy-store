@@ -436,10 +436,6 @@ ClientService::ClientService(const std::string& host, const int port,
       framedTransport = boost::iequals(propValue->second, "true");
       props.erase(propValue);
     }
-    if ((propValue = props.find(ClientAttribute::SSL)) != props.end()) {
-      useSSL = boost::iequals(propValue->second, "true");
-      props.erase(propValue);
-    }
     if ((propValue = props.find(ClientAttribute::SSL_PROPERTIES))
         != props.end()) {
       useSSL = true;
@@ -454,6 +450,14 @@ ClientService::ClientService(const std::string& host, const int port,
       });
       if (!m_sslFactory) {
         m_sslFactory.reset(new SSLSocketFactory(sslParams, m_encryptedPasswords));
+      }
+      props.erase(propValue);
+    }
+    if ((propValue = props.find(ClientAttribute::SSL)) != props.end()) {
+      useSSL = boost::iequals(propValue->second, "true");
+      // override ssl-properties if ssl-mode is explicitly set to false
+      if (!useSSL) {
+        m_sslFactory.reset(nullptr);
       }
       props.erase(propValue);
     }

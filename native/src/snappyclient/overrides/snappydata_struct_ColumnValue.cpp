@@ -389,7 +389,7 @@ ColumnValue& ColumnValue::operator=(const ColumnValue& other) {
   m_val = other.m_val;
   return *this;
 }
-ColumnValue& ColumnValue::operator=(ColumnValue&& other) {
+ColumnValue& ColumnValue::operator=(ColumnValue&& other) noexcept {
   m_val = std::move(other.m_val);
   return *this;
 }

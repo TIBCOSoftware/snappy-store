@@ -171,10 +171,10 @@ namespace client {
     Row(const Row &other) : thrift::Row(other) {
     }
 
-    Row(Row &&other) : thrift::Row(std::move(other)) {
+    Row(Row &&other) noexcept : thrift::Row(std::move(other)) {
     }
 
-    Row(thrift::Row &&other) : thrift::Row(std::move(other)) {
+    Row(thrift::Row &&other) noexcept : thrift::Row(std::move(other)) {
     }
 
     Row& operator=(const Row &other) {
@@ -182,7 +182,7 @@ namespace client {
       return *this;
     }
 
-    Row& operator=(Row &&other) {
+    Row& operator=(Row &&other) noexcept {
       thrift::Row::operator =(std::move(other));
       return *this;
     }

@@ -59,10 +59,10 @@ namespace client {
     UpdatableRow(const UpdatableRow &other) : Row(other) {
     }
 
-    UpdatableRow(UpdatableRow &&other) : Row(std::move(other)) {
+    UpdatableRow(UpdatableRow &&other) noexcept : Row(std::move(other)) {
     }
 
-    UpdatableRow(thrift::Row &&other) : Row(std::move(other)) {
+    UpdatableRow(thrift::Row &&other) noexcept : Row(std::move(other)) {
     }
 
     UpdatableRow& operator=(const UpdatableRow &other) {
@@ -70,7 +70,7 @@ namespace client {
       return *this;
     }
 
-    UpdatableRow& operator=(UpdatableRow &&other) {
+    UpdatableRow& operator=(UpdatableRow &&other) noexcept {
       Row::operator =(std::move(other));
       return *this;
     }

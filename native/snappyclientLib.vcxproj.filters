@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <ItemGroup Label="Filters">
     <Filter Include="Source Files">
@@ -36,61 +36,28 @@
     <ClCompile Include="src\snappyclient\cpp\DatabaseMetaData.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\impl\BufferedSocketTransport.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\impl\BufferedSocketTransport.h">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\impl\ClientService.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\impl\ClientService.h">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\impl\ControlConnection.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\impl\ControlConnection.h">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\impl\DNSCacheService.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\impl\DNSCacheService.h">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\impl\InternalLogger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\impl\InternalLogger.h">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\impl\InternalUtils.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\impl\InternalUtils.h">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\impl\MessageRegistry.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\impl\MessageRegistry.h">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\impl\SSLParameters.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\impl\SSLParameters.h">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.h">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\impl\ThreadSafeMap.h">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\LogWriter.cpp">
@@ -132,13 +99,7 @@
     <ClCompile Include="src\snappyclient\cpp\thrift\LocatorService.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\thrift\LocatorService.h">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\thrift\SnappyDataService.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\thrift\SnappyDataService.h">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_constants.cpp">
@@ -159,9 +120,6 @@
     <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_ConnectionProperties.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_DateTime.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_Decimal.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -169,12 +127,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_HostAddress.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_JSONObject.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_JSONValue.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_OpenConnectionArgs.cpp">
@@ -201,9 +153,6 @@
     <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_SnappyException.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_SnappyException.h">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_SnappyExceptionData.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -211,9 +160,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_StatementResult.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_Timestamp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_UpdateResult.cpp">
@@ -234,9 +180,6 @@
     <ClCompile Include="src\snappyclient\cpp\types\Decimal.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\snappyclient\cpp\types\JSON.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\types\LobBase.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -247,6 +190,30 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\snappyclient\cpp\Utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_BucketOwners.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_CatalogFunctionObject.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_CatalogMetadataDetails.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_CatalogMetadataRequest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_CatalogPartitionObject.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_CatalogSchemaObject.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_CatalogStorage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_CatalogTableObject.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -264,9 +231,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\snappyclient\headers\ColumnDescriptorBase.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\snappyclient\headers\common\ArrayList.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\snappyclient\headers\common\Base.h">
@@ -335,9 +299,6 @@
     <ClInclude Include="src\snappyclient\headers\snappydata_struct_ConnectionProperties.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\snappyclient\headers\snappydata_struct_DateTime.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\snappyclient\headers\snappydata_struct_Decimal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -345,12 +306,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\snappyclient\headers\snappydata_struct_HostAddress.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\snappyclient\headers\snappydata_struct_JSONObject.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\snappyclient\headers\snappydata_struct_JSONValue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\snappyclient\headers\snappydata_struct_OpenConnectionArgs.h">
@@ -383,9 +338,6 @@
     <ClInclude Include="src\snappyclient\headers\snappydata_struct_StatementResult.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\snappyclient\headers\snappydata_struct_Timestamp.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\snappyclient\headers\snappydata_struct_UpdateResult.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -413,9 +365,6 @@
     <ClInclude Include="src\snappyclient\headers\types\Decimal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\snappyclient\headers\types\JSON.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\snappyclient\headers\types\LobBase.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -429,9 +378,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\snappyclient\headers\Utils.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\snappyclient\cpp\impl\BufferedSocketTransport.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\snappyclient\cpp\impl\ClientService.h">
@@ -468,6 +414,30 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\snappyclient\cpp\thrift\snappydata_struct_SnappyException.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_BucketOwners.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_CatalogFunctionObject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_CatalogMetadataDetails.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_CatalogMetadataRequest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_CatalogPartitionObject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_CatalogSchemaObject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_CatalogStorage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\snappydata_struct_CatalogTableObject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

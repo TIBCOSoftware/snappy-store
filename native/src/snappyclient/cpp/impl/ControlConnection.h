@@ -119,11 +119,6 @@ namespace io {
           bool m_framedTransport;
 
           /*********Member functions**************/
-          ControlConnection() :
-              m_snappyServerType(thrift::ServerType::THRIFT_SNAPPY_CP),
-              m_serverGroups(std::set<std::string>()), m_framedTransport(false) {
-          }
-
           ControlConnection(ClientService* service);
 
           void failoverToAvailableHost(

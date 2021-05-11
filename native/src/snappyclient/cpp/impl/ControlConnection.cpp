@@ -160,7 +160,7 @@ ControlConnection& ControlConnection::getOrCreateControlConnection(
     }
   }
   allConnections.emplace(service, newControlConn);
-  return *newControlConn;
+  return *allConnections[service];
 }
 
 void ControlConnection::getLocatorPreferredServer(

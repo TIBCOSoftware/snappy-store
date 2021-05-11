@@ -51,7 +51,7 @@ namespace client {
     Parameters(const thrift::Row &other) : Row(other) {
     }
 
-    Parameters(thrift::Row &&other) : Row(std::move(other)) {
+    Parameters(thrift::Row &&other) noexcept : Row(std::move(other)) {
     }
 
     inline void checkBounds(uint32_t paramIndex) const {
@@ -84,10 +84,10 @@ namespace client {
     Parameters(const Parameters &other) : Row(other) {
     }
 
-    Parameters(Parameters &&other) : Row(std::move(other)) {
+    Parameters(Parameters &&other) noexcept : Row(std::move(other)) {
     }
 
-    Parameters& operator=(Parameters&& other) {
+    Parameters& operator=(Parameters&& other) noexcept {
       Row::operator =(std::move(other));
       return *this;
     }
