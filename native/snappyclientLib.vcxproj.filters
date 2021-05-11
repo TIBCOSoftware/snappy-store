@@ -216,6 +216,9 @@
     <ClCompile Include="src\snappyclient\cpp\thrift\snappydata_struct_CatalogTableObject.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\BufferedClientTransport.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup Label="Headers">
     <ClInclude Include="src\snappyclient\headers\ClientAttribute.h">
@@ -438,6 +441,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\snappyclient\headers\snappydata_struct_CatalogTableObject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\cpp\impl\BufferedClientTransport.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -44,8 +44,9 @@ extern "C" {
 #include <arpa/inet.h>
 #endif
 #include <stdlib.h>
-}
+#undef NDEBUG
 #include <assert.h>
+}
 
 using namespace io::snappydata::client::impl;
 

@@ -92,6 +92,7 @@
     <ClCompile Include="src\snappyclient\cpp\common\SystemProperties.cpp" />
     <ClCompile Include="src\snappyclient\cpp\Connection.cpp" />
     <ClCompile Include="src\snappyclient\cpp\DatabaseMetaData.cpp" />
+    <ClCompile Include="src\snappyclient\cpp\impl\BufferedClientTransport.cpp" />
     <ClCompile Include="src\snappyclient\cpp\impl\ClientService.cpp" />
     <ClCompile Include="src\snappyclient\cpp\impl\ControlConnection.cpp" />
     <ClCompile Include="src\snappyclient\cpp\impl\DNSCacheService.cpp" />
@@ -154,6 +155,7 @@
     <ClCompile Include="src\snappyclient\cpp\Utils.cpp" />
   </ItemGroup>
   <ItemGroup Label="Headers">
+    <ClInclude Include="src\snappyclient\cpp\impl\BufferedClientTransport.h" />
     <ClInclude Include="src\snappyclient\headers\ClientAttribute.h" />
     <ClInclude Include="src\snappyclient\headers\ClientBase.h" />
     <ClInclude Include="src\snappyclient\headers\ClientProperty.h" />

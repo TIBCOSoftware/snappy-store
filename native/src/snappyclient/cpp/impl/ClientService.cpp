@@ -98,6 +98,46 @@ struct CollectHostAddresses final {
   }
 };
 
+#ifdef _WINDOWS
+static const std::vector<std::string> s_systemCertificateBundles = {
+  "C:/SSL/certs/ca-certificates.crt",
+  "C:/SSL/certs/ca-bundle.crt",
+  "C:/SSL/cert.pem",
+  "C:/Program Files/Common Files/SSL/certs/ca-certificates.crt",
+  "C:/Program Files/Common Files/SSL/certs/ca-bundle.crt",
+  "C:/Program Files/Common Files/SSL/cert.pem",
+  "C:/Program Files (x86)/Common Files/SSL/certs/ca-certificates.crt",
+  "C:/Program Files (x86)/Common Files/SSL/certs/ca-bundle.crt",
+  "C:/Program Files (x86)/Common Files/SSL/cert.pem"
+};
+
+static const std::vector<std::string> s_systemCertificateDirs = {
+  "C:/SSL/certs",
+  "C:/Program Files/Common Files/SSL/certs",
+  "C:/Program Files (x86)/Common Files/SSL/certs"
+};
+#else
+static const std::vector<std::string> s_systemCertificateBundles = {
+  "/etc/ssl/certs/ca-certificates.crt",
+  "/etc/ssl/certs/ca-bundle.crt",
+  "/etc/ssl/cert.pem",
+  "/etc/openssl/certs/ca-certificates.crt",
+  "/etc/openssl/certs/ca-bundle.crt",
+  "/etc/openssl/cert.pem",
+  "/usr/local/etc/ssl/certs/ca-certificates.crt",
+  "/usr/local/etc/ssl/certs/ca-bundle.crt",
+  "/usr/local/etc/ssl/cert.pem",
+  "/usr/local/etc/openssl/certs/ca-certificates.crt",
+  "/usr/local/etc/openssl/certs/ca-bundle.crt",
+  "/usr/local/etc/openssl/cert.pem"
+};
+
+static const std::vector<std::string> s_systemCertificateDirs = {
+  "/etc/ssl/certs", "/etc/openssl/certs",
+  "/usr/local/etc/ssl/certs", "/usr/local/etc/openssl/certs"
+};
+#endif
+
 }
 
 bool thrift::HostAddress::operator <(const HostAddress& other) const {
@@ -454,9 +494,13 @@ ClientService::ClientService(const std::string& host, const int port,
       props.erase(propValue);
     }
     if ((propValue = props.find(ClientAttribute::SSL)) != props.end()) {
-      useSSL = boost::iequals(propValue->second, "true");
       // override ssl-properties if ssl-mode is explicitly set to false
-      if (!useSSL) {
+      useSSL = boost::iequals(propValue->second, "true");
+      if (useSSL) {
+        if (!m_sslFactory) {
+          m_sslFactory.reset(new SSLSocketFactory(m_encryptedPasswords));
+        }
+      } else {
         m_sslFactory.reset(nullptr);
       }
       props.erase(propValue);
@@ -723,9 +767,9 @@ protocol::TProtocol* ClientService::createProtocol(
 
   std::shared_ptr<TSocket> socket;
   if (useSSL) {
-    // m_lock should be held by caller
     if (!m_sslFactory) {
-      m_sslFactory.reset(new SSLSocketFactory(m_encryptedPasswords));
+      throw new std::runtime_error(
+          "unexpected null SSLSocketFactory in ClientService::createProtocol");
     }
     socket = createSSLSocket(hostAddr.hostName, hostAddr.port, *m_sslFactory);
   } else {
@@ -1900,6 +1944,27 @@ std::shared_ptr<TSSLSocket> ClientService::createSSLSocket(
       sslSocketFactory.loadTrustedCertificates(nullptr, propVal.c_str());
     } else {
       sslSocketFactory.loadTrustedCertificates(propVal.c_str(), nullptr);
+    }
+  } else {
+    // try to load system installed certificates if available
+    bool loaded = false;
+    for (auto &certFile : _snappy_impl::s_systemCertificateBundles) {
+      boost::filesystem::path certPath = InternalUtils::getPath(certFile);
+      if (boost::filesystem::exists(certPath)) {
+        sslSocketFactory.loadTrustedCertificates(certFile.c_str(), nullptr);
+        loaded = true;
+        break;
+      }
+    }
+    if (!loaded) {
+      for (auto &certDir : _snappy_impl::s_systemCertificateDirs) {
+        boost::filesystem::path certPath = InternalUtils::getPath(certDir);
+        if (boost::filesystem::exists(certPath)
+            && boost::filesystem::is_directory(certPath)) {
+          sslSocketFactory.loadTrustedCertificates(nullptr, certDir.c_str());
+          break;
+        }
+      }
     }
   }
   sslProperty = sslSocketFactory.getSSLPropertyName(SSLProperty::CIPHERSUITES);
