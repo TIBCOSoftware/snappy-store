@@ -2534,6 +2534,8 @@ public final class GemFireXDUtils {
     Throwable exp = t;
     while (exp != null && !retry) {
       retry = checkExceptionForRetry(exp);
+      // don't look inside SQLExceptions that need not be retried
+      if (exp instanceof SQLException) break;
       exp = exp.getCause();
     }
     if (retry) {
@@ -2559,6 +2561,8 @@ public final class GemFireXDUtils {
         }
         return true;
       }
+      // don't look inside SQLExceptions that need not be retried
+      if (exp instanceof SQLException) return false;
       exp = exp.getCause();
     }
     return false;
