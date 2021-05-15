@@ -361,6 +361,18 @@ namespace client {
     static SQLMessage2<int, int> TYPE_ATTRIBUTE_VIOLATION_MSG;
 
     /**
+     * Message string for "CONNECTION_FAILED" SQLState.
+     */
+    static SQLMessage3<const char*, std::exception, const char*>
+        CONNECTION_FAILED_MSG;
+
+    /**
+     * Message string for "CONNECTION_REJECTED" SQLState.
+     */
+    static SQLMessage3<const char*, std::exception, const char*>
+        CONNECTION_REJECTED_MSG;
+
+    /**
      * Message string for "SNAPPY_NODE_SHUTDOWN" SQLState.
      */
     static SQLMessage3<const char*, std::exception, const char*>

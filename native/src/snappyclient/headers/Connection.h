@@ -215,6 +215,8 @@ namespace client {
 
     const thrift::HostAddress& getCurrentHostAddress() const noexcept;
 
+    std::string toString() const noexcept;
+
     const thrift::OpenConnectionArgs& getConnectionArgs() const noexcept;
 
     void setSendBufferSize(uint32_t sz);

@@ -67,7 +67,6 @@
 #include "InternalLogger.h"
 #include "InternalUtils.h"
 #include "ControlConnection.h"
-#include "NetConnection.h"
 
 extern "C" {
 #ifdef _WINDOWS
@@ -283,16 +282,16 @@ void ClientService::handleSnappyException(const char* op, bool tryFailover,
   FailoverStatus status = NetConnection::getFailoverStatus(
       se.exceptionData.sqlState, se.exceptionData.errorCode, se);
   if (status == FailoverStatus::NONE) {
-    // convert DATA_CONTAINTER_CLOSED to "X0Z01" for non-transactional case
+    // convert DATA_CONTAINTER_CLOSED to connection errors for non-transactional case
     if (m_isolationLevel == IsolationLevel::NONE
         && !se.exceptionData.sqlState.compare(
             SQLState::DATA_CONTAINER_CLOSED.getSQLState())) {
-      throwSQLExceptionForNodeFailure(op, se);
+      throwSQLExceptionForNodeFailure(op, se, status);
     } else {
       throw GET_SQLEXCEPTION(se);
     }
   } else {
-    throwSQLExceptionForNodeFailure(op, se);
+    throwSQLExceptionForNodeFailure(op, se, status);
   }
 }
 
@@ -303,7 +302,7 @@ void ClientService::handleTTransportException(const char* op,
 
   if (handleThriftException(op, tryFailover, ignoreNodeFailure,
       createNewConnection, failedServers, tte)) {
-    throwSQLExceptionForNodeFailure(op, tte);
+    throwSQLExceptionForNodeFailure(op, tte, FailoverStatus::NEW_SERVER);
   }
 }
 
@@ -329,13 +328,18 @@ void ClientService::handleTException(const char* op, bool tryFailover,
   }
 }
 
-void ClientService::throwSQLExceptionForNodeFailure(const char* op,
-    const std::exception& se) {
+void ClientService::throwSQLExceptionForNodeFailure(const char *op,
+    const std::exception &se, FailoverStatus status) {
   destroyTransport();
   if (m_isolationLevel == IsolationLevel::NONE) {
-    // throw X0Z01 for this case
-    throw GET_SQLEXCEPTION2(SQLStateMessage::SNAPPY_NODE_SHUTDOWN_MSG,
-        m_currentHostAddr.toString().c_str(), se, op);
+    // throw 08001 or 08004 for this case
+    if (status == FailoverStatus::NEW_SERVER) {
+      throw GET_SQLEXCEPTION2(SQLStateMessage::CONNECTION_FAILED_MSG,
+          m_currentHostAddr.toString().c_str(), se, op);
+    } else {
+      throw GET_SQLEXCEPTION2(SQLStateMessage::CONNECTION_REJECTED_MSG,
+          m_currentHostAddr.toString().c_str(), se, op);
+    }
   } else {
     // throw 40XD0 for this case
     throw GET_SQLEXCEPTION2(SQLStateMessage::DATA_CONTAINER_CLOSED_MSG,
@@ -510,12 +514,12 @@ ClientService::ClientService(const std::string& host, const int port,
   }
 
   std::set<thrift::HostAddress> failedServers;
-  std::string failure;
+  std::runtime_error failure("");
   openConnection(hostAddr, failedServers, failure);
 }
 
 void ClientService::openConnection(thrift::HostAddress &hostAddr,
-    std::set<thrift::HostAddress> &failedServers, std::string &failure) {
+    std::set<thrift::HostAddress> &failedServers, std::exception &failure) {
   // open the connection
   std::thread::id tid;
   NanoTimeThread start;
@@ -1867,7 +1871,7 @@ void ClientService::close() {
 
 void ClientService::updateFailedServersForCurrent(
     std::set<thrift::HostAddress> &failedServers, bool checkAllFailed,
-    std::string &failure) {
+    std::exception &failure) {
   thrift::HostAddress host = this->m_currentHostAddr;
 
   auto ret = failedServers.insert(host);
@@ -1896,7 +1900,7 @@ bool ClientService::handleThriftException(const char* op, bool tryFailover,
     tryFailover = false;
   }
   if (tryFailover && ignoreNodeFailure) {
-    std::string failure(te.what());
+    TException failure(te.what());
     updateFailedServersForCurrent(failedServers, true, failure);
     result = false;
   }

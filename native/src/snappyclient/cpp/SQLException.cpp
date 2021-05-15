@@ -260,6 +260,11 @@ std::ostream& SQLException::printStackTrace(std::ostream& out, int level) const 
           << _SNAPPY_NEWLINE;
     }
   }
+#else
+  if (m_next) {
+    out << "Caused by:" << _SNAPPY_NEWLINE;
+    m_next->printStackTrace(out, level + 1);
+  }
 #endif
   return out;
 }

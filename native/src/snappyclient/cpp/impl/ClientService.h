@@ -39,9 +39,12 @@
 #include "ClientBase.h"
 
 #include <mutex>
+#include <stdexcept>
+
 #include <thrift/transport/TSSLSocket.h>
 
 #include "../thrift/SnappyDataService.h"
+#include "NetConnection.h"
 #include "SSLParameters.h"
 
 using namespace apache::thrift;
@@ -138,7 +141,7 @@ namespace io {
 
           void updateFailedServersForCurrent(
               std::set<thrift::HostAddress> &failedServers,
-              bool checkAllFailed, std::string &failure);
+              bool checkAllFailed, std::exception &failure);
 
           friend class ControlConnection;
 
@@ -173,12 +176,12 @@ namespace io {
           virtual void handleUnknownException(const char* op,
               bool checkClosed = true);
 
-          BOOST_NORETURN void throwSQLExceptionForNodeFailure(const char* op,
-              const std::exception& se);
+          BOOST_NORETURN void throwSQLExceptionForNodeFailure(const char *op,
+              const std::exception &se, FailoverStatus status);
 
           void openConnection(thrift::HostAddress &hostAddr,
               std::set<thrift::HostAddress> &failedServers,
-              std::string &failure);
+              std::exception &failure);
 
           void flushPendingTransactionAttrs();
 
@@ -242,6 +245,10 @@ namespace io {
           inline ClientTransport* getTransport() {
             checkConnection("get transport");
             return m_transport.get();
+          }
+
+          int64_t getConnectionId() const noexcept {
+            return m_connId;
           }
 
           const char* getTokenStr() const noexcept {

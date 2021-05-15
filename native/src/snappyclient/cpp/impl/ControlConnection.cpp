@@ -38,6 +38,7 @@
 #include "ControlConnection.h"
 
 #include <algorithm>
+#include <cstring>
 #include <thread>
 
 #include <thrift/Thrift.h>
@@ -48,6 +49,7 @@
 #include <thrift/protocol/TCompactProtocol.h>
 
 #include "NetConnection.h"
+#include "SQLException.h"
 #include "SQLState.h"
 #include "Utils.h"
 
@@ -89,7 +91,7 @@ void ControlConnection::staticInitialize() {
 
 ControlConnection& ControlConnection::getOrCreateControlConnection(
     const std::vector<thrift::HostAddress> &hostAddrs, ClientService *service,
-    std::string &failure) {
+    std::exception &failure) {
 
   // loop through all ControlConnections since size of this global list is
   // expected to be in single digit (total number of distributed systems)
@@ -172,7 +174,7 @@ void ControlConnection::getLocatorPreferredServer(
 }
 
 void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
-    std::string &failure, ClientService *service, bool forFailover) {
+    std::exception &failure, ClientService *service, bool forFailover) {
   std::set<thrift::HostAddress> failedServers;
   std::set<std::string> serverGroups;
   return getPreferredServer(preferredServer, failure, failedServers,
@@ -180,7 +182,7 @@ void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
 }
 
 void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
-    std::string &failure, std::set<thrift::HostAddress> &failedServers,
+    std::exception &failure, std::set<thrift::HostAddress> &failedServers,
     std::set<std::string> &serverGroups, ClientService *service,
     bool forFailover) {
   if (!m_controlLocator) {
@@ -234,12 +236,9 @@ void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
         throw snEx;
       } else if (status == FailoverStatus::RETRY) {
         forFailover = true;
-        if (failure.empty()) {
-          failure.assign(snEx.what());
-        } else {
-          failure.append(" and ").append(snEx.what());
-        }
         continue;
+      } else {
+        failure = snEx;
       }
     } catch (const TException &tex) {
       // Search for a new host for locator query.
@@ -251,11 +250,7 @@ void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
         failedServers.insert(m_controlHost);
       }
       close();
-      if (failure.empty()) {
-        failure.assign(tex.what());
-      } else {
-        failure.append(" and ").append(tex.what());
-      }
+      failure = tex;
       failoverToAvailableHost(failedServers, true, failure, service);
     } catch (std::exception &ex) {
       throw unexpectedError(ex, m_controlHost);
@@ -265,7 +260,7 @@ void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
 }
 
 void ControlConnection::searchRandomServer(
-    const std::set<thrift::HostAddress> &skipServers, std::string &failure,
+    const std::set<thrift::HostAddress> &skipServers, std::exception &failure,
     thrift::HostAddress &hostAddress) {
 
   std::vector<thrift::HostAddress> searchServers;
@@ -293,7 +288,7 @@ void ControlConnection::searchRandomServer(
 
 void ControlConnection::failoverToAvailableHost(
     std::set<thrift::HostAddress> &failedServers, bool checkFailedControlHosts,
-    std::string &failure, ClientService *service) {
+    std::exception &failure, ClientService *service) {
   std::lock_guard<std::recursive_mutex> lockGuard(m_lock);
   for (auto &controlAddr : m_controlHostSet) {
     if (checkFailedControlHosts && !failedServers.empty()
@@ -365,11 +360,7 @@ void ControlConnection::failoverToAvailableHost(
       if (outTransport) {
         outTransport->close();
       }
-      if (failure.empty()) {
-        failure.assign(tex.what());
-      } else {
-        failure.append(" and ").append(tex.what());
-      }
+      failure = tex;
       continue;
     } catch (std::exception &ex) {
       throw unexpectedError(ex, controlAddr);
@@ -445,7 +436,7 @@ void ControlConnection::refreshAllHosts(
 
 void ControlConnection::failoverExhausted(
     const std::set<thrift::HostAddress> &failedServers,
-    std::string &failure) {
+    std::exception &failure) {
 
   std::string failedServerString;
   for (thrift::HostAddress host : failedServers) {
@@ -456,13 +447,27 @@ void ControlConnection::failoverExhausted(
   }
   thrift::SnappyException snappyEx;
   SnappyExceptionData snappyExData;
-  snappyExData.__set_sqlState(
-      std::string(SQLState::DATA_CONTAINER_CLOSED.getSQLState()));
+  SQLException *failureSQLE;
+  SnappyException *failureSE;
+  if ((failureSQLE = dynamic_cast<SQLException*>(&failure))) {
+    snappyExData.__set_sqlState(failureSQLE->getSQLState());
+    snappyExData.__set_errorCode(failureSQLE->getSeverity());
+  } else if ((failureSE = dynamic_cast<SnappyException*>(&failure))) {
+    snappyExData.__set_sqlState(failureSE->exceptionData.sqlState);
+    snappyExData.__set_errorCode(failureSE->exceptionData.errorCode);
+  } else {
+    snappyExData.__set_sqlState(
+        std::string(SQLState::DATA_CONTAINER_CLOSED.getSQLState()));
+    snappyExData.__set_errorCode(
+        static_cast<int32_t>(SQLState::DATA_CONTAINER_CLOSED.getSeverity()));
+  }
   std::string reason = "Failed after trying all available servers: {";
   reason.append(failedServerString).append("}");
   // add to own message if original failure is not a null message
-  if (!failure.empty()) {
-    reason.append(" and ").append(failure);
+  const char *failureMsg = failure.what();
+  if (failureMsg && *failureMsg != '\0'
+      && std::strcmp(failureMsg, "Unknown exception") != 0) {
+    reason.append(" and ").append(failureMsg);
   }
   snappyExData.__set_reason(reason);
   snappyEx.__set_exceptionData(snappyExData);

@@ -73,7 +73,11 @@ const SQLState SQLState::INVALID_BUFFER_LENGTH("HY090",
     ExceptionSeverity::NO_APPLICABLE_SEVERITY);
 const SQLState SQLState::NULL_HANDLE("HY009",
     ExceptionSeverity::NO_APPLICABLE_SEVERITY);
+const SQLState SQLState::CONNECTION_FAILED("08001",
+    ExceptionSeverity::SESSION_SEVERITY);
 const SQLState SQLState::CONNECTION_IN_USE("08002",
+    ExceptionSeverity::SESSION_SEVERITY);
+const SQLState SQLState::CONNECTION_REJECTED("08004",
     ExceptionSeverity::SESSION_SEVERITY);
 const SQLState SQLState::STRING_TRUNCATED("01004",
     ExceptionSeverity::NO_APPLICABLE_SEVERITY);

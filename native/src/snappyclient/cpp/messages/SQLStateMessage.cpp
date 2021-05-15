@@ -102,6 +102,10 @@ SQLMessage2<const char*, const char*> SQLStateMessage::ATTRIBUTE_CANNOT_BE_SET_N
 SQLMessage2<int, int> SQLStateMessage::TYPE_ATTRIBUTE_VIOLATION_MSG;
 
 SQLMessage3<const char*, std::exception, const char*>
+    SQLStateMessage::CONNECTION_FAILED_MSG;
+SQLMessage3<const char*, std::exception, const char*>
+    SQLStateMessage::CONNECTION_REJECTED_MSG;
+SQLMessage3<const char*, std::exception, const char*>
     SQLStateMessage::SNAPPY_NODE_SHUTDOWN_MSG;
 SQLMessage3<const char*, std::exception, const char*>
     SQLStateMessage::DATA_CONTAINER_CLOSED_MSG;
@@ -256,6 +260,10 @@ void SQLStateMessage::staticInitialize() {
       "Data type identified by value type argument '",
       "' cannot be converted to data type identified by parameter type '", "'");
 
+  CONNECTION_FAILED_MSG.initialize(SQLState::CONNECTION_FAILED, 1,
+      "Connection to node ", " failed with ", " (operation=", ")");
+  CONNECTION_REJECTED_MSG.initialize(SQLState::CONNECTION_REJECTED, 1,
+    "Connection to node ", " rejected by server with ", " (operation=", ")");
   SNAPPY_NODE_SHUTDOWN_MSG.initialize(SQLState::SNAPPY_NODE_SHUTDOWN, 1,
       "Node on ", " failed with ", " (operation=", ")");
   DATA_CONTAINER_CLOSED_MSG.initialize(SQLState::DATA_CONTAINER_CLOSED, 1,

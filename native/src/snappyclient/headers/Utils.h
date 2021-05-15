@@ -208,12 +208,12 @@ namespace client {
     static std::string decryptPassword(const std::string &user,
         const std::string &encryptedPassword);
 
-    static bool convertUTF8ToUTF16(const char *utf8Chars, const long utf8Len,
-        std::function<void(int)> process);
+    static bool convertUTF8ToUTF16(const char *utf8Chars,
+        const int64_t utf8Len, std::function<void(int)> process);
 
     template<typename TWCHAR>
-    static void convertUTF16ToUTF8(const TWCHAR *utf16Chars, const long utf16Len,
-        std::function<void(char)> process);
+    static void convertUTF16ToUTF8(const TWCHAR *utf16Chars,
+        const int64_t utf16Len, std::function<void(char)> process);
 
     static void convertByteToString(const int8_t v, std::string& result);
     static void convertShortToString(const int16_t v, std::string& result);
@@ -286,7 +286,7 @@ namespace client {
 
 template<typename TWCHAR>
 void io::snappydata::client::Utils::convertUTF16ToUTF8(const TWCHAR *utf16Chars,
-    const long utf16Len, std::function<void(char)> process) {
+    const int64_t utf16Len, std::function<void(char)> process) {
   const TWCHAR* endChars = utf16Len < 0 ? nullptr : (utf16Chars + utf16Len);
   TWCHAR wch;
   while ((!endChars || utf16Chars < endChars) && (wch = *utf16Chars++) != 0) {

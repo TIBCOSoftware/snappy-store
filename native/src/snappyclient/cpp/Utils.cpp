@@ -348,8 +348,8 @@ std::string Utils::decryptPassword(const std::string &user,
 #endif
 }
 
-bool Utils::convertUTF8ToUTF16(const char *utf8Chars, const long utf8Len,
-    std::function<void(int)> process) {
+bool Utils::convertUTF8ToUTF16(const char *utf8Chars,
+    const int64_t utf8Len, std::function<void(int)> process) {
   const char *endChars = (utf8Len < 0) ? nullptr : (utf8Chars + utf8Len);
   bool nonASCII = false;
   int ch;

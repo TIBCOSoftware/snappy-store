@@ -325,6 +325,17 @@ const thrift::HostAddress& Connection::getCurrentHostAddress() const noexcept {
   return checkAndGetService().getCurrentHostAddress();
 }
 
+std::string Connection::toString() const noexcept {
+  if (isOpen()) {
+    std::ostringstream ostream;
+    ostream << m_service->getConnectionId() << '@'
+      << m_service->getCurrentHostAddress();
+    return ostream.str();
+  } else {
+    return "";
+  }
+}
+
 const thrift::OpenConnectionArgs& Connection::getConnectionArgs() const noexcept {
   return checkAndGetService().getConnectionArgs();
 }

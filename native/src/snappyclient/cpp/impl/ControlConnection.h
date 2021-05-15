@@ -36,6 +36,7 @@
 #ifndef CONTROLCONNECTION_H_
 #define CONTROLCONNECTION_H_
 
+#include <exception>
 #include <mutex>
 #include <unordered_map>
 
@@ -123,7 +124,7 @@ namespace io {
 
           void failoverToAvailableHost(
               std::set<thrift::HostAddress> &failedServers,
-              bool checkFailedControlHosts, std::string &failure,
+              bool checkFailedControlHosts, std::exception &failure,
               ClientService *service);
 
           void refreshAllHosts(std::vector<thrift::HostAddress> &&allHosts);
@@ -133,14 +134,14 @@ namespace io {
 
           void failoverExhausted(
               const std::set<thrift::HostAddress> &failedServers,
-              std::string &failure);
+              std::exception &failure);
 
           void getLocatorPreferredServer(thrift::HostAddress& prefHostAddr,
               std::set<thrift::HostAddress>& failedServers,
               std::set<std::string> serverGroups);
 
           void getPreferredServer(thrift::HostAddress &preferredServer,
-              std::string &failure, ClientService *service,
+              std::exception &failure, ClientService *service,
               bool forFailover = false);
 
         public:
@@ -148,17 +149,17 @@ namespace io {
 
           static ControlConnection& getOrCreateControlConnection(
               const std::vector<thrift::HostAddress> &hostAddrs,
-              ClientService *service, std::string &failure);
+              ClientService *service, std::exception &failure);
 
           void getPreferredServer(thrift::HostAddress &preferredServer,
-              std::string &failure,
+              std::exception &failure,
               std::set<thrift::HostAddress> &failedServers,
               std::set<std::string> &serverGroups, ClientService *service,
               bool forFailover = false);
 
           void searchRandomServer(
               const std::set<thrift::HostAddress> &skipServers,
-              std::string &failure, thrift::HostAddress &hostAddress);
+              std::exception &failure, thrift::HostAddress &hostAddress);
 
           thrift::HostAddress getConnectedHost(
               const thrift::HostAddress &hostAddr);
