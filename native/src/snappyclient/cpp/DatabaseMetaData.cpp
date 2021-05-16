@@ -344,8 +344,8 @@ int32_t DatabaseMetaData::maxUserNameLength() const noexcept {
   return m_metadata.maxUserNameLength;
 }
 
-int32_t DatabaseMetaData::defaultTransactionIsolation() const noexcept {
-  return m_metadata.defaultTransactionIsolation;
+IsolationLevel DatabaseMetaData::defaultTransactionIsolation() const noexcept {
+  return static_cast<IsolationLevel>(m_metadata.defaultTransactionIsolation);
 }
 
 int32_t DatabaseMetaData::getDefaultResultSetType() const noexcept {
@@ -361,6 +361,12 @@ ResultSetHoldability DatabaseMetaData::getDefaultHoldability()
 
 bool DatabaseMetaData::isSQLStateXOpen() const noexcept {
   return m_metadata.sqlStateIsXOpen;
+}
+
+bool DatabaseMetaData::isReadOnly() const noexcept {
+  auto result = m_metadata.transactionDefaults.find(
+      thrift::TransactionAttribute::READ_ONLY_CONNECTION);
+  return result != m_metadata.transactionDefaults.end() && result->second;
 }
 
 RowIdLifetime DatabaseMetaData::getDefaultRowIdLifeTime() const noexcept {
@@ -385,6 +391,13 @@ bool DatabaseMetaData::supportsTransactionIsolationLevel(
   return searchFeature(
       thrift::ServiceFeatureParameterized::TRANSACTIONS_SUPPORT_ISOLATION,
       static_cast<int32_t>(isolation));
+}
+
+bool DatabaseMetaData::supportsResultSetType(
+    ResultSetType rsType) const {
+  return searchFeature(
+      thrift::ServiceFeatureParameterized::RESULTSET_TYPE,
+      static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::supportsResultSetReadOnly(
