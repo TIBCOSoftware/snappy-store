@@ -262,7 +262,7 @@ const ConnectionProperty& ConnectionProperty::getProperty(
 }
 
 void Connection::initializeService() {
-  ClientService::staticInitialize();
+  initializeSnappyDataService();
 }
 
 void Connection::open(const std::string& host, const int port,

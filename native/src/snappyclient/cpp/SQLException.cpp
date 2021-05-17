@@ -126,7 +126,8 @@ void SQLException::staticInitialize() {
             s_processBaseAddress.append(" 0x");
             s_processBaseAddress.append(line.begin(), line.begin() + addrEnd);
           }
-        } else if (line.find("snappyodbc") != std::string::npos) {
+        } else if (line.find("snappyclient") != std::string::npos
+            || line.find("snappyodbc") != std::string::npos) {
           size_t addrEnd = line.find('-', 0);
           if (addrEnd != std::string::npos) {
             s_processBaseAddress.append(" 0x");

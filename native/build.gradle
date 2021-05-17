@@ -315,6 +315,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
             linker.args '-lcrypto', '-lssl', '-lgmp', '-lpthread', '-lrt',
                         '-rdynamic', '-ldl', '-z', 'defs'
           } else if (toolChain in VisualCpp) {
+            cppCompiler.define 'DLLBUILD'
             cppCompiler.args '/W3', '/FS', '/Zc:inline', '/WX', '/EHsc',
                              '/Fdsnappyclient.pdb', '/errorReport:prompt'
             if (buildType == buildTypes.debug) {

@@ -38,7 +38,6 @@
 extern "C" {
 #include <time.h>
 }
-#include <boost/numeric/conversion/cast.hpp>
 
 using namespace io::snappydata::client::impl;
 
@@ -94,7 +93,7 @@ boost::filesystem::path InternalUtils::getPath(const std::string& pathStr) {
 #ifdef _WINDOWS
   std::wstring wlogFile;
   bool result = Utils::convertUTF8ToUTF16(pathStr.c_str(),
-      boost::numeric_cast<long>(pathStr.size()), [&](int c) {
+      static_cast<int64_t>(pathStr.size()), [&](int c) {
     wlogFile.push_back((wchar_t)c);
   });
   if (result) {

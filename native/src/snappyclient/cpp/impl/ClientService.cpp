@@ -71,6 +71,7 @@
 extern "C" {
 #ifdef _WINDOWS
 #include <windows.h>
+#include <libloaderapi.h>
 #else
 #include <unistd.h>
 #endif
@@ -137,6 +138,10 @@ static const std::vector<std::string> s_systemCertificateDirs = {
 };
 #endif
 
+}
+
+void initializeSnappyDataService() {
+  ClientService::staticInitialize();
 }
 
 bool thrift::HostAddress::operator <(const HostAddress& other) const {
@@ -1966,10 +1971,43 @@ std::shared_ptr<TSSLSocket> ClientService::createSSLSocket(
         if (boost::filesystem::exists(certPath)
             && boost::filesystem::is_directory(certPath)) {
           sslSocketFactory.loadTrustedCertificates(nullptr, certDir.c_str());
+          loaded = true;
           break;
         }
       }
     }
+#ifdef _WINDOWS
+    // if no system installed certificates can be found then try searching
+    // in product installation directory
+    if (!loaded) {
+      char dllPath[MAX_PATH];
+      DWORD pathSize;
+      HMODULE hm = nullptr;
+      if (::GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
+          | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+          (LPCSTR)&initializeSnappyDataService, &hm) != 0
+          && (pathSize = ::GetModuleFileName(hm, dllPath, sizeof(dllPath))) != 0
+          && pathSize < sizeof(dllPath)) {
+        boost::filesystem::path dllDir =
+            InternalUtils::getPath(dllPath).parent_path();
+        boost::filesystem::path certPath(dllDir);
+        certPath += L"/../../SSL/certs/ca-certificates.crt";
+        if (boost::filesystem::exists(certPath)) {
+          sslSocketFactory.loadTrustedCertificates(
+              certPath.string().c_str(), nullptr);
+          loaded = true;
+        } else {
+          certPath = dllDir;
+          certPath += L"/../../../SSL/certs/ca-certificates.crt";
+          if (boost::filesystem::exists(certPath)) {
+            sslSocketFactory.loadTrustedCertificates(
+                certPath.string().c_str(), nullptr);
+            loaded = true;
+          }
+        }
+      }
+    }
+#endif
   }
   sslProperty = sslSocketFactory.getSSLPropertyName(SSLProperty::CIPHERSUITES);
   propVal = sslSocketFactory.getSSLPropertyValue(sslProperty);

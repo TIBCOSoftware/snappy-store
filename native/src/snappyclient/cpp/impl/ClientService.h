@@ -47,6 +47,8 @@
 #include "NetConnection.h"
 #include "SSLParameters.h"
 
+DLLPUBLIC void initializeSnappyDataService();
+
 using namespace apache::thrift;
 using namespace apache::thrift::transport;
 namespace apache {
