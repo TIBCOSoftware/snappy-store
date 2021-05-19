@@ -115,7 +115,7 @@ namespace io {
           std::string m_token;
           bool m_isOpen;
           bool m_connFailed;
-          bool m_encryptedPasswords;
+          bool m_passwordsInManager;
 
           std::map<thrift::TransactionAttribute::type, bool> m_pendingTXAttrs;
           bool m_hasPendingTXAttrs;

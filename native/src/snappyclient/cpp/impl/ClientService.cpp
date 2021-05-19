@@ -384,7 +384,7 @@ ClientService::ClientService(const std::string& host, const int port,
     m_loadBalanceInitialized(false), m_reqdServerType(thrift::ServerType::THRIFT_SNAPPY_CP),
     m_useFramedTransport(false), m_serverGroups(), m_transport(),
     m_client(createDummyProtocol()), m_connHosts(), m_connId(0), m_token(),
-    m_isOpen(false), m_connFailed(false), m_encryptedPasswords(false),
+    m_isOpen(false), m_connFailed(false), m_passwordsInManager(false),
     m_pendingTXAttrs(), m_hasPendingTXAttrs(false),
     m_isolationLevel(IsolationLevel::NONE), m_lock() {
   std::map<std::string, std::string>& props = connArgs.properties;
@@ -400,10 +400,10 @@ ClientService::ClientService(const std::string& host, const int port,
   hostAddr.__set_isCurrent(true);
 
   {
-    // check if passwords are encrypted (including those of SSL keystore etc)
+    // check if passwords are stored in the manager (including for SSL keystores)
     if ((propValue = props.find(
-        ClientAttribute::ENCRYPTED_PASSWORDS)) != props.end()) {
-      m_encryptedPasswords = boost::iequals(propValue->second, "true");
+        ClientAttribute::CREDENTIAL_MANAGER)) != props.end()) {
+      m_passwordsInManager = boost::iequals(propValue->second, "true");
       props.erase(propValue);
     }
 
@@ -498,7 +498,7 @@ ClientService::ClientService(const std::string& host, const int port,
         }
       });
       if (!m_sslFactory) {
-        m_sslFactory.reset(new SSLSocketFactory(sslParams, m_encryptedPasswords));
+        m_sslFactory.reset(new SSLSocketFactory(sslParams, m_passwordsInManager));
       }
       props.erase(propValue);
     }
@@ -507,7 +507,7 @@ ClientService::ClientService(const std::string& host, const int port,
       useSSL = boost::iequals(propValue->second, "true");
       if (useSSL) {
         if (!m_sslFactory) {
-          m_sslFactory.reset(new SSLSocketFactory(m_encryptedPasswords));
+          m_sslFactory.reset(new SSLSocketFactory(m_passwordsInManager));
         }
       } else {
         m_sslFactory.reset(nullptr);
@@ -666,17 +666,17 @@ thrift::OpenConnectionArgs& ClientService::initConnectionArgs(
   connArgs.__set_security(thrift::SecurityMechanism::PLAIN);
 
   auto &props = connArgs.properties;
-  auto propValue = props.find(ClientAttribute::ENCRYPTED_PASSWORDS);
-  // decrypt password if encrypted
+  auto propValue = props.find(ClientAttribute::CREDENTIAL_MANAGER);
+  // load password from credential manager if required
   if (propValue != props.end() && boost::iequals(propValue->second, "true")) {
-    std::string encryptedPassword;
+    std::string passwordKey;
     if (connArgs.__isset.password) {
-      encryptedPassword = connArgs.password;
+      passwordKey = connArgs.password;
     } else if ((propValue = props.find(
         ClientAttribute::PASSWORD)) != props.end()) {
-      encryptedPassword = propValue->second;
+      passwordKey = propValue->second;
     }
-    if (!encryptedPassword.empty()) {
+    if (!passwordKey.empty()) {
       std::string user;
       if (connArgs.__isset.userName) {
         user = connArgs.userName;
@@ -688,11 +688,11 @@ thrift::OpenConnectionArgs& ClientService::initConnectionArgs(
         user = propValue->second;
       }
       if (connArgs.__isset.password) {
-        connArgs.__set_password(Utils::decryptPassword(
-            user, encryptedPassword));
+        connArgs.__set_password(Utils::readPasswordFromManager(
+            user, passwordKey));
       } else {
-        props[ClientAttribute::PASSWORD] = Utils::decryptPassword(
-            user, encryptedPassword);
+        props[ClientAttribute::PASSWORD] = Utils::readPasswordFromManager(
+            user, passwordKey);
       }
     }
   }

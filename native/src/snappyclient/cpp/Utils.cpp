@@ -232,11 +232,11 @@ void Utils::toHexString(const char* bytes, const size_t bytesLen,
   impl::InternalUtils::toHexString(bytes, bytesLen, proc);
 }
 
-std::string Utils::decryptPassword(const std::string &user,
-    const std::string &encryptedPassword) {
+std::string Utils::readPasswordFromManager(const std::string &user,
+    const std::string &passwordKey) {
 #ifdef _WINDOWS
   PCREDENTIAL pcred;
-  if (::CredRead(encryptedPassword.c_str(), CRED_TYPE_GENERIC, 0, &pcred)) {
+  if (::CredRead(passwordKey.c_str(), CRED_TYPE_GENERIC, 0, &pcred)) {
     std::unique_ptr<CREDENTIAL, decltype(&::CredFree)> p(pcred, ::CredFree);
     std::string passwd;
     if (pcred->CredentialBlobSize > 0) {
@@ -279,7 +279,7 @@ std::string Utils::decryptPassword(const std::string &user,
           "Failed to get the user with USER or LOGNAME environment variables");
     }
     boost::process::child c(boost::process::search_path("security"),
-        "find-generic-password", "-w", "-a", user, "-s", encryptedPassword,
+        "find-generic-password", "-w", "-a", user, "-s", passwordKey,
         boost::process::std_out > out, boost::process::std_err > err);
 
     while (out >> outVal.rdbuf()) {
@@ -302,17 +302,17 @@ std::string Utils::decryptPassword(const std::string &user,
     throw sqle;
   } catch (std::exception &ex) {
     std::string err("Failure in 'security' tool for '");
-    err.append(encryptedPassword).append("' : ");
+    err.append(passwordKey).append("' : ");
     throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, err.append(ex.what()));
   }
 #else
   std::string attribute, value;
-  size_t colonPos = encryptedPassword.find(':');
+  size_t colonPos = passwordKey.find(':');
   if (colonPos == std::string::npos) {
-    attribute = encryptedPassword;
+    attribute = passwordKey;
   } else {
-    attribute = encryptedPassword.substr(0, colonPos);
-    value = encryptedPassword.substr(colonPos + 1);
+    attribute = passwordKey.substr(0, colonPos);
+    value = passwordKey.substr(colonPos + 1);
   }
   try {
     boost::process::ipstream out, err;

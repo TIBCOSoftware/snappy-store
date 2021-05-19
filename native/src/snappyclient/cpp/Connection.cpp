@@ -119,9 +119,9 @@ void ConnectionProperty::staticInitialize() {
       F_IS_USER | F_IS_UTF8);
   addProperty_(ClientAttribute::PASSWORD, "Password of the user", nullptr,
       nullptr, F_IS_PASSWD | F_IS_UTF8);
-  addProperty_(ClientAttribute::ENCRYPTED_PASSWORDS,
+  addProperty_(ClientAttribute::CREDENTIAL_MANAGER,
       "If set to true, then the passwords provided (user password as well as "
-          "SSL key store passwords) are stored encrypted in the system "
+          "SSL key store passwords) are protected by storing in the system "
           "credential manager. On Windows this uses the windows credential "
           "manager (via wincred.h), on MacOSX it uses the 'security' "
           "command-line tool while on Linux and others it uses the "

@@ -50,7 +50,7 @@ std::unordered_set<std::string> ClientAttribute::s_attributes;
 const std::string ClientAttribute::USERNAME = ClientAttribute::addToHashSet("user");
 const std::string ClientAttribute::USERNAME_ALT = ClientAttribute::addToHashSet("UserName");
 const std::string ClientAttribute::PASSWORD = ClientAttribute::addToHashSet("password");
-const std::string ClientAttribute::ENCRYPTED_PASSWORDS = ClientAttribute::addToHashSet("encrypted-passwords");
+const std::string ClientAttribute::CREDENTIAL_MANAGER = ClientAttribute::addToHashSet("credential-manager");
 const std::string ClientAttribute::READ_TIMEOUT = ClientAttribute::addToHashSet("read-timeout");
 const std::string ClientAttribute::KEEPALIVE_IDLE = ClientAttribute::addToHashSet("keepalive-idle");
 const std::string ClientAttribute::KEEPALIVE_INTVL = ClientAttribute::addToHashSet("keepalive-interval");

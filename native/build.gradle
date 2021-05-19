@@ -75,16 +75,22 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
     }
 
     if (flavour.startsWith('ubuntu18') || flavour.startsWith('ubuntu19') ||
+        flavour.startsWith('pop18') || flavour.startsWith('pop19') ||
         flavour.startsWith('linuxmint19') || flavour.startsWith('elementary5')) {
       dependencies += [ "thrift-${thriftVersion}-ubuntu18.04.tar.bz2",
                         "boost-${boostVersion}-ubuntu18.04.tar.bz2",
                         "googletest-${googletestVersion}-ubuntu18.04.tar.bz2" ]
     } else if (flavour.startsWith('ubuntu20') || flavour.startsWith('ubuntu21') ||
-        flavour.startsWith('linuxmint20') || flavour.startsWith('elementary6') ||
-        flavour.startsWith('archlinux') || flavour.startsWith('manjarolinux')) {
+        flavour.startsWith('pop20') || flavour.startsWith('pop21') ||
+        flavour.startsWith('linuxmint20') || flavour.startsWith('elementary6')) {
       dependencies += [ "thrift-${thriftVersion}-ubuntu20.04.tar.bz2",
                         "boost-${boostVersion}-ubuntu20.04.tar.bz2",
                         "googletest-${googletestVersion}-ubuntu20.04.tar.bz2" ]
+    } else if (flavour.startsWith('archlinux') || flavour.startsWith('manjarolinux') ||
+        flavour.startsWith('garuda')) {
+      dependencies += [ "thrift-${thriftVersion}-arch21.05.tar.bz2",
+                        "boost-${boostVersion}-arch21.05.tar.bz2",
+                        "googletest-${googletestVersion}-arch21.05.tar.bz2" ]
     } else if (flavour.startsWith('redhat7') || flavour.startsWith('centos7')) {
       dependencies += [ "thrift-${thriftVersion}-rhel7.tar.bz2",
                         "boost-${boostVersion}-rhel7.tar.bz2",

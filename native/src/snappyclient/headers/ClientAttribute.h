@@ -69,7 +69,7 @@ public:
   static const std::string USERNAME;
   static const std::string USERNAME_ALT;
   static const std::string PASSWORD;
-  static const std::string ENCRYPTED_PASSWORDS;
+  static const std::string CREDENTIAL_MANAGER;
   static const std::string READ_TIMEOUT;
   static const std::string KEEPALIVE_IDLE;
   static const std::string KEEPALIVE_INTVL;

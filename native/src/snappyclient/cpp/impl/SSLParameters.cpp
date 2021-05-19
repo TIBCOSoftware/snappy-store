@@ -81,15 +81,15 @@ std::string SSLParameters::getSSLPropertyValue(
   }
 }
 
-SSLSocketFactory::SSLSocketFactory(bool encryptedPasswords) :
+SSLSocketFactory::SSLSocketFactory(bool passwordsInManager) :
     TSSLSocketFactory(SSLProtocol::SSLTLS), m_params(),
-    m_encryptedPasswords(encryptedPasswords) {
+    m_passwordsInManager(passwordsInManager) {
   overrideDefaultPasswordCallback(); // use getPassword override
 }
 
 SSLSocketFactory::SSLSocketFactory(const SSLParameters &params,
-    bool encryptedPasswords) : TSSLSocketFactory(getProtocol(params)),
-    m_params(params), m_encryptedPasswords(encryptedPasswords) {
+    bool passwordsInManager) : TSSLSocketFactory(getProtocol(params)),
+    m_params(params), m_passwordsInManager(passwordsInManager) {
   overrideDefaultPasswordCallback(); // use getPassword override
 }
 
@@ -133,8 +133,9 @@ void SSLSocketFactory::getPassword(std::string& password, int size) {
     default:
       throw std::invalid_argument("Expected password SSL Property: " + name);
   }
-  if (m_encryptedPasswords) {
-    password = Utils::decryptPassword(name, m_params.getSSLPropertyValue(name));
+  if (m_passwordsInManager) {
+    password = Utils::readPasswordFromManager(name,
+        m_params.getSSLPropertyValue(name));
   } else {
     password = m_params.getSSLPropertyValue(name);
   }
