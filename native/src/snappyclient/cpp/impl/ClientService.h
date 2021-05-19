@@ -143,7 +143,7 @@ namespace io {
 
           void updateFailedServersForCurrent(
               std::set<thrift::HostAddress> &failedServers,
-              bool checkAllFailed, std::exception &failure);
+              bool checkAllFailed, SQLException &failure);
 
           friend class ControlConnection;
 
@@ -183,7 +183,7 @@ namespace io {
 
           void openConnection(thrift::HostAddress &hostAddr,
               std::set<thrift::HostAddress> &failedServers,
-              std::exception &failure);
+              SQLException &failure);
 
           void flushPendingTransactionAttrs();
 

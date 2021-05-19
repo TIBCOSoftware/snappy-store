@@ -519,12 +519,12 @@ ClientService::ClientService(const std::string& host, const int port,
   }
 
   std::set<thrift::HostAddress> failedServers;
-  std::runtime_error failure("");
+  SQLException failure(__FILE__, __LINE__);
   openConnection(hostAddr, failedServers, failure);
 }
 
 void ClientService::openConnection(thrift::HostAddress &hostAddr,
-    std::set<thrift::HostAddress> &failedServers, std::exception &failure) {
+    std::set<thrift::HostAddress> &failedServers, SQLException &failure) {
   // open the connection
   std::thread::id tid;
   NanoTimeThread start;
@@ -1876,7 +1876,7 @@ void ClientService::close() {
 
 void ClientService::updateFailedServersForCurrent(
     std::set<thrift::HostAddress> &failedServers, bool checkAllFailed,
-    std::exception &failure) {
+    SQLException &failure) {
   thrift::HostAddress host = this->m_currentHostAddr;
 
   auto ret = failedServers.insert(host);
@@ -1905,7 +1905,9 @@ bool ClientService::handleThriftException(const char* op, bool tryFailover,
     tryFailover = false;
   }
   if (tryFailover && ignoreNodeFailure) {
-    TException failure(te.what());
+    SQLException failure(std::move(GET_SQLEXCEPTION2(
+            SQLStateMessage::CONNECTION_FAILED_MSG,
+            m_currentHostAddr.toString().c_str(), te, op)));
     updateFailedServersForCurrent(failedServers, true, failure);
     result = false;
   }

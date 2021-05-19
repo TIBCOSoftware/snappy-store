@@ -124,7 +124,7 @@ namespace io {
 
           void failoverToAvailableHost(
               std::set<thrift::HostAddress> &failedServers,
-              bool checkFailedControlHosts, std::exception &failure,
+              bool checkFailedControlHosts, SQLException &failure,
               ClientService *service);
 
           void refreshAllHosts(std::vector<thrift::HostAddress> &&allHosts);
@@ -134,14 +134,14 @@ namespace io {
 
           void failoverExhausted(
               const std::set<thrift::HostAddress> &failedServers,
-              std::exception &failure);
+              SQLException &failure);
 
           void getLocatorPreferredServer(thrift::HostAddress& prefHostAddr,
               std::set<thrift::HostAddress>& failedServers,
               std::set<std::string> serverGroups);
 
           void getPreferredServer(thrift::HostAddress &preferredServer,
-              std::exception &failure, ClientService *service,
+              SQLException &failure, ClientService *service,
               bool forFailover = false);
 
         public:
@@ -149,17 +149,17 @@ namespace io {
 
           static ControlConnection& getOrCreateControlConnection(
               const std::vector<thrift::HostAddress> &hostAddrs,
-              ClientService *service, std::exception &failure);
+              ClientService *service, SQLException &failure);
 
           void getPreferredServer(thrift::HostAddress &preferredServer,
-              std::exception &failure,
+              SQLException &failure,
               std::set<thrift::HostAddress> &failedServers,
               std::set<std::string> &serverGroups, ClientService *service,
               bool forFailover = false);
 
           void searchRandomServer(
               const std::set<thrift::HostAddress> &skipServers,
-              std::exception &failure, thrift::HostAddress &hostAddress);
+              SQLException &failure, thrift::HostAddress &hostAddress);
 
           thrift::HostAddress getConnectedHost(
               const thrift::HostAddress &hostAddr);

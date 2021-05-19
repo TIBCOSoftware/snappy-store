@@ -79,6 +79,13 @@ SQLException::SQLException(const char* file, int line,
   init();
 }
 
+SQLException::SQLException(const char* file, int line) :
+    m_reason(), m_state(SQLState::UNKNOWN_EXCEPTION.getSQLState()),
+    m_severity(static_cast<int32_t>(ExceptionSeverity::SESSION_SEVERITY)),
+    m_next(nullptr), m_file(file), m_line(line) {
+  m_stackSize = 0;
+}
+
 SQLException::SQLException(const char* file, int line,
     const std::exception& stde) :
     m_reason(stde.what()), m_state(SQLState::UNKNOWN_EXCEPTION.getSQLState()),
@@ -106,6 +113,36 @@ SQLException::SQLException(SQLException&& other) :
   copyStack(other.m_stack, other.m_stackSize);
   other.m_stackSize = 0;
 #endif
+}
+
+SQLException& SQLException::operator=(const SQLException &other) {
+  m_reason = other.m_reason;
+  m_state = other.m_state;
+  m_severity = other.m_severity;
+  deleteNextException();
+  initNextException(other);
+  m_file = other.m_file;
+  m_line = other.m_line;
+#ifdef __GNUC__
+  copyStack(other.m_stack, other.m_stackSize);
+#endif
+  return *this;
+}
+
+SQLException& SQLException::operator=(SQLException &&other) {
+  m_reason = std::move(other.m_reason);
+  m_state = std::move(other.m_state);
+  m_severity = other.m_severity;
+  deleteNextException();
+  m_next = other.m_next;
+  other.m_next = nullptr;
+  m_file = other.m_file;
+  m_line = other.m_line;
+#ifdef __GNUC__
+  copyStack(other.m_stack, other.m_stackSize);
+  other.m_stackSize = 0;
+#endif
+  return *this;
 }
 
 void SQLException::staticInitialize() {
@@ -276,7 +313,7 @@ void SQLException::toString(std::ostream& out) const {
       << m_line;
 }
 
-SQLException::~SQLException() {
+void SQLException::deleteNextException() noexcept {
   SQLException* next = m_next;
   SQLException* pnext;
   while (next) {
@@ -287,6 +324,10 @@ SQLException::~SQLException() {
     next = pnext;
   }
   m_next = nullptr;
+}
+
+SQLException::~SQLException() noexcept {
+  deleteNextException();
 }
 
 SQLWarning::SQLWarning(const char* file, int line, const SQLState& state,

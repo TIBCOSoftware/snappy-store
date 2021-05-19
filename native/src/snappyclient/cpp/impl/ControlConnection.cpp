@@ -91,7 +91,7 @@ void ControlConnection::staticInitialize() {
 
 ControlConnection& ControlConnection::getOrCreateControlConnection(
     const std::vector<thrift::HostAddress> &hostAddrs, ClientService *service,
-    std::exception &failure) {
+    SQLException &failure) {
 
   // loop through all ControlConnections since size of this global list is
   // expected to be in single digit (total number of distributed systems)
@@ -174,7 +174,7 @@ void ControlConnection::getLocatorPreferredServer(
 }
 
 void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
-    std::exception &failure, ClientService *service, bool forFailover) {
+    SQLException &failure, ClientService *service, bool forFailover) {
   std::set<thrift::HostAddress> failedServers;
   std::set<std::string> serverGroups;
   return getPreferredServer(preferredServer, failure, failedServers,
@@ -182,7 +182,7 @@ void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
 }
 
 void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
-    std::exception &failure, std::set<thrift::HostAddress> &failedServers,
+    SQLException &failure, std::set<thrift::HostAddress> &failedServers,
     std::set<std::string> &serverGroups, ClientService *service,
     bool forFailover) {
   if (!m_controlLocator) {
@@ -238,7 +238,7 @@ void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
         forFailover = true;
         continue;
       } else {
-        failure = snEx;
+        failure = std::move(GET_SQLEXCEPTION(snEx));
       }
     } catch (const TException &tex) {
       // Search for a new host for locator query.
@@ -250,7 +250,8 @@ void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
         failedServers.insert(m_controlHost);
       }
       close();
-      failure = tex;
+      failure = std::move(GET_SQLEXCEPTION2(SQLStateMessage::CONNECTION_FAILED_MSG,
+          m_controlHost.toString().c_str(), tex, "getPreferredServer"));
       failoverToAvailableHost(failedServers, true, failure, service);
     } catch (std::exception &ex) {
       throw unexpectedError(ex, m_controlHost);
@@ -260,7 +261,7 @@ void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
 }
 
 void ControlConnection::searchRandomServer(
-    const std::set<thrift::HostAddress> &skipServers, std::exception &failure,
+    const std::set<thrift::HostAddress> &skipServers, SQLException &failure,
     thrift::HostAddress &hostAddress) {
 
   std::vector<thrift::HostAddress> searchServers;
@@ -288,7 +289,7 @@ void ControlConnection::searchRandomServer(
 
 void ControlConnection::failoverToAvailableHost(
     std::set<thrift::HostAddress> &failedServers, bool checkFailedControlHosts,
-    std::exception &failure, ClientService *service) {
+    SQLException &failure, ClientService *service) {
   std::lock_guard<std::recursive_mutex> lockGuard(m_lock);
   for (auto &controlAddr : m_controlHostSet) {
     if (checkFailedControlHosts && !failedServers.empty()
@@ -360,7 +361,8 @@ void ControlConnection::failoverToAvailableHost(
       if (outTransport) {
         outTransport->close();
       }
-      failure = tex;
+      failure = std::move(GET_SQLEXCEPTION2(SQLStateMessage::CONNECTION_FAILED_MSG,
+          controlAddr.toString().c_str(), tex, "failoverToAvailableHost"));
       continue;
     } catch (std::exception &ex) {
       throw unexpectedError(ex, controlAddr);
@@ -436,7 +438,7 @@ void ControlConnection::refreshAllHosts(
 
 void ControlConnection::failoverExhausted(
     const std::set<thrift::HostAddress> &failedServers,
-    std::exception &failure) {
+    SQLException &failure) {
 
   std::string failedServerString;
   for (thrift::HostAddress host : failedServers) {
@@ -447,27 +449,14 @@ void ControlConnection::failoverExhausted(
   }
   thrift::SnappyException snappyEx;
   SnappyExceptionData snappyExData;
-  SQLException *failureSQLE;
-  SnappyException *failureSE;
-  if ((failureSQLE = dynamic_cast<SQLException*>(&failure))) {
-    snappyExData.__set_sqlState(failureSQLE->getSQLState());
-    snappyExData.__set_errorCode(failureSQLE->getSeverity());
-  } else if ((failureSE = dynamic_cast<SnappyException*>(&failure))) {
-    snappyExData.__set_sqlState(failureSE->exceptionData.sqlState);
-    snappyExData.__set_errorCode(failureSE->exceptionData.errorCode);
-  } else {
-    snappyExData.__set_sqlState(
-        std::string(SQLState::DATA_CONTAINER_CLOSED.getSQLState()));
-    snappyExData.__set_errorCode(
-        static_cast<int32_t>(SQLState::DATA_CONTAINER_CLOSED.getSeverity()));
-  }
+  snappyExData.__set_sqlState(failure.getSQLState());
+  snappyExData.__set_errorCode(failure.getSeverity());
   std::string reason = "Failed after trying all available servers: {";
   reason.append(failedServerString).append("}");
   // add to own message if original failure is not a null message
-  const char *failureMsg = failure.what();
-  if (failureMsg && *failureMsg != '\0'
-      && std::strcmp(failureMsg, "Unknown exception") != 0) {
-    reason.append(" and ").append(failureMsg);
+  if (!failure.getReason().empty()
+      && failure.getReason() != "Unknown exception") {
+    reason.append(" and ").append(failure.getReason());
   }
   snappyExData.__set_reason(reason);
   snappyEx.__set_exceptionData(snappyExData);

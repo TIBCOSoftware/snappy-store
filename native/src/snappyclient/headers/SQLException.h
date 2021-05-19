@@ -77,6 +77,8 @@ namespace client {
     SQLException(const char* file, int line,
         const thrift::SnappyException& se);
 
+    SQLException(const char* file, int line);
+
     SQLException(const char* file, int line, const std::exception& ex);
 
     // copy constructor
@@ -84,6 +86,9 @@ namespace client {
 
     // move constructor
     SQLException(SQLException&& other);
+
+    SQLException& operator=(const SQLException &other);
+    SQLException& operator=(SQLException &&other);
 
     static void staticInitialize();
 
@@ -138,7 +143,7 @@ namespace client {
 
     virtual void toString(std::ostream& out) const;
 
-    virtual ~SQLException();
+    virtual ~SQLException() noexcept;
 
   protected:
     static std::string s_processBaseAddress;
@@ -150,7 +155,7 @@ namespace client {
     SQLException* m_next;
 
     const char* m_file;
-    const int m_line;
+    int m_line;
 
 #ifdef __GNUC__
     void* m_stack[STACK_MAX_SIZE]; // exception stack
@@ -205,6 +210,8 @@ namespace client {
         const std::vector<thrift::SnappyExceptionData>& nextExceptions);
 
     void initNextException(const SQLException& other);
+
+    void deleteNextException() noexcept;
 
     /**
      * Get the name of this exception class. Child classes must always
