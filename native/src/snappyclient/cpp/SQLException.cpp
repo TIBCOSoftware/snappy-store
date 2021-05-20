@@ -83,7 +83,9 @@ SQLException::SQLException(const char* file, int line) :
     m_reason(), m_state(SQLState::UNKNOWN_EXCEPTION.getSQLState()),
     m_severity(static_cast<int32_t>(ExceptionSeverity::SESSION_SEVERITY)),
     m_next(nullptr), m_file(file), m_line(line) {
+#ifdef __GNUC__
   m_stackSize = 0;
+#endif
 }
 
 SQLException::SQLException(const char* file, int line,
