@@ -28,7 +28,7 @@ export LD_LIBRARY_PATH
 headerLoc=${_snappyNativeDir}/src/snappyclient/headers
 boostHeadeLoc=${_snappyNativeDir}/dist/boost-${BOOST_VERSION}/include
 cd ${scriptDir}
-g++ -std=c++11 -I"${headerLoc}" -I"${boostHeadeLoc}" -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MFfailoverTest_Retry.d -MTfailoverTest_Retry.o -o failoverTest_Retry.o failoverTest_Retry.cpp
+g++ -std=c++11 -I"${headerLoc}" -I"${boostHeadeLoc}" -O0 -g -Wall -c -fmessage-length=0 -MMD -MP -MFfailoverTest_Retry.d -MTfailoverTest_Retry.o -o failoverTest_Retry.o failoverTest_Retry.cpp
 
 g++ -L${bostLibPath} -L${thrftLibPath} -L${snappClientLibPath} -L${_snappyNativeDir}/Debug -rdynamic -o failoverTest_Retry  failoverTest_Retry.o -lcrypto -lodbc -lpthread -lssl -lsnappydata-native -lboost_chrono -lboost_date_time -lboost_filesystem -lboost_log -lboost_log_setup -lboost_system -lboost_thread -lthrift -lpthread -lrt -lgmp
 

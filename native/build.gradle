@@ -313,7 +313,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
             cppCompiler.args '-Wall', '-Wno-unused-local-typedefs',
                              '-fPIC', '-std=c++11'
             if (buildType == buildTypes.debug) {
-              cppCompiler.args '-g3', '-O0'
+              cppCompiler.args '-g', '-O0'
             } else {
               cppCompiler.args '-g', '-O2'
             }
