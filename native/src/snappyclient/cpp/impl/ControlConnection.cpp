@@ -456,7 +456,8 @@ void ControlConnection::failoverExhausted(
   // add to own message if original failure is not a null message
   if (!failure.getReason().empty()
       && failure.getReason() != "Unknown exception") {
-    reason.append(" and ").append(failure.getReason());
+    reason.append(_SNAPPY_NEWLINE_STR).append("\tReason: ").append(
+        failure.getReason()).append(_SNAPPY_NEWLINE_STR);
   }
   snappyExData.__set_reason(reason);
   snappyEx.__set_exceptionData(snappyExData);

@@ -115,7 +115,6 @@ namespace io {
           std::unique_ptr<SSLSocketFactory> m_sslFactory;
           std::unordered_set<thrift::HostAddress> m_controlHostSet;
           const std::set<std::string>& m_serverGroups;
-
           std::recursive_mutex m_lock;
           bool m_framedTransport;
 

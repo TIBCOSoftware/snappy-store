@@ -29,8 +29,8 @@ buildscript {
 apply plugin: 'wrapper'
 apply plugin: 'de.undercouch.download'
 
-if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative'))
-    || rootProject.hasProperty('native')) {
+if (((rootProject.name.contains('native') || rootProject.name.contains('odbc'))
+      && !rootProject.hasProperty('skipNative')) || rootProject.hasProperty('native')) {
 
   apply plugin: 'cpp'
   apply plugin: 'visual-studio'
@@ -44,7 +44,7 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
     buildDir = 'build-artifacts/' + osName
   }
 
-  String distDir = "${rootProject.projectDir}/dist"
+  String distDir = "${projectDir}/dist"
   String thriftVersion = '0.14.1'
   String boostVersion = '1.76.0'
   String mpirVersion = '2.7.2'
@@ -393,13 +393,6 @@ if ((rootProject.name.contains('native') && !rootProject.hasProperty('skipNative
       copy {
         from "${projectDir}/src/snappyclient/headers"
         into "${productDir}/include"
-      }
-
-      if (rootProject.hasProperty('copyTo')) {
-        copy {
-          from productDir
-          into copyTo
-        }
       }
     }
   }
