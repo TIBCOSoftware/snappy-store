@@ -1993,14 +1993,14 @@ std::shared_ptr<TSSLSocket> ClientService::createSSLSocket(
         boost::filesystem::path dllDir =
             InternalUtils::getPath(dllPath).parent_path();
         boost::filesystem::path certPath(dllDir);
-        certPath += L"/../../SSL/certs/ca-certificates.crt";
+        certPath += L"/ca-certificates.crt";
         if (boost::filesystem::exists(certPath)) {
           sslSocketFactory.loadTrustedCertificates(
               certPath.string().c_str(), nullptr);
           loaded = true;
         } else {
           certPath = dllDir;
-          certPath += L"/../../../SSL/certs/ca-certificates.crt";
+          certPath += L"/../ca-certificates.crt";
           if (boost::filesystem::exists(certPath)) {
             sslSocketFactory.loadTrustedCertificates(
                 certPath.string().c_str(), nullptr);
