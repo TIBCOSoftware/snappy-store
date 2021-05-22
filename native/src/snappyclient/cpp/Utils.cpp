@@ -263,6 +263,8 @@ std::string Utils::readPasswordFromManager(const std::string &user,
       errMsg.append(user).append(" with code = ").append(std::to_string(err));
       break;
     }
+    errMsg.append(" in Windows credential manager using the password key '")
+      .append(passwordKey).append("'");
     throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, errMsg);
   }
 #elif defined(__APPLE__)
@@ -276,7 +278,8 @@ std::string Utils::readPasswordFromManager(const std::string &user,
     }
     if (!user) {
       throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION,
-          "Failed to get the user with USER or LOGNAME environment variables");
+          "Keychain lookup failed to get the user with "
+          "USER or LOGNAME environment variables");
     }
     boost::process::child c(boost::process::search_path("security"),
         "find-generic-password", "-w", "-a", user, "-s", passwordKey,
@@ -301,8 +304,9 @@ std::string Utils::readPasswordFromManager(const std::string &user,
   } catch (SQLException &sqle) {
     throw sqle;
   } catch (std::exception &ex) {
-    std::string err("Failure in 'security' tool for '");
-    err.append(passwordKey).append("' : ");
+    std::string err("Password lookup failure in 'security' tool for ");
+    err.append(user).append(" using the password key '").append(
+        passwordKey).append("' : ");
     throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, err.append(ex.what()));
   }
 #else
@@ -341,8 +345,9 @@ std::string Utils::readPasswordFromManager(const std::string &user,
   } catch (SQLException &sqle) {
     throw sqle;
   } catch (std::exception &ex) {
-    std::string err("Failure in 'secret-tool' for '");
-    err.append(attribute).append("':'").append(value).append("' : ");
+    std::string err("Password lookup failure in 'secret-tool' for ");
+    err.append(user).append(" using the attribut:value '").append(attribute)
+      .append("':'").append(value).append("' : ");
     throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, err.append(ex.what()));
   }
 #endif
