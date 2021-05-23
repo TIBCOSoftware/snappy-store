@@ -38,10 +38,8 @@
  *  Created on: 15-Jul-2019
  *      Author: pbisen
  */
-#include "SQLState.h"
-#include "SQLException.h"
-#include "NetConnection.h"
 
+#include "impl/pch.h"
 
 using namespace io::snappydata;
 using namespace io::snappydata::client;
@@ -52,8 +50,8 @@ std::set<std::string> NetConnection::failoverSQLStateSet = { "08001",
  "58009", "58014", "58015", "58016", "58017", "57017", "58010", "30021",
  "XJ040", "XJ041", "XSDA3", "XSDA4", "XSDAJ", "XJ217" };
 
-FailoverStatus NetConnection::getFailoverStatus(const std::string &sqlState,
-    const int32_t &errorCode, const TException &snappyEx) {
+FailoverStatus NetConnection::getFailoverStatus(const std::string& sqlState,
+    const TException& snappyEx) {
 
   if (!sqlState.compare(SQLState::SNAPPY_NODE_SHUTDOWN.getSQLState())
       || !sqlState.compare(SQLState::NODE_BUCKET_MOVED.getSQLState())) {

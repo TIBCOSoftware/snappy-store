@@ -37,12 +37,10 @@
  * DateTime.cpp
  */
 
-#include "Types.h"
-#include "../impl/InternalUtils.h"
+#include "impl/pch.h"
 
-#include <boost/date_time/time_duration.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/date_time/local_time/local_time.hpp>
+#include "types/DateTime.h"
+#include "impl/TimeUtils.h"
 
 #ifdef min
 #undef min
@@ -52,7 +50,16 @@
 #undef max
 #endif
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
+#include <boost/date_time/time_duration.hpp>
 #include <boost/spirit/include/karma.hpp>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 using namespace io::snappydata::client::impl;
 using namespace io::snappydata::client::types;
@@ -66,16 +73,16 @@ void DateTime::init(const uint16_t year, const uint16_t month,
           boost::gregorian::date(year, month, day),
           boost::posix_time::time_duration(hour, minute, sec));
       boost::posix_time::time_duration sinceEpoch = dateTime
-          - InternalUtils::s_epoch;
+          - TimeUtils::s_epoch;
       setEpochTime(sinceEpoch.total_seconds());
     } else {
       boost::local_time::local_date_time localTime(
           boost::gregorian::date(year, month, day),
           boost::posix_time::time_duration(hour, minute, sec),
-          InternalUtils::s_localTimeZone,
+          TimeUtils::s_localTimeZone,
           boost::local_time::local_date_time::EXCEPTION_ON_ERROR);
       boost::posix_time::time_duration sinceEpoch = localTime.utc_time()
-          - InternalUtils::s_epoch;
+          - TimeUtils::s_epoch;
       setEpochTime(sinceEpoch.total_seconds());
     }
   } catch (const std::exception&) {
@@ -94,7 +101,7 @@ time_t DateTime::getTime() const {
     return secs;
   } else if (sizeof(time_t) >= sizeof(int32_t) &&
       secs >= INT32_MIN && secs <= INT32_MAX) {
-    return (time_t)secs;
+    return static_cast<time_t>(secs);
   } else {
     throw GET_SQLEXCEPTION2(
         SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1, secs);
@@ -229,7 +236,7 @@ std::string& DateTime::toString(const uint16_t year, const uint16_t month,
       nDigitsZeroPadded(bufp, nanos, 9);
     }
   }
-  str.append(buf, (bufp - &buf[0]));
+  str.append(buf, static_cast<size_t>(bufp - &buf[0]));
   return str;
 }
 
@@ -267,21 +274,21 @@ void DateTime::toDate(std::string& str, const bool utc) const {
     char* bufp = buf;
     if (utc) {
       boost::posix_time::ptime dateTime =
-          InternalUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch);
+          TimeUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch);
       const auto ymd = dateTime.date().year_month_day();
 
       bufp = toDateString(uint16_t(ymd.year), ymd.month.as_number(),
           ymd.day.as_number(), bufp);
-      str.append(buf, bufp - &buf[0]);
+      str.append(buf, static_cast<size_t>(bufp - &buf[0]));
     } else {
       boost::local_time::local_date_time localTime(
-          InternalUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch),
-          InternalUtils::s_localTimeZone);
+          TimeUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch),
+          TimeUtils::s_localTimeZone);
       const auto ymd = localTime.date().year_month_day();
 
       bufp = toDateString(uint16_t(ymd.year), ymd.month.as_number(),
           ymd.day.as_number(), bufp);
-      str.append(buf, bufp - &buf[0]);
+      str.append(buf, static_cast<size_t>(bufp - &buf[0]));
     }
   } catch (const std::exception&) {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1,
@@ -295,25 +302,25 @@ void DateTime::toTime(std::string& str, const bool utc) const {
     char* bufp = buf;
     if (utc) {
       boost::posix_time::ptime dateTime =
-          InternalUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch);
+          TimeUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch);
       const auto td = dateTime.time_of_day();
 
       bufp = toTimeString(
           boost::numeric_cast<uint16_t>(td.hours()),
           boost::numeric_cast<uint16_t>(td.minutes()),
           boost::numeric_cast<uint16_t>(td.seconds()), bufp);
-      str.append(buf, bufp - &buf[0]);
+      str.append(buf, static_cast<size_t>(bufp - &buf[0]));
     } else {
       boost::local_time::local_date_time localTime(
-          InternalUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch),
-          InternalUtils::s_localTimeZone);
+          TimeUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch),
+          TimeUtils::s_localTimeZone);
       const auto td = localTime.time_of_day();
 
       bufp = toTimeString(
           boost::numeric_cast<uint16_t>(td.hours()),
           boost::numeric_cast<uint16_t>(td.minutes()),
           boost::numeric_cast<uint16_t>(td.seconds()), bufp);
-      str.append(buf, bufp - &buf[0]);
+      str.append(buf, static_cast<size_t>(bufp - &buf[0]));
     }
   } catch (const std::exception&) {
     throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1,
@@ -325,7 +332,7 @@ void DateTime::toDateTime(std::string& str, const bool utc) const {
   try {
     if (utc) {
       boost::posix_time::ptime dateTime =
-          InternalUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch);
+          TimeUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch);
       auto ymd = dateTime.date().year_month_day();
       auto td = dateTime.time_of_day();
 
@@ -335,8 +342,8 @@ void DateTime::toDateTime(std::string& str, const bool utc) const {
           boost::numeric_cast<uint16_t>(td.seconds()), 0, str);
     } else {
       boost::local_time::local_date_time localTime(
-          InternalUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch),
-          InternalUtils::s_localTimeZone);
+          TimeUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch),
+          TimeUtils::s_localTimeZone);
       auto ymd = localTime.date().year_month_day();
       auto td = localTime.time_of_day();
 
@@ -356,12 +363,12 @@ struct tm DateTime::toDateTime(const bool utc) const {
   try {
     if (utc) {
       boost::posix_time::ptime dateTime =
-          InternalUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch);
+          TimeUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch);
       return boost::posix_time::to_tm(dateTime);
     } else {
       boost::local_time::local_date_time localTime(
-          InternalUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch),
-          InternalUtils::s_localTimeZone);
+          TimeUtils::convertEpochSecsToPosixTime(m_secsSinceEpoch),
+          TimeUtils::s_localTimeZone);
       return boost::local_time::to_tm(localTime);
     }
   } catch (const std::exception&) {

@@ -36,58 +36,25 @@
 #ifndef INTERNALUTILS_H_
 #define INTERNALUTILS_H_
 
-#include "Types.h"
-#include "ClientService.h"
-
 #include <functional>
 
-#include <boost/chrono/system_clocks.hpp>
-#include <boost/chrono/thread_clock.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/date_time/local_time/local_time.hpp>
 #include <boost/filesystem.hpp>
 
 extern "C" {
 #include <stdlib.h>
 }
 
+#define CHRONO_NANO_CLOCK boost::chrono::high_resolution_clock
+
 namespace io {
 namespace snappydata {
 namespace client {
 namespace impl {
 
-  typedef boost::chrono::high_resolution_clock NanoClock;
-  typedef boost::chrono::high_resolution_clock::time_point NanoTime;
-  typedef boost::chrono::high_resolution_clock::duration NanoDuration;
-#ifdef BOOST_CHRONO_HAS_THREAD_CLOCK
-  typedef boost::chrono::thread_clock NanoClockThread;
-  typedef boost::chrono::thread_clock::time_point NanoTimeThread;
-  typedef boost::chrono::thread_clock::duration NanoDurationThread;
-#else
-  typedef boost::chrono::high_resolution_clock NanoClockThread;
-  typedef boost::chrono::high_resolution_clock::time_point NanoTimeThread;
-  typedef boost::chrono::high_resolution_clock::duration NanoDurationThread;
-#endif
-
   class InternalUtils final {
   public:
     /** array to convert bytes to hex */
     static const char s_hexDigits[];
-
-    /** posix_time since Epoch 1970-01-01 00:00:00 +0000 UTC */
-    static boost::posix_time::ptime s_epoch;
-
-    /** local timezeone */
-    static boost::local_time::time_zone_ptr s_localTimeZone;
-    static std::string s_localTimeZoneStr;
-
-    inline static NanoTime nanoTime() {
-      return NanoClock::now();
-    }
-
-    inline static NanoTimeThread nanoTimeThread() {
-      return NanoClockThread::now();
-    }
 
     static boost::filesystem::path getPath(const std::string& pathStr);
 
@@ -102,48 +69,10 @@ namespace impl {
     static void toHexString(const char *bytes, const size_t bytesLen,
         TPROC& proc);
 
-    static boost::posix_time::ptime convertEpochSecsToPosixTime(
-        const int64_t secsSinceEpoch) {
-      // using milliseconds instead of seconds as it is 64-bit
-      return (s_epoch + boost::posix_time::milliseconds(secsSinceEpoch * 1000));
-    }
-
-    static int64_t convertPosixTimeToEpochSecs(
-        const boost::posix_time::ptime dateTime) {
-      boost::posix_time::time_duration sinceEpoch = dateTime - s_epoch;
-      return (sinceEpoch.ticks() / sinceEpoch.ticks_per_second());
-    }
-
   private:
     InternalUtils() = delete; // no instances
     InternalUtils(const InternalUtils&) = delete; // no instances
     InternalUtils operator=(const InternalUtils&) = delete; // no instances
-
-    static bool s_initialized;
-    static bool staticInitialize();
-    friend class ClientService;
-  };
-
-  class FreePointer final {
-  private:
-    void* m_p;
-
-    FreePointer(const FreePointer&) = delete; // disable copy constructor
-    FreePointer& operator=(const FreePointer&) = delete; // disable assignment
-
-  public:
-    FreePointer(void* p) noexcept : m_p(p) {
-    }
-
-    void reset(void* p) noexcept {
-      m_p = p;
-    }
-
-    ~FreePointer() {
-      if (m_p) {
-        ::free(m_p);
-      }
-    }
   };
 
 } /* namespace impl */
@@ -158,7 +87,7 @@ void io::snappydata::client::impl::InternalUtils::toHexString(
   // temporary buffer to avoid repeated stream range/capacity checks
   if (bytesLen > 32) {
     char* buffer = new char[bytesLen << 1];
-    io::snappydata::DestroyArray<char> del(buffer);
+    std::unique_ptr<char[]> del(buffer);
 
     size_t bufIndex = 0;
     for (size_t index = 0; index < bytesLen; index++) {

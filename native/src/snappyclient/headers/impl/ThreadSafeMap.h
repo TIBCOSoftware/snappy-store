@@ -36,11 +36,12 @@
 #ifndef THREADSAFEMAP_H_
 #define THREADSAFEMAP_H_
 
-#include "common/Base.h"
-
 #include <unordered_map>
+
 #include <boost/thread/shared_mutex.hpp>
 #include <boost/thread/locks.hpp>
+
+#include "common/Base.h"
 
 namespace io {
 namespace snappydata {

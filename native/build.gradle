@@ -290,6 +290,7 @@ if (((rootProject.name.contains('native') || rootProject.name.contains('odbc'))
           targetPlatform 'x86'
         }
         sources {
+          cpp.preCompiledHeader 'impl/pch.h'
           cpp.lib library: 'thrift', linkage: 'static'
           cpp.lib library: 'boost', linkage: 'api'
           boostLibs.each { boostLib ->
@@ -310,8 +311,13 @@ if (((rootProject.name.contains('native') || rootProject.name.contains('odbc'))
           // TODO: precompiled header
           if (toolChain in Gcc) {
             cppCompiler.define 'PIC'
-            cppCompiler.args '-Wall', '-Wno-unused-local-typedefs',
-                             '-fPIC', '-std=c++11'
+            cppCompiler.args '-Wall', '-Wno-unused-local-typedefs', '-Wextra',
+                             '-Wdouble-promotion', '-Wcast-align', '-Wlogical-op',
+                             '-Wmissing-declarations', '-Woverloaded-virtual',
+                             '-Wredundant-decls', '-Wshadow', '-Winvalid-pch',
+                             '-Wformat=2', '-Wformat-overflow', '-Wformat-truncation',
+                             '-Wformat-security', '-Wstrict-overflow', '-Werror',
+                             '-Wunused-parameter', '-fno-common', '-fPIC', '-std=c++11'
             if (buildType == buildTypes.debug) {
               cppCompiler.args '-g', '-O0'
             } else {

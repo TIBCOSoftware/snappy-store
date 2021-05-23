@@ -33,37 +33,66 @@
  * LICENSE file.
  */
 
-/*
- * NetConnection.h
- *
- *  Created on: 15-Jul-2019
- *      Author: pbisen
- */
+#ifndef BUFFEREDCLIENTTRANSPORT_H_
+#define BUFFEREDCLIENTTRANSPORT_H_
 
-#ifndef SRC_SNAPPYCLIENT_CPP_IMPL_NETCONNECTION_H_
-#define SRC_SNAPPYCLIENT_CPP_IMPL_NETCONNECTION_H_
+#include <thrift/transport/TSocket.h>
+#include <thrift/transport/TBufferTransports.h>
 
-#include <thrift/Thrift.h>
+#include "impl/ClientTransport.h"
 
-using namespace apache::thrift;
+using namespace apache::thrift::transport;
 
 namespace io {
 namespace snappydata {
 namespace client {
 namespace impl {
 
-  enum class FailoverStatus : unsigned char {
-    NONE,         /** no failover to be done */
-    NEW_SERVER,   /** failover to a new server */
-    RETRY         /** retry to the same server */
-  };
-  class NetConnection {
-  private:
-    /** set of SQLState strings that denote failover should be done */
-    static std::set<std::string> failoverSQLStateSet;
+  class BufferedClientTransport;
+
+  /**
+   * This exposes a few protected members and enables writing "frames"
+   * without the overhead of having to create buffer for entire message
+   * just writing size of first buffer as expected by SnappyData selectors.
+   */
+  class BufferedClientTransport : public TBufferedTransport,
+      public ClientTransport {
   public:
-    static FailoverStatus getFailoverStatus(const std::string& sqlState,
-        const int32_t& errorCode, const TException& snappyEx);
+    BufferedClientTransport(const std::shared_ptr<TSocket>& socket,
+        uint32_t rsz, uint32_t wsz, bool writeFramed);
+
+    virtual ~BufferedClientTransport() {
+    }
+
+    void initStart();
+
+    void writeFrameSize();
+
+    virtual void writeSlow(const uint8_t* buf, uint32_t len);
+
+    virtual void flush();
+
+    bool isTransportOpen() {
+      return isOpen();
+    }
+
+    void closeTransport() {
+      close();
+    }
+
+    void setReceiveBufferSize(uint32_t rsz);
+
+    void setSendBufferSize(uint32_t wsz);
+
+    uint32_t getReceiveBufferSize() noexcept;
+
+    uint32_t getSendBufferSize() noexcept;
+
+    TSocket* getSocket() noexcept;
+
+  private:
+    const bool m_writeFramed;
+    bool m_doWriteFrameSize;
   };
 
 } /* namespace impl */
@@ -71,4 +100,4 @@ namespace impl {
 } /* namespace snappydata */
 } /* namespace io */
 
-#endif /* SRC_SNAPPYCLIENT_CPP_IMPL_NETCONNECTION_H_ */
+#endif /* BUFFEREDCLIENTTRANSPORT_H_ */

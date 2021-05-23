@@ -111,7 +111,7 @@ namespace client {
 
   public:
     static const char* toString(const LogLevel::type logLevel);
-    static const LogLevel::type fromString(const std::string& levelString,
+    static LogLevel::type fromString(const std::string& levelString,
         const LogWriter& logger);
   };
 
@@ -121,7 +121,7 @@ namespace client {
     TraceFlag& operator=(const LogLevel&) = delete; // no assignment
 
     const std::string m_name;
-    const int m_id;
+    const uint32_t m_id;
     mutable bool m_globalSet;
 
     /**
@@ -134,11 +134,11 @@ namespace client {
      */
     mutable std::vector<const TraceFlag*> m_childFlags;
 
-    static int g_idGenerator;
+    static uint32_t g_idGenerator;
 
-    static const int getNextId() noexcept;
+    static uint32_t getNextId() noexcept;
 
-    TraceFlag(const std::string& name, const int id,
+    TraceFlag(const std::string& name, const uint32_t id,
         const TraceFlag* parent1 = nullptr, const TraceFlag* parent2 = nullptr,
         const TraceFlag* parent3 = nullptr, const TraceFlag* parent4 = nullptr);
 
@@ -149,7 +149,7 @@ namespace client {
       return m_name;
     }
 
-    const int id() const noexcept {
+    uint32_t id() const noexcept {
       return m_id;
     }
 
@@ -157,7 +157,7 @@ namespace client {
       return m_globalSet;
     }
 
-    static int maxGlobalId() noexcept {
+    static uint32_t maxGlobalId() noexcept {
       return g_idGenerator;
     }
 
@@ -239,6 +239,10 @@ namespace client {
       return g_logger;
     }
 
+    inline static int toInt(const LogLevel::type level) noexcept {
+      return static_cast<int>(level);
+    }
+
     void initialize(const std::string& logFile,
         const LogLevel::type logLevel, bool overwrite = false);
 
@@ -255,7 +259,7 @@ namespace client {
     }
 
     inline bool isLogged(const LogLevel::type logLevel) const noexcept {
-      return ((int)logLevel >= (int)m_logLevel);
+      return toInt(logLevel) >= toInt(m_logLevel);
     }
 
     inline bool isTraceEnabled(const TraceFlag& flag) const noexcept {
@@ -271,22 +275,22 @@ namespace client {
     std::ostream& log(const LogLevel::type logLevel);
 
     inline static bool fatalEnabled() noexcept {
-      return ((int)LogLevel::fatal >= (int)g_logger.m_logLevel);
+    return toInt(LogLevel::fatal) >= toInt(g_logger.m_logLevel);
     }
     inline static bool errorEnabled() noexcept {
-      return ((int)LogLevel::error >= (int)g_logger.m_logLevel);
+      return toInt(LogLevel::error) >= toInt(g_logger.m_logLevel);
     }
     inline static bool warnEnabled() noexcept {
-      return ((int)LogLevel::warn >= (int)g_logger.m_logLevel);
+      return toInt(LogLevel::warn) >= toInt(g_logger.m_logLevel);
     }
     inline static bool infoEnabled() noexcept {
-      return ((int)LogLevel::info >= (int)g_logger.m_logLevel);
+      return toInt(LogLevel::info) >= toInt(g_logger.m_logLevel);
     }
     inline static bool debugEnabled() noexcept {
-      return ((int)LogLevel::debug >= (int)g_logger.m_logLevel);
+      return toInt(LogLevel::debug) >= toInt(g_logger.m_logLevel);
     }
     inline static bool traceEnabled() noexcept {
-      return ((int)LogLevel::trace >= (int)g_logger.m_logLevel);
+      return toInt(LogLevel::trace) >= toInt(g_logger.m_logLevel);
     }
     inline static bool traceEnabled(const TraceFlag& flag) noexcept {
       return flag.global();

@@ -37,11 +37,18 @@
  * UpdatableRow.cpp
  */
 
+#include "impl/pch.h"
+
 #include "UpdatableRow.h"
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
 #include <boost/dynamic_bitset.hpp>
-
-#include "Utils.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 using namespace io::snappydata;
 using namespace io::snappydata::client;

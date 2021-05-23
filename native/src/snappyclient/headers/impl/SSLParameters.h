@@ -18,8 +18,9 @@
 #ifndef SSLPARAMETERS_H_
 #define SSLPARAMETERS_H_
 
+#include <thrift/transport/TSSLSocket.h>
+
 #include "ClientBase.h"
-#include "thrift/transport/TSSLSocket.h"
 
 using namespace apache::thrift::transport;
 

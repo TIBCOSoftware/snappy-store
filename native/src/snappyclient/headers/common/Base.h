@@ -110,6 +110,8 @@
 #include <memory>
 #include <string>
 
+#define SKIP_UNUSED_WARNING(x) (void)(x)
+
 #define BOOST_FILESYSTEM_NO_DEPRECATED
 #define BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS
 #define BOOST_MPL_LIMIT_LIST_SIZE 30

@@ -50,7 +50,6 @@ extern "C" {
 
 #include <exception>
 #include <functional>
-#include <typeinfo>
 
 namespace io {
 namespace snappydata {
@@ -63,7 +62,7 @@ namespace functor {
       m_out.put(c);
     }
     inline void operator()(const char* buf, const size_t bufLen) {
-      m_out.write(buf, bufLen);
+      m_out.write(buf, static_cast<std::streamsize>(bufLen));
     }
   };
 
@@ -78,20 +77,6 @@ namespace functor {
     }
   };
 }
-
-/** used to destroy arrays on end of a block */
-template<typename ARR_TYPE>
-class DestroyArray final {
-private:
-  const ARR_TYPE* m_arr;
-
-public:
-  DestroyArray(const ARR_TYPE* arr) : m_arr(arr) {
-  }
-  ~DestroyArray() {
-    delete[] m_arr;
-  }
-};
 
 namespace client {
 
@@ -190,9 +175,6 @@ namespace client {
     static void getHostPort(const std::string& hostPort,
         std::string& resultHost, int& resultPort);
 
-    static const char* getServerTypeString(
-        thrift::ServerType::type serverType) noexcept;
-
     static bool isServerTypeDefault(
         const thrift::ServerType::type serverType) noexcept {
       return (serverType == thrift::ServerType::THRIFT_SNAPPY_CP)
@@ -258,25 +240,6 @@ namespace client {
     Utils operator=(const Utils&) = delete;
   };
 
-  /**
-   * @brief Thrown for an incorrect typecast.
-   */
-  class CastException: public std::bad_cast {
-  private:
-    std::string m_msg;
-
-  public:
-    CastException(const std::string& msg) : m_msg(msg) {
-    }
-
-    virtual ~CastException() {
-    }
-
-    virtual const char* what() const noexcept {
-      return m_msg.c_str();
-    }
-  };
-
 } /* namespace client */
 } /* namespace snappydata */
 } /* namespace io */
@@ -293,12 +256,12 @@ void io::snappydata::client::Utils::convertUTF16ToUTF8(const TWCHAR *utf16Chars,
     if (wch > 0 && wch <= 0x7F) {
       process((char)wch);
     } else if (wch <= 0x7FF) {
-      process((char)(0xC0 + ((wch >> 6) & 0x1F)));
-      process((char)(0x80 + (wch & 0x3F)));
+      process(static_cast<char>(0xC0 + ((wch >> 6) & 0x1F)));
+      process(static_cast<char>(0x80 + (wch & 0x3F)));
     } else {
-      process((char)(0xE0 + ((wch >> 12) & 0xF)));
-      process((char)(0x80 + ((wch >> 6) & 0x3F)));
-      process((char)(0x80 + (wch & 0x3F)));
+      process(static_cast<char>(0xE0 + ((wch >> 12) & 0xF)));
+      process(static_cast<char>(0x80 + ((wch >> 6) & 0x3F)));
+      process(static_cast<char>(0x80 + (wch & 0x3F)));
     }
   }
 }

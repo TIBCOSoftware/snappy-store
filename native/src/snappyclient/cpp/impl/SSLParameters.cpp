@@ -15,10 +15,7 @@
  * LICENSE file.
  */
 
-#include "SSLParameters.h"
-#include "Utils.h"
-
-#include <boost/algorithm/string.hpp>
+#include "impl/pch.h"
 
 using namespace io::snappydata;
 using namespace io::snappydata::client::impl;
@@ -68,8 +65,8 @@ std::string SSLParameters::toSSLPropertyName(SSLProperty sslProperty) {
 
 std::string SSLParameters::getSSLPropertyValue(
     const std::string &propertyName) const {
-  auto itr = s_sslProperties.find(propertyName);
-  if (itr != s_sslProperties.end()) {
+  auto exists = s_sslProperties.find(propertyName);
+  if (exists != s_sslProperties.end()) {
     auto itr = m_sslPropValMap.find(propertyName);
     if (itr != m_sslPropValMap.end()) {
       return itr->second;
@@ -116,8 +113,7 @@ SSLProtocol SSLSocketFactory::getProtocol(const SSLParameters &params) {
 }
 
 void SSLSocketFactory::getPassword(std::string& password, int size) {
-  /* TODO: the password fields can be fetched from UI for ODBC */
-
+  SKIP_UNUSED_WARNING(size); // comes from the base API
   SSLProperty sslProperty = m_params.m_currentProperty;
   std::string name = m_params.getSSLPropertyName(sslProperty);
   switch (sslProperty) {

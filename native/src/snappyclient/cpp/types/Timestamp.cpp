@@ -37,12 +37,21 @@
  * Timestamp.cpp
  */
 
-#include "Types.h"
-#include "../impl/InternalUtils.h"
+#include "impl/pch.h"
 
+#include "types/Timestamp.h"
+#include "impl/TimeUtils.h"
+
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
 #include <boost/chrono/io/time_point_io.hpp>
 #include <boost/date_time/time_duration.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 using namespace io::snappydata::client;
 using namespace io::snappydata::client::impl;
@@ -86,7 +95,7 @@ namespace _snappy_impl {
 
 void Timestamp::setNanos(int32_t nanos) {
   if (nanos >= 0 && nanos < NANOS_MAX) {
-    m_nanos = nanos;
+    m_nanos = static_cast<uint32_t>(nanos);
   } else {
     throw GET_SQLEXCEPTION2(
         SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG3, nanos,
@@ -137,7 +146,7 @@ std::string& Timestamp::toString(std::string& str, const bool utc) const {
     const int64_t secsSinceEpoch = getEpochTime();
     try {
       boost::posix_time::ptime dateTime =
-          InternalUtils::convertEpochSecsToPosixTime(secsSinceEpoch);
+          TimeUtils::convertEpochSecsToPosixTime(secsSinceEpoch);
       boost::gregorian::date::ymd_type ymd = dateTime.date().year_month_day();
       boost::posix_time::time_duration td = dateTime.time_of_day();
 
@@ -186,7 +195,7 @@ std::ostream& operator <<(std::ostream& stream, Timestamp ts) {
     const int64_t secsSinceEpoch = ts.getEpochTime();
     try {
       boost::posix_time::ptime dateTime =
-          InternalUtils::convertEpochSecsToPosixTime(secsSinceEpoch);
+          TimeUtils::convertEpochSecsToPosixTime(secsSinceEpoch);
       boost::gregorian::date::ymd_type ymd = dateTime.date().year_month_day();
       boost::posix_time::time_duration td = dateTime.time_of_day();
 
@@ -212,7 +221,7 @@ std::ostream& operator <<(std::ostream& stream, Timestamp ts) {
       DateTime::toString(uint16_t(t.tm_year + 1900), t.tm_mon + 1, t.tm_mday,
           t.tm_hour, t.tm_min, t.tm_sec, ts.getNanos(), stream);
       // also append POSIX timezone string
-      return stream << ' ' << InternalUtils::s_localTimeZoneStr;
+      return stream << ' ' << TimeUtils::s_localTimeZoneStr;
     } else {
       throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1,
           tv);

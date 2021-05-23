@@ -56,9 +56,8 @@ namespace client {
 
     inline void checkBounds(uint32_t paramIndex) const {
       if (paramIndex >= m_values.size()) {
-        throw GET_SQLEXCEPTION2(
-            SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG, paramIndex,
-            m_values.size());
+        throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
+            static_cast<int>(paramIndex), m_values.size());
       }
     }
 
@@ -69,9 +68,8 @@ namespace client {
         m_values[paramNum].set(v);
         return *this;
       } else {
-        throw GET_SQLEXCEPTION2(
-            SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG, paramNum,
-            m_values.size());
+        throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
+            static_cast<int>(paramNum), m_values.size());
       }
     }
 
@@ -107,7 +105,7 @@ namespace client {
 
     Parameters& setUnsignedByte(uint32_t paramNum, const uint8_t v) {
       // thrift API has no unsigned so need to convert to signed
-      return set(paramNum, (const int8_t)v);
+      return set(paramNum, static_cast<int8_t>(v));
     }
 
     Parameters& setShort(uint32_t paramNum, const int16_t v) {
@@ -116,7 +114,7 @@ namespace client {
 
     Parameters& setUnsignedShort(uint32_t paramNum, const uint16_t v) {
       // thrift API has no unsigned so need to convert to signed
-      return set(paramNum, (const int16_t)v);
+      return set(paramNum, static_cast<int16_t>(v));
     }
 
     Parameters& setInt(uint32_t paramNum, const int32_t v) {
@@ -125,7 +123,7 @@ namespace client {
 
     Parameters& setUnsignedInt(uint32_t paramNum, const uint32_t v) {
       // thrift API has no unsigned so need to convert to signed
-      return set(paramNum, (const int32_t)v);
+      return set(paramNum, static_cast<int32_t>(v));
     }
 
     Parameters& setInt64(uint32_t paramNum, const int64_t v) {
@@ -134,7 +132,7 @@ namespace client {
 
     Parameters& setUnsignedInt64(uint32_t paramNum, const uint64_t v) {
       // thrift API has no unsigned so need to convert to signed
-      return set(paramNum, (const int64_t)v);
+      return set(paramNum, static_cast<int64_t>(v));
     }
 
     Parameters& setFloat(uint32_t paramNum, const float v) {

@@ -102,6 +102,10 @@ class HostAddress {
 
   virtual void printTo(std::ostream &out) const;
 
+  const std::string& ipAddressOrHostName() const noexcept {
+    return __isset.ipAddress ? ipAddress : hostName;
+  }
+
   virtual std::string toString() const;
 };
 

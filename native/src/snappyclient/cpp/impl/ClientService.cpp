@@ -37,36 +37,21 @@
  * ClientService.cpp
  */
 
-#include "ClientService.h"
+#include "impl/pch.h"
 
-#include <boost/algorithm/string.hpp>
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Woverloaded-virtual"
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
 #include <boost/asio.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/filesystem.hpp>
+#include <boost/chrono/system_clocks.hpp>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
-#include <thrift/transport/TTransportException.h>
-#include <thrift/transport/TSSLSocket.h>
-#include <thrift/transport/TBufferTransports.h>
-#include <thrift/protocol/TBinaryProtocol.h>
-#include <thrift/protocol/TCompactProtocol.h>
-#include <thrift/protocol/TProtocolException.h>
-
-#include "common/SystemProperties.h"
-
-#include "ClientProperty.h"
-#include "ClientAttribute.h"
 #include "Connection.h"
-
-#include "SQLException.h"
-#include "LogWriter.h"
-#include "Utils.h"
-
-#include "BufferedClientTransport.h"
-#include "FramedClientTransport.h"
-#include "DNSCacheService.h"
-#include "InternalLogger.h"
-#include "InternalUtils.h"
-#include "ControlConnection.h"
 
 extern "C" {
 #ifdef _WINDOWS
@@ -76,6 +61,9 @@ extern "C" {
 #include <unistd.h>
 #endif
 }
+
+// avoid importing TimeUtils that includes boost date_time libraries
+extern std::string initializeSnappyDataTime();
 
 using namespace io::snappydata;
 using namespace io::snappydata::client;
@@ -159,6 +147,7 @@ std::string ClientService::s_hostId;
 std::mutex ClientService::s_globalLock;
 bool ClientService::s_initialized = false;
 
+static void DEFAULT_OUTPUT_FN(const char *str);
 void DEFAULT_OUTPUT_FN(const char *str) {
   LogWriter::info() << str << _SNAPPY_NEWLINE;
 }
@@ -167,7 +156,7 @@ bool ClientService::globalInitialize() {
   // s_globalLock should be held
   if (s_hostName.empty()) {
     // first initialize any utilities used by other parts of product
-    InternalUtils::staticInitialize();
+    std::string currentTime = initializeSnappyDataTime();
     // dummy call to just ensure SQLState is loaded first
     SQLState::staticInitialize();
     // then initialize the common message library
@@ -192,9 +181,7 @@ bool ClientService::globalInitialize() {
     s_hostId = std::to_string(::getpid());
 #endif
     s_hostId.push_back('|');
-    boost::posix_time::ptime currentTime =
-        boost::posix_time::microsec_clock::universal_time();
-    s_hostId.append(boost::posix_time::to_simple_string(currentTime));
+    s_hostId.append(currentTime);
     return true;
   } else {
     return false;
@@ -285,7 +272,7 @@ void ClientService::handleSnappyException(const char* op, bool tryFailover,
   }
 
   FailoverStatus status = NetConnection::getFailoverStatus(
-      se.exceptionData.sqlState, se.exceptionData.errorCode, se);
+      se.exceptionData.sqlState, se);
   if (status == FailoverStatus::NONE) {
     // convert DATA_CONTAINTER_CLOSED to connection errors for non-transactional case
     if (m_isolationLevel == IsolationLevel::NONE
@@ -527,11 +514,11 @@ void ClientService::openConnection(thrift::HostAddress &hostAddr,
     std::set<thrift::HostAddress> &failedServers, SQLException &failure) {
   // open the connection
   std::thread::id tid;
-  NanoTimeThread start;
-  NanoDurationThread elapsed;
+  CHRONO_NANO_CLOCK::time_point start;
+  CHRONO_NANO_CLOCK::duration elapsed;
   if (TraceFlag::ClientStatementHA.global()
       | TraceFlag::ClientConn.global()) {
-    start = InternalUtils::nanoTimeThread();
+    start = CHRONO_NANO_CLOCK::now();
     tid = std::this_thread::get_id();
     std::unique_ptr<SQLException> ex(
         TraceFlag::ClientConn.global() ? new GET_SQLEXCEPTION(
@@ -590,7 +577,7 @@ void ClientService::openConnection(thrift::HostAddress &hostAddr,
       if (TraceFlag::ClientStatementHA.global()
           | TraceFlag::ClientConn.global()) {
 
-        elapsed = (InternalUtils::nanoTimeThread() - start);
+        elapsed = (CHRONO_NANO_CLOCK::now() - start);
         InternalLogger::traceCompact(tid, "openConnection_E", nullptr, 0,
             false, elapsed.count(), m_connId, m_token);
 
@@ -760,10 +747,10 @@ protocol::TProtocol* ClientService::createProtocol(
       throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, reason);
   }
 
-  int32_t rsz = SystemProperties::getInteger(
+  uint32_t rsz = SystemProperties::getUInt32(
       ClientProperty::SOCKET_INPUT_BUFFER_SIZE_NAME,
       ClientProperty::DEFAULT_INPUT_BUFFER_SIZE);
-  int32_t wsz = SystemProperties::getInteger(
+  uint32_t wsz = SystemProperties::getUInt32(
       ClientProperty::SOCKET_OUTPUT_BUFFER_SIZE_NAME,
       ClientProperty::DEFAULT_OUTPUT_BUFFER_SIZE);
 
@@ -780,9 +767,10 @@ protocol::TProtocol* ClientService::createProtocol(
       throw new std::runtime_error(
           "unexpected null SSLSocketFactory in ClientService::createProtocol");
     }
-    socket = createSSLSocket(hostAddr.hostName, hostAddr.port, *m_sslFactory);
+    socket = createSSLSocket(hostAddr.ipAddressOrHostName(), hostAddr.port,
+        *m_sslFactory);
   } else {
-    socket.reset(new TSocket(hostAddr.hostName, hostAddr.port));
+    socket.reset(new TSocket(hostAddr.ipAddressOrHostName(), hostAddr.port));
   }
 
   // socket->setKeepAlive(false);

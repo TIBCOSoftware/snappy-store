@@ -15,10 +15,7 @@
  * LICENSE file.
  */
 
-#include "FramedClientTransport.h"
-
-#include "snappydata_constants.h"
-#include "common/Base.h"
+#include "impl/pch.h"
 
 using namespace io::snappydata::client::impl;
 

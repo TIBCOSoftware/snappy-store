@@ -33,71 +33,41 @@
  * LICENSE file.
  */
 
-#ifndef BUFFEREDCLIENTTRANSPORT_H_
-#define BUFFEREDCLIENTTRANSPORT_H_
+#ifndef MESSAGEREGISTRY_H_
+#define MESSAGEREGISTRY_H_
 
-#include <thrift/transport/TSocket.h>
-#include <thrift/transport/TBufferTransports.h>
-
-#include "ClientTransport.h"
-
-using namespace apache::thrift::transport;
+#include "common/MessageBase.h"
+#include "impl/ThreadSafeMap.h"
 
 namespace io {
 namespace snappydata {
-namespace client {
 namespace impl {
 
-  class BufferedClientTransport;
-
   /**
-   * This exposes a few protected members and enables writing "frames"
-   * without the overhead of having to create buffer for entire message
-   * just writing size of first buffer as expected by SnappyData selectors.
+   * Singleton class to register all messages and lookup as required.
    */
-  class BufferedClientTransport : public TBufferedTransport,
-      public ClientTransport {
-  public:
-    BufferedClientTransport(const std::shared_ptr<TSocket>& socket,
-        uint32_t rsz, uint32_t wsz, bool writeFramed);
-
-    virtual ~BufferedClientTransport() {
-    }
-
-    void initStart();
-
-    void writeFrameSize();
-
-    virtual void writeSlow(const uint8_t* buf, uint32_t len);
-
-    virtual void flush();
-
-    bool isTransportOpen() {
-      return isOpen();
-    }
-
-    void closeTransport() {
-      close();
-    }
-
-    void setReceiveBufferSize(uint32_t rsz);
-
-    void setSendBufferSize(uint32_t wsz);
-
-    uint32_t getReceiveBufferSize() noexcept;
-
-    uint32_t getSendBufferSize() noexcept;
-
-    TSocket* getSocket() noexcept;
-
+  class MessageRegistry
+  {
   private:
-    const bool m_writeFramed;
-    bool m_doWriteFrameSize;
+    ThreadSafeMap<std::string, MessageBase*> m_allMessages;
+
+    MessageRegistry();
+
+    static MessageRegistry s_instance;
+
+  public:
+
+    inline static MessageRegistry& instance() noexcept {
+      return s_instance;
+    }
+
+    void addMessage(MessageBase& msg);
+    void removeMessage(const MessageBase& msg);
+    MessageBase* lookup(const std::string& messageId) const;
   };
 
 } /* namespace impl */
-} /* namespace client */
 } /* namespace snappydata */
 } /* namespace io */
 
-#endif /* BUFFEREDCLIENTTRANSPORT_H_ */
+#endif /* MESSAGEREGISTRY_H_ */

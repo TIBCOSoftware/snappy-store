@@ -5,7 +5,9 @@
  *  @generated
  */
 
-#include "LocatorService.h"
+#include "impl/pch.h"
+
+#include "impl/LocatorService.h"
 
 namespace io { namespace snappydata { namespace thrift {
 

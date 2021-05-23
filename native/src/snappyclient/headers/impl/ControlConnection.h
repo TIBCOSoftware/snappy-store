@@ -40,15 +40,14 @@
 #include <mutex>
 #include <unordered_map>
 
-#include "ClientService.h"
-#include "../thrift/LocatorService.h"
+#include "impl/ClientService.h"
+#include "impl/LocatorService.h"
 
 //-----------namespaces-----
 
 using namespace apache::thrift;
 using namespace apache::thrift::transport;
 using namespace apache::thrift::protocol;
-using namespace io::snappydata;
 
 namespace std {
   template<>
@@ -56,7 +55,7 @@ namespace std {
     std::size_t operator()(
         const io::snappydata::thrift::HostAddress& addr) const {
       std::size_t h = 37;
-      h = 37 * h + addr.port;
+      h = 37 * h + static_cast<size_t>(addr.port);
       h = 37 * h + std::hash<std::string>()(addr.hostName);
       h = 37 * h + std::hash<std::string>()(addr.ipAddress);
       return h;

@@ -33,7 +33,7 @@
  * LICENSE file.
  */
 
-#include "SQLState.h"
+#include "impl/pch.h"
 
 using namespace io::snappydata::client;
 

@@ -37,11 +37,10 @@
  * Row.cpp
  */
 
+#include "impl/pch.h"
+
 #include "Row.h"
 
-#include <boost/algorithm/string.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/numeric/conversion/cast.hpp>
 #include <limits>
 
 using namespace io::snappydata;
@@ -137,8 +136,8 @@ namespace {
     Decimal d(*cv.getPtr<thrift::Decimal>());
     double result;
     if (d.toDouble(result)
-        && result >= std::numeric_limits<NT>::min()
-        && result <= std::numeric_limits<NT>::max()) {
+        && result >= static_cast<double>(std::numeric_limits<NT>::min())
+        && result <= static_cast<double>(std::numeric_limits<NT>::max())) {
       return static_cast<NT>(result);
     } else {
       std::string s;
@@ -313,6 +312,7 @@ namespace {
 
     template <typename T>
     std::shared_ptr<std::string> operator()(const T& v) const {
+      SKIP_UNUSED_WARNING(v);
       throw GET_DATACONVERSION_ERROR(m_cv, "VARCHAR", m_columnNum);
     }
   };
@@ -454,7 +454,7 @@ uint16_t Row::convertUnsignedShort(const thrift::ColumnValue& cv,
       case thrift::SnappyType::BIGINT:
         return boost::numeric_cast<uint16_t>(cv.get<int64_t>());
       case thrift::SnappyType::TINYINT:
-        return cv.get<int8_t>();
+        return boost::numeric_cast<uint16_t>(cv.get<int8_t>());
       case thrift::SnappyType::NULLTYPE:
         return cv.isNull() ? 0 : 1;
       case thrift::SnappyType::BOOLEAN:
@@ -512,11 +512,11 @@ uint32_t Row::convertUnsignedInt(const thrift::ColumnValue& cv,
   try {
     switch (cv.getType()) {
       case thrift::SnappyType::SMALLINT:
-        return cv.get<int16_t>();
+        return boost::numeric_cast<uint32_t>(cv.get<int16_t>());
       case thrift::SnappyType::BIGINT:
         return boost::numeric_cast<uint32_t>(cv.get<int64_t>());
       case thrift::SnappyType::TINYINT:
-        return cv.get<int8_t>();
+        return boost::numeric_cast<uint32_t>(cv.get<int8_t>());
       case thrift::SnappyType::NULLTYPE:
         return cv.isNull() ? 0 : 1;
       case thrift::SnappyType::BOOLEAN:
@@ -574,11 +574,11 @@ uint64_t Row::convertUnsignedInt64(const thrift::ColumnValue& cv,
   try {
     switch (cv.getType()) {
       case thrift::SnappyType::SMALLINT:
-        return cv.get<int16_t>();
+        return boost::numeric_cast<uint64_t>(cv.get<int16_t>());
       case thrift::SnappyType::INTEGER:
-        return cv.get<int32_t>();
+        return boost::numeric_cast<uint64_t>(cv.get<int32_t>());
       case thrift::SnappyType::TINYINT:
-        return cv.get<int8_t>();
+        return boost::numeric_cast<uint64_t>(cv.get<int8_t>());
       case thrift::SnappyType::NULLTYPE:
         return cv.isNull() ? 0 : 1;
       case thrift::SnappyType::BOOLEAN:

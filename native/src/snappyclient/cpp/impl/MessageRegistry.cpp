@@ -33,7 +33,8 @@
  * LICENSE file.
  */
 
-#include "MessageRegistry.h"
+#include "impl/pch.h"
+
 #include <sstream>
 
 using namespace io::snappydata;

@@ -33,9 +33,7 @@
  * LICENSE file.
  */
 
-#include "BufferedClientTransport.h"
-
-#include "common/Base.h"
+#include "impl/pch.h"
 
 extern "C" {
 #ifdef _WINDOWS

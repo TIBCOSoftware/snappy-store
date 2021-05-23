@@ -37,13 +37,13 @@
  * Result.cpp
  */
 
+#include "impl/pch.h"
+
 #include "Result.h"
 
 #include "Row.h"
 #include "PreparedStatement.h"
 #include "StatementAttributes.h"
-
-#include "impl/ClientService.h"
 
 using namespace io::snappydata;
 using namespace io::snappydata::client;

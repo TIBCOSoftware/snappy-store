@@ -87,7 +87,7 @@ namespace types {
 
     Decimal(const double v, const size_t precision = DEFAULT_REAL_PRECISION);
 
-    Decimal(const std::string& str, const uint32_t columnIndex = -1);
+    Decimal(const std::string& str, const uint32_t columnIndex = 0);
 
     Decimal(const Decimal& other) noexcept;
     Decimal(Decimal&& other) noexcept;

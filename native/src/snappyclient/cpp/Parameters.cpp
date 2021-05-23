@@ -37,6 +37,8 @@
  * Parameters.cpp
  */
 
+#include "impl/pch.h"
+
 #include "Parameters.h"
 #include "PreparedStatement.h"
 

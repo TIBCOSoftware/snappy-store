@@ -33,10 +33,7 @@
  * LICENSE file.
  */
 
-#include "messages/SQLStateMessage.h"
-#include "SQLState.h"
-
-#include "snappydata_types.h"
+#include "impl/pch.h"
 
 using namespace io::snappydata;
 using namespace io::snappydata::client;

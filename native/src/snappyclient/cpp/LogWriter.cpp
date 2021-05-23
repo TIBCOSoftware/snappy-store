@@ -37,18 +37,21 @@
  * LogWriter.cpp
  */
 
-#include "LogWriter.h"
+#include "impl/pch.h"
 
-#include <fstream>
-#include <thread>
+#include <iostream>
+
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
 #include <boost/chrono/system_clocks.hpp>
 #include <boost/chrono/io/time_point_io.hpp>
-#include <boost/filesystem/fstream.hpp>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
-#include "SQLException.h"
-#include "Utils.h"
-#include "impl/InternalUtils.h"
-#include "impl/InternalLogger.h"
 #include "types/Timestamp.h"
 
 using namespace io::snappydata;
@@ -89,7 +92,7 @@ const char* LogLevel::toString(const LogLevel::type logLevel) {
   }
 }
 
-const LogLevel::type LogLevel::fromString(const std::string& levelString,
+LogLevel::type LogLevel::fromString(const std::string& levelString,
     const LogWriter& logger) {
   const std::map<const std::string, LogLevel::type>::const_iterator search =
       s_allLogLevels.find(levelString);
@@ -101,7 +104,7 @@ const LogLevel::type LogLevel::fromString(const std::string& levelString,
   }
 }
 
-int TraceFlag::g_idGenerator = 0;
+uint32_t TraceFlag::g_idGenerator = 0;
 
 const TraceFlag TraceFlag::ClientHA("ClientHA", TraceFlag::getNextId());
 const TraceFlag TraceFlag::ClientStatement("ClientStatement",
@@ -112,11 +115,11 @@ const TraceFlag TraceFlag::ClientStatementMillis("ClientStatementMillis",
     TraceFlag::getNextId());
 const TraceFlag TraceFlag::ClientConn("ClientConn", TraceFlag::getNextId());
 
-const int TraceFlag::getNextId() noexcept {
+uint32_t TraceFlag::getNextId() noexcept {
   return g_idGenerator++;
 }
 
-TraceFlag::TraceFlag(const std::string& name, const int id,
+TraceFlag::TraceFlag(const std::string& name, const uint32_t id,
     const TraceFlag* parent1, const TraceFlag* parent2,
     const TraceFlag* parent3, const TraceFlag* parent4) :
     m_name(name), m_id(id), m_globalSet(false) {
@@ -220,9 +223,9 @@ LogWriter::~LogWriter() {
 }
 
 void LogWriter::initTraceFlags() {
-  const int nTotalFlags = TraceFlag::maxGlobalId();
+  const uint32_t nTotalFlags = TraceFlag::maxGlobalId();
   m_traceFlags = new char[nTotalFlags];
-  for (int i = 0; i < nTotalFlags; i++) {
+  for (uint32_t i = 0; i < nTotalFlags; i++) {
     m_traceFlags[i] = 0;
   }
 }

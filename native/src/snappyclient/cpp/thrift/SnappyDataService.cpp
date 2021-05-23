@@ -5,7 +5,9 @@
  *  @generated
  */
 
-#include "SnappyDataService.h"
+#include "impl/pch.h"
+
+#include "impl/SnappyDataService.h"
 
 namespace io { namespace snappydata { namespace thrift {
 

@@ -5,6 +5,8 @@
  *  @generated
  */
 
+#include "impl/pch.h"
+
 #include <iosfwd>
 
 #include <thrift/Thrift.h>

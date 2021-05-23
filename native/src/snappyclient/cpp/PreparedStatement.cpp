@@ -37,15 +37,14 @@
  * PreparedStatement.cpp
  */
 
+#include "impl/pch.h"
+
 #include "PreparedStatement.h"
 
 #include "Parameters.h"
 #include "ParametersBatch.h"
 #include "ResultSet.h"
 #include "Result.h"
-
-#include "impl/ClientService.h"
-#include "impl/InternalUtils.h"
 
 using namespace io::snappydata;
 using namespace io::snappydata::client;
@@ -224,7 +223,7 @@ ParameterDescriptor PreparedStatement::getParameterDescriptor(
         m_prepResult.parameterMetaData[parameterIndex - 1], parameterIndex);
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::INVALID_DESCRIPTOR_INDEX_MSG,
-        parameterIndex, m_prepResult.parameterMetaData.size(),
+        static_cast<int>(parameterIndex), m_prepResult.parameterMetaData.size(),
         "parameter number in prepared statement");
   }
 }

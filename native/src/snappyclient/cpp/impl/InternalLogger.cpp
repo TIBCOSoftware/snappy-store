@@ -33,9 +33,19 @@
  * LICENSE file.
  */
 
-#include "InternalLogger.h"
-#include "LogWriter.h"
-#include "InternalUtils.h"
+#include "impl/pch.h"
+
+#include <iostream>
+
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
+#include <boost/chrono/system_clocks.hpp>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 using namespace io::snappydata;
 using namespace io::snappydata::client;
@@ -50,7 +60,7 @@ std::ostream& InternalLogger::printCompact_(std::ostream& os,
   while (true) {
     std::ostream& out = *ostr;
     try {
-      const int64_t ticks = NanoClock::now().time_since_epoch().count();
+      const int64_t ticks = CHRONO_NANO_CLOCK::now().time_since_epoch().count();
       out << '[' << LogLevel::toString(logLevel) << " TICKS=" << ticks
           << " SNAPPY:C_" << flag << " tid=0x" << std::hex << tid << std::dec
           << "] ";

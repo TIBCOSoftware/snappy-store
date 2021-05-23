@@ -58,7 +58,7 @@ namespace snappydata {
       return g_instance;
     }
 
-    void resolve(thrift::HostAddress& hostAddr) const;
+    void resolve(thrift::HostAddress& addr);
   };
 
 } /* namespace snappydata */

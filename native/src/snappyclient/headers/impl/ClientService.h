@@ -43,9 +43,9 @@
 
 #include <thrift/transport/TSSLSocket.h>
 
-#include "../thrift/SnappyDataService.h"
-#include "NetConnection.h"
-#include "SSLParameters.h"
+#include "impl/NetConnection.h"
+#include "impl/SnappyDataService.h"
+#include "impl/SSLParameters.h"
 
 DLLPUBLIC void initializeSnappyDataService();
 

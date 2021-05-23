@@ -37,13 +37,7 @@
  * SQLException.cpp
  */
 
-#include <fstream>
-
-#include "SQLException.h"
-#include "Utils.h"
-#include "impl/InternalUtils.h"
-
-#include "thrift/snappydata_struct_SnappyException.h"
+#include "impl/pch.h"
 
 extern "C" {
 #  ifndef _WINDOWS
@@ -163,14 +157,16 @@ void SQLException::staticInitialize() {
           size_t addrEnd = line.find('-', 0);
           if (addrEnd != std::string::npos) {
             s_processBaseAddress.append(" 0x");
-            s_processBaseAddress.append(line.begin(), line.begin() + addrEnd);
+            s_processBaseAddress.append(line.begin(),
+                line.begin() + static_cast<ptrdiff_t>(addrEnd));
           }
         } else if (line.find("snappyclient") != std::string::npos
             || line.find("snappyodbc") != std::string::npos) {
           size_t addrEnd = line.find('-', 0);
           if (addrEnd != std::string::npos) {
             s_processBaseAddress.append(" 0x");
-            s_libraryBaseAddress.append(line.begin(), line.begin() + addrEnd);
+            s_libraryBaseAddress.append(line.begin(),
+                line.begin() + static_cast<ptrdiff_t>(addrEnd));
           }
         }
       }
@@ -199,7 +195,7 @@ void SQLException::init() {
 #ifdef __GNUC__
   // get the stack trace; only get the frames here for efficiency
   // while the names will be gotten in getStackTrace()
-  m_stackSize = ::backtrace(m_stack, STACK_MAX_SIZE);
+  m_stackSize = static_cast<size_t>(::backtrace(m_stack, STACK_MAX_SIZE));
 #endif
 }
 
@@ -244,7 +240,8 @@ std::ostream& SQLException::printStackTrace(std::ostream& out, int level) const 
   const size_t skip = skipFrames();
   if (m_stack && m_stackSize > skip) {
     if ((stackStrings = ::backtrace_symbols(m_stack, m_stackSize))) {
-      impl::FreePointer freeStrings(stackStrings);
+      std::unique_ptr<char*, decltype(std::free)*> freeStrings(stackStrings,
+          std::free);
       std::string stackStr, function;
       size_t begin, end;
       char* demangledName;
@@ -265,7 +262,8 @@ std::ostream& SQLException::printStackTrace(std::ostream& out, int level) const 
           demangledName = Utils::gnuDemangledName(function.c_str());
         }
         if (demangledName) {
-          impl::FreePointer freeName(demangledName);
+          std::unique_ptr<char, decltype(std::free)*> freeName(demangledName,
+              std::free);
           out << "\tat " << stackStr.substr(0, begin + 1) << demangledName;
           if (end != std::string::npos) {
             out << stackStr.substr(end);

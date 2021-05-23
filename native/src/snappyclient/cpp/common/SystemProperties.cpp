@@ -33,9 +33,7 @@
  * LICENSE file.
  */
 
-#include "common/SystemProperties.h"
-
-#include "../impl/SystemPropertiesImpl.h"
+#include "impl/pch.h"
 
 using namespace io::snappydata;
 using namespace io::snappydata::impl;
@@ -69,11 +67,21 @@ bool SystemProperties::getBoolean(const std::string& propName, bool def) {
   return SystemPropertiesImpl::getValue(propName, def);
 }
 
-int32_t SystemProperties::getInteger(const std::string& propName, int32_t def) {
+int32_t SystemProperties::getInt32(const std::string& propName, int32_t def) {
+  return SystemPropertiesImpl::getValue(propName, def);
+}
+
+uint32_t SystemProperties::getUInt32(const std::string& propName,
+    uint32_t def) {
   return SystemPropertiesImpl::getValue(propName, def);
 }
 
 int64_t SystemProperties::getInt64(const std::string& propName, int64_t def) {
+  return SystemPropertiesImpl::getValue(propName, def);
+}
+
+uint64_t SystemProperties::getUInt64(const std::string& propName,
+    uint64_t def) {
   return SystemPropertiesImpl::getValue(propName, def);
 }
 

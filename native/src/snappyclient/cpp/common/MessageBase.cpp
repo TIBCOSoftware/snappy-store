@@ -33,8 +33,7 @@
  * LICENSE file.
  */
 
-#include "common/MessageBase.h"
-#include "../impl/MessageRegistry.h"
+#include "impl/pch.h"
 
 using namespace io::snappydata;
 
@@ -72,7 +71,7 @@ size_t MessageBase::getNumMessageParts() const noexcept {
   return m_messageParts.size();
 }
 
-const std::string& MessageBase::getMessagePart(int index) const {
+const std::string& MessageBase::getMessagePart(size_t index) const {
   return m_messageParts.at(index);
 }
 

@@ -5,6 +5,8 @@
  *  @generated
  */
 
+#include "impl/pch.h"
+
 #include <iosfwd>
 
 #include <thrift/Thrift.h>
@@ -15,7 +17,7 @@
 #include <functional>
 #include <memory>
 
-#include "snappydata_struct_SnappyException.h"
+#include "impl/snappydata_struct_SnappyException.h"
 
 #include <algorithm>
 #include <ostream>

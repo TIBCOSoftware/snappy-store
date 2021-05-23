@@ -37,33 +37,33 @@
  * Utils.cpp
  */
 
-#include "Utils.h"
+#include "impl/pch.h"
 
-#include <sstream>
+#include <cmath>
+#include <cstdlib>
 #include <iostream>
+#include <sstream>
+#include <typeinfo>
+
 #ifdef __GNUC__
 extern "C" {
 #  include <cxxabi.h>
 }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+#pragma GCC diagnostic ignored "-Wdouble-promotion"
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
 #endif
 
-#include <boost/config.hpp>
-#include <boost/lexical_cast.hpp>
 #ifndef _WINDOWS
 #include <boost/process.hpp>
 #endif
 #include <boost/spirit/include/karma.hpp>
 
-#include <cmath>
-#include <cstdlib>
-
-#include <thrift/Thrift.h>
-#include <thrift/protocol/TProtocolException.h>
-#include <thrift/transport/TTransportException.h>
-
-#include "LogWriter.h"
-#include "SQLException.h"
-#include "impl/InternalUtils.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 #ifdef _WINDOWS
 extern "C" {
@@ -192,32 +192,6 @@ void Utils::getHostPort(const std::string& hostPort, std::string& resultHost,
   std::string parseError("{failed to split given host[port] string: ");
   parseError.append(hostPort);
   throwDataFormatError(parseError.c_str(), 0, nullptr);
-}
-
-const char* Utils::getServerTypeString(
-    thrift::ServerType::type serverType) noexcept {
-  switch (serverType) {
-    case thrift::ServerType::THRIFT_SNAPPY_CP:
-      return "THRIFT_SERVER_COMPACTPROTOCOL";
-    case thrift::ServerType::THRIFT_SNAPPY_BP:
-      return "THRIFT_SERVER_BINARYPROTOCOL";
-    case thrift::ServerType::THRIFT_SNAPPY_CP_SSL:
-      return "THRIFT_SERVER_SSL_COMPACTPROTOCOL";
-    case thrift::ServerType::THRIFT_SNAPPY_BP_SSL:
-      return "THRIFT_SERVER_SSL_BINARYPROTOCOL";
-    case thrift::ServerType::THRIFT_LOCATOR_CP:
-      return "THRIFT_LOCATOR_COMPACTPROTOCOL";
-    case thrift::ServerType::THRIFT_LOCATOR_BP:
-      return "THRIFT_LOCATOR_BINARYPROTOCOL";
-    case thrift::ServerType::THRIFT_LOCATOR_CP_SSL:
-      return "THRIFT_LOCATOR_SSL_COMPACTPROTOCOL";
-    case thrift::ServerType::THRIFT_LOCATOR_BP_SSL:
-      return "THRIFT_LOCATOR_SSL_BINARYPROTOCOL";
-    case thrift::ServerType::DRDA:
-      return "DRDA";
-    default:
-      return "THRIFT_SERVER_COMPACTPROTOCOL";
-  }
 }
 
 void Utils::toHexString(const char* bytes, const size_t bytesLen,
@@ -436,7 +410,7 @@ public:
       return boost::spirit::karma::real_policies<TNum>::fmtflags::fixed;
     }
     const TNum absn = std::abs(n);
-    if (absn >= m_minFixed && absn <= 1e9) {
+    if (absn >= m_minFixed && absn <= static_cast<TNum>(1e9)) {
       return boost::spirit::karma::real_policies<TNum>::fmtflags::fixed;
     } else {
       return boost::spirit::karma::real_policies<TNum>::fmtflags::scientific;
@@ -444,6 +418,7 @@ public:
   }
 
   size_t precision(TNum n) const {
+    SKIP_UNUSED_WARNING(n);
     return m_precision2;
   }
 
@@ -460,11 +435,11 @@ public:
       const size_t actualPrecision = (m_precision2 * 3) / 5;
       TNum d = 1.0;
       while (d <= n) {
-        d *= 10.0;
+        d *= static_cast<TNum>(10.0);
         digits++;
         // if digits exceed actual precision, then reduce n
         if (digits > actualPrecision) {
-          n1 = static_cast<TNum>((n1 + 5.0) / 10.0);
+          n1 = static_cast<TNum>((static_cast<double>(n1) + 5.0) / 10.0);
         }
       }
     }
@@ -496,35 +471,35 @@ void Utils::convertByteToString(const int8_t v, std::string& result) {
   char buffer[4];
   char* pbuf = buffer;
   boost::spirit::karma::generate(pbuf, boost::spirit::byte_, v);
-  result.append(buffer, pbuf - &buffer[0]);
+  result.append(buffer, static_cast<size_t>(pbuf - &buffer[0]));
 }
 
 void Utils::convertShortToString(const int16_t v, std::string& result) {
   char buffer[10];
   char* pbuf = buffer;
   boost::spirit::karma::generate(pbuf, boost::spirit::short_, v);
-  result.append(buffer, pbuf - &buffer[0]);
+  result.append(buffer, static_cast<size_t>(pbuf - &buffer[0]));
 }
 
 void Utils::convertIntToString(const int32_t v, std::string& result) {
   char buffer[20];
   char* pbuf = buffer;
   boost::spirit::karma::generate(pbuf, boost::spirit::int_, v);
-  result.append(buffer, pbuf - &buffer[0]);
+  result.append(buffer, static_cast<size_t>(pbuf - &buffer[0]));
 }
 
 void Utils::convertInt64ToString(const int64_t v, std::string& result) {
   char buffer[40];
   char* pbuf = buffer;
   boost::spirit::karma::generate(pbuf, boost::spirit::long_long, v);
-  result.append(buffer, pbuf - &buffer[0]);
+  result.append(buffer, static_cast<size_t>(pbuf - &buffer[0]));
 }
 
 void Utils::convertUInt64ToString(const uint64_t v, std::string& result) {
   char buffer[40];
   char* pbuf = buffer;
   boost::spirit::karma::generate(pbuf, boost::spirit::ulong_long, v);
-  result.append(buffer, pbuf - &buffer[0]);
+  result.append(buffer, static_cast<size_t>(pbuf - &buffer[0]));
 }
 
 void Utils::convertFloatToString(const float v, std::string& result,
@@ -535,16 +510,16 @@ void Utils::convertFloatToString(const float v, std::string& result,
     boost::spirit::karma::generate(pbuf,
         precision == DEFAULT_REAL_PRECISION ? floatPrecisionDef :
             PrecisionFloatType(PrecisionPolicy<float>(precision)), v);
-    result.append(buffer, pbuf - &buffer[0]);
+    result.append(buffer, static_cast<size_t>(pbuf - &buffer[0]));
   } else {
     // static buffer can overflow so better just use dynamically allocated array
     char* buffer = new char[precision * 2 + 24];
-    DestroyArray<char> cleanBuf(buffer);
+    std::unique_ptr<char[]> cleanBuf(buffer);
     char* pbuf = buffer;
     boost::spirit::karma::generate(pbuf,
         precision == DEFAULT_REAL_PRECISION ? floatPrecisionDef :
             PrecisionFloatType(PrecisionPolicy<float>(precision)), v);
-    result.append(buffer, pbuf - &buffer[0]);
+    result.append(buffer, static_cast<size_t>(pbuf - &buffer[0]));
   }
 }
 
@@ -556,16 +531,16 @@ void Utils::convertDoubleToString(const double v, std::string& result,
     boost::spirit::karma::generate(pbuf,
         precision == DEFAULT_REAL_PRECISION ? doublePrecisionDef :
             PrecisionDoubleType(PrecisionPolicy<double>(precision)), v);
-    result.append(buffer, pbuf - &buffer[0]);
+    result.append(buffer, static_cast<size_t>(pbuf - &buffer[0]));
   } else {
     // static buffer can overflow so better just use dynamically allocated array
     char* buffer = new char[precision * 2 + 24];
-    DestroyArray<char> cleanBuf(buffer);
+    std::unique_ptr<char[]> cleanBuf(buffer);
     char* pbuf = buffer;
     boost::spirit::karma::generate(pbuf,
         precision == DEFAULT_REAL_PRECISION ? doublePrecisionDef :
             PrecisionDoubleType(PrecisionPolicy<double>(precision)), v);
-    result.append(buffer, pbuf - &buffer[0]);
+    result.append(buffer, static_cast<size_t>(pbuf - &buffer[0]));
   }
 }
 
@@ -717,7 +692,7 @@ std::ostream& operator <<(std::ostream& out, const wchar_t* wstr) {
 
 std::ostream& operator <<(std::ostream& out,
     const thrift::ServerType::type& serverType) {
-  return out << Utils::getServerTypeString(serverType);
+  return thrift::operator <<(out, serverType);
 }
 
 std::ostream& operator <<(std::ostream& out, const _SqleHex& hexstr) {

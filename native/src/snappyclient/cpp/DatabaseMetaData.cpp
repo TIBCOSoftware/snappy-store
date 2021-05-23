@@ -37,6 +37,8 @@
  * DatabaseMetaData.cpp
  */
 
+#include "impl/pch.h"
+
 #include "DatabaseMetaData.h"
 
 #include <set>

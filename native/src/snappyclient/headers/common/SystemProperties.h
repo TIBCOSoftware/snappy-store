@@ -98,22 +98,44 @@ namespace snappydata {
     static bool getBoolean(const std::string& propName, bool def);
 
     /**
-     * Get integer value for given property name. If the property name
-     * is not found or cannot parse to integer then return the passed
-     * default value.
+     * Get 32-bit signed integer value for given property name. If the
+     * property name is not found or cannot parse to integer then return
+     * the passed default value.
      *
-     * @return current value associated with name as integer or "def"
+     * @return current value associated with name as 32-bit signed integer
+     *         or "def"
      */
-    static int32_t getInteger(const std::string& propName, int32_t def);
+    static int32_t getInt32(const std::string& propName, int32_t def);
 
     /**
-     * Get 64-bit long value for given property name. If the property name
-     * is not found or cannot parse to integer then return the passed
-     * default value.
+     * Get 32-bit unsigned integer value for given property name. If the
+     * property name is not found or cannot parse to integer then return
+     * the passed default value.
      *
-     * @return current value associated with name as 64-bit long or "def"
+     * @return current value associated with name as 32-bit unsigned integer
+     *         or "def"
+     */
+    static uint32_t getUInt32(const std::string& propName, uint32_t def);
+
+    /**
+     * Get 64-bit signed long value for given property name. If the
+     * property name is not found or cannot parse to integer then return
+     * the passed default value.
+     *
+     * @return current value associated with name as 64-bit signed long
+     *         or "def"
      */
     static int64_t getInt64(const std::string& propName, int64_t def);
+
+    /**
+     * Get 64-bit unsigned long value for given property name. If the
+     * property name is not found or cannot parse to integer then return
+     * the passed default value.
+     *
+     * @return current value associated with name as 64-bit unsigned long
+     *         or "def"
+     */
+    static uint64_t getUInt64(const std::string& propName, uint64_t def);
 
     /**
      * Get float value for given property name. If the property name

@@ -35,23 +35,9 @@
 
 //--------Headers----------
 
-#include "ControlConnection.h"
+#include "impl/pch.h"
 
-#include <algorithm>
 #include <cstring>
-#include <thread>
-
-#include <thrift/Thrift.h>
-#include <thrift/transport/TSSLSocket.h>
-#include <thrift/transport/TSocket.h>
-#include <thrift/transport/TBufferTransports.h>
-#include <thrift/protocol/TBinaryProtocol.h>
-#include <thrift/protocol/TCompactProtocol.h>
-
-#include "NetConnection.h"
-#include "SQLException.h"
-#include "SQLState.h"
-#include "Utils.h"
 
 using namespace io::snappydata;
 using namespace io::snappydata::client;
@@ -99,9 +85,9 @@ ControlConnection& ControlConnection::getOrCreateControlConnection(
   std::lock_guard<std::mutex> globalGuard(getAllConnections().m_lock);
 
   auto &allConnections = getAllConnections().m_map;
-  const auto result = allConnections.find(service);
-  if (result != allConnections.end()) {
-    return *result->second;
+  const auto existing = allConnections.find(service);
+  if (existing != allConnections.end()) {
+    return *existing->second;
   }
 
   for (const auto &kv : allConnections) {
@@ -122,20 +108,18 @@ ControlConnection& ControlConnection::getOrCreateControlConnection(
           return *controlConn;
         } else {
           thrift::SnappyException ex;
-          std::string portStr;
-          Utils::convertIntToString(hostAddr.port, portStr);
-          std::string msg = hostAddr.hostName + ":" + portStr
+          std::string msg = hostAddr.toString()
               + " as registered but having different type "
-              + Utils::getServerTypeString(contrConnServerType)
+              + thrift::to_string(contrConnServerType)
               + " than connection "
-              + Utils::getServerTypeString(serviceServerType);
+              + thrift::to_string(serviceServerType);
           SnappyExceptionData snappyExData;
           snappyExData.__set_sqlState("08006");
           snappyExData.__set_reason(msg);
           // errorCode matches product ExceptionSeverity.SESSION_SEVERITY
           snappyExData.__set_errorCode(40000);
           ex.__set_exceptionData(snappyExData);
-          ex.__set_serverInfo(hostAddr.hostName + ":" + portStr);
+          ex.__set_serverInfo(hostAddr.toString());
           throw ex;
         }
       }
@@ -231,7 +215,7 @@ void ControlConnection::getPreferredServer(thrift::HostAddress &preferredServer,
       return;
     } catch (thrift::SnappyException &snEx) {
       FailoverStatus status = NetConnection::getFailoverStatus(
-          snEx.exceptionData.sqlState, snEx.exceptionData.errorCode, snEx);
+          snEx.exceptionData.sqlState, snEx);
       if (status == FailoverStatus::NONE) {
         throw snEx;
       } else if (status == FailoverStatus::RETRY) {
@@ -317,14 +301,15 @@ void ControlConnection::failoverToAvailableHost(
           if (!m_sslFactory) { // m_lock has already been locked before
             m_sslFactory.reset(new SSLSocketFactory(*service->m_sslFactory));
           }
-          tTransport = service->createSSLSocket(controlAddr.hostName,
-              controlAddr.port, *m_sslFactory);
+          tTransport = service->createSSLSocket(
+              controlAddr.ipAddressOrHostName(), controlAddr.port,
+              *m_sslFactory);
         } else if (m_snappyServerType == thrift::ServerType::THRIFT_LOCATOR_BP
             || m_snappyServerType == thrift::ServerType::THRIFT_LOCATOR_CP
             || m_snappyServerType == thrift::ServerType::THRIFT_SNAPPY_BP
             || m_snappyServerType == thrift::ServerType::THRIFT_SNAPPY_CP) {
-          tTransport = std::make_shared<TSocket>(controlAddr.hostName,
-              controlAddr.port);
+          tTransport = std::make_shared<TSocket>(
+              controlAddr.ipAddressOrHostName(), controlAddr.port);
         }
         tTransport->open();
         TTransportFactory* transportFactory = nullptr;
@@ -377,22 +362,14 @@ void ControlConnection::failoverToAvailableHost(
 
 const thrift::SnappyException ControlConnection::unexpectedError(
     const std::exception& ex, const thrift::HostAddress& host) {
-
   close();
   thrift::SnappyException snappyEx;
   SnappyExceptionData snappyExData;
   snappyExData.__set_sqlState(
       std::string(SQLState::UNKNOWN_EXCEPTION.getSQLState()));
   snappyExData.__set_reason(ex.what());
-
   snappyEx.__set_exceptionData(snappyExData);
-
-  std::string portNum;
-  Utils::convertIntToString(host.port, portNum);
-  snappyEx.__set_serverInfo(
-      host.hostName + host.ipAddress + portNum
-          + Utils::getServerTypeString(host.serverType));
-
+  snappyEx.__set_serverInfo(host.toString());
   return snappyEx;
 }
 
@@ -442,10 +419,8 @@ void ControlConnection::failoverExhausted(
 
   std::string failedServerString;
   for (thrift::HostAddress host : failedServers) {
-    std::string portStr;
-    Utils::convertIntToString(host.port, portStr);
     if (!failedServerString.empty()) failedServerString.append(",");
-    failedServerString.append(host.hostName).append(":").append(portStr);
+    failedServerString.append(host.toString());
   }
   thrift::SnappyException snappyEx;
   SnappyExceptionData snappyExData;

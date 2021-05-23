@@ -38,8 +38,8 @@
 
 #include <thread>
 
-#include "ThreadSafeMap.h"
 #include "LogWriter.h"
+#include "impl/ThreadSafeMap.h"
 
 namespace io {
 namespace snappydata {

@@ -46,7 +46,7 @@
 
 #define GET_DATACONVERSION_ERROR(cv, target, columnNum) \
      GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATA_TYPE_GET_MISMATCH_MSG, \
-         target, Utils::getSQLTypeName(cv), columnNum)
+         target, Utils::getSQLTypeName(cv), static_cast<int>(columnNum))
 
 namespace {
   class ToString;
@@ -63,7 +63,7 @@ namespace client {
         return;
       } else if (m_values.size() > 0) {
         throw GET_SQLEXCEPTION2(SQLStateMessage::COLUMN_NOT_FOUND_MSG1,
-            columnZeroIndex + 1, m_values.size());
+            static_cast<int>(columnZeroIndex + 1), m_values.size());
       } else {
         throw GET_SQLEXCEPTION2(SQLStateMessage::NO_CURRENT_ROW_MSG);
       }

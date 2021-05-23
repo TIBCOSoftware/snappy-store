@@ -33,7 +33,7 @@
  * LICENSE file.
  */
 
-#include "ClientAttribute.h"
+#include "impl/pch.h"
 
 namespace io { namespace snappydata { namespace client {
 

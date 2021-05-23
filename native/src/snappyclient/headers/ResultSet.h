@@ -157,7 +157,7 @@ namespace client {
           // offset from start of the resultset; check if in current batch
           size_t sz = m_resultSet->m_rowData.size();
           if (offset >= batchOffset &&
-              offset < static_cast<int32_t>(batchOffset + sz)) {
+              offset < batchOffset + static_cast<int64_t>(sz)) {
             m_currentRow = m_resultSet->row<updatable>(0);
             m_endBatch = m_currentRow + sz;
             m_currentRow += (offset - batchOffset);
@@ -180,11 +180,11 @@ namespace client {
         } else {
           // offset from end of the resultset; check if in current batch
           size_t sz = m_resultSet->m_rowData.size();
-          if ((m_rows->flags & thrift::snappydataConstants::
-              ROWSET_LAST_BATCH) != 0 && (sz + offset) >= 0) {
+          if ((m_rows->flags & thrift::snappydataConstants::ROWSET_LAST_BATCH)
+              != 0 && (static_cast<int64_t>(sz) + offset) >= 0) {
             m_currentRow = m_resultSet->row<updatable>(0);
             m_endBatch = m_currentRow + sz;
-            m_currentRow += (sz + offset);
+            m_currentRow += (static_cast<int64_t>(sz) + offset);
           } else {
             if (m_resultSet->moveToRowSet(offset, m_resultSet->m_batchSize, true)
                 && (sz = m_resultSet->m_rowData.size()) > 0) {

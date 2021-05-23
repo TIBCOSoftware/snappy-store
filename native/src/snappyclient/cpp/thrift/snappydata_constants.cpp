@@ -5,6 +5,8 @@
  *  @generated
  */
 
+#include "impl/pch.h"
+
 #include "snappydata_constants.h"
 
 namespace io { namespace snappydata { namespace thrift {

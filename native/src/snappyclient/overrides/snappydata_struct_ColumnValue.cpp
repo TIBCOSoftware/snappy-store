@@ -69,6 +69,8 @@ namespace {
 
     template<typename T, typename U>
     bool operator()(const T& lhs, const U& rhs) const {
+      SKIP_UNUSED_WARNING(lhs);
+      SKIP_UNUSED_WARNING(rhs);
       // cannot compare different types
       return false;
     }
@@ -710,10 +712,6 @@ uint32_t ColumnValue::write(
 
 void ColumnValue::swap(ColumnValue& other) {
   std::swap(m_val, other.m_val);
-}
-
-void swap(ColumnValue &a, ColumnValue &b) {
-  a.swap(b);
 }
 
 void ColumnValue::printTo(std::ostream& out) const {

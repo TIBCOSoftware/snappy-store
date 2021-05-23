@@ -132,7 +132,7 @@ public:
   }
   Binary(const std::string& v) : std::string(v) {
   }
-  Binary(const int8_t* bytes, int len) :
+  Binary(const int8_t* bytes, size_t len) :
       std::string((const char*)bytes, len) {
   }
   Binary(Binary&& other) noexcept : std::string(std::move(other)) {
@@ -177,7 +177,7 @@ public:
   }
   JavaObject(const std::string& v) : std::string(v) {
   }
-  JavaObject(const int8_t* bytes, int len) :
+  JavaObject(const int8_t* bytes, size_t len) :
       std::string((const char*)bytes, len) {
   }
   JavaObject(JavaObject&& other) noexcept : std::string(std::move(other)) {
@@ -305,11 +305,7 @@ public:
   // buffer to read the result into instead of creating a new std::string
   // (though it is dangerous and should avoid unless perf benefit is proven)
   inline void setString(const char* val, const size_t len) {
-    if (len < 0) {
-      m_val = std::move(std::make_shared<std::string>(val));
-    } else {
-      m_val = std::move(std::make_shared<std::string>(val, len));
-    }
+    m_val = std::move(std::make_shared<std::string>(val, len));
   }
 
   inline void setDecimal(const Decimal& val) {

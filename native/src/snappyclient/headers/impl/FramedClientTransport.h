@@ -18,7 +18,7 @@
 #ifndef FRAMEDCLIENTTRANSPORT_H_
 #define FRAMEDCLIENTTRANSPORT_H_
 
-#include "BufferedClientTransport.h"
+#include "impl/BufferedClientTransport.h"
 
 namespace io {
 namespace snappydata {

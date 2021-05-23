@@ -90,28 +90,28 @@ namespace client {
 
     void setUnsignedByte(const uint32_t columnIndex, const uint8_t v) {
       // thrift API has no unsigned so need to convert to signed
-      setByte(columnIndex, (const int8_t)v);
+      setByte(columnIndex, static_cast<int8_t>(v));
     }
 
     void setShort(const uint32_t columnIndex, const int16_t v);
 
     void setUnsignedShort(const uint32_t columnIndex, const uint16_t v) {
       // thrift API has no unsigned so need to convert to signed
-      setShort(columnIndex, (const int16_t)v);
+      setShort(columnIndex, static_cast<int16_t>(v));
     }
 
     void setInt(const uint32_t columnIndex, const int32_t v);
 
     void setUnsignedInt(const uint32_t columnIndex, const uint32_t v) {
       // thrift API has no unsigned so need to convert to signed
-      setInt(columnIndex, (const int32_t)v);
+      setInt(columnIndex, static_cast<int32_t>(v));
     }
 
     void setInt64(const uint32_t columnIndex, const int64_t v);
 
     void setUnsignedInt64(const uint32_t columnIndex, const uint64_t v) {
       // thrift API has no unsigned so need to convert to signed
-      setInt64(columnIndex, (const int64_t)v);
+      setInt64(columnIndex, static_cast<int64_t>(v));
     }
 
     void setFloat(const uint32_t columnIndex, const float v);

@@ -68,7 +68,7 @@ namespace client {
       return m_attrs->__isset.updatable && m_attrs->updatable;
     }
 
-    uint32_t getBatchSize() const noexcept {
+    int32_t getBatchSize() const noexcept {
       return m_attrs->__isset.batchSize ? m_attrs->batchSize
           : thrift::snappydataConstants::DEFAULT_RESULTSET_BATCHSIZE;
     }

@@ -145,7 +145,7 @@ namespace client {
       return m_possibleValues;
     }
 
-    const int getNumPossibleValues() const noexcept {
+    int getNumPossibleValues() const noexcept {
       return m_numPossibleValues;
     }
 
@@ -153,7 +153,7 @@ namespace client {
       return m_defaultValue;
     }
 
-    const int getFlags() const noexcept {
+    int getFlags() const noexcept {
       return m_flags;
     }
   };

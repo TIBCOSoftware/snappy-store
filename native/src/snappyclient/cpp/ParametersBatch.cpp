@@ -37,6 +37,8 @@
  * ParametersBatch.cpp
  */
 
+#include "impl/pch.h"
+
 #include "ParametersBatch.h"
 #include "PreparedStatement.h"
 

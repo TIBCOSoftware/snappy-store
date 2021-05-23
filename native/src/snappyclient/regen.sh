@@ -36,7 +36,19 @@ for tname in overrides/*h; do
   fi
 done
 
-# move back non-public headers
+# change the cpp class files to use pch.h
+
+for tname in cpp/thrift/*.cpp; do
+  sed -i '0,/^#include/s//#include "impl\/pch.h"\n\n#include/' "${tname}"
+done
+
+# move some headers having thrift/internal classes to non-public area
 for f in ${CPP_HEADERS}; do
-  mv "headers/${f}" cpp/thrift/.
+  mv "headers/${f}" headers/impl/.
+done
+
+# change include path to have "impl/" for its own header in the cpp file
+for f in ${CPP_HEADERS}; do
+  cppFile="`echo $f | sed s/.h$/.cpp/`"
+  sed -i "s:$f:impl/$f:g" "cpp/thrift/${cppFile}"
 done

@@ -37,10 +37,10 @@
  * ResultSet.cpp
  */
 
+#include "impl/pch.h"
+
 #include "ResultSet.h"
 
-#include "impl/ClientService.h"
-#include "impl/InternalUtils.h"
 #include "StatementAttributes.h"
 
 using namespace io::snappydata;
@@ -215,8 +215,8 @@ ColumnDescriptor ResultSet::getColumnDescriptor(
     thrift::ColumnDescriptor& cd = descriptors[columnIndex - 1];
     if (!cd.__isset.fullTableName) {
       // search for the table
-      for (int i = columnIndex - 2; i >= 0; i--) {
-        thrift::ColumnDescriptor& cd2 = descriptors[i];
+      for (uint32_t i = columnIndex - 1; i > 0; i--) {
+        thrift::ColumnDescriptor& cd2 = descriptors[i - 1];
         if (cd2.__isset.fullTableName) {
           cd.__set_fullTableName(cd2.fullTableName);
           break;
@@ -226,8 +226,8 @@ ColumnDescriptor ResultSet::getColumnDescriptor(
     if (cd.type == thrift::SnappyType::JAVA_OBJECT) {
       if (!cd.__isset.udtTypeAndClassName) {
         // search for the UDT typeAndClassName
-        for (int i = columnIndex - 2; i >= 0; i--) {
-          thrift::ColumnDescriptor& cd2 = descriptors[i];
+        for (uint32_t i = columnIndex - 1; i > 0; i--) {
+          thrift::ColumnDescriptor& cd2 = descriptors[i - 1];
           if (cd2.__isset.udtTypeAndClassName) {
             cd.__set_udtTypeAndClassName(cd2.udtTypeAndClassName);
             break;
@@ -238,7 +238,7 @@ ColumnDescriptor ResultSet::getColumnDescriptor(
     return ColumnDescriptor(cd, columnIndex);
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::INVALID_DESCRIPTOR_INDEX_MSG,
-        columnIndex, descriptors.size(), operation);
+        static_cast<int>(columnIndex), descriptors.size(), operation);
   }
 }
 

@@ -40,17 +40,12 @@
  * for ID, flags etc.
  */
 
+#include "impl/pch.h"
+
 #include "Connection.h"
-
-#include <boost/algorithm/string.hpp>
-
-#include "impl/ClientService.h"
-#include "impl/InternalUtils.h"
 
 #include "PreparedStatement.h"
 #include "ParametersBatch.h"
-#include "ClientAttribute.h"
-#include "impl/ClientTransport.h"
 
 using namespace io::snappydata;
 using namespace io::snappydata::client;
@@ -658,6 +653,7 @@ std::unique_ptr<ResultSet> Connection::getUDTs(DatabaseMetaDataArgs& args,
 
   std::unique_ptr<thrift::RowSet> rs(new thrift::RowSet());
   args.m_args.driverType = static_cast<int8_t>(DRIVER_TYPE);
+  args.setTypeName(typeNamePattern);
   std::vector<thrift::SnappyType::type> thriftTypes;
   thriftTypes.reserve(types.size());
   for (auto type : types) {
