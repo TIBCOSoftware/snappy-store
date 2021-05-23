@@ -767,10 +767,10 @@ protocol::TProtocol* ClientService::createProtocol(
       throw new std::runtime_error(
           "unexpected null SSLSocketFactory in ClientService::createProtocol");
     }
-    socket = createSSLSocket(hostAddr.ipAddressOrHostName(), hostAddr.port,
+    socket = createSSLSocket(hostAddr.hostName, hostAddr.port,
         *m_sslFactory);
   } else {
-    socket.reset(new TSocket(hostAddr.ipAddressOrHostName(), hostAddr.port));
+    socket.reset(new TSocket(hostAddr.hostName, hostAddr.port));
   }
 
   // socket->setKeepAlive(false);

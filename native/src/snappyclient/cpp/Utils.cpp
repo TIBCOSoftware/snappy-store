@@ -320,7 +320,7 @@ std::string Utils::readPasswordFromManager(const std::string &user,
     throw sqle;
   } catch (std::exception &ex) {
     std::string err("Password lookup failure in 'secret-tool' for ");
-    err.append(user).append(" using the attribut:value '").append(attribute)
+    err.append(user).append(" using the attribute:value '").append(attribute)
       .append("':'").append(value).append("' : ");
     throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, err.append(ex.what()));
   }
