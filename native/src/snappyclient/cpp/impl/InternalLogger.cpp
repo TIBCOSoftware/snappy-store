@@ -35,6 +35,8 @@
 
 #include "impl/pch.h"
 
+#include "impl/InternalLogger.h"
+
 #include <iostream>
 
 #ifdef __GNUC__

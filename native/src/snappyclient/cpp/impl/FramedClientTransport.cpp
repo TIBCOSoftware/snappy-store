@@ -17,6 +17,8 @@
 
 #include "impl/pch.h"
 
+#include "impl/FramedClientTransport.h"
+
 using namespace io::snappydata::client::impl;
 
 FramedClientTransport::FramedClientTransport(

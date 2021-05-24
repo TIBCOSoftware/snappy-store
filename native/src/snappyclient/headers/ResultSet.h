@@ -49,6 +49,10 @@ namespace io {
 namespace snappydata {
 namespace client {
 
+  namespace impl {
+    class ClientService;
+  }
+
   class ResultSet final {
   private:
     thrift::RowSet* m_rows;

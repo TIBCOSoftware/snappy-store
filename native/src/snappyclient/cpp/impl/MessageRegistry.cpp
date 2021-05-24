@@ -35,6 +35,8 @@
 
 #include "impl/pch.h"
 
+#include "impl/MessageRegistry.h"
+
 #include <sstream>
 
 using namespace io::snappydata;

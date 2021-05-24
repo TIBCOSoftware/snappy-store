@@ -46,6 +46,8 @@
 
 #include "PreparedStatement.h"
 #include "ParametersBatch.h"
+#include "impl/ClientService.h"
+#include "impl/ClientTransport.h"
 
 using namespace io::snappydata;
 using namespace io::snappydata::client;

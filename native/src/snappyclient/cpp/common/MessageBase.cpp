@@ -35,6 +35,8 @@
 
 #include "impl/pch.h"
 
+#include "impl/MessageRegistry.h"
+
 using namespace io::snappydata;
 
 MessageBase::MessageBase() : m_messageId(), m_messageParts() {

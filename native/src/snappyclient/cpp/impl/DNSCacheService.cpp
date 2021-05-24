@@ -35,6 +35,8 @@
 
 #include "impl/pch.h"
 
+#include "impl/DNSCacheService.h"
+
 // #include <boost/asio/io_service.hpp>
 // #include <boost/asio/ip/tcp.hpp>
 

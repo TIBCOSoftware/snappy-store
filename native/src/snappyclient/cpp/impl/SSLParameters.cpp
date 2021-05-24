@@ -17,6 +17,8 @@
 
 #include "impl/pch.h"
 
+#include "impl/SSLParameters.h"
+
 using namespace io::snappydata;
 using namespace io::snappydata::client::impl;
 using namespace io::snappydata::thrift;

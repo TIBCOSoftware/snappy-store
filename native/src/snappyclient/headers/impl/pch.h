@@ -39,12 +39,13 @@ extern "C" {
 #include <algorithm>
 #include <fstream>
 #include <thread>
+#include <vector>
 
 // common boost and thrift headers
 
 #include "impl/system.h"
 
-// some public headers
+// some public and internal headers
 
 #include "common/SystemProperties.h"
 #include "messages/SQLStateMessage.h"
@@ -52,16 +53,6 @@ extern "C" {
 #include "ClientAttribute.h"
 #include "LogWriter.h"
 #include "Utils.h"
-
-// implementation headers
-
-#include "impl/ControlConnection.h"
-#include "impl/BufferedClientTransport.h"
-#include "impl/DNSCacheService.h"
-#include "impl/FramedClientTransport.h"
-#include "impl/InternalLogger.h"
 #include "impl/InternalUtils.h"
-#include "impl/MessageRegistry.h"
-#include "impl/SystemPropertiesImpl.h"
 
 #endif /* IMPL_PCH_H_ */

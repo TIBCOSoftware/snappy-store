@@ -35,6 +35,8 @@
 
 #include "impl/pch.h"
 
+#include "impl/BufferedClientTransport.h"
+
 extern "C" {
 #ifdef _WINDOWS
 #include <WinSock2.h>

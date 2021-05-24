@@ -39,6 +39,14 @@
 
 #include "impl/pch.h"
 
+#include "impl/ClientService.h"
+
+#include "impl/BufferedClientTransport.h"
+#include "impl/ControlConnection.h"
+#include "impl/DNSCacheService.h"
+#include "impl/FramedClientTransport.h"
+#include "impl/InternalLogger.h"
+
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverloaded-virtual"
@@ -125,7 +133,7 @@ static const std::vector<std::string> s_systemCertificateDirs = {
 
 }
 
-extern "C" DLLPUBLIC void initializeSnappyDataService() {
+extern "C" void initializeSnappyDataService() {
   ClientService::staticInitialize();
 }
 

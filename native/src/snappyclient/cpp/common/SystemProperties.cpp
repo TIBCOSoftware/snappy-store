@@ -35,6 +35,8 @@
 
 #include "impl/pch.h"
 
+#include "impl/SystemPropertiesImpl.h"
+
 using namespace io::snappydata;
 using namespace io::snappydata::impl;
 

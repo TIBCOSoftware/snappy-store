@@ -45,6 +45,7 @@
 #include "ParametersBatch.h"
 #include "ResultSet.h"
 #include "Result.h"
+#include "impl/ClientService.h"
 
 using namespace io::snappydata;
 using namespace io::snappydata::client;

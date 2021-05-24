@@ -38,7 +38,7 @@
 
 #include "SQLMessage.h"
 
-#include <exception>
+#include <stdexcept>
 
 namespace io {
 namespace snappydata {

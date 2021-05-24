@@ -55,6 +55,10 @@ namespace io {
 namespace snappydata {
 namespace client {
 
+  namespace impl {
+    class ClientService;
+  }
+
   class Result final {
   private:
     std::shared_ptr<ClientService> m_service;

@@ -37,6 +37,9 @@
 
 #include "impl/pch.h"
 
+#include "impl/ControlConnection.h"
+#include "impl/ClientService.h"
+
 using namespace io::snappydata;
 using namespace io::snappydata::client;
 using namespace io::snappydata::client::impl;

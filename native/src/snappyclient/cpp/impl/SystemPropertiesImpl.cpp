@@ -35,6 +35,8 @@
 
 #include "impl/pch.h"
 
+#include "impl/SystemPropertiesImpl.h"
+
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"

@@ -38,8 +38,16 @@
 
 #include <unordered_map>
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
 #include <boost/thread/shared_mutex.hpp>
 #include <boost/thread/locks.hpp>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 #include "common/Base.h"
 

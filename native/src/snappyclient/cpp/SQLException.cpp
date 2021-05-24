@@ -39,6 +39,8 @@
 
 #include "impl/pch.h"
 
+#include "impl/snappydata_struct_SnappyException.h"
+
 extern "C" {
 #  ifndef _WINDOWS
 #    include <limits.h>
