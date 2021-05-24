@@ -39,6 +39,7 @@
 #include <exception>
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "impl/ClientService.h"
 #include "impl/LocatorService.h"
@@ -48,20 +49,6 @@
 using namespace apache::thrift;
 using namespace apache::thrift::transport;
 using namespace apache::thrift::protocol;
-
-namespace std {
-  template<>
-  struct hash<io::snappydata::thrift::HostAddress> {
-    std::size_t operator()(
-        const io::snappydata::thrift::HostAddress& addr) const {
-      std::size_t h = 37;
-      h = 37 * h + static_cast<size_t>(addr.port);
-      h = 37 * h + std::hash<std::string>()(addr.hostName);
-      h = 37 * h + std::hash<std::string>()(addr.ipAddress);
-      return h;
-    }
-  };
-}
 
 namespace io {
   namespace snappydata {
@@ -113,7 +100,7 @@ namespace io {
           // hence a reference is maintained here
           std::unique_ptr<SSLSocketFactory> m_sslFactory;
           std::unordered_set<thrift::HostAddress> m_controlHostSet;
-          const std::set<std::string>& m_serverGroups;
+          std::set<std::string> m_serverGroups;
           std::recursive_mutex m_lock;
           bool m_framedTransport;
 
@@ -159,8 +146,19 @@ namespace io {
               const std::set<thrift::HostAddress> &skipServers,
               SQLException &failure, thrift::HostAddress &hostAddress);
 
+          /**
+           * Get the server-returned HostAddress for the given connected
+           * user-supplied HostAddress. The optional parameter "allowCurrent"
+           * will allow returning the HostAddress marked as "current" if none
+           * of the server-returned hosts match (e.g. because user-supplied
+           * hostName while server returned IP addresses or vice-versa).
+           *
+           * CAUTION: the parameter "allowCurrent" should be passed as true
+           * only for the ControlConnection explicitly created up for the
+           * user-supplied HostAddress using getOrCreateControlConnection.
+           */
           thrift::HostAddress getConnectedHost(
-              const thrift::HostAddress &hostAddr);
+              const thrift::HostAddress &hostAddr, bool allowCurrent);
 
           void close();
 

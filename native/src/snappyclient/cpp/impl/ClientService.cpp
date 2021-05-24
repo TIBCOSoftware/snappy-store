@@ -45,7 +45,7 @@
 #pragma GCC diagnostic ignored "-Wshadow"
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #endif
-#include <boost/asio.hpp>
+#include <boost/asio/ip/host_name.hpp>
 #include <boost/chrono/system_clocks.hpp>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
@@ -62,7 +62,7 @@ extern "C" {
 #endif
 }
 
-// avoid importing TimeUtils that includes boost date_time libraries
+// avoid importing TimeUtils that includes the slew of boost date_time headers
 extern std::string initializeSnappyDataTime();
 
 using namespace io::snappydata;
@@ -383,7 +383,7 @@ ClientService::ClientService(const std::string& host, const int port,
   Utils::getHostAddress(host, port, hostAddr);
   // mark the given host as the locator/server being connected to directly
   // so that search in the results will immediately pick up the same
-  // locator/server that will have its isCurrent flag set by on the server-side
+  // locator/server that will have its isCurrent flag set by the server-side
   hostAddr.__set_isCurrent(true);
 
   {
@@ -539,7 +539,7 @@ void ClientService::openConnection(thrift::HostAddress &hostAddr,
         // if connected to the server then disable load-balance by default
         if (!m_loadBalanceInitialized) {
           // set default load-balance to false for servers and true for locators
-          auto connectedHost = controlConn.getConnectedHost(hostAddr);
+          auto connectedHost = controlConn.getConnectedHost(hostAddr, true);
           thrift::ServerType::type serverType = connectedHost.serverType;
           if (serverType == thrift::ServerType::THRIFT_LOCATOR_BP
               || serverType == thrift::ServerType::THRIFT_LOCATOR_BP_SSL
@@ -770,7 +770,7 @@ protocol::TProtocol* ClientService::createProtocol(
     socket = createSSLSocket(hostAddr.hostName, hostAddr.port,
         *m_sslFactory);
   } else {
-    socket.reset(new TSocket(hostAddr.hostName, hostAddr.port));
+    socket.reset(new TSocket(hostAddr.ipAddressOrHostName(), hostAddr.port));
   }
 
   // socket->setKeepAlive(false);

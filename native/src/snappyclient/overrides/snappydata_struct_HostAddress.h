@@ -20,6 +20,7 @@
 #ifndef SNAPPYDATA_STRUCT_HOSTADDRESS_H
 #define SNAPPYDATA_STRUCT_HOSTADDRESS_H
 
+#include <functional>
 
 #include "snappydata_struct_Decimal.h"
 #include "snappydata_struct_BlobChunk.h"
@@ -70,14 +71,8 @@ class HostAddress {
 
   void __set_isCurrent(const bool val);
 
-  bool operator == (const HostAddress & rhs) const
-  {
+  bool operator == (const HostAddress & rhs) const {
     if (port != rhs.port) return false;
-    // isCurrent is true only for the currently connected locator/server
-    if (__isset.isCurrent && isCurrent
-        && rhs.__isset.isCurrent && rhs.isCurrent) {
-      return true;
-    }
     if (hostName == rhs.hostName) {
       return !__isset.ipAddress || !rhs.__isset.ipAddress
         || ipAddress == rhs.ipAddress;
@@ -95,13 +90,16 @@ class HostAddress {
     return !(*this == rhs);
   }
 
-  bool operator < (const HostAddress & ) const;
+  bool operator < (const HostAddress &) const;
 
   uint32_t read(::apache::thrift::protocol::TProtocol* iprot);
   uint32_t write(::apache::thrift::protocol::TProtocol* oprot) const;
 
   virtual void printTo(std::ostream &out) const;
 
+  /**
+   * Return ipAddress of the host if set, else return the hostName field.
+   */
   const std::string& ipAddressOrHostName() const noexcept {
     return __isset.ipAddress ? ipAddress : hostName;
   }
@@ -114,5 +112,21 @@ void swap(HostAddress &a, HostAddress &b);
 std::ostream& operator<<(std::ostream& out, const HostAddress& obj);
 
 }}} // namespace
+
+namespace std {
+
+template<>
+struct hash<io::snappydata::thrift::HostAddress> {
+  std::size_t operator()(
+      const io::snappydata::thrift::HostAddress& addr) const {
+    std::size_t h = 37;
+    h = 37 * h + static_cast<size_t>(addr.port);
+    // equality of two HostAddresses can involve comparing ipAddress against
+    // hostName of other, so just use the port for the hash code
+    return h;
+  }
+};
+
+}
 
 #endif

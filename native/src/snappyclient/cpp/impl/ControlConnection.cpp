@@ -37,8 +37,6 @@
 
 #include "impl/pch.h"
 
-#include <cstring>
-
 using namespace io::snappydata;
 using namespace io::snappydata::client;
 using namespace io::snappydata::client::impl;
@@ -59,7 +57,7 @@ ControlConnection::ControlConnection(ClientService *service) :
     m_snappyServerType(service->getServerType()),
     m_locators(service->getLocators()),
     m_controlHost(service->getCurrentHostAddress()),
-    m_serverGroups(service->getServerGrps()),
+    m_serverGroups(service->getServerGroups()),
     m_framedTransport(service->isFrameTransport()) {
   m_snappyServerTypeSet.insert(service->getServerType());
   m_controlHostSet.insert(m_locators.begin(), m_locators.end());
@@ -275,7 +273,7 @@ void ControlConnection::failoverToAvailableHost(
     std::set<thrift::HostAddress> &failedServers, bool checkFailedControlHosts,
     SQLException &failure, ClientService *service) {
   std::lock_guard<std::recursive_mutex> lockGuard(m_lock);
-  for (auto &controlAddr : m_controlHostSet) {
+  for (auto& controlAddr : m_controlHostSet) {
     if (checkFailedControlHosts && !failedServers.empty()
         && (failedServers.find(controlAddr) != failedServers.end())) {
       continue;
@@ -286,6 +284,15 @@ void ControlConnection::failoverToAvailableHost(
     std::shared_ptr<TTransport> outTransport = nullptr;
     std::shared_ptr<TProtocol> inProtocol = nullptr;
     std::shared_ptr<TProtocol> outProtocol = nullptr;
+
+    // resolve the controlAddr using DNSCacheService to minimize DNS lookup
+    // from hostname (when hostnames are being used)
+    // it is also required in case hostname lookups are not working from
+    // client-side and only IP addresses provided by servers are supposed
+    // to work
+
+    // not really modifying the key but use DNSCacheService to fill up IP address
+    // DNSCacheService::instance().resolve(controlAddr);
 
     try {
       while (true) {
@@ -302,8 +309,7 @@ void ControlConnection::failoverToAvailableHost(
             m_sslFactory.reset(new SSLSocketFactory(*service->m_sslFactory));
           }
           tTransport = service->createSSLSocket(
-              controlAddr.ipAddressOrHostName(), controlAddr.port,
-              *m_sslFactory);
+              controlAddr.hostName, controlAddr.port, *m_sslFactory);
         } else if (m_snappyServerType == thrift::ServerType::THRIFT_LOCATOR_BP
             || m_snappyServerType == thrift::ServerType::THRIFT_LOCATOR_CP
             || m_snappyServerType == thrift::ServerType::THRIFT_SNAPPY_BP
@@ -443,18 +449,24 @@ void ControlConnection::failoverExhausted(
 }
 
 thrift::HostAddress ControlConnection::getConnectedHost(
-    const thrift::HostAddress &hostAddr) {
+    const thrift::HostAddress& hostAddr, bool allowCurrent) {
   std::lock_guard<std::recursive_mutex> lockGuard(m_lock);
 
   auto it = std::find(m_controlHostSet.begin(), m_controlHostSet.end(),
       hostAddr);
   if (it != m_controlHostSet.end()) {
-    return *it;
+    if (static_cast<int>(it->serverType) != 0) return *it;
   }
-
-  for (auto &host : m_controlHostSet) {
-    if (host.__isset.isCurrent && host.isCurrent) {
-      return host;
+  // below is for cases where user-supplied a hostName in hostAddr but the
+  // server returned IP addresses in the hostName field, so just pick up
+  // the server marked as "current" with minimal port equality checking
+  if (allowCurrent) {
+    for (auto& host : m_controlHostSet) {
+      if (host.__isset.isCurrent && host.isCurrent && hostAddr.__isset.isCurrent
+          && hostAddr.isCurrent && static_cast<int>(host.serverType) != 0
+          && host.port == hostAddr.port) {
+        return host;
+      }
     }
   }
   return hostAddr;

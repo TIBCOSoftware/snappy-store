@@ -25,7 +25,7 @@ std::string TimeUtils::s_localTimeZoneStr;
 bool TimeUtils::s_initialized = TimeUtils::staticInitialize();
 
 std::string initializeSnappyDataTime() {
-  // initialization already done by call to staticInitialize above
+  // initialization of statics already done by call to staticInitialize above
   boost::posix_time::ptime currentTime =
       boost::posix_time::microsec_clock::universal_time();
   return boost::posix_time::to_simple_string(currentTime);

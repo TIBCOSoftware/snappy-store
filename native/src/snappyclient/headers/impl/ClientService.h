@@ -399,7 +399,7 @@ namespace io {
             return m_connHosts;
           }
 
-          const std::set<std::string>& getServerGrps() const noexcept {
+          const std::set<std::string>& getServerGroups() const noexcept {
             return m_serverGroups;
           }
 

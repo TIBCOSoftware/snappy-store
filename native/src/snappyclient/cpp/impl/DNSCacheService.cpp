@@ -35,8 +35,6 @@
 
 #include "impl/pch.h"
 
-#include <cctype>
-
 // #include <boost/asio/io_service.hpp>
 // #include <boost/asio/ip/tcp.hpp>
 
@@ -55,38 +53,35 @@ void DNSCacheService::resolve(thrift::HostAddress& addr) {
           std::runtime_error("no name or IP address available for given host"),
           "DSNCacheService");
     }
-    // check if hostname already contains IP address
-    if (addr.hostName[0] == ':' || std::isdigit(addr.hostName[0])) {
-      addr.__set_ipAddress(addr.hostName);
-    } else {
-      // lookup cache else resolve the host name and cache the results
+    // check if hostname already contains IP address (use inet_pton or getaddrinfo)
 
-      // TODO: this can return multiple results and client should ideally
-      // try all of them in order that thrift sockets should already be doing
-      // but here all of them need to be stored and thrift socket calls
-      // need to be made for all of them
+    // lookup cache else resolve the host name and cache the results
 
-      /*
-      // [lookup cache]
-      boost::asio::io_context context;
-      boost::system::error_code ec;
-      boost::asio::ip::tcp::resolver resolver(context);
-      std::string portStr;
-      client::Utils::convertIntToString(addr.port, portStr);
-      boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(
-          addr.hostName, portStr,
-          boost::asio::ip::tcp::resolver::query::numeric_service, ec);
-      if (ec != 0) {
-        std::vector<std::string> addresses;
-        boost::asio::ip::tcp::resolver::iterator end;
-        while (iter != end) {
-          std::string ipAddr = iter->address().to_string(ec);
-          if (ec != 0) addresses.emplace_back(ipAddr);
-          ++iter;
-        }
-        // [add addresses to cache]
+    // TODO: this can return multiple results and client should ideally
+    // try all of them in order that thrift sockets should already be doing
+    // but here all of them need to be stored and thrift socket calls
+    // need to be made for all of them
+
+    /*
+    // [lookup cache]
+    boost::asio::io_context context;
+    boost::system::error_code ec;
+    boost::asio::ip::tcp::resolver resolver(context);
+    std::string portStr;
+    client::Utils::convertIntToString(addr.port, portStr);
+    boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(
+        addr.hostName, portStr,
+        boost::asio::ip::tcp::resolver::query::numeric_service, ec);
+    if (ec != 0) {
+      std::vector<std::string> addresses;
+      boost::asio::ip::tcp::resolver::iterator end;
+      while (iter != end) {
+        std::string ipAddr = iter->address().to_string(ec);
+        if (ec != 0) addresses.emplace_back(ipAddr);
+        ++iter;
       }
-      */
+      // [add addresses to cache]
     }
+    */
   }
 }

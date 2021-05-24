@@ -20,6 +20,11 @@ CPP_HEADERS="SnappyDataService.h LocatorService.h snappydata_struct_SnappyExcept
 
 thrift --gen "cpp:struct_separate_files=true,moveable_types=true,no_concurrent_client=true,no_recursion_limit=true" ../../../gemfirexd/shared/src/main/java/io/snappydata/thrift/common/snappydata.thrift && rm -rf cpp/thrift/ && rm -rf headers/snappydata_* && mv gen-cpp cpp/thrift && rm cpp/thrift/*skele* && mv cpp/thrift/*.h headers/.
 
+# change the cpp class files to use pch.h
+for tname in cpp/thrift/*.cpp; do
+  sed -i '0,/^#include/s//#include "impl\/pch.h"\n\n#include/' "${tname}"
+done
+
 # copy all files from overrides
 for tname in overrides/*cpp; do
   if [ -f "${tname}" ]; then
@@ -34,12 +39,6 @@ for tname in overrides/*h; do
     rm -f "headers/${fname}"
     cp "${tname}" "headers/${fname}"
   fi
-done
-
-# change the cpp class files to use pch.h
-
-for tname in cpp/thrift/*.cpp; do
-  sed -i '0,/^#include/s//#include "impl\/pch.h"\n\n#include/' "${tname}"
 done
 
 # move some headers having thrift/internal classes to non-public area
