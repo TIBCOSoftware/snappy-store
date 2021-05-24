@@ -18,6 +18,8 @@
 #ifndef IMPL_SYSTEM_H_
 #define IMPL_SYSTEM_H_
 
+// marked as system header to avoid compilation warnings
+
 #pragma GCC system_header
 
 // common boost includes

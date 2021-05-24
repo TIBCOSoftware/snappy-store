@@ -55,10 +55,7 @@
 
 extern "C" {
 #ifdef _WINDOWS
-#include <windows.h>
 #include <libloaderapi.h>
-#else
-#include <unistd.h>
 #endif
 }
 

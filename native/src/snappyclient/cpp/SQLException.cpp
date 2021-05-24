@@ -42,7 +42,6 @@
 extern "C" {
 #  ifndef _WINDOWS
 #    include <limits.h>
-#    include <unistd.h>
 #  endif
 #  ifdef __GNUC__
 #    include <execinfo.h>

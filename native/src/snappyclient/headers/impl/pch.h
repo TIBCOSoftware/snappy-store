@@ -22,18 +22,23 @@
 #ifndef IMPL_PCH_H_
 #define IMPL_PCH_H_
 
-// common standard classes
-
-#include <algorithm>
-#include <functional>
-#include <fstream>
-#include <memory>
-#include <string>
-#include <thread>
-
 // this header defines some boost constants so has to be included first
 
 #include "common/Base.h"
+
+extern "C" {
+#ifdef _WINDOWS
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+}
+
+// additional common standard classes
+
+#include <algorithm>
+#include <fstream>
+#include <thread>
 
 // common boost and thrift headers
 

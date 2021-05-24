@@ -67,7 +67,6 @@ extern "C" {
 
 #ifdef _WINDOWS
 extern "C" {
-#  include <windows.h>
 #  include <wincred.h>
 }
 #endif
