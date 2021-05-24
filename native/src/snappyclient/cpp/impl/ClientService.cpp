@@ -125,7 +125,7 @@ static const std::vector<std::string> s_systemCertificateDirs = {
 
 }
 
-void initializeSnappyDataService() {
+extern "C" DLLPUBLIC void initializeSnappyDataService() {
   ClientService::staticInitialize();
 }
 

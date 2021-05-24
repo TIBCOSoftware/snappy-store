@@ -47,7 +47,7 @@
 #include "impl/SnappyDataService.h"
 #include "impl/SSLParameters.h"
 
-DLLPUBLIC void initializeSnappyDataService();
+extern "C" DLLPUBLIC void initializeSnappyDataService();
 
 using namespace apache::thrift;
 using namespace apache::thrift::transport;
