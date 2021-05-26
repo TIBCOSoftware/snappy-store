@@ -115,7 +115,7 @@ void SQLStateMessage::staticInitialize() {
       "The underlying physical connection was never opened or is closed");
   NO_CURRENT_CONNECTION_MSG2.initialize(SQLState::NO_CURRENT_CONNECTION, 2,
       "The underlying physical connection to server '",
-      "' was never opened or is closed (operation=", ")");
+      "' was never opened or is closed (OP=", ")");
   NO_CURRENT_ROW_MSG.initialize(SQLState::INVALID_CURSOR_STATE, 1,
       "No current row.");
   ALREADY_CLOSED_MSG.initialize(SQLState::ALREADY_CLOSED, 1,
@@ -155,7 +155,7 @@ void SQLStateMessage::staticInitialize() {
       SQLState::UPDATABLE_RESULTSET_API_DISALLOWED, 1,
       "ResultSet not updatable for operation '", "'");
   CURSOR_MUST_BE_SCROLLABLE_MSG.initialize(SQLState::CURSOR_MUST_BE_SCROLLABLE,
-      1, "ResultSet not scrollable [operation=", "]");
+      1, "ResultSet not scrollable [OP=", "]");
   COLUMN_NOT_FOUND_MSG1.initialize(SQLState::COLUMN_NOT_FOUND, 1, "Column ",
       " not found (max = ", ")");
   COLUMN_NOT_FOUND_MSG2.initialize(SQLState::COLUMN_NOT_FOUND, 2, "Column '",
@@ -258,16 +258,16 @@ void SQLStateMessage::staticInitialize() {
       "' cannot be converted to data type identified by parameter type '", "'");
 
   CONNECTION_FAILED_MSG.initialize(SQLState::CONNECTION_FAILED, 1,
-      "Connection to node ", " failed with ", " (operation=", ")");
+      "Connection to node ", " failed with:", " (OP=", ")");
   CONNECTION_REJECTED_MSG.initialize(SQLState::CONNECTION_REJECTED, 1,
-    "Connection to node ", " rejected by server with ", " (operation=", ")");
+    "Connection to node ", " rejected by server with:", " (OP=", ")");
   SNAPPY_NODE_SHUTDOWN_MSG.initialize(SQLState::SNAPPY_NODE_SHUTDOWN, 1,
-      "Node on ", " failed with ", " (operation=", ")");
+      "Node on ", " failed with:", " (OP=", ")");
   DATA_CONTAINER_CLOSED_MSG.initialize(SQLState::DATA_CONTAINER_CLOSED, 1,
-      "Data container on node ", " failed with ", " (transactional operation=",
+      "Data container on node ", " failed with:", " (TX OP=",
       ")");
   THRIFT_PROTOCOL_ERROR_MSG.initialize(SQLState::THRIFT_PROTOCOL_ERROR, 1,
-      "Error in client-server protocol: ", " (operation=", ")");
+      "Error in client-server protocol: ", " (OP=", ")");
 
   NATIVE_ERROR.initialize(SQLState::UNKNOWN_EXCEPTION, 1, "", " of ",
       " failed due to errno ", "");

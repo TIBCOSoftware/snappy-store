@@ -40,8 +40,8 @@
  *      Author: pbisen
  */
 
-#ifndef SRC_SNAPPYCLIENT_CPP_IMPL_NETCONNECTION_H_
-#define SRC_SNAPPYCLIENT_CPP_IMPL_NETCONNECTION_H_
+#ifndef IMPL_NETCONNECTION_H_
+#define IMPL_NETCONNECTION_H_
 
 #include <thrift/Thrift.h>
 
@@ -63,7 +63,7 @@ namespace impl {
     static std::set<std::string> failoverSQLStateSet;
   public:
     static FailoverStatus getFailoverStatus(const std::string& sqlState,
-        const TException& snappyEx);
+        const std::exception& snappyEx);
   };
 
 } /* namespace impl */
@@ -71,4 +71,4 @@ namespace impl {
 } /* namespace snappydata */
 } /* namespace io */
 
-#endif /* SRC_SNAPPYCLIENT_CPP_IMPL_NETCONNECTION_H_ */
+#endif /* IMPL_NETCONNECTION_H_ */

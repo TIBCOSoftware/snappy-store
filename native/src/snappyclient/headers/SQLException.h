@@ -69,7 +69,7 @@ namespace client {
 
   class SQLException;
 
-  class SQLException : std::exception {
+  class SQLException : public std::exception {
   public:
     SQLException(const char* file, int line, const SQLState& state,
         const std::string& reason, SQLException* next = nullptr);
@@ -87,15 +87,20 @@ namespace client {
     // move constructor
     SQLException(SQLException&& other);
 
-    SQLException& operator=(const SQLException &other);
-    SQLException& operator=(SQLException &&other);
+    SQLException& operator=(const SQLException& other);
+    SQLException& operator=(SQLException&& other);
 
     static void staticInitialize();
 
-    virtual SQLException* clone() const;
+    virtual SQLException* clone(bool move);
 
     const std::string& getReason() const noexcept {
       return m_reason;
+    }
+
+    void setReason(const std::string& reason) noexcept {
+      m_reason = reason;
+      clearRecords();
     }
 
     virtual const char* what() const noexcept {
@@ -114,10 +119,6 @@ namespace client {
       return m_next;
     }
 
-    void setNextException(SQLException* next) noexcept {
-      m_next = next;
-    }
-
     const char* getFileName() const noexcept {
       return m_file;
     }
@@ -127,13 +128,36 @@ namespace client {
     }
 
     /** Print the stack trace to given output stream. */
-    virtual std::ostream& printStackTrace(std::ostream &out, int level = 0) const;
+    virtual std::ostream& printStackTrace(std::ostream& out, int level = 0) const;
 
     inline std::string getStackTrace() const {
       std::ostringstream str;
       printStackTrace(str);
       return str.str();
     }
+
+    const std::vector<std::pair<SQLException*, std::string> >&
+    getRecords() const noexcept {
+      return m_records;
+    }
+
+    /**
+     * Fill the records vector of this exception splitting the message and the
+     * next ones in its chain (and their stack traces if "includeStackTrace" is
+     * true) on the given "recordSize".
+     *
+     * The splitting prefers newlines followed by tabs and then lastly spaces.
+     *
+     * The records do not include SQLState or severity, and only the message
+     * with file+line and stacktrace if required.
+     *
+     * NOTE: This method is NOT THREAD-SAFE and it is caller's responsibility
+     * to ensure thread-safety.
+     */
+    virtual void fillRecords(const char* prefix, uint32_t recordSize,
+        bool includeStackTrace);
+
+    void clearRecords() noexcept;
 
     inline std::string toString() const {
       std::ostringstream str;
@@ -153,6 +177,10 @@ namespace client {
     std::string m_state;
     int32_t m_severity;
     SQLException* m_next;
+    std::vector<std::pair<SQLException*, std::string> > m_records;
+    uint32_t m_recordSize = { 0 };
+    bool m_recordsHaveStack = { false };
+    const char* m_recordPrefix = { nullptr };
 
     const char* m_file;
     int m_line;
@@ -165,6 +193,8 @@ namespace client {
 #endif
 
     void init();
+
+    static void printStackTraceGlobalSuffix(std::ostream& out);
 
     SQLException(const char* file, int line,
         const thrift::SnappyExceptionData& snappyExceptionData) :
@@ -250,7 +280,7 @@ namespace client {
     // move constructor
     SQLWarning(SQLWarning&& other);
 
-    virtual SQLException* clone() const;
+    virtual SQLException* clone(bool move);
 
     const SQLWarning* getNextWarning() const;
 

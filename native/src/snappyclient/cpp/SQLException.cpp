@@ -104,7 +104,13 @@ SQLException::SQLException(const SQLException& other) :
 SQLException::SQLException(SQLException&& other) :
     m_reason(std::move(other.m_reason)), m_state(std::move(other.m_state)),
     m_severity(other.m_severity), m_next(other.m_next),
-    m_file(other.m_file), m_line(other.m_line) {
+    m_records(std::move(other.m_records)), m_recordSize(other.m_recordSize),
+    m_recordsHaveStack(other.m_recordsHaveStack),
+    m_recordPrefix(other.m_recordPrefix), m_file(other.m_file),
+    m_line(other.m_line) {
+  other.m_recordSize = 0;
+  other.m_recordsHaveStack = false;
+  other.m_recordPrefix = nullptr;
   other.m_next = nullptr;
 #ifdef __GNUC__
   copyStack(other.m_stack, other.m_stackSize);
@@ -112,12 +118,13 @@ SQLException::SQLException(SQLException&& other) :
 #endif
 }
 
-SQLException& SQLException::operator=(const SQLException &other) {
+SQLException& SQLException::operator=(const SQLException& other) {
   m_reason = other.m_reason;
   m_state = other.m_state;
   m_severity = other.m_severity;
   deleteNextException();
   initNextException(other);
+  clearRecords();
   m_file = other.m_file;
   m_line = other.m_line;
 #ifdef __GNUC__
@@ -126,13 +133,20 @@ SQLException& SQLException::operator=(const SQLException &other) {
   return *this;
 }
 
-SQLException& SQLException::operator=(SQLException &&other) {
+SQLException& SQLException::operator=(SQLException&& other) {
   m_reason = std::move(other.m_reason);
   m_state = std::move(other.m_state);
   m_severity = other.m_severity;
   deleteNextException();
   m_next = other.m_next;
   other.m_next = nullptr;
+  m_records = std::move(other.m_records);
+  m_recordSize = other.m_recordSize;
+  m_recordsHaveStack = other.m_recordsHaveStack;
+  m_recordPrefix = other.m_recordPrefix;
+  other.m_recordSize = 0;
+  other.m_recordsHaveStack = false;
+  other.m_recordPrefix = nullptr;
   m_file = other.m_file;
   m_line = other.m_line;
 #ifdef __GNUC__
@@ -176,8 +190,8 @@ void SQLException::staticInitialize() {
 #endif
 }
 
-SQLException* SQLException::clone() const {
-  return new SQLException(*this);
+SQLException* SQLException::clone(bool move) {
+  return move ? new SQLException(std::move(*this)) : new SQLException(*this);
 }
 
 #ifdef __GNUC__
@@ -204,15 +218,19 @@ void SQLException::initNextException(
     const std::vector<thrift::SnappyExceptionData>& nextExceptions) {
   if (nextExceptions.size() > 0) {
     SQLException* next = nullptr;
-    SQLException* current;
-    // create from the end prepending to the list at the front
-    for (auto iter = nextExceptions.rbegin(); iter != nextExceptions.rend();
+    SQLException* current = this;
+    for (auto iter = nextExceptions.cbegin(); iter != nextExceptions.cend();
         ++iter) {
-      current = createNextException(*iter);
+      next = createNextException(*iter);
+      // if the SQLState is X0Z35 i.e. SERVER_STACK_INDICATOR,
+      // keep the SQLState as previous one
+      if (next->m_state == "X0Z35") {
+        next->m_state = current->m_state;
+        next->m_severity = current->m_severity;
+      }
       current->m_next = next;
-      next = current;
+      current = next;
     }
-    m_next = next;
   } else {
     m_next = nullptr;
   }
@@ -248,16 +266,16 @@ std::ostream& SQLException::printStackTrace(std::ostream& out, int level) const 
       char* demangledName;
       for (size_t i = skip; i < m_stackSize; i++) {
         demangledName = nullptr;
-        stackStr.assign(stackStrings[i]);
+        stackStr = stackStrings[i];
 
         // locate the mangled name after the parentheses and address
         begin = stackStr.find('(');
         if (begin != std::string::npos) {
           // search for the end
           if ((end = stackStr.find('+', begin + 2)) != std::string::npos) {
-            function.assign(stackStr.substr(begin + 1, end - begin - 1));
+            function = stackStr.substr(begin + 1, end - begin - 1);
           } else {
-            function.assign(stackStr.substr(begin + 1));
+            function = stackStr.substr(begin + 1);
           }
           // demangle the name
           demangledName = Utils::gnuDemangledName(function.c_str());
@@ -280,24 +298,8 @@ std::ostream& SQLException::printStackTrace(std::ostream& out, int level) const 
     out << "Caused by:" << _SNAPPY_NEWLINE;
     m_next->printStackTrace(out, level + 1);
   }
-  if (level == 0 && stackStrings) {
-    bool hasBaseAddresses = false;
-    if (!s_processBaseAddress.empty()) {
-      out << "Process base addresses:" << s_processBaseAddress
-          << _SNAPPY_NEWLINE;
-      hasBaseAddresses = true;
-    }
-    if (!s_libraryBaseAddress.empty()) {
-      out << "ODBC library base addresses:" << s_libraryBaseAddress
-          << _SNAPPY_NEWLINE;
-      hasBaseAddresses = true;
-    }
-    if (hasBaseAddresses) {
-      out << "(Note: use addr2line/gdb to translate addresses shown in "
-          "square brackets to code file and line numbers after taking the "
-          "hex diff with the first base address of process or library)"
-          << _SNAPPY_NEWLINE;
-    }
+  if (level == 0) {
+    SQLException::printStackTraceGlobalSuffix(out);
   }
 #else
   if (m_next) {
@@ -308,10 +310,116 @@ std::ostream& SQLException::printStackTrace(std::ostream& out, int level) const 
   return out;
 }
 
+void SQLException::printStackTraceGlobalSuffix(std::ostream& out) {
+#ifdef __GNUC__
+  bool hasBaseAddresses = false;
+  if (!s_processBaseAddress.empty()) {
+    out << "Process base addresses:" << s_processBaseAddress << _SNAPPY_NEWLINE;
+    hasBaseAddresses = true;
+  }
+  if (!s_libraryBaseAddress.empty()) {
+    out << "ODBC library base addresses:" << s_libraryBaseAddress
+        << _SNAPPY_NEWLINE;
+    hasBaseAddresses = true;
+  }
+  if (hasBaseAddresses) {
+    out << "(Note: use addr2line/gdb to translate addresses shown in "
+        "square brackets to code file and line numbers after taking the "
+        "hex diff with the first base address of process or library)"
+        << _SNAPPY_NEWLINE;
+  }
+#endif
+}
+
+void SQLException::fillRecords(const char* prefix, uint32_t recordSize,
+    bool includeStackTrace) {
+  if (!m_records.empty()) {
+    if (m_recordSize <= recordSize && m_recordsHaveStack == includeStackTrace
+        && (m_recordPrefix == prefix
+            || (m_recordPrefix && !::strcmp(m_recordPrefix, prefix)))) {
+      // records already filled up as required
+      return;
+    }
+    m_records.clear();
+  }
+  std::string recordPrefix = prefix;
+  if (recordSize < recordPrefix.length() + 8) {
+    throw std::invalid_argument(
+        "SQLException::fillRecords: recordSize of " + std::to_string(recordSize)
+            + " should be at least 8 greater than the prefix = " + prefix);
+  }
+  // each record will have prefix at the start so reduce the size being searched
+  recordSize = static_cast<size_t>(recordSize - recordPrefix.length());
+  // if message part being trimmed off is smaller than this, then continue
+  // searching for other whitespace characters
+  const uint32_t minRecordSize = recordSize >> 2;
+
+  SQLException* next = this;
+  while (next) {
+    std::ostringstream ostream;
+    if (includeStackTrace) {
+      // empty m_next for stack trace printing since its handled by the loop
+      SQLException* tempNext = next->m_next;
+      next->m_next = nullptr;
+      next->printStackTrace(ostream, 1 /* skip printing the global suffix */);
+      next->m_next = tempNext;
+      if (!tempNext) {
+        // add the global suffix after the last exception in the chain
+        SQLException::printStackTraceGlobalSuffix(ostream);
+      }
+    } else {
+      if (next != this) {
+        ostream << "Caused by:" << _SNAPPY_NEWLINE;
+      }
+      ostream << next->m_reason << "\tat " << next->m_file << ':'
+          << next->m_line;
+    }
+    // efficiency not a big priority so convert to string and then search
+    std::string message = ostream.str();
+
+    size_t startPos = 0;
+    size_t pos;
+    while (startPos + recordSize <= message.length()) {
+      std::string part = message.substr(startPos, recordSize);
+      pos = part.find_last_of("\n\r\f");
+      if (pos == std::string::npos || pos < minRecordSize) {
+        pos = part.find_last_of('\t');
+        if (pos == std::string::npos || pos < minRecordSize) {
+          pos = part.find_last_of(' ');
+          if (pos == std::string::npos || pos < minRecordSize) {
+            pos = recordSize;
+          }
+        }
+      }
+      // trim off the trailing whitespace so exclude "pos"
+      m_records.emplace_back(std::make_pair(next, std::move(
+          recordPrefix + (pos == recordSize ? part : part.substr(0, pos)))));
+      startPos += (pos == recordSize ? recordSize : pos + 1);
+    }
+    // add anything remaining (special case of recordSize greater than
+    //   message length when startPos is 0)
+    if (startPos < message.length()) {
+      m_records.emplace_back(std::make_pair(next, std::move(recordPrefix
+          + (startPos == 0 ? message : message.substr(startPos)))));
+    }
+    next = next->m_next;
+  }
+
+  m_recordSize = recordSize + recordPrefix.length();
+  m_recordsHaveStack = includeStackTrace;
+  m_recordPrefix = prefix;
+}
+
+void SQLException::clearRecords() noexcept {
+  m_records.clear();
+  m_recordSize = 0;
+  m_recordsHaveStack = false;
+  m_recordPrefix = nullptr;
+}
+
 void SQLException::toString(std::ostream& out) const {
-  out << "SQLSTATE=" << m_state << " SEVERITY=" << m_severity
-      << ": " << m_reason << _SNAPPY_NEWLINE_STR "\tat " << m_file << ':'
-      << m_line;
+  out << "SQLSTATE=" << m_state << " SEVERITY=" << m_severity << ": "
+      << m_reason << LogWriter::NEWLINE << "\tat " << m_file << ':' << m_line;
 }
 
 void SQLException::deleteNextException() noexcept {
@@ -361,8 +469,8 @@ SQLWarning::SQLWarning(SQLWarning&& other) :
     SQLException(std::move(other)) {
 }
 
-SQLException* SQLWarning::clone() const {
-  return new SQLWarning(*this);
+SQLException* SQLWarning::clone(bool move) {
+  return move ? new SQLWarning(std::move(*this)) : new SQLWarning(*this);
 }
 
 std::ostream& operator<<(std::ostream& out, const SQLException& sqle) {

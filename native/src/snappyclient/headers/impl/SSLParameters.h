@@ -46,6 +46,7 @@ class SSLSocketFactory;
 class SSLParameters {
 private:
   static const std::set<std::string> s_sslProperties;
+
   std::map<std::string, std::string> m_sslPropValMap;
   SSLProperty m_currentProperty;
 
@@ -57,6 +58,14 @@ public:
   SSLParameters() :
       m_sslPropValMap(), m_currentProperty(SSLProperty::PROTOCOL) {
   }
+  SSLParameters(const SSLParameters& other) :
+      m_sslPropValMap(other.m_sslPropValMap),
+          m_currentProperty(other.m_currentProperty) {
+  }
+  SSLParameters(SSLParameters&& other) :
+      m_sslPropValMap(std::move(other.m_sslPropValMap)),
+          m_currentProperty(other.m_currentProperty) {
+  }
 
   void setSSLProperty(const std::string &propertyName, const std::string &value);
   inline std::string getSSLPropertyName(SSLProperty sslProperty) {
@@ -64,6 +73,10 @@ public:
     return toSSLPropertyName(sslProperty);
   }
   std::string getSSLPropertyValue(const std::string &propertyName) const;
+
+  inline bool empty() const noexcept {
+    return m_sslPropValMap.empty();
+  }
 };
 
 class SSLSocketFactory : public TSSLSocketFactory {
@@ -71,23 +84,24 @@ private:
   SSLParameters m_params;
   bool m_passwordsInManager;
 
-  static SSLProtocol getProtocol(const SSLParameters &params);
+  static SSLProtocol getProtocol(const SSLParameters& params);
 
 public:
   SSLSocketFactory(bool passwordsInManager);
-  SSLSocketFactory(const SSLParameters &params, bool passwordsInManager);
+  SSLSocketFactory(const SSLParameters& params, bool passwordsInManager);
+  SSLSocketFactory(SSLParameters&& params, bool passwordsInManager);
   /**
    * Copy constructor to copy over the SSL parameters from the other factory.
    */
-  inline SSLSocketFactory(const SSLSocketFactory &factory) :
+  inline SSLSocketFactory(const SSLSocketFactory& factory) :
       SSLSocketFactory(factory.m_params, factory.m_passwordsInManager) {
   }
 
   virtual ~SSLSocketFactory() {
   }
 
-  inline void setSSLProperty(const std::string &propertyName,
-      const std::string &value) {
+  inline void setSSLProperty(const std::string& propertyName,
+      const std::string& value) {
     m_params.setSSLProperty(propertyName, value);
   }
 
@@ -95,7 +109,8 @@ public:
     return m_params.getSSLPropertyName(sslProperty);
   }
 
-  inline std::string getSSLPropertyValue(const std::string &propertyName) const {
+  inline std::string getSSLPropertyValue(
+      const std::string& propertyName) const {
     return m_params.getSSLPropertyValue(propertyName);
   }
 

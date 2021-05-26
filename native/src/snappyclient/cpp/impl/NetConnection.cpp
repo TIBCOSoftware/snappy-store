@@ -53,7 +53,7 @@ std::set<std::string> NetConnection::failoverSQLStateSet = { "08001",
  "XJ040", "XJ041", "XSDA3", "XSDA4", "XSDAJ", "XJ217" };
 
 FailoverStatus NetConnection::getFailoverStatus(const std::string& sqlState,
-    const TException& snappyEx) {
+    const std::exception& snappyEx) {
 
   if (!sqlState.compare(SQLState::SNAPPY_NODE_SHUTDOWN.getSQLState())
       || !sqlState.compare(SQLState::NODE_BUCKET_MOVED.getSQLState())) {

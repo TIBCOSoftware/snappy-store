@@ -18,6 +18,7 @@ rm -rf gen-java && { \
   cp ColumnValue.java.tmpl ../ColumnValue.java;
   cp BlobChunk.java.tmpl ../BlobChunk.java;
   cp HostAddress.java.tmpl ../HostAddress.java;
+  cp OpenConnectionArgs.java.tmpl ../OpenConnectionArgs.java;
   cp Row.java.tmpl ../Row.java;
   cp ServerType.java.tmpl ../ServerType.java;
 }

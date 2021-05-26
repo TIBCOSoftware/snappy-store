@@ -62,11 +62,11 @@ namespace impl {
      * Invoke a given functor for each string in a comma separated
      * list of strings.
      */
-    static void splitCSV(const std::string &csv,
-        std::function<void(const std::string&)> proc);
+    static void splitCSV(const std::string& csv,
+        const std::function<void(const std::string&)>& proc);
 
     template<typename TPROC>
-    static void toHexString(const char *bytes, const size_t bytesLen,
+    static void toHexString(const char* bytes, const size_t bytesLen,
         TPROC& proc);
 
   private:

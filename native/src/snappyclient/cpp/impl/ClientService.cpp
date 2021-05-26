@@ -76,21 +76,6 @@ using namespace io::snappydata::client::impl;
 
 namespace _snappy_impl {
 
-struct CollectHostAddresses final {
-  std::vector<thrift::HostAddress> &m_connHosts;
-
-  void operator()(const std::string &str) {
-    std::string host;
-    int port;
-
-    size_t oldSize = m_connHosts.size();
-    m_connHosts.resize(oldSize + 1);
-    thrift::HostAddress &hostAddr = m_connHosts[oldSize];
-    Utils::getHostPort(str, host, port);
-    Utils::getHostAddress(host, port, hostAddr);
-  }
-};
-
 #ifdef _WINDOWS
 static const std::vector<std::string> s_systemCertificateBundles = {
   "C:/SSL/certs/ca-certificates.crt",
@@ -131,6 +116,38 @@ static const std::vector<std::string> s_systemCertificateDirs = {
 };
 #endif
 
+static void DEFAULT_THRIFT_OUTPUT_FUNCTION(const char* str) {
+  LogWriter::info() << str << _SNAPPY_NEWLINE;
+}
+
+/**
+ * Read and erase boolean properties from the property bag. Meant to be
+ * used for client-side only properties that are not to be sent to the server.
+ */
+static void readAndEraseBooleanValue(std::map<std::string, std::string>& props,
+    const std::string& key, bool defaultValue, bool& result, bool* exists) {
+  auto const propValue = props.find(key);
+  if (propValue != props.end()) {
+    if (exists) *exists = true;
+    result = defaultValue ? !boost::iequals(propValue->second, "false")
+        : boost::iequals(propValue->second, "true");
+    props.erase(propValue);
+  }
+}
+
+/**
+ * Read and erase comma-separated properties from the property bag. Meant to be
+ * used for client-side only properties that are not to be sent to the server.
+ */
+static void readAndEraseCSVValue(std::map<std::string, std::string>& props,
+    const std::string& key, std::function<void(const std::string&)> proc) {
+  auto const propValue = props.find(key);
+  if (propValue != props.end()) {
+    InternalUtils::splitCSV(propValue->second, proc);
+    props.erase(propValue);
+  }
+}
+
 }
 
 extern "C" void initializeSnappyDataService() {
@@ -151,11 +168,6 @@ std::string ClientService::s_hostName;
 std::string ClientService::s_hostId;
 std::mutex ClientService::s_globalLock;
 bool ClientService::s_initialized = false;
-
-static void DEFAULT_OUTPUT_FN(const char *str);
-void DEFAULT_OUTPUT_FN(const char *str) {
-  LogWriter::info() << str << _SNAPPY_NEWLINE;
-}
 
 bool ClientService::globalInitialize() {
   // s_globalLock should be held
@@ -229,7 +241,8 @@ void ClientService::staticInitialize(
     }
 
     globalLogger.initialize(logFile, logLevel);
-    apache::thrift::GlobalOutput.setOutputFunction(DEFAULT_OUTPUT_FN);
+    apache::thrift::GlobalOutput.setOutputFunction(
+        _snappy_impl::DEFAULT_THRIFT_OUTPUT_FUNCTION);
 
     if (LogWriter::infoEnabled()) {
       LogWriter::info() << "Starting client on '" << s_hostName
@@ -371,71 +384,95 @@ void ClientService::setPendingTransactionAttrs(
 // settings; this could become configurable in future
 ClientService::ClientService(const std::string& host, const int port,
     thrift::OpenConnectionArgs& connArgs) :
-    // default for load-balance is false for servers and true for locators
-    m_connArgs(initConnectionArgs(connArgs)), m_loadBalance(false),
-    m_loadBalanceInitialized(false), m_reqdServerType(thrift::ServerType::THRIFT_SNAPPY_CP),
-    m_useFramedTransport(false), m_serverGroups(), m_transport(),
-    m_client(createDummyProtocol()), m_connHosts(), m_connId(0), m_token(),
-    m_isOpen(false), m_connFailed(false), m_passwordsInManager(false),
-    m_pendingTXAttrs(), m_hasPendingTXAttrs(false),
-    m_isolationLevel(IsolationLevel::NONE), m_lock() {
+        // default for load-balance is false for servers and true for locators
+        m_connArgs(initConnectionArgs(connArgs)), m_loadBalance(false),
+        m_loadBalanceInitialized(false),
+        m_reqdServerType(thrift::ServerType::THRIFT_SNAPPY_CP),
+        m_useFramedTransport(false), m_serverGroups(), m_transport(),
+        m_client(createDummyProtocol()), m_connHosts(), m_connId(0), m_token(),
+        m_isOpen(false), m_connFailed(false), m_passwordsInManager(false),
+        m_autoReconnect(false), m_pendingTXAttrs(), m_hasPendingTXAttrs(false),
+        m_isolationLevel(IsolationLevel::NONE), m_lock() {
+
   std::map<std::string, std::string>& props = connArgs.properties;
   std::map<std::string, std::string>::iterator propValue;
-
-  size_t oldSize = m_connHosts.size();
-  m_connHosts.resize(oldSize + 1);
-  thrift::HostAddress& hostAddr = m_connHosts[oldSize];
-  Utils::getHostAddress(host, port, hostAddr);
-  // mark the given host as the locator/server being connected to directly
-  // so that search in the results will immediately pick up the same
-  // locator/server that will have its isCurrent flag set by the server-side
-  hostAddr.__set_isCurrent(true);
-
   {
-    // check if passwords are stored in the manager (including for SSL keystores)
-    if ((propValue = props.find(
-        ClientAttribute::CREDENTIAL_MANAGER)) != props.end()) {
-      m_passwordsInManager = boost::iequals(propValue->second, "true");
-      props.erase(propValue);
-    }
-
-    // need to keep outside if (!props.empty()) as comes empty if user
-    // doesn't give any property
-    bool hasLoadBalance = ((propValue = props.find(
-        ClientAttribute::LOAD_BALANCE)) != props.end());
-    //default for load-balance is true on locators and false on servers
-    // so tentatively set as true and adjust using the ControlConnection
-    if (hasLoadBalance) {
-      m_loadBalance = (boost::iequals(propValue->second, "true"));
-      props.erase(propValue);
-      m_loadBalanceInitialized = true;
-    }
+    m_connHosts.resize(1);
+    // hostAddr may not be valid later when m_connHosts is resized
+    thrift::HostAddress& hostAddr = m_connHosts[0];
+    Utils::getHostAddress(host, port, hostAddr);
+    // mark the given host as the locator/server being connected to directly
+    // so that search in the results will immediately pick up the same
+    // locator/server that will have its isCurrent flag set by the server-side
+    hostAddr.__set_isCurrent(true);
   }
+
   if (!props.empty()) {
+    // check if passwords are stored in the manager (including for SSL keystores)
+    _snappy_impl::readAndEraseBooleanValue(props,
+        ClientAttribute::CREDENTIAL_MANAGER, false, m_passwordsInManager,
+        nullptr);
+    if (m_passwordsInManager) {
+      // update the password property with the actual value
+      std::string passwordKey;
+      if (connArgs.__isset.password) {
+        passwordKey = connArgs.password;
+      } else if ((propValue = props.find(ClientAttribute::PASSWORD))
+          != props.end()) {
+        passwordKey = propValue->second;
+      }
+      if (!passwordKey.empty()) {
+        std::string user;
+        if (connArgs.__isset.userName) {
+          user = connArgs.userName;
+        } else if ((propValue = props.find(ClientAttribute::USERNAME))
+            != props.end()) {
+          user = propValue->second;
+        } else if ((propValue = props.find(ClientAttribute::USERNAME_ALT))
+            != props.end()) {
+          user = propValue->second;
+        }
+        if (connArgs.__isset.password) {
+          connArgs.__set_password(
+              Utils::readPasswordFromManager(user, passwordKey));
+        } else {
+          props[ClientAttribute::PASSWORD] = Utils::readPasswordFromManager(
+              user, passwordKey);
+        }
+      }
+    }
+    // default for load-balance is true on locators and false on servers
+    // so tentatively set as true and adjust using the ControlConnection
+    _snappy_impl::readAndEraseBooleanValue(props, ClientAttribute::LOAD_BALANCE,
+        true, m_loadBalance, &m_loadBalanceInitialized);
     // setup the original host list
-    if ((propValue = props.find(ClientAttribute::SECONDARY_LOCATORS))
-        != props.end()) {
-      _snappy_impl::CollectHostAddresses addHostAddresses = { m_connHosts };
-      InternalUtils::splitCSV(propValue->second, addHostAddresses);
-      props.erase(propValue);
-    }
-
-    // read the server groups to use for connection
-    if ((propValue = props.find(ClientAttribute::SERVER_GROUPS))
-        != props.end()) {
-      InternalUtils::splitCSV(propValue->second, [&](const std::string &s) {
-        m_serverGroups.insert(s);
-      });
-      props.erase(propValue);
-    }
-
+    _snappy_impl::readAndEraseCSVValue(props,
+        ClientAttribute::SECONDARY_LOCATORS, [&](const std::string& s) {
+          std::string h;
+          int p;
+          size_t oldSize = m_connHosts.size();
+          m_connHosts.resize(oldSize + 1);
+          thrift::HostAddress& addr = m_connHosts[oldSize];
+          Utils::getHostPort(s, h, p);
+          Utils::getHostAddress(h, p, addr);
+        });
+    // set the auto-reconnect property
+    _snappy_impl::readAndEraseBooleanValue(props,
+        ClientAttribute::AUTO_RECONNECT, true, m_autoReconnect, nullptr);
+    // read the server groups to use for connection (currently unused)
+    _snappy_impl::readAndEraseCSVValue(props, ClientAttribute::SERVER_GROUPS,
+        [&](const std::string& s) {
+          m_serverGroups.insert(s);
+        });
     // read and verify the AQP properties
     if ((propValue = props.find(ClientAttribute::AQP_ERROR)) != props.end()) {
       try {
         double errorVal = boost::lexical_cast<double>(propValue->second);
-        if (errorVal < 0.0 || errorVal > 1.0) {
+        if (errorVal <= 0.0 || errorVal >= 1.0) {
           props.erase(propValue);
-          throw std::invalid_argument("Invalid AQP Error value:");
+          throw std::invalid_argument(
+              "Invalid AQP Error value " + propValue->second
+                  + " outside of (0.0, 1.0)");
         }
       } catch (const boost::bad_lexical_cast& ex) {
         props.erase(propValue);
@@ -446,88 +483,78 @@ ClientService::ClientService(const std::string& host, const int port,
         != props.end()) {
       try {
         double errorVal = boost::lexical_cast<double>(propValue->second);
-        if (errorVal < 0.0 || errorVal > 1.0) {
+        if (errorVal <= 0.0 || errorVal >= 1.0) {
           props.erase(propValue);
-          throw std::invalid_argument("Invalid AQP Confidence value:");
+          throw std::invalid_argument(
+              "Invalid AQP Confidence value " + propValue->second
+                  + " outside of (0.0, 1.0)");
         }
       } catch (const boost::bad_lexical_cast& ex) {
         props.erase(propValue);
         throw ex;
       }
     }
-    if ((propValue = props.find(ClientAttribute::AQP_BEHAVIOR)) != props.end()) {
+    if ((propValue = props.find(ClientAttribute::AQP_BEHAVIOR))
+        != props.end()) {
       if (propValue->second.empty()) {
         props.erase(propValue);
-        throw std::invalid_argument("Invalid AQP Behavior value:");
+        throw std::invalid_argument("Invalid empty AQP Behavior value");
       }
     }
-    // now check for the protocol details like SSL etc
-    // and reqd snappyServerType
+    // now check for the protocol details like SSL etc and required ServerType
     bool binaryProtocol = false;
     bool framedTransport = false;
     bool useSSL = false;
 
-    if ((propValue = props.find(ClientAttribute::THRIFT_USE_BINARY_PROTOCOL))
-        != props.end()) {
-      binaryProtocol = boost::iequals(propValue->second, "true");
-      props.erase(propValue);
+    _snappy_impl::readAndEraseBooleanValue(props,
+        ClientAttribute::THRIFT_USE_BINARY_PROTOCOL, false, binaryProtocol,
+        nullptr);
+    _snappy_impl::readAndEraseBooleanValue(props,
+        ClientAttribute::THRIFT_USE_FRAMED_TRANSPORT, false, framedTransport,
+        nullptr);
+    // read "ssl-properties" first so that the "ssl" property can clear these
+    // if it is explicitly set to false
+    SSLParameters sslParams;
+    _snappy_impl::readAndEraseCSVValue(props, ClientAttribute::SSL_PROPERTIES,
+        [&](const std::string& str) {
+          size_t spos;
+          if ((spos = str.find('=')) != std::string::npos) {
+            sslParams.setSSLProperty(str.substr(0, spos), str.substr(spos + 1));
+          } else {
+            sslParams.setSSLProperty(str, "");
+          }
+        });
+    // override "ssl-properties" if "ssl" is explicitly set to false
+    useSSL = !sslParams.empty();
+    _snappy_impl::readAndEraseBooleanValue(props, ClientAttribute::SSL, false,
+        useSSL, nullptr);
+    if (useSSL && !m_sslFactory) {
+      m_sslFactory.reset(
+          new SSLSocketFactory(std::move(sslParams), m_passwordsInManager));
     }
-    if ((propValue = props.find(ClientAttribute::THRIFT_USE_FRAMED_TRANSPORT))
-        != props.end()) {
-      framedTransport = boost::iequals(propValue->second, "true");
-      props.erase(propValue);
-    }
-    if ((propValue = props.find(ClientAttribute::SSL_PROPERTIES))
-        != props.end()) {
-      useSSL = true;
-      SSLParameters sslParams;
-      InternalUtils::splitCSV(propValue->second, [&](const std::string &str) {
-        size_t spos;
-        if ((spos = str.find('=')) != std::string::npos) {
-          sslParams.setSSLProperty(str.substr(0, spos), str.substr(spos + 1));
-        } else {
-          sslParams.setSSLProperty(str, "");
-        }
-      });
-      if (!m_sslFactory) {
-        m_sslFactory.reset(new SSLSocketFactory(sslParams, m_passwordsInManager));
-      }
-      props.erase(propValue);
-    }
-    if ((propValue = props.find(ClientAttribute::SSL)) != props.end()) {
-      // override ssl-properties if ssl-mode is explicitly set to false
-      useSSL = boost::iequals(propValue->second, "true");
-      if (useSSL) {
-        if (!m_sslFactory) {
-          m_sslFactory.reset(new SSLSocketFactory(m_passwordsInManager));
-        }
-      } else {
-        m_sslFactory.reset(nullptr);
-      }
-      props.erase(propValue);
-    }
+
     m_reqdServerType = getServerType(true, binaryProtocol, useSSL);
     m_useFramedTransport = framedTransport;
   }
 
   std::set<thrift::HostAddress> failedServers;
   SQLException failure(__FILE__, __LINE__);
-  openConnection(hostAddr, failedServers, failure);
+  openConnection(connArgs, m_connHosts[0], failedServers, failure);
 }
 
-void ClientService::openConnection(thrift::HostAddress &hostAddr,
-    std::set<thrift::HostAddress> &failedServers, SQLException &failure) {
+void ClientService::openConnection(const thrift::OpenConnectionArgs& connArgs,
+    thrift::HostAddress& hostAddr, std::set<thrift::HostAddress>& failedServers,
+    SQLException& failure) {
   // open the connection
   std::thread::id tid;
   CHRONO_NANO_CLOCK::time_point start;
   CHRONO_NANO_CLOCK::duration elapsed;
-  if (TraceFlag::ClientStatementHA.global()
-      | TraceFlag::ClientConn.global()) {
+  if (TraceFlag::ClientStatementHA.global() | TraceFlag::ClientConn.global()) {
     start = CHRONO_NANO_CLOCK::now();
     tid = std::this_thread::get_id();
     std::unique_ptr<SQLException> ex(
         TraceFlag::ClientConn.global() ? new GET_SQLEXCEPTION(
-            SQLState::UNKNOWN_EXCEPTION, "stack"): nullptr);
+            SQLState::UNKNOWN_EXCEPTION, "stack") : nullptr);
     InternalLogger::traceCompact(tid, "openConnection_S", nullptr, 0, true, 0,
         m_connId, m_token, ex.get());
   }
@@ -538,7 +565,7 @@ void ClientService::openConnection(thrift::HostAddress &hostAddr,
       m_currentHostAddr = hostAddr;
 
       if (m_loadBalance || !m_loadBalanceInitialized) {
-        ControlConnection &controlConn =
+        ControlConnection& controlConn =
             ControlConnection::getOrCreateControlConnection(m_connHosts, this,
                 failure);
         // if connected to the server then disable load-balance by default
@@ -559,8 +586,6 @@ void ClientService::openConnection(thrift::HostAddress &hostAddr,
           controlConn.getPreferredServer(hostAddr, failure, failedServers,
               this->m_serverGroups, this, false);
         }
-
-        m_currentHostAddr = hostAddr;
       }
 
       // first close any existing transport
@@ -568,10 +593,13 @@ void ClientService::openConnection(thrift::HostAddress &hostAddr,
 
       std::shared_ptr<protocol::TProtocol> protocol(
           createProtocol(hostAddr, m_reqdServerType, m_useFramedTransport));
+      // WARNING: hostAddr unusable hereafter, use m_currentHostAddr instead
+      m_currentHostAddr = std::move(hostAddr);
+
       m_client.resetProtocols(protocol, protocol);
 
       thrift::ConnectionProperties connProps;
-      m_client.openConnection(connProps, m_connArgs);
+      m_client.openConnection(connProps, connArgs);
       m_connId = connProps.connId;
       if (connProps.__isset.token) {
         m_token = connProps.token;
@@ -583,8 +611,8 @@ void ClientService::openConnection(thrift::HostAddress &hostAddr,
           | TraceFlag::ClientConn.global()) {
 
         elapsed = (CHRONO_NANO_CLOCK::now() - start);
-        InternalLogger::traceCompact(tid, "openConnection_E", nullptr, 0,
-            false, elapsed.count(), m_connId, m_token);
+        InternalLogger::traceCompact(tid, "openConnection_E", nullptr, 0, false,
+            elapsed.count(), m_connId, m_token);
 
         if (TraceFlag::ClientHA.global()) {
           if (m_token.empty()) {
@@ -598,20 +626,20 @@ void ClientService::openConnection(thrift::HostAddress &hostAddr,
         }
       }
       return;
-    } catch (const SQLException &sqle) {
+    } catch (const SQLException& sqle) {
       throw sqle;
     } catch (const thrift::SnappyException& sqle) {
-      handleSnappyException("openConnection", true, false, false,
+      handleSnappyException("openConnection", m_loadBalance, false, false,
           failedServers, sqle);
     } catch (const TTransportException& tte) {
-      handleTTransportException("openConnection", true, false, false,
+      handleTTransportException("openConnection", m_loadBalance, false, false,
           failedServers, tte);
     } catch (const protocol::TProtocolException& tpe) {
-      handleTProtocolException("openConnection", true, false, false,
+      handleTProtocolException("openConnection", m_loadBalance, false, false,
           failedServers, tpe);
     } catch (const TException& te) {
-      handleTException("openConnection", true, false, false, failedServers,
-          te);
+      handleTException("openConnection", m_loadBalance, false, false,
+          failedServers, te);
     } catch (const std::exception& stde) {
       handleStdException("openConnection", stde, false);
     } catch (...) {
@@ -656,38 +684,6 @@ thrift::OpenConnectionArgs& ClientService::initConnectionArgs(
   connArgs.__set_clientID(hostId.str());
   // TODO: fixed security mechanism for now
   connArgs.__set_security(thrift::SecurityMechanism::PLAIN);
-
-  auto &props = connArgs.properties;
-  auto propValue = props.find(ClientAttribute::CREDENTIAL_MANAGER);
-  // load password from credential manager if required
-  if (propValue != props.end() && boost::iequals(propValue->second, "true")) {
-    std::string passwordKey;
-    if (connArgs.__isset.password) {
-      passwordKey = connArgs.password;
-    } else if ((propValue = props.find(
-        ClientAttribute::PASSWORD)) != props.end()) {
-      passwordKey = propValue->second;
-    }
-    if (!passwordKey.empty()) {
-      std::string user;
-      if (connArgs.__isset.userName) {
-        user = connArgs.userName;
-      } else if ((propValue = props.find(
-          ClientAttribute::USERNAME)) != props.end()) {
-        user = propValue->second;
-      } else if ((propValue = props.find(
-          ClientAttribute::USERNAME_ALT)) != props.end()) {
-        user = propValue->second;
-      }
-      if (connArgs.__isset.password) {
-        connArgs.__set_password(Utils::readPasswordFromManager(
-            user, passwordKey));
-      } else {
-        props[ClientAttribute::PASSWORD] = Utils::readPasswordFromManager(
-            user, passwordKey);
-      }
-    }
-  }
 
   return connArgs;
 }
@@ -887,7 +883,7 @@ void ClientService::executeQuery(thrift::RowSet& result,
       clearPendingTransactionAttrs();
     }
   } catch (const thrift::SnappyException& sqle) {
-    //TODO :attrs.possibleDuplicate=false;
+    // TODO :attrs.possibleDuplicate=false;
     handleSnappyException("executeQuery", true, false, true, failedServers,
         sqle);
   } catch (const TTransportException& tte) {
@@ -1760,32 +1756,44 @@ void ClientService::closeResultSet(const int64_t cursorId) {
 }
 
 void ClientService::cancelStatement(const int64_t stmtId) {
-  // TODO: SW: need a separate connection for this to work
-  // Preferably the whole class should be changed to use pool of connections
-  // with key being server+port+connProps and a queue of pooled connections
-  if (true) throw GET_SQLEXCEPTION(SQLState::FUNCTION_NOT_SUPPORTED,
-      "cancelStatement not supported");
+  // TODO: SW: use connection pooling for all operations including cancel
+
+  // create a new connection to fire cancel since original statement
+  // connection will be busy and locked; set load-balance to false
+  thrift::OpenConnectionArgs connArgs(m_connArgs);
+  connArgs.properties[ClientAttribute::LOAD_BALANCE] = "false";
+  std::string host = m_currentHostAddr.hostName;
+  if (m_currentHostAddr.__isset.ipAddress) {
+    host.push_back('/');
+    host.append(m_currentHostAddr.ipAddress);
+  }
+  std::unique_ptr<ClientService> service(
+      new ClientService(host, m_currentHostAddr.port, connArgs));
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
-
-    m_client.cancelStatement(stmtId, m_token);
+    if (stmtId == thrift::snappydataConstants::INVALID_ID) {
+      // cancel currently active statement for the connection
+      service->m_client.cancelCurrentStatement(m_connId, m_token);
+    } else {
+      service->m_client.cancelStatement(stmtId, m_token);
+    }
+    service->close();
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("cancelStatement", false, false, false,
+    service->handleSnappyException("cancelStatement", false, false, false,
         failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("cancelStatement", false, false, false,
+    service->handleTTransportException("cancelStatement", false, false, false,
         failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("cancelStatement", false, false, false,
+    service->handleTProtocolException("cancelStatement", false, false, false,
         failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("cancelStatement", false, false, false, failedServers,
-        te);
+    service->handleTException("cancelStatement", false, false, false,
+        failedServers, te);
   } catch (const std::exception& stde) {
-    handleStdException("cancelStatement", stde);
+    service->handleStdException("cancelStatement", stde);
   } catch (...) {
-    handleUnknownException("cancelStatement");
+    service->handleUnknownException("cancelStatement");
   }
 }
 
@@ -1870,9 +1878,7 @@ void ClientService::close() {
 void ClientService::updateFailedServersForCurrent(
     std::set<thrift::HostAddress> &failedServers, bool checkAllFailed,
     SQLException &failure) {
-  thrift::HostAddress host = this->m_currentHostAddr;
-
-  auto ret = failedServers.insert(host);
+  auto ret = failedServers.insert(m_currentHostAddr);
   try {
     if (!ret.second && checkAllFailed) {
       ControlConnection &controlService =

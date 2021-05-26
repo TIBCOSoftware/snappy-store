@@ -58,7 +58,6 @@ static const char* FALSE_TRUE[] = { "false", "true", nullptr };
 static const char* LOG_LEVELS[] = { "none", "fatal", "error", "warn", "info",
                                     "debug", "trace", "all", nullptr };
 static const char* SECURITY_MODES[] = { "plain", "diffie-hellman", nullptr };
-static const char* SSL_MODES[] = { "none", "basic", "peer-auth", nullptr };
 
 ConnectionProperty::ConnectionProperty() : m_propName(), m_helpMessage(),
     m_possibleValues(nullptr), m_numPossibleValues(0), m_defaultValue(nullptr),
@@ -122,7 +121,7 @@ void ConnectionProperty::staticInitialize() {
           "credential manager. On Windows this uses the windows credential "
           "manager (via wincred.h), on MacOSX it uses the 'security' "
           "command-line tool while on Linux and others it uses the "
-          "'secret-tool' command-line tool (default disabled)", TRUE_FALSE,
+          "'secret-tool' command-line tool (default disabled)", FALSE_TRUE,
       nullptr, F_IS_BOOLEAN);
   addProperty_(ClientAttribute::LOAD_BALANCE,
       "Enable/Disable transparent load balancing of the connections "
@@ -131,6 +130,11 @@ void ConnectionProperty::staticInitialize() {
   addProperty_(ClientAttribute::SECONDARY_LOCATORS,
       "Specify additional locators or servers to try for initial "
           "connection before giving up", nullptr, nullptr, F_IS_UTF8);
+  addProperty_(ClientAttribute::AUTO_RECONNECT,
+      "If set to true, then an attempt will be made to re-establish the "
+          "connection at the start of an operation in case the previous "
+          "operation failed due to socket/server error.", FALSE_TRUE, nullptr,
+      F_IS_BOOLEAN);
   addProperty_(ClientAttribute::DEFAULT_SCHEMA,
       "The default schema to set on the connection (equivalent to 'USE' / "
           "'SET SCHEMA' SQL commands). If not specified, the default schema "
@@ -176,9 +180,9 @@ void ConnectionProperty::staticInitialize() {
           " one of plain (default), or diffie-helman", SECURITY_MODES, nullptr,
       F_NONE);
   addProperty_(ClientAttribute::SSL,
-      "Specifies the mode for SSL communication from server to client;"
-          " one of basic, peer-auth, or none (the default)", SSL_MODES,
-      nullptr, F_NONE);
+      "Whether to turn on SSL communication from client to server; "
+          "should be either true or false (the default)", FALSE_TRUE, nullptr,
+      F_IS_BOOLEAN);
   addProperty_(ClientAttribute::SSL_PROPERTIES,
       "A comma-separated SSL property key=value pairs that can be set for a "
           "client SSL connection. See docs for the supported properties",
@@ -237,8 +241,7 @@ void ConnectionProperty::addProperty_(const std::string& propName,
         helpMessage, possibleValues, defaultValue, flags));
   } else {
     throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION,
-        std::string("Unknown connection property in initialization: ")
-            + propName);
+        "Unknown connection property in initialization: " + propName);
   }
 }
 
@@ -680,6 +683,12 @@ std::unique_ptr<ResultSet> Connection::getBestRowIdentifier(
 }
 
 // end metadata API
+
+void Connection::cancelCurrentStatement() {
+  ClientService& service = checkAndGetService();
+
+  service.cancelStatement(thrift::snappydataConstants::INVALID_ID);
+}
 
 void Connection::close() {
   if (m_service) {

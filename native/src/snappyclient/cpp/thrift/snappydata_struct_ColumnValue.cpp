@@ -55,7 +55,7 @@
 using namespace io::snappydata::thrift;
 
 namespace {
-  class ValueEquality : public boost::static_visitor<bool> {
+  class ValueEquality final : public boost::static_visitor<bool> {
   public:
     template<typename T>
     bool operator()(const std::shared_ptr<T>& lhs,
@@ -78,7 +78,7 @@ namespace {
     }
   };
 
-  class Serializer : public boost::static_visitor<uint32_t> {
+  class Serializer final : public boost::static_visitor<uint32_t> {
   private:
     ::apache::thrift::protocol::TProtocol*const m_oprot;
 
@@ -294,7 +294,7 @@ namespace {
     }
   };
 
-  class PrintToStream : public boost::static_visitor<> {
+  class PrintToStream final : public boost::static_visitor<> {
   private:
     std::ostream& m_out;
     const int m_which;

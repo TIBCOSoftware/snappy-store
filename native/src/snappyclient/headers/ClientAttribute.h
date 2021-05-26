@@ -76,6 +76,7 @@ public:
   static const std::string KEEPALIVE_CNT;
   static const std::string LOAD_BALANCE;
   static const std::string SECONDARY_LOCATORS;
+  static const std::string AUTO_RECONNECT;
   static const std::string DEFAULT_SCHEMA;
   static const std::string SERVER_GROUPS;
   static const std::string SINGLE_HOP_ENABLED;

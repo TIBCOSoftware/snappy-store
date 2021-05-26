@@ -74,7 +74,7 @@ public final class ClientService extends ReentrantLock implements LobService {
   private HostConnection currentHostConnection;
   private HostAddress currentHostAddress;
   private String currentDefaultSchema;
-  final OpenConnectionArgs connArgs;
+  private final OpenConnectionArgs connArgs;
   final Map<String, String> connectionProps;
   final List<HostAddress> connHosts;
   private boolean loadBalance;
@@ -2276,13 +2276,9 @@ public final class ClientService extends ReentrantLock implements LobService {
 
     // create a new connection to fire cancel since original statement
     // connection will be busy and locked; set load-balance to false
-    OpenConnectionArgs connArgs = new OpenConnectionArgs(this.connArgs);
-    Map<String, String> props = connArgs.getProperties();
-    if (props == null) {
-      props = new HashMap<>(1);
-      connArgs.setProperties(props);
-    }
-    props.put(ClientAttribute.LOAD_BALANCE, "false");
+    OpenConnectionArgs connArgs = new OpenConnectionArgs(this.connArgs,
+        this.connectionProperties);
+    connArgs.getProperties().put(ClientAttribute.LOAD_BALANCE, "false");
     ClientService service = new ClientService(source.hostAddr, connArgs);
     try {
       if (stmtId == snappydataConstants.INVALID_ID) {

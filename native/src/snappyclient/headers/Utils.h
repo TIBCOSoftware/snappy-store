@@ -187,14 +187,14 @@ namespace client {
     static void toHexString(const char* bytes, const size_t bytesLen,
         std::string& result);
 
-    static std::string readPasswordFromManager(const std::string &user,
-        const std::string &passwordKey);
+    static std::string readPasswordFromManager(const std::string& user,
+        const std::string& passwordKey);
 
-    static bool convertUTF8ToUTF16(const char *utf8Chars,
-        const int64_t utf8Len, std::function<void(int)> process);
+    static bool convertUTF8ToUTF16(const char* utf8Chars, const int64_t utf8Len,
+        std::function<void(int)> process);
 
     template<typename TWCHAR>
-    static void convertUTF16ToUTF8(const TWCHAR *utf16Chars,
+    static void convertUTF16ToUTF8(const TWCHAR* utf16Chars,
         const int64_t utf16Len, std::function<void(char)> process);
 
     static void convertByteToString(const int8_t v, std::string& result);
@@ -248,7 +248,7 @@ namespace client {
 // C standard way for surrogate chars like in Java
 
 template<typename TWCHAR>
-void io::snappydata::client::Utils::convertUTF16ToUTF8(const TWCHAR *utf16Chars,
+void io::snappydata::client::Utils::convertUTF16ToUTF8(const TWCHAR* utf16Chars,
     const int64_t utf16Len, std::function<void(char)> process) {
   const TWCHAR* endChars = utf16Len < 0 ? nullptr : (utf16Chars + utf16Len);
   TWCHAR wch;

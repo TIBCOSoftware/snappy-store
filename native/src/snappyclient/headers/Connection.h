@@ -316,6 +316,8 @@ namespace client {
 
     // end metadata API
 
+    void cancelCurrentStatement();
+
     void close();
 
     ~Connection();

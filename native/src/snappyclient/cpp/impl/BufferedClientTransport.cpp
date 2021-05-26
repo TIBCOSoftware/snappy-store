@@ -44,7 +44,9 @@ extern "C" {
 #include <arpa/inet.h>
 #endif
 #include <stdlib.h>
+#ifdef NDEBUG
 #undef NDEBUG
+#endif
 #include <assert.h>
 }
 

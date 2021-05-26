@@ -56,8 +56,8 @@ boost::filesystem::path InternalUtils::getPath(const std::string& pathStr) {
   return boost::filesystem::path(pathStr);
 }
 
-void InternalUtils::splitCSV(const std::string &csv,
-    std::function<void(const std::string&)> proc) {
+void InternalUtils::splitCSV(const std::string& csv,
+    const std::function<void(const std::string&)>& proc) {
   const size_t csvLen = csv.size();
   if (csvLen > 0) {
     uint32_t start = 0;

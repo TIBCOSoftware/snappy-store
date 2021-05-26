@@ -71,6 +71,8 @@ extern "C" {
 }
 #endif
 
+#include "impl/snappydata_struct_SnappyException.h"
+
 using namespace apache::thrift;
 using namespace io::snappydata;
 using namespace io::snappydata::client;
@@ -185,11 +187,11 @@ void Utils::getHostPort(const std::string& hostPort, std::string& resultHost,
   } catch (const std::exception& se) {
     std::string parseError(
         "INT {failed to parse integer port in host[port] string: ");
-    parseError.append(hostPort);
+    parseError.append(hostPort).push_back('}');
     throwDataFormatError(parseError.c_str(), 0, se);
   }
   std::string parseError("{failed to split given host[port] string: ");
-  parseError.append(hostPort);
+  parseError.append(hostPort).push_back('}');
   throwDataFormatError(parseError.c_str(), 0, nullptr);
 }
 
@@ -205,8 +207,8 @@ void Utils::toHexString(const char* bytes, const size_t bytesLen,
   impl::InternalUtils::toHexString(bytes, bytesLen, proc);
 }
 
-std::string Utils::readPasswordFromManager(const std::string &user,
-    const std::string &passwordKey) {
+std::string Utils::readPasswordFromManager(const std::string& user,
+    const std::string& passwordKey) {
 #ifdef _WINDOWS
   PCREDENTIAL pcred;
   if (::CredRead(passwordKey.c_str(), CRED_TYPE_GENERIC, 0, &pcred)) {
@@ -215,29 +217,29 @@ std::string Utils::readPasswordFromManager(const std::string &user,
     if (pcred->CredentialBlobSize > 0) {
       convertUTF16ToUTF8((wchar_t*)pcred->CredentialBlob,
           pcred->CredentialBlobSize / sizeof(wchar_t), [&](char c) {
-        passwd.push_back(c);
-      });
+            passwd.push_back(c);
+          });
     }
     return passwd;
   } else {
     std::string errMsg;
     DWORD err = ::GetLastError();
     switch (err) {
-    case ERROR_NOT_FOUND:
-      errMsg = "Missing credentials for ";
-      errMsg.append(user);
-      break;
-    case ERROR_NO_SUCH_LOGON_SESSION:
-      errMsg = "Login session not found to read credentials for ";
-      errMsg.append(user);
-      break;
-    default:
-      errMsg = "Credentials read failed for ";
-      errMsg.append(user).append(" with code = ").append(std::to_string(err));
-      break;
+      case ERROR_NOT_FOUND:
+        errMsg = "Missing credentials for ";
+        errMsg.append(user);
+        break;
+      case ERROR_NO_SUCH_LOGON_SESSION:
+        errMsg = "Login session not found to read credentials for ";
+        errMsg.append(user);
+        break;
+      default:
+        errMsg = "Credentials read failed for ";
+        errMsg.append(user).append(" with code = ").append(std::to_string(err));
+        break;
     }
     errMsg.append(" in Windows credential manager using the password key '")
-      .append(passwordKey).append("'");
+        .append(passwordKey).append("'");
     throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, errMsg);
   }
 #elif defined(__APPLE__)
@@ -245,14 +247,14 @@ std::string Utils::readPasswordFromManager(const std::string &user,
     boost::process::ipstream out, err;
     std::stringstream outVal, errVal;
 
-    const char *user = ::getenv("USER");
+    const char* user = ::getenv("USER");
     if (!user) {
       user = ::getenv("LOGNAME");
     }
     if (!user) {
       throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION,
           "Keychain lookup failed to get the user with "
-          "USER or LOGNAME environment variables");
+              "USER or LOGNAME environment variables");
     }
     boost::process::child c(boost::process::search_path("security"),
         "find-generic-password", "-w", "-a", user, "-s", passwordKey,
@@ -267,19 +269,19 @@ std::string Utils::readPasswordFromManager(const std::string &user,
     int exitCode = c.exit_code();
     if (exitCode != 0) {
       throw std::runtime_error(
-          std::string("exit with error code ") + std::to_string(exitCode));
+          "exit with error code " + std::to_string(exitCode));
     }
     if (errVal.rdbuf()->in_avail() > 0) {
       throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, errVal.str());
     } else {
       return outVal.str();
     }
-  } catch (SQLException &sqle) {
+  } catch (const SQLException& sqle) {
     throw sqle;
-  } catch (std::exception &ex) {
+  } catch (const std::exception& ex) {
     std::string err("Password lookup failure in 'security' tool for ");
-    err.append(user).append(" using the password key '").append(
-        passwordKey).append("' : ");
+    err.append(user).append(" using the password key '").append(passwordKey)
+        .append("' : ");
     throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, err.append(ex.what()));
   }
 #else
@@ -308,27 +310,27 @@ std::string Utils::readPasswordFromManager(const std::string &user,
     int exitCode = c.exit_code();
     if (exitCode != 0) {
       throw std::runtime_error(
-          std::string("exit with error code ") + std::to_string(exitCode));
+          "exit with error code " + std::to_string(exitCode));
     }
     if (errVal.rdbuf()->in_avail() > 0) {
       throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, errVal.str());
     } else {
       return outVal.str();
     }
-  } catch (SQLException &sqle) {
+  } catch (const SQLException& sqle) {
     throw sqle;
-  } catch (std::exception &ex) {
+  } catch (const std::exception& ex) {
     std::string err("Password lookup failure in 'secret-tool' for ");
     err.append(user).append(" using the attribute:value '").append(attribute)
-      .append("':'").append(value).append("' : ");
+        .append("':'").append(value).append("' : ");
     throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, err.append(ex.what()));
   }
 #endif
 }
 
-bool Utils::convertUTF8ToUTF16(const char *utf8Chars,
-    const int64_t utf8Len, std::function<void(int)> process) {
-  const char *endChars = (utf8Len < 0) ? nullptr : (utf8Chars + utf8Len);
+bool Utils::convertUTF8ToUTF16(const char* utf8Chars, const int64_t utf8Len,
+    std::function<void(int)> process) {
+  const char* endChars = (utf8Len < 0) ? nullptr : (utf8Chars + utf8Len);
   bool nonASCII = false;
   int ch;
   while ((!endChars || utf8Chars < endChars)
@@ -544,13 +546,24 @@ void Utils::convertDoubleToString(const double v, std::string& result,
 }
 
 std::string Utils::toString(const std::exception& stde) {
-  std::string str;
-  demangleTypeName(typeid(stde).name(), str);
-  const char* reason = stde.what();
-  if (reason) {
-    str.append(": ").append(reason);
+  const thrift::SnappyException* snEx =
+      dynamic_cast<const thrift::SnappyException*>(&stde);
+  if (snEx) {
+    std::ostringstream ostr;
+    snEx->printTo(ostr);
+    return ostr.str();
+  } else {
+    std::string str;
+    // skip names for thrift exceptions which will add to what() if required
+    if (!dynamic_cast<const TException*>(&stde)) {
+      demangleTypeName(typeid(stde).name(), str);
+    }
+    const char* reason = stde.what();
+    if (reason) {
+      str.append(": ").append(reason);
+    }
+    return str;
   }
-  return str;
 }
 
 void Utils::throwDataFormatError(const char* target,
@@ -642,13 +655,13 @@ void Utils::demangleTypeName(const char* typeName, std::ostream& out) {
   out << typeName;
 }
 
-void Utils::handleExceptionsInDestructor(const char *operation,
+void Utils::handleExceptionsInDestructor(const char* operation,
     std::function<void()> body) noexcept {
   try {
     body();
-  } catch (const SQLException &sqle) {
+  } catch (const SQLException& sqle) {
     // ignore transport and protocol exceptions due to other side failing
-    const std::string &sqlState = sqle.getSQLState();
+    const std::string& sqlState = sqle.getSQLState();
     if (sqlState == SQLState::SNAPPY_NODE_SHUTDOWN.getSQLState()
         || sqlState == SQLState::DATA_CONTAINER_CLOSED.getSQLState()
         || sqlState == SQLState::THRIFT_PROTOCOL_ERROR.getSQLState()) {
@@ -657,17 +670,23 @@ void Utils::handleExceptionsInDestructor(const char *operation,
     try {
       LogWriter::error() << "Exception in destructor of " << operation << ": "
           << stack(sqle);
+    } catch (const std::exception& se) {
+      std::cerr << "FAILURE in logging SQLException in destructor of "
+          << operation << ": " << se.what() << std::endl;
     } catch (...) {
       std::cerr << "FAILURE in logging SQLException in destructor of "
           << operation << std::endl;
     }
-  } catch (const std::exception &se) {
+  } catch (const std::exception& se) {
     // ignore transport and protocol exceptions due to other side failing
     if (!dynamic_cast<const transport::TTransportException*>(&se)
         && !dynamic_cast<const protocol::TProtocolException*>(&se)) {
       try {
         LogWriter::error() << "Exception in destructor of " << operation << ": "
             << stack(se);
+      } catch (const std::exception& ex) {
+        std::cerr << "FAILURE in logging std::exception in destructor of "
+            << operation << ": " << ex.what() << std::endl;
       } catch (...) {
         std::cerr << "FAILURE in logging std::exception in destructor of "
             << operation << std::endl;
@@ -676,6 +695,9 @@ void Utils::handleExceptionsInDestructor(const char *operation,
   } catch (...) {
     try {
       LogWriter::error() << "Unknown exception in destructor of " << operation;
+    } catch (const std::exception& se) {
+      std::cerr << "FAILURE in logging unknown exception in destructor of "
+          << operation << ": " << se.what() << std::endl;
     } catch (...) {
       std::cerr << "FAILURE in logging unknown exception in destructor of "
           << operation << std::endl;

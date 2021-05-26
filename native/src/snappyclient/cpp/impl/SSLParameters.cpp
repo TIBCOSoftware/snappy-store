@@ -82,29 +82,37 @@ std::string SSLParameters::getSSLPropertyValue(
 
 SSLSocketFactory::SSLSocketFactory(bool passwordsInManager) :
     TSSLSocketFactory(SSLProtocol::SSLTLS), m_params(),
-    m_passwordsInManager(passwordsInManager) {
+        m_passwordsInManager(passwordsInManager) {
   overrideDefaultPasswordCallback(); // use getPassword override
 }
 
-SSLSocketFactory::SSLSocketFactory(const SSLParameters &params,
-    bool passwordsInManager) : TSSLSocketFactory(getProtocol(params)),
-    m_params(params), m_passwordsInManager(passwordsInManager) {
+SSLSocketFactory::SSLSocketFactory(const SSLParameters& params,
+    bool passwordsInManager) :
+    TSSLSocketFactory(getProtocol(params)), m_params(params),
+        m_passwordsInManager(passwordsInManager) {
   overrideDefaultPasswordCallback(); // use getPassword override
 }
 
-SSLProtocol SSLSocketFactory::getProtocol(const SSLParameters &params) {
+SSLSocketFactory::SSLSocketFactory(SSLParameters&& params,
+    bool passwordsInManager) :
+    TSSLSocketFactory(getProtocol(params)), m_params(std::move(params)),
+        m_passwordsInManager(passwordsInManager) {
+  overrideDefaultPasswordCallback(); // use getPassword override
+}
+
+SSLProtocol SSLSocketFactory::getProtocol(const SSLParameters& params) {
   std::string propVal = params.getSSLPropertyValue(
       SSLParameters::toSSLPropertyName(SSLProperty::PROTOCOL));
   if (!propVal.empty()) {
     if (boost::iequals(propVal, "SSLTLS")) {
       return SSLProtocol::SSLTLS;
-    } else if (boost::iequals(propVal, "SSL3")) {
+    } else if (boost::iequals(propVal, "SSLv3")) {
       return SSLProtocol::SSLv3;
-    } else if (boost::iequals(propVal, "TLS1.0")) {
+    } else if (boost::iequals(propVal, "TLSv1.0")) {
       return SSLProtocol::TLSv1_0;
-    } else if (boost::iequals(propVal, "TLS1.1")) {
+    } else if (boost::iequals(propVal, "TLSv1.1")) {
       return SSLProtocol::TLSv1_1;
-    } else if (boost::iequals(propVal, "TLS1.2")) {
+    } else if (boost::iequals(propVal, "TLSv1.2")) {
       return SSLProtocol::TLSv1_2;
     } else {
       throw std::invalid_argument("Unknown SSL protocol: " + propVal);
