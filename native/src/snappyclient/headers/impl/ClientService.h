@@ -122,7 +122,7 @@ private:
   IsolationLevel m_isolationLevel;
   std::map<thrift::TransactionAttribute::type, bool> m_currentTXAttrs;
 
-  std::recursive_mutex m_lock;
+  std::mutex m_lock;
 
   // no copy constructor or assignment operator
   ClientService(const ClientService&) = delete;
@@ -185,7 +185,7 @@ protected:
       const std::exception& se, FailoverStatus status);
 
   void openConnection(const thrift::OpenConnectionArgs& connArgs,
-      const thrift::HostAddress& hostAddr,
+      const thrift::HostAddress& hostAddr, bool mutexAlreadyLocked,
       std::set<thrift::HostAddress>& failedServers, SQLException& failure);
 
   void flushPendingTransactionAttrs();
