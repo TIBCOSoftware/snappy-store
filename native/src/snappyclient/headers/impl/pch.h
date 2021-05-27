@@ -35,6 +35,7 @@ extern "C" {
 #include <unistd.h>
 #endif
 #include <stdio.h>
+#include <string.h>
 }
 
 // additional common standard classes

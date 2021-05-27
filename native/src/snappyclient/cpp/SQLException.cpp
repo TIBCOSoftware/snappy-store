@@ -60,7 +60,7 @@ SQLException::SQLException(const char* file, int line, const SQLState& state,
     const std::string& reason, SQLException* next) :
     m_reason(reason), m_state(state.getSQLState()),
     m_severity(static_cast<int32_t>(state.getSeverity())), m_next(next),
-    m_file(file), m_line(line) {
+    m_file(trimFile(file)), m_line(line) {
   init();
 }
 
@@ -69,7 +69,7 @@ SQLException::SQLException(const char* file, int line,
     m_reason(se.exceptionData.reason),
     m_state(se.exceptionData.sqlState),
     m_severity(se.exceptionData.errorCode), m_next(nullptr),
-    m_file(file), m_line(line) {
+    m_file(trimFile(file)), m_line(line) {
   initNextException(se.nextExceptions);
   init();
 }
@@ -77,7 +77,7 @@ SQLException::SQLException(const char* file, int line,
 SQLException::SQLException(const char* file, int line) :
     m_reason(), m_state(SQLState::UNKNOWN_EXCEPTION.getSQLState()),
     m_severity(static_cast<int32_t>(ExceptionSeverity::SESSION_SEVERITY)),
-    m_next(nullptr), m_file(file), m_line(line) {
+    m_next(nullptr), m_file(trimFile(file)), m_line(line) {
 #ifdef __GNUC__
   m_stackSize = 0;
 #endif
@@ -87,7 +87,7 @@ SQLException::SQLException(const char* file, int line,
     const std::exception& stde) :
     m_reason(stde.what()), m_state(SQLState::UNKNOWN_EXCEPTION.getSQLState()),
     m_severity(static_cast<int32_t>(ExceptionSeverity::SESSION_SEVERITY)),
-    m_next(nullptr), m_file(file), m_line(line) {
+    m_next(nullptr), m_file(trimFile(file)), m_line(line) {
   init();
 }
 
@@ -106,7 +106,7 @@ SQLException::SQLException(SQLException&& other) :
     m_severity(other.m_severity), m_next(other.m_next),
     m_records(std::move(other.m_records)), m_recordSize(other.m_recordSize),
     m_recordsHaveStack(other.m_recordsHaveStack),
-    m_recordPrefix(other.m_recordPrefix), m_file(other.m_file),
+    m_recordPrefix(other.m_recordPrefix), m_file(std::move(other.m_file)),
     m_line(other.m_line) {
   other.m_recordSize = 0;
   other.m_recordsHaveStack = false;
@@ -147,7 +147,7 @@ SQLException& SQLException::operator=(SQLException&& other) {
   other.m_recordSize = 0;
   other.m_recordsHaveStack = false;
   other.m_recordPrefix = nullptr;
-  m_file = other.m_file;
+  m_file = std::move(other.m_file);
   m_line = other.m_line;
 #ifdef __GNUC__
   copyStack(other.m_stack, other.m_stackSize);

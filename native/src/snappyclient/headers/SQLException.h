@@ -119,7 +119,7 @@ namespace client {
       return m_next;
     }
 
-    const char* getFileName() const noexcept {
+    const std::string& getFileName() const noexcept {
       return m_file;
     }
 
@@ -183,7 +183,7 @@ namespace client {
     bool m_recordsHaveStack = { false };
     const char* m_recordPrefix = { nullptr };
 
-    const char* m_file;
+    std::string m_file;
     int m_line;
 
 #ifdef __GNUC__
@@ -195,9 +195,15 @@ namespace client {
 
     void init();
 
+    inline static std::string trimFile(const char* file) noexcept {
+      const char* pos = ::strstr(file,
+          _SNAPPY_PATH_SEPARATOR "src" _SNAPPY_PATH_SEPARATOR);
+      return pos ? (pos + 1) : file;
+    }
+
     static void printStackTraceGlobalSuffix(std::ostream& out);
 
-    SQLException(const char* file, int line,
+    SQLException(const std::string& file, int line,
         const thrift::SnappyExceptionData& snappyExceptionData) :
         m_reason(snappyExceptionData.reason),
         m_state(snappyExceptionData.sqlState),
@@ -206,7 +212,7 @@ namespace client {
       init();
     }
 
-    SQLException(const char* file, int line, const std::string& reason,
+    SQLException(const std::string& file, int line, const std::string& reason,
         const char* state, const int32_t severity
 #ifdef __GNUC__
         , void* const * stack, size_t stackSize
@@ -224,7 +230,7 @@ namespace client {
       return new SQLException(m_file, m_line, snappyExceptionData);
     }
 
-    virtual SQLException* createNextException(const char* file, int line,
+    virtual SQLException* createNextException(const std::string& file, int line,
         const std::string& reason, const char* state, int32_t severity
 #ifdef __GNUC__
         , void* const * stack, size_t stackSize
@@ -272,7 +278,7 @@ namespace client {
 
     SQLWarning(const char* file, int line,
         const thrift::SnappyExceptionData& snappyExceptionData) :
-        SQLException(file, line, snappyExceptionData) {
+      SQLException(SQLException::trimFile(file), line, snappyExceptionData) {
     }
 
     // copy constructor
@@ -288,7 +294,12 @@ namespace client {
     void setNextWarning(SQLWarning* next);
 
   protected:
-    SQLWarning(const char* file, int line, const std::string& reason,
+    SQLWarning(const std::string& file, int line,
+        const thrift::SnappyExceptionData& snappyExceptionData) :
+      SQLException(file, line, snappyExceptionData) {
+    }
+
+    SQLWarning(const std::string& file, int line, const std::string& reason,
         const char* state, const int32_t severity
 #ifdef __GNUC__
         , void* const * stack, size_t stackSize
@@ -306,7 +317,7 @@ namespace client {
       return new SQLWarning(m_file, m_line, snappyExceptionData);
     }
 
-    virtual SQLException* createNextException(const char* file, int line,
+    virtual SQLException* createNextException(const std::string& file, int line,
         const std::string& reason, const char* state, int32_t severity
 #ifdef __GNUC__
         , void* const * stack, size_t stackSize
