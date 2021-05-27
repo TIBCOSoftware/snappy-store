@@ -42,14 +42,6 @@
 #include "types/DateTime.h"
 #include "impl/TimeUtils.h"
 
-#ifdef min
-#undef min
-#endif
-
-#ifdef max
-#undef max
-#endif
-
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"

@@ -20,7 +20,9 @@
 
 // marked as system header to avoid compilation warnings
 
+#ifdef __GNUC__
 #pragma GCC system_header
+#endif
 
 // common boost includes
 

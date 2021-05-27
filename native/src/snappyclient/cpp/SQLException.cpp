@@ -350,7 +350,7 @@ void SQLException::fillRecords(const char* prefix, uint32_t recordSize,
             + " should be at least 8 greater than the prefix = " + prefix);
   }
   // each record will have prefix at the start so reduce the size being searched
-  recordSize = static_cast<size_t>(recordSize - recordPrefix.length());
+  recordSize = static_cast<uint32_t>(recordSize - recordPrefix.length());
   // if message part being trimmed off is smaller than this, then continue
   // searching for other whitespace characters
   const uint32_t minRecordSize = recordSize >> 2;
@@ -407,7 +407,7 @@ void SQLException::fillRecords(const char* prefix, uint32_t recordSize,
     }
   } while ((next = next->m_next));
 
-  m_recordSize = recordSize + recordPrefix.length();
+  m_recordSize = static_cast<uint32_t>(recordSize + recordPrefix.length());
   m_recordsHaveStack = includeStackTrace;
   m_recordPrefix = prefix;
 }

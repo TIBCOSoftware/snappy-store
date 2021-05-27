@@ -307,8 +307,7 @@ if (((rootProject.name.contains('native') || rootProject.name.contains('odbc'))
           buildable = false
         }
         binaries.all {
-          // Define toolchain-specific compiler and linker options
-          // TODO: precompiled header
+          // Define toolchain-specific options
           if (toolChain in Gcc) {
             cppCompiler.define 'PIC'
             cppCompiler.args '-Wall', '-Wno-unused-local-typedefs', '-Wextra',
@@ -323,19 +322,18 @@ if (((rootProject.name.contains('native') || rootProject.name.contains('odbc'))
             } else {
               cppCompiler.args '-g', '-O2'
             }
-
-            linker.args '-lcrypto', '-lssl', '-lgmp', '-lpthread', '-lrt',
-                        '-rdynamic', '-ldl', '-z', 'defs'
           } else if (toolChain in VisualCpp) {
             cppCompiler.define 'DLLBUILD'
-            cppCompiler.args '/W3', '/FS', '/Zc:inline', '/WX', '/EHsc',
-                             '/Fdsnappyclient.pdb', '/errorReport:prompt'
+            cppCompiler.define '_LIB'
+            cppCompiler.args '/permissive-', '/W3', '/WX', '/FS', '/Zc:inline', '/EHsc', '/Gd',
+                             '/sdl', '/nologo', '/Fd../snappyclientCppPCH/snappyclient-cpp.pdb',
+                             '/diagnostics:column', '/errorReport:prompt'
             if (buildType == buildTypes.debug) {
               cppCompiler.define '_DEBUG'
-              cppCompiler.args '/Od', '/ZI', '/RTC1', '/MDd'
-              linker.args '/DEBUG'
+              cppCompiler.args '/JMC', '/Od', '/ZI', '/RTC1', '/MDd'
             } else {
-              cppCompiler.args '/O2', '/GL', '/Oi', '/Zi', '/MD'
+              cppCompiler.define 'NDEBUG'
+              cppCompiler.args '/O2', '/GL', '/Gy', '/Oi', '/Zi', '/MD'
               linker.args '/LTCG'
             }
           }

@@ -101,6 +101,7 @@
     <ClCompile Include="src\snappyclient\cpp\impl\MessageRegistry.cpp" />
     <ClCompile Include="src\snappyclient\cpp\impl\SSLParameters.cpp" />
     <ClCompile Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.cpp" />
+    <ClCompile Include="src\snappyclient\cpp\impl\TimeUtils.cpp" />
     <ClCompile Include="src\snappyclient\cpp\LogWriter.cpp" />
     <ClCompile Include="src\snappyclient\cpp\messages\SQLMessage.cpp" />
     <ClCompile Include="src\snappyclient\cpp\messages\SQLStateMessage.cpp" />
@@ -155,7 +156,7 @@
     <ClCompile Include="src\snappyclient\cpp\Utils.cpp" />
   </ItemGroup>
   <ItemGroup Label="Headers">
-    <ClInclude Include="src\snappyclient\cpp\impl\BufferedClientTransport.h" />
+    <ClInclude Include="src\snappyclient\headers\impl\BufferedClientTransport.h" />
     <ClInclude Include="src\snappyclient\headers\ClientAttribute.h" />
     <ClInclude Include="src\snappyclient\headers\ClientBase.h" />
     <ClInclude Include="src\snappyclient\headers\ClientProperty.h" />
@@ -166,6 +167,7 @@
     <ClInclude Include="src\snappyclient\headers\common\SystemProperties.h" />
     <ClInclude Include="src\snappyclient\headers\Connection.h" />
     <ClInclude Include="src\snappyclient\headers\DatabaseMetaData.h" />
+    <ClInclude Include="src\snappyclient\headers\impl\TimeUtils.h" />
     <ClInclude Include="src\snappyclient\headers\LogWriter.h" />
     <ClInclude Include="src\snappyclient\headers\messages\SQLMessage.h" />
     <ClInclude Include="src\snappyclient\headers\messages\SQLStateMessage.h" />
@@ -218,18 +220,20 @@
     <ClInclude Include="src\snappyclient\headers\Types.h" />
     <ClInclude Include="src\snappyclient\headers\UpdatableRow.h" />
     <ClInclude Include="src\snappyclient\headers\Utils.h" />
-    <ClInclude Include="src\snappyclient\cpp\impl\ClientService.h" />
-    <ClInclude Include="src\snappyclient\cpp\impl\ControlConnection.h" />
-    <ClInclude Include="src\snappyclient\cpp\impl\DNSCacheService.h" />
-    <ClInclude Include="src\snappyclient\cpp\impl\InternalLogger.h" />
-    <ClInclude Include="src\snappyclient\cpp\impl\InternalUtils.h" />
-    <ClInclude Include="src\snappyclient\cpp\impl\MessageRegistry.h" />
-    <ClInclude Include="src\snappyclient\cpp\impl\SSLParameters.h" />
-    <ClInclude Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.h" />
-    <ClInclude Include="src\snappyclient\cpp\impl\ThreadSafeMap.h" />
-    <ClInclude Include="src\snappyclient\cpp\thrift\LocatorService.h" />
-    <ClInclude Include="src\snappyclient\cpp\thrift\SnappyDataService.h" />
-    <ClInclude Include="src\snappyclient\cpp\thrift\snappydata_struct_SnappyException.h" />
+    <ClInclude Include="src\snappyclient\headers\impl\ClientService.h" />
+    <ClInclude Include="src\snappyclient\headers\impl\ControlConnection.h" />
+    <ClInclude Include="src\snappyclient\headers\impl\DNSCacheService.h" />
+    <ClInclude Include="src\snappyclient\headers\impl\InternalLogger.h" />
+    <ClInclude Include="src\snappyclient\headers\impl\InternalUtils.h" />
+    <ClInclude Include="src\snappyclient\headers\impl\MessageRegistry.h" />
+    <ClInclude Include="src\snappyclient\headers\impl\SSLParameters.h" />
+    <ClInclude Include="src\snappyclient\headers\impl\SystemPropertiesImpl.h" />
+    <ClInclude Include="src\snappyclient\headers\impl\ThreadSafeMap.h" />
+    <ClInclude Include="src\snappyclient\headers\impl\LocatorService.h" />
+    <ClInclude Include="src\snappyclient\headers\impl\SnappyDataService.h" />
+    <ClInclude Include="src\snappyclient\headers\impl\snappydata_struct_SnappyException.h" />
+    <ClInclude Include="src\snappyclient\headers\impl\pch.h" />
+    <ClInclude Include="src\snappyclient\headers\impl\system.h" />
   </ItemGroup>
   <ItemGroup Label="References" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

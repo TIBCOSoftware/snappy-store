@@ -219,6 +219,9 @@
     <ClCompile Include="src\snappyclient\cpp\impl\BufferedClientTransport.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\snappyclient\cpp\impl\TimeUtils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup Label="Headers">
     <ClInclude Include="src\snappyclient\headers\ClientAttribute.h">
@@ -383,40 +386,46 @@
     <ClInclude Include="src\snappyclient\headers\Utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\snappyclient\cpp\impl\ClientService.h">
+    <ClInclude Include="src\snappyclient\headers\impl\ClientService.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\snappyclient\cpp\impl\ControlConnection.h">
+    <ClInclude Include="src\snappyclient\headers\impl\ControlConnection.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\snappyclient\cpp\impl\DNSCacheService.h">
+    <ClInclude Include="src\snappyclient\headers\impl\DNSCacheService.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\snappyclient\cpp\impl\InternalLogger.h">
+    <ClInclude Include="src\snappyclient\headers\impl\InternalLogger.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\snappyclient\cpp\impl\InternalUtils.h">
+    <ClInclude Include="src\snappyclient\headers\impl\InternalUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\snappyclient\cpp\impl\MessageRegistry.h">
+    <ClInclude Include="src\snappyclient\headers\impl\MessageRegistry.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\snappyclient\cpp\impl\SSLParameters.h">
+    <ClInclude Include="src\snappyclient\headers\impl\SSLParameters.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\snappyclient\cpp\impl\SystemPropertiesImpl.h">
+    <ClInclude Include="src\snappyclient\headers\impl\SystemPropertiesImpl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\snappyclient\cpp\impl\ThreadSafeMap.h">
+    <ClInclude Include="src\snappyclient\headers\impl\ThreadSafeMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\snappyclient\cpp\thrift\LocatorService.h">
+    <ClInclude Include="src\snappyclient\headers\impl\LocatorService.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\snappyclient\cpp\thrift\SnappyDataService.h">
+    <ClInclude Include="src\snappyclient\headers\impl\SnappyDataService.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\snappyclient\cpp\thrift\snappydata_struct_SnappyException.h">
+    <ClInclude Include="src\snappyclient\headers\impl\snappydata_struct_SnappyException.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\impl\pch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\impl\system.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\snappyclient\headers\snappydata_struct_BucketOwners.h">
@@ -443,7 +452,10 @@
     <ClInclude Include="src\snappyclient\headers\snappydata_struct_CatalogTableObject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\snappyclient\cpp\impl\BufferedClientTransport.h">
+    <ClInclude Include="src\snappyclient\headers\impl\BufferedClientTransport.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\snappyclient\headers\impl\TimeUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

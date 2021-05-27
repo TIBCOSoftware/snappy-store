@@ -28,10 +28,13 @@
 
 extern "C" {
 #ifdef _WINDOWS
+#define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>
 #include <windows.h>
 #else
 #include <unistd.h>
 #endif
+#include <stdio.h>
 }
 
 // additional common standard classes
@@ -46,6 +49,14 @@ extern "C" {
 #include "impl/system.h"
 
 // some public and internal headers
+
+#ifdef min
+#undef min
+#endif
+
+#ifdef max
+#undef max
+#endif
 
 #include "common/SystemProperties.h"
 #include "messages/SQLStateMessage.h"

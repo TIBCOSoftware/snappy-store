@@ -140,6 +140,8 @@ namespace client {
       // other platforms where pthread_get_name_np is available (config.h)
       // Also change supportsThreadNames() if support for others is added
 #endif
+      SKIP_UNUSED_WARNING(header);
+      SKIP_UNUSED_WARNING(result);
       return false;
     }
 
@@ -158,6 +160,8 @@ namespace client {
       // other platforms where pthread_get_name_np is available (config.h)
       // Also change supportsThreadNames() if support for others is added
 #endif
+      SKIP_UNUSED_WARNING(header);
+      SKIP_UNUSED_WARNING(out);
       return false;
     }
 

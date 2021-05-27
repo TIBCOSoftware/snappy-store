@@ -15,6 +15,8 @@
  * LICENSE file.
  */
 
+#include "impl/pch.h"
+
 #include "impl/TimeUtils.h"
 
 using namespace io::snappydata::client::impl;
