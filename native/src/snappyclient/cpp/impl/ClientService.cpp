@@ -543,8 +543,8 @@ ClientService::ClientService(const std::string& host, const int port,
 }
 
 void ClientService::openConnection(const thrift::OpenConnectionArgs& connArgs,
-    thrift::HostAddress& hostAddr, std::set<thrift::HostAddress>& failedServers,
-    SQLException& failure) {
+    const thrift::HostAddress& hostAddr,
+    std::set<thrift::HostAddress>& failedServers, SQLException& failure) {
   // open the connection
   std::thread::id tid;
   CHRONO_NANO_CLOCK::time_point start;
@@ -560,7 +560,7 @@ void ClientService::openConnection(const thrift::OpenConnectionArgs& connArgs,
   }
 
   while (true) {
-    std::lock_guard<std::mutex> serviceGuard(m_lock);
+    std::lock_guard<std::recursive_mutex> serviceGuard(m_lock);
     try {
       m_currentHostAddr = hostAddr;
 
@@ -583,8 +583,8 @@ void ClientService::openConnection(const thrift::OpenConnectionArgs& connArgs,
         }
         if (m_loadBalance) {
           // at this point query the control service for preferred server
-          controlConn.getPreferredServer(hostAddr, failure, failedServers,
-              this->m_serverGroups, this, false);
+          controlConn.getPreferredServer(m_currentHostAddr, failure,
+              failedServers, this->m_serverGroups, this, false);
         }
       }
 
@@ -592,9 +592,8 @@ void ClientService::openConnection(const thrift::OpenConnectionArgs& connArgs,
       destroyTransport();
 
       std::shared_ptr<protocol::TProtocol> protocol(
-          createProtocol(hostAddr, m_reqdServerType, m_useFramedTransport));
-      // WARNING: hostAddr unusable hereafter, use m_currentHostAddr instead
-      m_currentHostAddr = std::move(hostAddr);
+          createProtocol(m_currentHostAddr, m_reqdServerType,
+              m_useFramedTransport));
 
       m_client.resetProtocols(protocol, protocol);
 
@@ -795,14 +794,24 @@ protocol::TProtocol* ClientService::createProtocol(
   }
 }
 
+void ClientService::reconnectToServerIfRequired(IsolationLevel checkIsolation,
+    std::set<thrift::HostAddress> failedServers) {
+  if (m_autoReconnect && m_connFailed && m_isOpen
+      && m_isolationLevel <= checkIsolation) {
+    SQLException failure(__FILE__, __LINE__);
+    openConnection(m_connArgs, m_connHosts[0], failedServers, failure);
+  }
+}
+
 void ClientService::execute(thrift::StatementResult& result,
     const std::string& sql,
     const std::map<int32_t, thrift::OutputParameter>& outputParams,
     const thrift::StatementAttrs& attrs) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
+    reconnectToServerIfRequired(IsolationLevel::NONE, failedServers);
     if (!m_hasPendingTXAttrs) {
       m_client.execute(result, m_connId, sql, outputParams, attrs, m_token);
     } else {
@@ -836,8 +845,9 @@ void ClientService::executeUpdate(thrift::UpdateResult& result,
     const thrift::StatementAttrs& attrs) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
+    reconnectToServerIfRequired(IsolationLevel::NONE, failedServers);
     if (!m_hasPendingTXAttrs) {
       m_client.executeUpdate(result, m_connId, sqls, attrs, m_token);
     } else {
@@ -870,8 +880,9 @@ void ClientService::executeQuery(thrift::RowSet& result,
     const std::string& sql, const thrift::StatementAttrs& attrs) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
+    reconnectToServerIfRequired(IsolationLevel::NONE, failedServers);
     if (!m_hasPendingTXAttrs) {
       m_client.executeQuery(result, m_connId, sql, attrs, m_token);
     } else {
@@ -907,8 +918,9 @@ void ClientService::prepareStatement(thrift::PrepareResult& result,
     const thrift::StatementAttrs& attrs) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
+    reconnectToServerIfRequired(IsolationLevel::NONE, failedServers);
     if (!m_hasPendingTXAttrs) {
       m_client.prepareStatement(result, m_connId, sql, outputParams, attrs,
           m_token);
@@ -946,8 +958,9 @@ void ClientService::executePrepared(thrift::StatementResult& result,
     const thrift::StatementAttrs& attrs) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
+    reconnectToServerIfRequired(IsolationLevel::NONE, failedServers);
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -976,8 +989,9 @@ void ClientService::executePreparedUpdate(thrift::UpdateResult& result,
     const thrift::StatementAttrs& attrs) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
+    reconnectToServerIfRequired(IsolationLevel::NONE, failedServers);
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -1007,8 +1021,9 @@ void ClientService::executePreparedQuery(thrift::RowSet& result,
     const thrift::StatementAttrs& attrs) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
+    reconnectToServerIfRequired(IsolationLevel::NONE, failedServers);
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -1039,8 +1054,9 @@ void ClientService::executePreparedBatch(thrift::UpdateResult& result,
     const thrift::StatementAttrs& attrs) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
+    reconnectToServerIfRequired(IsolationLevel::NONE, failedServers);
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -1071,8 +1087,9 @@ void ClientService::prepareAndExecute(thrift::StatementResult& result,
     const thrift::StatementAttrs& attrs) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
+    reconnectToServerIfRequired(IsolationLevel::NONE, failedServers);
     if (!m_hasPendingTXAttrs) {
       m_client.prepareAndExecute(result, m_connId, sql, paramsBatch,
           outputParams, attrs, m_token);
@@ -1108,7 +1125,7 @@ void ClientService::getNextResultSet(thrift::RowSet& result,
     const int64_t cursorId, const int8_t otherResultSetBehaviour) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
@@ -1139,7 +1156,7 @@ void ClientService::getBlobChunk(thrift::BlobChunk& result,
     const bool freeLobAtEnd) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
@@ -1169,7 +1186,7 @@ void ClientService::getClobChunk(thrift::ClobChunk& result,
     const bool freeLobAtEnd) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
@@ -1197,7 +1214,7 @@ void ClientService::getClobChunk(thrift::ClobChunk& result,
 int64_t ClientService::sendBlobChunk(thrift::BlobChunk& chunk) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
@@ -1226,7 +1243,7 @@ int64_t ClientService::sendBlobChunk(thrift::BlobChunk& chunk) {
 int64_t ClientService::sendClobChunk(thrift::ClobChunk& chunk) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
@@ -1255,7 +1272,7 @@ int64_t ClientService::sendClobChunk(thrift::ClobChunk& chunk) {
 void ClientService::freeLob(const int32_t lobId) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
@@ -1283,7 +1300,7 @@ void ClientService::scrollCursor(thrift::RowSet& result,
     const bool fetchReverse, const int32_t fetchSize) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
@@ -1324,7 +1341,7 @@ void ClientService::executeBatchCursorUpdate(const int64_t cursorId,
     const std::vector<int32_t>& changedRowIndexes) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
@@ -1353,8 +1370,9 @@ void ClientService::executeBatchCursorUpdate(const int64_t cursorId,
 void ClientService::beginTransaction(const IsolationLevel isolationLevel) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
+    reconnectToServerIfRequired(IsolationLevel::NO_CHANGE, failedServers);
     m_client.beginTransaction(m_connId, static_cast<int8_t>(isolationLevel),
         m_pendingTXAttrs, m_token);
     clearPendingTransactionAttrs();
@@ -1381,7 +1399,7 @@ void ClientService::beginTransaction(const IsolationLevel isolationLevel) {
 void ClientService::setTransactionAttribute(const TransactionAttribute flag,
     bool isTrue) {
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
     m_pendingTXAttrs[static_cast<thrift::TransactionAttribute::type>(flag)] =
         isTrue;
@@ -1393,7 +1411,7 @@ void ClientService::setTransactionAttribute(const TransactionAttribute flag,
 
 bool ClientService::getTransactionAttribute(const TransactionAttribute flag) {
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
     const thrift::TransactionAttribute::type attr =
         static_cast<thrift::TransactionAttribute::type>(flag);
@@ -1446,7 +1464,7 @@ void ClientService::getTransactionAttributesNoLock(
 void ClientService::getTransactionAttributes(
     std::map<thrift::TransactionAttribute::type, bool>& result) {
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
     getTransactionAttributesNoLock(result);
   } catch (const std::exception& stde) {
@@ -1459,7 +1477,7 @@ void ClientService::commitTransaction(const bool startNewTransaction) {
   bool tryFailOver = false;
   if (m_isolationLevel == IsolationLevel::NONE) tryFailOver = true;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
     m_client.commitTransaction(m_connId, startNewTransaction,
         m_pendingTXAttrs, m_token);
@@ -1488,7 +1506,7 @@ void ClientService::rollbackTransaction(const bool startNewTransaction) {
   bool tryFailOver = false;
   if (m_isolationLevel == IsolationLevel::NONE) tryFailOver = true;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
     m_client.rollbackTransaction(m_connId, startNewTransaction,
         m_pendingTXAttrs, m_token);
@@ -1516,8 +1534,9 @@ void ClientService::fetchActiveConnections(
     std::vector<thrift::ConnectionProperties>& result) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
+    reconnectToServerIfRequired(IsolationLevel::NONE, failedServers);
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -1545,8 +1564,9 @@ void ClientService::fetchActiveStatements(
     std::map<int64_t, std::string>& result) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
+    reconnectToServerIfRequired(IsolationLevel::NONE, failedServers);
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -1573,8 +1593,9 @@ void ClientService::fetchActiveStatements(
 void ClientService::getServiceMetaData(thrift::ServiceMetaData& result) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
+    reconnectToServerIfRequired(IsolationLevel::NONE, failedServers);
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
@@ -1603,8 +1624,9 @@ void ClientService::getSchemaMetaData(thrift::RowSet& result,
     thrift::ServiceMetaDataArgs& metadataArgs) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
+    reconnectToServerIfRequired(IsolationLevel::NONE, failedServers);
     metadataArgs.connId = m_connId;
     if (m_token.size() > 0) {
       metadataArgs.__set_token(m_token);
@@ -1637,8 +1659,9 @@ void ClientService::getIndexInfo(thrift::RowSet& result,
     const bool approximate) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
+    reconnectToServerIfRequired(IsolationLevel::NONE, failedServers);
     metadataArgs.connId = m_connId;
     if (m_token.size() > 0) {
       metadataArgs.__set_token(m_token);
@@ -1670,8 +1693,9 @@ void ClientService::getUDTs(thrift::RowSet& result,
     const std::vector<thrift::SnappyType::type>& types) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
+    reconnectToServerIfRequired(IsolationLevel::NONE, failedServers);
     metadataArgs.connId = m_connId;
     if (m_token.size() > 0) {
       metadataArgs.__set_token(m_token);
@@ -1702,8 +1726,9 @@ void ClientService::getBestRowIdentifier(thrift::RowSet& result,
     const bool nullable) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
+    reconnectToServerIfRequired(IsolationLevel::NONE, failedServers);
     metadataArgs.connId = m_connId;
     if (m_token.size() > 0) {
       metadataArgs.__set_token(m_token);
@@ -1734,7 +1759,7 @@ void ClientService::getBestRowIdentifier(thrift::RowSet& result,
 void ClientService::closeResultSet(const int64_t cursorId) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
     m_client.closeResultSet(cursorId, m_token);
   } catch (const thrift::SnappyException& sqle) {
@@ -1800,7 +1825,7 @@ void ClientService::cancelStatement(const int64_t stmtId) {
 void ClientService::closeStatement(const int64_t stmtId) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
     m_client.closeStatement(stmtId, m_token);
   } catch (const thrift::SnappyException& sqle) {
@@ -1824,7 +1849,7 @@ void ClientService::closeStatement(const int64_t stmtId) {
 void ClientService::bulkClose(const std::vector<thrift::EntityId>& entities) {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
     m_client.bulkClose(entities);
   } catch (const thrift::SnappyException& sqle) {
@@ -1848,7 +1873,7 @@ void ClientService::bulkClose(const std::vector<thrift::EntityId>& entities) {
 void ClientService::close() {
   std::set<thrift::HostAddress> failedServers;
   try {
-    std::lock_guard<std::mutex> sync(m_lock);
+    std::lock_guard<std::recursive_mutex> sync(m_lock);
 
     m_isOpen = false;
     ClientTransport* transport = m_transport.get();

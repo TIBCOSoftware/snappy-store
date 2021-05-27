@@ -122,7 +122,7 @@ private:
   IsolationLevel m_isolationLevel;
   std::map<thrift::TransactionAttribute::type, bool> m_currentTXAttrs;
 
-  std::mutex m_lock;
+  std::recursive_mutex m_lock;
 
   // no copy constructor or assignment operator
   ClientService(const ClientService&) = delete;
@@ -137,6 +137,16 @@ private:
 
   protocol::TProtocol* createProtocol(thrift::HostAddress& hostAddr,
       const thrift::ServerType::type serverType, const bool useFramedTransport);
+
+  /**
+   * Reconnect the underlying socket if connection had failed previously
+   * and "auto-reconnect" is set to true.
+   *
+   * The "checkIsolation" argument checks if a transaction is currently
+   * in progress and will skip creating the new connection if so.
+   */
+  void reconnectToServerIfRequired(IsolationLevel checkIsolation,
+      std::set<thrift::HostAddress> failedServers);
 
   void updateFailedServersForCurrent(
       std::set<thrift::HostAddress>& failedServers, bool checkAllFailed,
@@ -175,7 +185,7 @@ protected:
       const std::exception& se, FailoverStatus status);
 
   void openConnection(const thrift::OpenConnectionArgs& connArgs,
-      thrift::HostAddress& hostAddr,
+      const thrift::HostAddress& hostAddr,
       std::set<thrift::HostAddress>& failedServers, SQLException& failure);
 
   void flushPendingTransactionAttrs();
