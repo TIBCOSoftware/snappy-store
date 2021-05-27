@@ -179,7 +179,7 @@ void SQLException::staticInitialize() {
             || line.find("snappyodbc") != std::string::npos) {
           size_t addrEnd = line.find('-', 0);
           if (addrEnd != std::string::npos) {
-            s_processBaseAddress.append(" 0x");
+            s_libraryBaseAddress.append(" 0x");
             s_libraryBaseAddress.append(line.begin(),
                 line.begin() + static_cast<ptrdiff_t>(addrEnd));
           }
@@ -223,10 +223,11 @@ void SQLException::initNextException(
         ++iter) {
       next = createNextException(*iter);
       // if the SQLState is X0Z35 i.e. SERVER_STACK_INDICATOR,
-      // keep the SQLState as previous one
+      // keep the SQLState as previous one and set the flag
       if (next->m_state == "X0Z35") {
         next->m_state = current->m_state;
         next->m_severity = current->m_severity;
+        next->m_isServerStack = true;
       }
       current->m_next = next;
       current = next;
@@ -355,7 +356,7 @@ void SQLException::fillRecords(const char* prefix, uint32_t recordSize,
   const uint32_t minRecordSize = recordSize >> 2;
 
   SQLException* next = this;
-  while (next) {
+  do {
     std::ostringstream ostream;
     if (includeStackTrace) {
       // empty m_next for stack trace printing since its handled by the loop
@@ -369,6 +370,8 @@ void SQLException::fillRecords(const char* prefix, uint32_t recordSize,
       }
     } else {
       if (next != this) {
+        // skip server stack traces when includeStackTrace is false
+        if (next->m_isServerStack) continue;
         ostream << "Caused by:" << _SNAPPY_NEWLINE;
       }
       ostream << next->m_reason << "\tat " << next->m_file << ':'
@@ -402,8 +405,7 @@ void SQLException::fillRecords(const char* prefix, uint32_t recordSize,
       m_records.emplace_back(std::make_pair(next, std::move(recordPrefix
           + (startPos == 0 ? message : message.substr(startPos)))));
     }
-    next = next->m_next;
-  }
+  } while ((next = next->m_next));
 
   m_recordSize = recordSize + recordPrefix.length();
   m_recordsHaveStack = includeStackTrace;
@@ -418,8 +420,12 @@ void SQLException::clearRecords() noexcept {
 }
 
 void SQLException::toString(std::ostream& out) const {
-  out << "SQLSTATE=" << m_state << " SEVERITY=" << m_severity << ": "
-      << m_reason << LogWriter::NEWLINE << "\tat " << m_file << ':' << m_line;
+  out << "SQLSTATE=" << m_state << " SEVERITY=" << m_severity;
+  if (m_isServerStack) {
+    out << " [SERVER STACK]";
+  }
+  out << ": " << m_reason << LogWriter::NEWLINE << "\tat " << m_file << ':'
+      << m_line;
 }
 
 void SQLException::deleteNextException() noexcept {

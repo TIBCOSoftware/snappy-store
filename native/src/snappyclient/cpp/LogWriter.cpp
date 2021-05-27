@@ -65,6 +65,7 @@ void LogLevel::staticInitialize() {
   s_allLogLevels["all"] = LogLevel::all;
   s_allLogLevels["trace"] = LogLevel::trace;
   s_allLogLevels["debug"] = LogLevel::debug;
+  s_allLogLevels["fine"] = LogLevel::fine;
   s_allLogLevels["info"] = LogLevel::info;
   s_allLogLevels["warn"] = LogLevel::warn;
   s_allLogLevels["error"] = LogLevel::error;
@@ -80,6 +81,8 @@ const char* LogLevel::toString(const LogLevel::type logLevel) {
       return "trace";
     case debug:
       return "debug";
+    case fine:
+      return "fine";
     case info:
       return "info";
     case warn:
@@ -419,6 +422,9 @@ std::ostream& LogWriter::warn() {
 }
 std::ostream& LogWriter::info() {
   return global().print(LogLevel::info, LOGGING_FLAG);
+}
+std::ostream& LogWriter::fine() {
+  return global().print(LogLevel::fine, LOGGING_FLAG);
 }
 std::ostream& LogWriter::debug() {
   return global().print(LogLevel::debug, LOGGING_FLAG);

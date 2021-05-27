@@ -177,6 +177,7 @@ namespace client {
     std::string m_state;
     int32_t m_severity;
     SQLException* m_next;
+    bool m_isServerStack = { false };
     std::vector<std::pair<SQLException*, std::string> > m_records;
     uint32_t m_recordSize = { 0 };
     bool m_recordsHaveStack = { false };

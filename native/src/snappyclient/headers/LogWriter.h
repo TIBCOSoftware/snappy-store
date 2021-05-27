@@ -68,15 +68,22 @@ namespace client {
        */
       all = INT_MIN,
       /**
-       * If the writer's level is <code>TRACE</code> then
-       * trace, debug, info, warn, error, and fatal messages will be logged.
+       * If the writer's level is <code>TRACE</code> then trace,
+       * debug, fine, info, warn, error, and fatal messages will be logged.
        */
       trace = 100,
       /**
        * If the writer's level is <code>DEBUG</code> then
-       * debug, info, warn, error, and fatal messages will be logged.
+       * debug, fine, info, warn, error, and fatal messages will be logged.
        */
       debug = 200,
+      /**
+       * If the writer's level is <code>FINE</code> then
+       * fine, info, warn, error, and fatal messages will be logged.
+       * Currently the only additional thing this provides over
+       * <code>info</code> level logging is providing stack traces in ODBC.
+       */
+      fine = 250,
       /**
        * If the writer's level is <code>INFO</code> then
        * info, warn, error, and fatal messages will be logged.
@@ -286,6 +293,9 @@ namespace client {
     inline static bool infoEnabled() noexcept {
       return toInt(LogLevel::info) >= toInt(g_logger.m_logLevel);
     }
+    inline static bool fineEnabled() noexcept {
+      return toInt(LogLevel::fine) >= toInt(g_logger.m_logLevel);
+    }
     inline static bool debugEnabled() noexcept {
       return toInt(LogLevel::debug) >= toInt(g_logger.m_logLevel);
     }
@@ -300,6 +310,7 @@ namespace client {
     static std::ostream& error();
     static std::ostream& warn();
     static std::ostream& info();
+    static std::ostream& fine();
     static std::ostream& debug();
     static std::ostream& trace();
 
