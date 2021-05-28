@@ -211,7 +211,7 @@ void SQLStateMessage::staticInitialize() {
       SQLState::OPTION_CANNOT_BE_SET, 1, "Attribute value for ",
       " cannot be set now after statement prepare");
   INVALID_DRIVER_NAME_MSG.initialize(SQLState::INVALID_DRIVER_NAME, 1,
-      "Unexpected driver name '", "', expected '", "'");
+      "Unexpected driver name '", "', expected to start with '", "'");
   INVALID_DESCRIPTOR_INDEX_MSG.initialize(SQLState::INVALID_DESCRIPTOR_INDEX, 1,
       "Invalid descriptor index ", " (max=", ") for ", "");
   INVALID_CTYPE_MSG.initialize(SQLState::INVALID_CTYPE, 1,
