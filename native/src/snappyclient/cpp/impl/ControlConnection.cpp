@@ -51,7 +51,11 @@ static GlobalConnectionHolder& getAllConnections() {
 GlobalConnectionHolder::~GlobalConnectionHolder() {
   // this destructor will only be invoked when the app/library is shutting
   // down, so set the TSSLSocketFactory's setInExit flag
-  TSSLSocketFactory::setInExit(true);
+
+  // Note: below is now handled directly in thrift build where SSL connection
+  // close checks if OpenSSL library is initialized or not, hence this flag
+  // is obsolete and has been removed from the builds
+  // TSSLSocketFactory::setInExit(true);
 }
 
 ControlConnection::ControlConnection(ClientService* service) :
@@ -67,7 +71,11 @@ ControlConnection::ControlConnection(ClientService* service) :
 void ControlConnection::staticInitialize() {
   // initialize TSSLSocketFactory before GlobalConnectionHolder's static
   // instance so that it's statics are destroyed after the GlobalConnectionHolder
-  TSSLSocketFactory::setInExit(false);
+
+  // Note: below is now handled directly in thrift build where SSL connection
+  // close checks if OpenSSL library is initialized or not, hence this flag
+  // is obsolete and has been removed from the builds
+  // TSSLSocketFactory::setInExit(false);
   if (!getAllConnections().m_map.empty()) {
     throw std::runtime_error("INITIALIZATION ERROR: "
         "unexpected non-empty global control connection map");
