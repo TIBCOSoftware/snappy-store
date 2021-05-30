@@ -49,13 +49,14 @@ static GlobalConnectionHolder& getAllConnections() {
 }
 
 GlobalConnectionHolder::~GlobalConnectionHolder() {
-  // this destructor will only be invoked when the app/library is shutting
-  // down, so set the TSSLSocketFactory's setInExit flag
+  // this destructor will only be invoked when the app/library is shutting down,
+  // so cleanup OpenSSL that will also skip any further SSL_shutdown attempts
 
   // Note: below is now handled directly in thrift build where SSL connection
   // close checks if OpenSSL library is initialized or not, hence this flag
   // is obsolete and has been removed from the builds
   // TSSLSocketFactory::setInExit(true);
+  apache::thrift::transport::cleanupOpenSSL();
 }
 
 ControlConnection::ControlConnection(ClientService* service) :

@@ -345,7 +345,7 @@ if (((rootProject.name.contains('native') || rootProject.name.contains('odbc'))
   assemble.dependsOn extractDependencies
 
   // jar.enabled = false
-  task product(dependsOn: assemble) {
+  task clientProduct(dependsOn: assemble) {
     String productDir = "${buildDir}/snappyclient"
 
     doFirst {
