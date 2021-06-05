@@ -78,41 +78,43 @@ namespace _snappy_impl {
 
 #ifdef _WINDOWS
 static const std::vector<std::string> s_systemCertificateBundles = {
-  "C:/SSL/certs/ca-certificates.crt",
-  "C:/SSL/certs/ca-bundle.crt",
-  "C:/SSL/cert.pem",
-  "C:/Program Files/Common Files/SSL/certs/ca-certificates.crt",
-  "C:/Program Files/Common Files/SSL/certs/ca-bundle.crt",
-  "C:/Program Files/Common Files/SSL/cert.pem",
-  "C:/Program Files (x86)/Common Files/SSL/certs/ca-certificates.crt",
-  "C:/Program Files (x86)/Common Files/SSL/certs/ca-bundle.crt",
-  "C:/Program Files (x86)/Common Files/SSL/cert.pem"
+    "C:/SSL/certs/ca-certificates.crt",
+    "C:/SSL/certs/ca-bundle.crt",
+    "C:/SSL/cert.pem",
+    "C:/Program Files/Common Files/SSL/certs/ca-certificates.crt",
+    "C:/Program Files/Common Files/SSL/certs/ca-bundle.crt",
+    "C:/Program Files/Common Files/SSL/cert.pem",
+    "C:/Program Files (x86)/Common Files/SSL/certs/ca-certificates.crt",
+    "C:/Program Files (x86)/Common Files/SSL/certs/ca-bundle.crt",
+    "C:/Program Files (x86)/Common Files/SSL/cert.pem"
 };
 
 static const std::vector<std::string> s_systemCertificateDirs = {
-  "C:/SSL/certs",
-  "C:/Program Files/Common Files/SSL/certs",
-  "C:/Program Files (x86)/Common Files/SSL/certs"
+    "C:/SSL/certs",
+    "C:/Program Files/Common Files/SSL/certs",
+    "C:/Program Files (x86)/Common Files/SSL/certs"
 };
 #else
 static const std::vector<std::string> s_systemCertificateBundles = {
-  "/etc/ssl/certs/ca-certificates.crt",
-  "/etc/ssl/certs/ca-bundle.crt",
-  "/etc/ssl/cert.pem",
-  "/etc/openssl/certs/ca-certificates.crt",
-  "/etc/openssl/certs/ca-bundle.crt",
-  "/etc/openssl/cert.pem",
-  "/usr/local/etc/ssl/certs/ca-certificates.crt",
-  "/usr/local/etc/ssl/certs/ca-bundle.crt",
-  "/usr/local/etc/ssl/cert.pem",
-  "/usr/local/etc/openssl/certs/ca-certificates.crt",
-  "/usr/local/etc/openssl/certs/ca-bundle.crt",
-  "/usr/local/etc/openssl/cert.pem"
+    "/etc/ssl/certs/ca-certificates.crt",
+    "/etc/ssl/certs/ca-bundle.crt",
+    "/etc/ssl/cert.pem",
+    "/etc/openssl/certs/ca-certificates.crt",
+    "/etc/openssl/certs/ca-bundle.crt",
+    "/etc/openssl/cert.pem",
+    "/usr/local/etc/ssl/certs/ca-certificates.crt",
+    "/usr/local/etc/ssl/certs/ca-bundle.crt",
+    "/usr/local/etc/ssl/cert.pem",
+    "/usr/local/etc/openssl/certs/ca-certificates.crt",
+    "/usr/local/etc/openssl/certs/ca-bundle.crt",
+    "/usr/local/etc/openssl/cert.pem"
 };
 
 static const std::vector<std::string> s_systemCertificateDirs = {
-  "/etc/ssl/certs", "/etc/openssl/certs",
-  "/usr/local/etc/ssl/certs", "/usr/local/etc/openssl/certs"
+    "/etc/ssl/certs",
+    "/etc/openssl/certs",
+    "/usr/local/etc/ssl/certs",
+    "/usr/local/etc/openssl/certs"
 };
 #endif
 
@@ -129,8 +131,9 @@ static void readAndEraseBooleanValue(std::map<std::string, std::string>& props,
   auto const propValue = props.find(key);
   if (propValue != props.end()) {
     if (exists) *exists = true;
-    result = defaultValue ? !boost::iequals(propValue->second, "false")
-        : boost::iequals(propValue->second, "true");
+    result =
+        defaultValue ? !boost::iequals(propValue->second, "false") :
+            boost::iequals(propValue->second, "true");
     props.erase(propValue);
   }
 }
@@ -245,18 +248,79 @@ void ClientService::staticInitialize(
         _snappy_impl::DEFAULT_THRIFT_OUTPUT_FUNCTION);
 
     if (LogWriter::infoEnabled()) {
-      LogWriter::info() << "Starting client on '" << s_hostName
-          << "' with ID='" << s_hostId << '\'' << _SNAPPY_NEWLINE;
+      LogWriter::info() << "Starting client on '" << s_hostName << "' with ID='"
+          << s_hostId << '\'' << _SNAPPY_NEWLINE;
     }
     s_initialized = true;
   }
 }
 
-void ClientService::checkConnection(const char *op) {
-  if (!m_isOpen || m_connFailed || !m_client.getProtocol() || !m_transport
+void ClientService::checkConnection(const char* op) {
+  if (!m_isOpen || m_connFailed || !m_transport
       || !m_transport->isTransportOpen()) {
     throw GET_SQLEXCEPTION2(SQLStateMessage::NO_CURRENT_CONNECTION_MSG2,
         m_currentHostAddr.toString().c_str(), op);
+  }
+}
+
+void ClientService::handleSnappyException(const char* op,
+    std::set<thrift::HostAddress>& failedServers,
+    const thrift::SnappyException& se, bool tryFailover, bool checkClosed) {
+  if (checkClosed) checkConnection(op);
+
+  auto status = NetConnection::getFailoverStatus(se.exceptionData.sqlState, se);
+  switch (status) {
+    case FailoverStatus::NONE:
+      // convert DATA_CONTAINTER_CLOSED to connection errors for non-transactional case
+      if (m_isolationLevel == IsolationLevel::NONE
+          && !se.exceptionData.sqlState.compare(
+              SQLState::DATA_CONTAINER_CLOSED.getSQLState())) {
+        throwSQLExceptionForNodeFailure(op, se, status);
+      } else {
+        throw GET_SQLEXCEPTION(se);
+      }
+      break;
+    case FailoverStatus::RETRY:
+      if (!tryFailover || !m_loadBalance) {
+        throwSQLExceptionForNodeFailure(op, se, status);
+      }
+      break;
+    default:
+      if (!tryFailover || !m_loadBalance) {
+        throwSQLExceptionForNodeFailure(op, se, status);
+      }
+      SQLException failure(__FILE__, __LINE__, se);
+      updateFailedServersForCurrent(failedServers, false, failure);
+      break;
+  }
+}
+
+void ClientService::handleTTransportException(const char* op,
+    std::set<thrift::HostAddress>& failedServers,
+    const TTransportException& tte, bool tryFailover, bool checkClosed) {
+
+  if (handleThriftException(op, failedServers, tte, tryFailover, checkClosed)) {
+    throwSQLExceptionForNodeFailure(op, tte, FailoverStatus::NEW_SERVER);
+  }
+}
+
+void ClientService::handleTProtocolException(const char* op,
+    std::set<thrift::HostAddress>& failedServers,
+    const protocol::TProtocolException& tpe, bool tryFailover,
+    bool checkClosed) {
+
+  if (handleThriftException(op, failedServers, tpe, tryFailover, checkClosed)) {
+    throw GET_SQLEXCEPTION2(SQLStateMessage::THRIFT_PROTOCOL_ERROR_MSG,
+        tpe.what(), op);
+  }
+}
+
+void ClientService::handleTException(const char* op,
+    std::set<thrift::HostAddress>& failedServers, const TException& te,
+    bool tryFailover, bool checkClosed) {
+
+  if (handleThriftException(op, failedServers, te, tryFailover, checkClosed)) {
+    handleStdException(op, te, false);
   }
 }
 
@@ -279,68 +343,9 @@ void ClientService::handleUnknownException(const char* op, bool checkClosed) {
   throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, reason.str());
 }
 
-void ClientService::handleSnappyException(const char* op, bool tryFailover,
-    bool ignoreNodeFailure, bool createNewConnection,
-    std::set<thrift::HostAddress>& failedServers,
-    const thrift::SnappyException& se) {
-
-  if (!handleThriftException(op, tryFailover, ignoreNodeFailure,
-      createNewConnection, failedServers, se)) {
-    return;
-  }
-
-  FailoverStatus status = NetConnection::getFailoverStatus(
-      se.exceptionData.sqlState, se);
-  if (status == FailoverStatus::NONE) {
-    // convert DATA_CONTAINTER_CLOSED to connection errors for non-transactional case
-    if (m_isolationLevel == IsolationLevel::NONE
-        && !se.exceptionData.sqlState.compare(
-            SQLState::DATA_CONTAINER_CLOSED.getSQLState())) {
-      throwSQLExceptionForNodeFailure(op, se, status);
-    } else {
-      throw GET_SQLEXCEPTION(se);
-    }
-  } else {
-    throwSQLExceptionForNodeFailure(op, se, status);
-  }
-}
-
-void ClientService::handleTTransportException(const char* op,
-    bool tryFailover, bool ignoreNodeFailure, bool createNewConnection,
-    std::set<thrift::HostAddress>& failedServers,
-    const TTransportException& tte) {
-
-  if (handleThriftException(op, tryFailover, ignoreNodeFailure,
-      createNewConnection, failedServers, tte)) {
-    throwSQLExceptionForNodeFailure(op, tte, FailoverStatus::NEW_SERVER);
-  }
-}
-
-void ClientService::handleTProtocolException(const char* op, bool tryFailover,
-    bool ignoreNodeFailure, bool createNewConnection,
-    std::set<thrift::HostAddress>& failedServers,
-    const protocol::TProtocolException& tpe) {
-
-  if (handleThriftException(op, tryFailover, ignoreNodeFailure,
-      createNewConnection, failedServers, tpe)) {
-    throw GET_SQLEXCEPTION2(SQLStateMessage::THRIFT_PROTOCOL_ERROR_MSG,
-        tpe.what(), op);
-  }
-}
-
-void ClientService::handleTException(const char* op, bool tryFailover,
-    bool ignoreNodeFailure, bool createNewConnection,
-    std::set<thrift::HostAddress>& failedServers, const TException& te) {
-
-  if (handleThriftException(op, tryFailover, ignoreNodeFailure,
-      createNewConnection, failedServers, te)) {
-    handleStdException(op, te, false);
-  }
-}
-
-void ClientService::throwSQLExceptionForNodeFailure(const char *op,
-    const std::exception &se, FailoverStatus status) {
-  destroyTransport();
+void ClientService::throwSQLExceptionForNodeFailure(const char* op,
+    const std::exception& se, FailoverStatus status) {
+  if (status != FailoverStatus::RETRY) destroyTransport();
   if (m_isolationLevel == IsolationLevel::NONE) {
     // throw 08001 or 08004 for this case
     if (status == FailoverStatus::NEW_SERVER) {
@@ -560,8 +565,9 @@ void ClientService::openConnection(const thrift::OpenConnectionArgs& connArgs,
   }
 
   while (true) {
-    auto serviceGuard = mutexAlreadyLocked ? std::unique_lock<std::mutex>()
-        : std::unique_lock<std::mutex>(m_lock);
+    auto serviceGuard =
+        mutexAlreadyLocked ? std::unique_lock<std::mutex>() :
+            std::unique_lock<std::mutex>(m_lock);
     try {
       m_currentHostAddr = hostAddr;
 
@@ -584,8 +590,8 @@ void ClientService::openConnection(const thrift::OpenConnectionArgs& connArgs,
         }
         if (m_loadBalance) {
           // at this point query the control service for preferred server
-          controlConn.getPreferredServer(m_currentHostAddr, failure,
-              failedServers, this->m_serverGroups, this, false);
+          m_currentHostAddr = controlConn.getPreferredServer(failure,
+              failedServers, this, false);
         }
       }
 
@@ -629,17 +635,15 @@ void ClientService::openConnection(const thrift::OpenConnectionArgs& connArgs,
     } catch (const SQLException& sqle) {
       throw sqle;
     } catch (const thrift::SnappyException& sqle) {
-      handleSnappyException("openConnection", m_loadBalance, false, false,
-          failedServers, sqle);
+      handleSnappyException("openConnection", failedServers, sqle, true, false);
     } catch (const TTransportException& tte) {
-      handleTTransportException("openConnection", m_loadBalance, false, false,
-          failedServers, tte);
+      handleTTransportException("openConnection", failedServers, tte, true,
+          false);
     } catch (const protocol::TProtocolException& tpe) {
-      handleTProtocolException("openConnection", m_loadBalance, false, false,
-          failedServers, tpe);
+      handleTProtocolException("openConnection", failedServers, tpe, true,
+          false);
     } catch (const TException& te) {
-      handleTException("openConnection", m_loadBalance, false, false,
-          failedServers, te);
+      handleTException("openConnection", failedServers, te, true, false);
     } catch (const std::exception& stde) {
       handleStdException("openConnection", stde, false);
     } catch (...) {
@@ -651,7 +655,7 @@ void ClientService::openConnection(const thrift::OpenConnectionArgs& connArgs,
 void ClientService::destroyTransport() noexcept {
   m_connFailed = true;
   Utils::handleExceptionsInDestructor("connection service", [&]() {
-    ClientTransport *transport = m_transport.get();
+    ClientTransport* transport = m_transport.get();
     if (transport) {
       if (transport->isTransportOpen()) {
         transport->closeTransport();
@@ -768,8 +772,7 @@ protocol::TProtocol* ClientService::createProtocol(
       throw new std::runtime_error(
           "unexpected null SSLSocketFactory in ClientService::createProtocol");
     }
-    socket = createSSLSocket(hostAddr.hostName, hostAddr.port,
-        *m_sslFactory);
+    socket = createSSLSocket(hostAddr.hostName, hostAddr.port, *m_sslFactory);
   } else {
     socket.reset(new TSocket(hostAddr.ipAddressOrHostName(), hostAddr.port));
   }
@@ -781,8 +784,7 @@ protocol::TProtocol* ClientService::createProtocol(
   if (useFramedTransport) {
     m_transport.reset(
         new FramedClientTransport(
-            std::shared_ptr<BufferedClientTransport>(bufferedTransport),
-            wsz));
+            std::shared_ptr<BufferedClientTransport>(bufferedTransport), wsz));
   } else {
     m_transport.reset(bufferedTransport);
   }
@@ -819,21 +821,18 @@ void ClientService::execute(thrift::StatementResult& result,
       thrift::StatementAttrs newAttrs(attrs);
       setPendingTransactionAttrs(newAttrs);
 
-      m_client.execute(result, m_connId, sql, outputParams, newAttrs,
-          m_token);
+      m_client.execute(result, m_connId, sql, outputParams, newAttrs, m_token);
 
       clearPendingTransactionAttrs();
     }
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("execute", true, false, true, failedServers, sqle);
+    handleSnappyException("execute", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("execute", true, false, true, failedServers,
-        tte);
+    handleTTransportException("execute", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("execute", true, false, true, failedServers,
-        tpe);
+    handleTProtocolException("execute", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("execute", true, false, true, failedServers, te);
+    handleTException("execute", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("execute", stde);
   } catch (...) {
@@ -842,8 +841,7 @@ void ClientService::execute(thrift::StatementResult& result,
 }
 
 void ClientService::executeUpdate(thrift::UpdateResult& result,
-    const std::vector<std::string>& sqls,
-    const thrift::StatementAttrs& attrs) {
+    const std::vector<std::string>& sqls, const thrift::StatementAttrs& attrs) {
   std::set<thrift::HostAddress> failedServers;
   try {
     std::lock_guard<std::mutex> sync(m_lock);
@@ -860,16 +858,13 @@ void ClientService::executeUpdate(thrift::UpdateResult& result,
       clearPendingTransactionAttrs();
     }
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("executeUpdate", true, false, true, failedServers,
-        sqle);
+    handleSnappyException("executeUpdate", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("executeUpdate", true, false, true,
-        failedServers, tte);
+    handleTTransportException("executeUpdate", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("executeUpdate", true, false, true,
-        failedServers, tpe);
+    handleTProtocolException("executeUpdate", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("executeUpdate", true, false, true, failedServers, te);
+    handleTException("executeUpdate", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("executeUpdate", stde);
   } catch (...) {
@@ -877,8 +872,8 @@ void ClientService::executeUpdate(thrift::UpdateResult& result,
   }
 }
 
-void ClientService::executeQuery(thrift::RowSet& result,
-    const std::string& sql, const thrift::StatementAttrs& attrs) {
+void ClientService::executeQuery(thrift::RowSet& result, const std::string& sql,
+    const thrift::StatementAttrs& attrs) {
   std::set<thrift::HostAddress> failedServers;
   try {
     std::lock_guard<std::mutex> sync(m_lock);
@@ -895,17 +890,13 @@ void ClientService::executeQuery(thrift::RowSet& result,
       clearPendingTransactionAttrs();
     }
   } catch (const thrift::SnappyException& sqle) {
-    // TODO :attrs.possibleDuplicate=false;
-    handleSnappyException("executeQuery", true, false, true, failedServers,
-        sqle);
+    handleSnappyException("executeQuery", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("executeQuery", true, false, true,
-        failedServers, tte);
+    handleTTransportException("executeQuery", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("executeQuery", true, false, true, failedServers,
-        tpe);
+    handleTProtocolException("executeQuery", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("executeQuery", true, false, true, failedServers, te);
+    handleTException("executeQuery", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("executeQuery", stde);
   } catch (...) {
@@ -935,17 +926,13 @@ void ClientService::prepareStatement(thrift::PrepareResult& result,
       clearPendingTransactionAttrs();
     }
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("prepareStatement", true, false, true,
-        failedServers, sqle);
+    handleSnappyException("prepareStatement", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("prepareStatement", true, false, true,
-        failedServers, tte);
+    handleTTransportException("prepareStatement", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("prepareStatement", true, false, true,
-        failedServers, tpe);
+    handleTProtocolException("prepareStatement", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("prepareStatement", true, false, true, failedServers,
-        te);
+    handleTException("prepareStatement", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("prepareStatement", stde);
   } catch (...) {
@@ -968,16 +955,13 @@ void ClientService::executePrepared(thrift::StatementResult& result,
     m_client.executePrepared(result, prepResult.statementId, params,
         outputParams, attrs, m_token);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("executePrepared", true, false, true, failedServers,
-        sqle);
+    handleSnappyException("executePrepared", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("executePrepared", true, false, true,
-        failedServers, tte);
+    handleTTransportException("executePrepared", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("executePrepared", true, false, true,
-        failedServers, tpe);
+    handleTProtocolException("executePrepared", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("executePrepared", true, false, true, failedServers, te);
+    handleTException("executePrepared", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("executePrepared", stde);
   } catch (...) {
@@ -999,17 +983,13 @@ void ClientService::executePreparedUpdate(thrift::UpdateResult& result,
     m_client.executePreparedUpdate(result, prepResult.statementId, params,
         attrs, m_token);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("executePreparedUpdate", true, false, true,
-        failedServers, sqle);
+    handleSnappyException("executePreparedUpdate", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("executePreparedUpdate", true, false, true,
-        failedServers, tte);
+    handleTTransportException("executePreparedUpdate", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("executePreparedUpdate", true, false, true,
-        failedServers, tpe);
+    handleTProtocolException("executePreparedUpdate", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("executePreparedUpdate", true, false, true,
-        failedServers, te);
+    handleTException("executePreparedUpdate", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("executePreparedUpdate", stde);
   } catch (...) {
@@ -1028,20 +1008,16 @@ void ClientService::executePreparedQuery(thrift::RowSet& result,
     if (m_hasPendingTXAttrs) {
       flushPendingTransactionAttrs();
     }
-    m_client.executePreparedQuery(result, prepResult.statementId, params,
-        attrs, m_token);
+    m_client.executePreparedQuery(result, prepResult.statementId, params, attrs,
+        m_token);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("executePreparedQuery", true, false, true,
-        failedServers, sqle);
+    handleSnappyException("executePreparedQuery", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("executePreparedQuery", true, false, true,
-        failedServers, tte);
+    handleTTransportException("executePreparedQuery", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("executePreparedQuery", true, false, true,
-        failedServers, tpe);
+    handleTProtocolException("executePreparedQuery", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("executePreparedQuery", true, false, true, failedServers,
-        te);
+    handleTException("executePreparedQuery", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("executePreparedQuery", stde);
   } catch (...) {
@@ -1064,17 +1040,13 @@ void ClientService::executePreparedBatch(thrift::UpdateResult& result,
     m_client.executePreparedBatch(result, prepResult.statementId, paramsBatch,
         attrs, m_token);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("executePreparedBatch", true, false, true,
-        failedServers, sqle);
+    handleSnappyException("executePreparedBatch", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("executePreparedBatch", true, false, true,
-        failedServers, tte);
+    handleTTransportException("executePreparedBatch", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("executePreparedBatch", true, false, true,
-        failedServers, tpe);
+    handleTProtocolException("executePreparedBatch", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("executePreparedBatch", true, false, true, failedServers,
-        te);
+    handleTException("executePreparedBatch", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("executePreparedBatch", stde);
   } catch (...) {
@@ -1104,17 +1076,13 @@ void ClientService::prepareAndExecute(thrift::StatementResult& result,
       clearPendingTransactionAttrs();
     }
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("prepareAndExecute", true, false, true,
-        failedServers, sqle);
+    handleSnappyException("prepareAndExecute", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("prepareAndExecute", true, false, true,
-        failedServers, tte);
+    handleTTransportException("prepareAndExecute", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("prepareAndExecute", true, false, true,
-        failedServers, tpe);
+    handleTProtocolException("prepareAndExecute", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("prepareAndExecute", true, false, true, failedServers,
-        te);
+    handleTException("prepareAndExecute", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("prepareAndExecute", stde);
   } catch (...) {
@@ -1134,17 +1102,13 @@ void ClientService::getNextResultSet(thrift::RowSet& result,
     m_client.getNextResultSet(result, cursorId, otherResultSetBehaviour,
         m_token);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("getNextResultSet", false, false, true,
-        failedServers, sqle);
+    handleSnappyException("getNextResultSet", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("getNextResultSet", false, false, true,
-        failedServers, tte);
+    handleTTransportException("getNextResultSet", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("getNextResultSet", false, false, true,
-        failedServers, tpe);
+    handleTProtocolException("getNextResultSet", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("getNextResultSet", false, false, true, failedServers,
-        te);
+    handleTException("getNextResultSet", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("getNextResultSet", stde);
   } catch (...) {
@@ -1152,9 +1116,8 @@ void ClientService::getNextResultSet(thrift::RowSet& result,
   }
 }
 
-void ClientService::getBlobChunk(thrift::BlobChunk& result,
-    const int32_t lobId, const int64_t offset, const int32_t size,
-    const bool freeLobAtEnd) {
+void ClientService::getBlobChunk(thrift::BlobChunk& result, const int32_t lobId,
+    const int64_t offset, const int32_t size, const bool freeLobAtEnd) {
   std::set<thrift::HostAddress> failedServers;
   try {
     std::lock_guard<std::mutex> sync(m_lock);
@@ -1165,16 +1128,13 @@ void ClientService::getBlobChunk(thrift::BlobChunk& result,
     m_client.getBlobChunk(result, m_connId, lobId, offset, size, freeLobAtEnd,
         m_token);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("getBlobChunk", false, false, true, failedServers,
-        sqle);
+    handleSnappyException("getBlobChunk", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("getBlobChunk", false, false, true,
-        failedServers, tte);
+    handleTTransportException("getBlobChunk", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("getBlobChunk", false, false, true,
-        failedServers, tpe);
+    handleTProtocolException("getBlobChunk", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("getBlobChunk", false, false, true, failedServers, te);
+    handleTException("getBlobChunk", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("getBlobChunk", stde);
   } catch (...) {
@@ -1182,9 +1142,8 @@ void ClientService::getBlobChunk(thrift::BlobChunk& result,
   }
 }
 
-void ClientService::getClobChunk(thrift::ClobChunk& result,
-    const int32_t lobId, const int64_t offset, const int32_t size,
-    const bool freeLobAtEnd) {
+void ClientService::getClobChunk(thrift::ClobChunk& result, const int32_t lobId,
+    const int64_t offset, const int32_t size, const bool freeLobAtEnd) {
   std::set<thrift::HostAddress> failedServers;
   try {
     std::lock_guard<std::mutex> sync(m_lock);
@@ -1195,16 +1154,13 @@ void ClientService::getClobChunk(thrift::ClobChunk& result,
     m_client.getClobChunk(result, m_connId, lobId, offset, size, freeLobAtEnd,
         m_token);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("getClobChunk", false, false, true, failedServers,
-        sqle);
+    handleSnappyException("getClobChunk", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("getClobChunk", false, false, true,
-        failedServers, tte);
+    handleTTransportException("getClobChunk", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("getClobChunk", false, false, true,
-        failedServers, tpe);
+    handleTProtocolException("getClobChunk", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("getClobChunk", false, false, true, failedServers, te);
+    handleTException("getClobChunk", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("getClobChunk", stde);
   } catch (...) {
@@ -1222,16 +1178,13 @@ int64_t ClientService::sendBlobChunk(thrift::BlobChunk& chunk) {
     }
     return m_client.sendBlobChunk(chunk, m_connId, m_token);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("sendBlobChunk", false, false, true, failedServers,
-        sqle);
+    handleSnappyException("sendBlobChunk", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("sendBlobChunk", false, false, true,
-        failedServers, tte);
+    handleTTransportException("sendBlobChunk", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("sendBlobChunk", false, false, true,
-        failedServers, tpe);
+    handleTProtocolException("sendBlobChunk", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("sendBlobChunk", false, false, true, failedServers, te);
+    handleTException("sendBlobChunk", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("sendBlobChunk", stde);
   } catch (...) {
@@ -1251,16 +1204,13 @@ int64_t ClientService::sendClobChunk(thrift::ClobChunk& chunk) {
     }
     return m_client.sendClobChunk(chunk, m_connId, m_token);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("sendClobChunk", false, false, true, failedServers,
-        sqle);
+    handleSnappyException("sendClobChunk", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("sendClobChunk", false, false, true,
-        failedServers, tte);
+    handleTTransportException("sendClobChunk", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("sendClobChunk", false, false, true,
-        failedServers, tpe);
+    handleTProtocolException("sendClobChunk", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("sendClobChunk", false, false, true, failedServers, te);
+    handleTException("sendClobChunk", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("sendClobChunk", stde);
   } catch (...) {
@@ -1280,15 +1230,13 @@ void ClientService::freeLob(const int32_t lobId) {
     }
     m_client.freeLob(m_connId, lobId, m_token);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("freeLob", false, true, false, failedServers, sqle);
+    handleSnappyException("freeLob", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("freeLob", false, true, false, failedServers,
-        tte);
+    handleTTransportException("freeLob", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("freeLob", false, true, false, failedServers,
-        tpe);
+    handleTProtocolException("freeLob", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("freeLob", false, true, false, failedServers, te);
+    handleTException("freeLob", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("freeLob", stde);
   } catch (...) {
@@ -1296,9 +1244,9 @@ void ClientService::freeLob(const int32_t lobId) {
   }
 }
 
-void ClientService::scrollCursor(thrift::RowSet& result,
-    const int64_t cursorId, const int32_t offset, const bool offsetIsAbsolute,
-    const bool fetchReverse, const int32_t fetchSize) {
+void ClientService::scrollCursor(thrift::RowSet& result, const int64_t cursorId,
+    const int32_t offset, const bool offsetIsAbsolute, const bool fetchReverse,
+    const int32_t fetchSize) {
   std::set<thrift::HostAddress> failedServers;
   try {
     std::lock_guard<std::mutex> sync(m_lock);
@@ -1309,16 +1257,13 @@ void ClientService::scrollCursor(thrift::RowSet& result,
     m_client.scrollCursor(result, cursorId, offset, offsetIsAbsolute,
         fetchReverse, fetchSize, m_token);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("scrollCursor", false, false, true, failedServers,
-        sqle);
+    handleSnappyException("scrollCursor", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("scrollCursor", false, false, true,
-        failedServers, tte);
+    handleTTransportException("scrollCursor", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("scrollCursor", false, false, true,
-        failedServers, tpe);
+    handleTProtocolException("scrollCursor", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("scrollCursor", false, false, true, failedServers, te);
+    handleTException("scrollCursor", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("scrollCursor", stde);
   } catch (...) {
@@ -1350,17 +1295,13 @@ void ClientService::executeBatchCursorUpdate(const int64_t cursorId,
     m_client.executeCursorUpdate(cursorId, operations, changedRows,
         changedColumnsList, changedRowIndexes, m_token);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("executeBatchCursorUpdate", false, false, true,
-        failedServers, sqle);
+    handleSnappyException("executeBatchCursorUpdate", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("executeBatchCursorUpdate", false, false, true,
-        failedServers, tte);
+    handleTTransportException("executeBatchCursorUpdate", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("executeBatchCursorUpdate", false, false, true,
-        failedServers, tpe);
+    handleTProtocolException("executeBatchCursorUpdate", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("executeBatchCursorUpdate", false, false, true,
-        failedServers, te);
+    handleTException("executeBatchCursorUpdate", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("executeBatchCursorUpdate", stde);
   } catch (...) {
@@ -1379,17 +1320,13 @@ void ClientService::beginTransaction(const IsolationLevel isolationLevel) {
     clearPendingTransactionAttrs();
     m_isolationLevel = isolationLevel;
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("beginTransaction", true, false, true,
-        failedServers, sqle);
+    handleSnappyException("beginTransaction", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("beginTransaction", true, false, true,
-        failedServers, tte);
+    handleTTransportException("beginTransaction", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("beginTransaction", true, false, true,
-        failedServers, tpe);
+    handleTProtocolException("beginTransaction", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("beginTransaction", true, false, true, failedServers,
-        te);
+    handleTException("beginTransaction", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("beginTransaction", stde);
   } catch (...) {
@@ -1444,17 +1381,13 @@ void ClientService::getTransactionAttributesNoLock(
     }
     m_client.getTransactionAttributes(result, m_connId, m_token);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("getTransactionAttributes", false, false, true,
-        failedServers, sqle);
+    handleSnappyException("getTransactionAttributes", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("getTransactionAttributes", false, false, true,
-        failedServers, tte);
+    handleTTransportException("getTransactionAttributes", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("getTransactionAttributes", false, false, true,
-        failedServers, tpe);
+    handleTProtocolException("getTransactionAttributes", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("getTransactionAttributes", false, false, true,
-        failedServers, te);
+    handleTException("getTransactionAttributes", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("getTransactionAttributes", stde);
   } catch (...) {
@@ -1475,26 +1408,20 @@ void ClientService::getTransactionAttributes(
 
 void ClientService::commitTransaction(const bool startNewTransaction) {
   std::set<thrift::HostAddress> failedServers;
-  bool tryFailOver = false;
-  if (m_isolationLevel == IsolationLevel::NONE) tryFailOver = true;
   try {
     std::lock_guard<std::mutex> sync(m_lock);
 
-    m_client.commitTransaction(m_connId, startNewTransaction,
-        m_pendingTXAttrs, m_token);
+    m_client.commitTransaction(m_connId, startNewTransaction, m_pendingTXAttrs,
+        m_token);
     clearPendingTransactionAttrs();
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("commitTransaction", tryFailOver, false, true,
-        failedServers, sqle);
+    handleSnappyException("commitTransaction", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("commitTransaction", tryFailOver, false, true,
-        failedServers, tte);
+    handleTTransportException("commitTransaction", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("commitTransaction", tryFailOver, false, true,
-        failedServers, tpe);
+    handleTProtocolException("commitTransaction", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("commitTransaction", tryFailOver, false, true,
-        failedServers, te);
+    handleTException("commitTransaction", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("commitTransaction", stde);
   } catch (...) {
@@ -1504,8 +1431,6 @@ void ClientService::commitTransaction(const bool startNewTransaction) {
 
 void ClientService::rollbackTransaction(const bool startNewTransaction) {
   std::set<thrift::HostAddress> failedServers;
-  bool tryFailOver = false;
-  if (m_isolationLevel == IsolationLevel::NONE) tryFailOver = true;
   try {
     std::lock_guard<std::mutex> sync(m_lock);
 
@@ -1513,17 +1438,13 @@ void ClientService::rollbackTransaction(const bool startNewTransaction) {
         m_pendingTXAttrs, m_token);
     clearPendingTransactionAttrs();
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("rollbackTransaction", tryFailOver, false, true,
-        failedServers, sqle);
+    handleSnappyException("rollbackTransaction", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("rollbackTransaction", tryFailOver, false, true,
-        failedServers, tte);
+    handleTTransportException("rollbackTransaction", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("rollbackTransaction", tryFailOver, false, true,
-        failedServers, tpe);
+    handleTProtocolException("rollbackTransaction", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("rollbackTransaction", tryFailOver, false, true,
-        failedServers, te);
+    handleTException("rollbackTransaction", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("rollbackTransaction", stde);
   } catch (...) {
@@ -1543,17 +1464,13 @@ void ClientService::fetchActiveConnections(
     }
     m_client.fetchActiveConnections(result, m_connId, m_token);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("fetchActiveConnections", false, false, false,
-        failedServers, sqle);
+    handleSnappyException("fetchActiveConnections", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("fetchActiveConnections", false, false, false,
-        failedServers, tte);
+    handleTTransportException("fetchActiveConnections", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("fetchActiveConnections", false, false, false,
-        failedServers, tpe);
+    handleTProtocolException("fetchActiveConnections", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("fetchActiveConnections", false, false, false,
-        failedServers, te);
+    handleTException("fetchActiveConnections", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("fetchActiveConnections", stde);
   } catch (...) {
@@ -1573,17 +1490,13 @@ void ClientService::fetchActiveStatements(
     }
     m_client.fetchActiveStatements(result, m_connId, m_token);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("fetchActiveStatements", false, false, false,
-        failedServers, sqle);
+    handleSnappyException("fetchActiveStatements", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("fetchActiveStatements", false, false, false,
-        failedServers, tte);
+    handleTTransportException("fetchActiveStatements", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("fetchActiveStatements", false, false, false,
-        failedServers, tpe);
+    handleTProtocolException("fetchActiveStatements", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("fetchActiveStatements", false, false, false,
-        failedServers, te);
+    handleTException("fetchActiveStatements", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("fetchActiveStatements", stde);
   } catch (...) {
@@ -1602,17 +1515,13 @@ void ClientService::getServiceMetaData(thrift::ServiceMetaData& result) {
     }
     m_client.getServiceMetaData(result, m_connId, m_token);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("getServiceMetaData", true, false, true,
-        failedServers, sqle);
+    handleSnappyException("getServiceMetaData", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("getServiceMetaData", true, false, true,
-        failedServers, tte);
+    handleTTransportException("getServiceMetaData", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("getServiceMetaData", true, false, true,
-        failedServers, tpe);
+    handleTProtocolException("getServiceMetaData", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("getServiceMetaData", true, false, true, failedServers,
-        te);
+    handleTException("getServiceMetaData", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("getServiceMetaData", stde);
   } catch (...) {
@@ -1637,17 +1546,13 @@ void ClientService::getSchemaMetaData(thrift::RowSet& result,
     }
     m_client.getSchemaMetaData(result, schemaCall, metadataArgs);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("getSchemaMetaData", true, false, true,
-        failedServers, sqle);
+    handleSnappyException("getSchemaMetaData", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("getSchemaMetaData", true, false, true,
-        failedServers, tte);
+    handleTTransportException("getSchemaMetaData", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("getSchemaMetaData", true, false, true,
-        failedServers, tpe);
+    handleTProtocolException("getSchemaMetaData", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("getSchemaMetaData", true, false, true, failedServers,
-        te);
+    handleTException("getSchemaMetaData", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("getSchemaMetaData", stde);
   } catch (...) {
@@ -1672,16 +1577,13 @@ void ClientService::getIndexInfo(thrift::RowSet& result,
     }
     m_client.getIndexInfo(result, metadataArgs, unique, approximate);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("getIndexInfo", true, false, true, failedServers,
-        sqle);
+    handleSnappyException("getIndexInfo", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("getIndexInfo", true, false, true,
-        failedServers, tte);
+    handleTTransportException("getIndexInfo", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("getIndexInfo", true, false, true, failedServers,
-        tpe);
+    handleTProtocolException("getIndexInfo", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("getIndexInfo", true, false, true, failedServers, te);
+    handleTException("getIndexInfo", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("getIndexInfo", stde);
   } catch (...) {
@@ -1706,15 +1608,13 @@ void ClientService::getUDTs(thrift::RowSet& result,
     }
     m_client.getUDTs(result, metadataArgs, types);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("getUDTs", true, false, true, failedServers, sqle);
+    handleSnappyException("getUDTs", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("getUDTs", true, false, true, failedServers,
-        tte);
+    handleTTransportException("getUDTs", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("getUDTs", true, false, true, failedServers,
-        tpe);
+    handleTProtocolException("getUDTs", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("getUDTs", true, false, true, failedServers, te);
+    handleTException("getUDTs", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("getUDTs", stde);
   } catch (...) {
@@ -1739,17 +1639,13 @@ void ClientService::getBestRowIdentifier(thrift::RowSet& result,
     }
     m_client.getBestRowIdentifier(result, metadataArgs, scope, nullable);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("getBestRowIdentifier", true, false, true,
-        failedServers, sqle);
+    handleSnappyException("getBestRowIdentifier", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("getBestRowIdentifier", true, false, true,
-        failedServers, tte);
+    handleTTransportException("getBestRowIdentifier", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("getBestRowIdentifier", true, false, true,
-        failedServers, tpe);
+    handleTProtocolException("getBestRowIdentifier", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("getBestRowIdentifier", true, false, true, failedServers,
-        te);
+    handleTException("getBestRowIdentifier", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("getBestRowIdentifier", stde);
   } catch (...) {
@@ -1764,16 +1660,13 @@ void ClientService::closeResultSet(const int64_t cursorId) {
 
     m_client.closeResultSet(cursorId, m_token);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("closeResultSet", false, true, true, failedServers,
-        sqle);
+    handleSnappyException("closeResultSet", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("closeResultSet", false, true, true,
-        failedServers, tte);
+    handleTTransportException("closeResultSet", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("closeResultSet", false, true, true,
-        failedServers, tpe);
+    handleTProtocolException("closeResultSet", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("closeResultSet", false, true, true, failedServers, te);
+    handleTException("closeResultSet", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("closeResultSet", stde);
   } catch (...) {
@@ -1805,17 +1698,13 @@ void ClientService::cancelStatement(const int64_t stmtId) {
     }
     service->close();
   } catch (const thrift::SnappyException& sqle) {
-    service->handleSnappyException("cancelStatement", false, false, false,
-        failedServers, sqle);
+    service->handleSnappyException("cancelStatement", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    service->handleTTransportException("cancelStatement", false, false, false,
-        failedServers, tte);
+    service->handleTTransportException("cancelStatement", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    service->handleTProtocolException("cancelStatement", false, false, false,
-        failedServers, tpe);
+    service->handleTProtocolException("cancelStatement", failedServers, tpe);
   } catch (const TException& te) {
-    service->handleTException("cancelStatement", false, false, false,
-        failedServers, te);
+    service->handleTException("cancelStatement", failedServers, te);
   } catch (const std::exception& stde) {
     service->handleStdException("cancelStatement", stde);
   } catch (...) {
@@ -1830,16 +1719,13 @@ void ClientService::closeStatement(const int64_t stmtId) {
 
     m_client.closeStatement(stmtId, m_token);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("closeStatement", false, true, true, failedServers,
-        sqle);
+    handleSnappyException("closeStatement", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("closeStatement", false, true, true,
-        failedServers, tte);
+    handleTTransportException("closeStatement", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("closeStatement", false, true, true,
-        failedServers, tpe);
+    handleTProtocolException("closeStatement", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("closeStatement", false, true, true, failedServers, te);
+    handleTException("closeStatement", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("closeStatement", stde);
   } catch (...) {
@@ -1854,16 +1740,13 @@ void ClientService::bulkClose(const std::vector<thrift::EntityId>& entities) {
 
     m_client.bulkClose(entities);
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("bulkClose", false, true, false, failedServers,
-        sqle);
+    handleSnappyException("bulkClose", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("bulkClose", false, true, false,
-        failedServers, tte);
+    handleTTransportException("bulkClose", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("bulkClose", false, true, false,
-        failedServers, tpe);
+    handleTProtocolException("bulkClose", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("bulkClose", false, true, false, failedServers, te);
+    handleTException("bulkClose", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("bulkClose", stde);
   } catch (...) {
@@ -1886,14 +1769,13 @@ void ClientService::close() {
       m_transport = nullptr;
     }
   } catch (const thrift::SnappyException& sqle) {
-    handleSnappyException("close", false, true, false, failedServers, sqle);
+    handleSnappyException("close", failedServers, sqle);
   } catch (const TTransportException& tte) {
-    handleTTransportException("close", false, true, false, failedServers,
-        tte);
+    handleTTransportException("close", failedServers, tte);
   } catch (const protocol::TProtocolException& tpe) {
-    handleTProtocolException("close", false, true, false, failedServers, tpe);
+    handleTProtocolException("close", failedServers, tpe);
   } catch (const TException& te) {
-    handleTException("close", false, true, false, failedServers, te);
+    handleTException("close", failedServers, te);
   } catch (const std::exception& stde) {
     handleStdException("close", stde);
   } catch (...) {
@@ -1902,55 +1784,39 @@ void ClientService::close() {
 }
 
 void ClientService::updateFailedServersForCurrent(
-    std::set<thrift::HostAddress> &failedServers, bool checkAllFailed,
-    SQLException &failure) {
+    std::set<thrift::HostAddress>& failedServers, bool checkAllFailed,
+    SQLException& failure) {
   auto ret = failedServers.insert(m_currentHostAddr);
   try {
     if (!ret.second && checkAllFailed) {
-      ControlConnection &controlService =
+      ControlConnection& controlService =
           ControlConnection::getOrCreateControlConnection(m_connHosts, this,
               failure);
-      thrift::HostAddress pHost;
-      controlService.searchRandomServer(failedServers, failure, pHost);
+      controlService.searchRandomServer(failedServers, failure, this);
     }
   } catch (...) {
     // ignore any exceptions during update of failed server list
   }
 }
 
-bool ClientService::handleThriftException(const char* op, bool tryFailover,
-    bool ignoreNodeFailure, bool createNewConnection,
-    std::set<thrift::HostAddress>& failedServers, const TException& te) {
+bool ClientService::handleThriftException(const char* op,
+    std::set<thrift::HostAddress>& failedServers, const TException& te,
+    bool tryFailover, bool checkClosed) {
+  if (checkClosed) checkConnection(op);
 
-  bool result = true;
-  if (createNewConnection) {
-    checkConnection(op);
-  }
-  if (!m_loadBalance || m_isolationLevel != IsolationLevel::NONE) {
-    tryFailover = false;
-  }
-  if (tryFailover && ignoreNodeFailure) {
-    SQLException failure(std::move(GET_SQLEXCEPTION2(
-            SQLStateMessage::CONNECTION_FAILED_MSG,
-            m_currentHostAddr.toString().c_str(), te, op)));
+  if (tryFailover && m_loadBalance) {
+    SQLException failure(__FILE__, __LINE__,
+        *SQLStateMessage::CONNECTION_FAILED_MSG.getSQLState(),
+        SQLStateMessage::CONNECTION_FAILED_MSG.format(
+            m_currentHostAddr.toString().c_str(), te, op));
     updateFailedServersForCurrent(failedServers, true, failure);
-    result = false;
+    return false;
   }
-  /*
-  // [sumedh] New connection will not inherit session properties,
-  // current schema etc, so skipping this for now.
-
-  // create a new connection in any case for future operations
-  if (createNewConnection && m_loadBalance) {
-    updateFailedServersForCurrent(failedServers, false, se.what());
-    openConnection(m_currentHostAddr, failedServers, se);
-  }
-  */
-  return result;
+  return true;
 }
 
 std::shared_ptr<TSSLSocket> ClientService::createSSLSocket(
-    const std::string &host, int port, SSLSocketFactory &sslSocketFactory) {
+    const std::string& host, int port, SSLSocketFactory& sslSocketFactory) {
   std::string sslProperty = sslSocketFactory.getSSLPropertyName(
       SSLProperty::CLIENTAUTH);
   std::string propVal = sslSocketFactory.getSSLPropertyValue(sslProperty);
@@ -1984,7 +1850,7 @@ std::shared_ptr<TSSLSocket> ClientService::createSSLSocket(
   } else {
     // try to load system installed certificates if available
     bool loaded = false;
-    for (auto &certFile : _snappy_impl::s_systemCertificateBundles) {
+    for (auto& certFile : _snappy_impl::s_systemCertificateBundles) {
       boost::filesystem::path certPath = InternalUtils::getPath(certFile);
       if (boost::filesystem::exists(certPath)) {
         sslSocketFactory.loadTrustedCertificates(certFile.c_str(), nullptr);
@@ -1993,7 +1859,7 @@ std::shared_ptr<TSSLSocket> ClientService::createSSLSocket(
       }
     }
     if (!loaded) {
-      for (auto &certDir : _snappy_impl::s_systemCertificateDirs) {
+      for (auto& certDir : _snappy_impl::s_systemCertificateDirs) {
         boost::filesystem::path certPath = InternalUtils::getPath(certDir);
         if (boost::filesystem::exists(certPath)
             && boost::filesystem::is_directory(certPath)) {

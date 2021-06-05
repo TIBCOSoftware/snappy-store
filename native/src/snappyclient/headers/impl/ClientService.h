@@ -157,31 +157,31 @@ private:
 protected:
   virtual void checkConnection(const char* op);
 
-  virtual void handleSnappyException(const char* op, bool tryFailOver,
-      bool ignoreNodeFailure, bool createNewConnection,
+  virtual void handleSnappyException(const char* op,
       std::set<thrift::HostAddress>& failedServers,
-      const thrift::SnappyException& se);
+      const thrift::SnappyException& se, bool tryFailover = false,
+      bool checkClosed = true);
+
+  virtual void handleTTransportException(const char* op,
+      std::set<thrift::HostAddress>& failedServers,
+      const transport::TTransportException& tte, bool tryFailover = false,
+      bool checkClosed = true);
+
+  virtual void handleTProtocolException(const char* op,
+      std::set<thrift::HostAddress>& failedServers,
+      const protocol::TProtocolException& tpe, bool tryFailover = false,
+      bool checkClosed = true);
+
+  virtual void handleTException(const char* op,
+      std::set<thrift::HostAddress>& failedServers, const TException& te,
+      bool tryFailover = false, bool checkClosed = true);
 
   virtual void handleStdException(const char* op, const std::exception& stde,
       bool checkClosed = true);
 
-  virtual void handleTTransportException(const char* op, bool tryFailover,
-      bool ignoreNodeFailure, bool createNewConnection,
-      std::set<thrift::HostAddress>& failedServers,
-      const transport::TTransportException& tte);
-
-  virtual void handleTProtocolException(const char* op, bool tryFailover,
-      bool ignoreNodeFailure, bool createNewConnection,
-      std::set<thrift::HostAddress>& failedServers,
-      const protocol::TProtocolException& tpe);
-
-  virtual void handleTException(const char* op, bool tryFailover,
-      bool ignoreNodeFailure, bool createNewConnection,
-      std::set<thrift::HostAddress>& failedServers, const TException& te);
-
   virtual void handleUnknownException(const char* op, bool checkClosed = true);
 
-  BOOST_NORETURN void throwSQLExceptionForNodeFailure(const char* op,
+  [[noreturn]] void throwSQLExceptionForNodeFailure(const char* op,
       const std::exception& se, FailoverStatus status);
 
   void openConnection(const thrift::OpenConnectionArgs& connArgs,
@@ -208,9 +208,9 @@ protected:
    * false, then caller should skip throwing an exception. In other
    * cases this method itself will throw the required exception.
    */
-  virtual bool handleThriftException(const char* op, bool tryFailover,
-      bool ignoreNodeFailure, bool createNewConnection,
-      std::set<thrift::HostAddress>& failedServers, const TException& te);
+  virtual bool handleThriftException(const char* op,
+      std::set<thrift::HostAddress>& failedServers, const TException& te,
+      bool tryFailover, bool checkClosed);
 
 private:
   // the static hostName and hostId used by all connections

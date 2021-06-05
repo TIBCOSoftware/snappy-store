@@ -277,7 +277,7 @@ public:
   }
 
   template <typename T>
-  inline const T* getOrNull() const BOOST_NOEXCEPT {
+  inline const T* getOrNull() const noexcept {
     return boost::get<T>(&m_val);
   }
 
@@ -316,7 +316,7 @@ public:
     m_val = std::move(std::make_shared<Decimal>(std::move(val)));
   }
 
-  inline bool isNull() const BOOST_NOEXCEPT {
+  inline bool isNull() const noexcept {
     auto v = getOrNull<NullType>();
     return v && v->m_v;
   }

@@ -116,15 +116,9 @@ private:
   const thrift::SnappyException unexpectedError(const std::exception& e,
       const thrift::HostAddress& host);
 
-  void failoverExhausted(const std::set<thrift::HostAddress>& failedServers,
-      SQLException& failure);
-
-  void getLocatorPreferredServer(thrift::HostAddress& prefHostAddr,
-      std::set<thrift::HostAddress>& failedServers,
-      std::set<std::string> serverGroups);
-
-  void getPreferredServer(thrift::HostAddress& preferredServer,
-      SQLException& failure, ClientService* service, bool forFailover = false);
+  [[noreturn]] void failoverExhausted(
+      const std::set<thrift::HostAddress>& failedServers, SQLException& failure,
+      ClientService* service);
 
 public:
   static void staticInitialize();
@@ -133,13 +127,13 @@ public:
       const std::vector<thrift::HostAddress>& hostAddrs, ClientService* service,
       SQLException& failure);
 
-  void getPreferredServer(thrift::HostAddress& preferredServer,
-      SQLException& failure, std::set<thrift::HostAddress>& failedServers,
-      std::set<std::string>& serverGroups, ClientService* service,
-      bool forFailover = false);
+  thrift::HostAddress getPreferredServer(SQLException& failure,
+      std::set<thrift::HostAddress>& failedServers, ClientService* service,
+      bool forFailover);
 
-  void searchRandomServer(const std::set<thrift::HostAddress>& skipServers,
-      SQLException& failure, thrift::HostAddress& hostAddress);
+  thrift::HostAddress searchRandomServer(
+      const std::set<thrift::HostAddress>& skipServers, SQLException& failure,
+      ClientService* service);
 
   /**
    * Get the server-returned HostAddress for the given connected

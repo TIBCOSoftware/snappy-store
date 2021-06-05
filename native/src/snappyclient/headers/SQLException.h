@@ -115,6 +115,11 @@ namespace client {
       return m_severity;
     }
 
+    void setSQLState(const SQLState& state) noexcept {
+      m_state = state.getSQLState();
+      m_severity = static_cast<int32_t>(state.getSeverity());
+    }
+
     const SQLException* getNextException() const noexcept {
       return m_next;
     }

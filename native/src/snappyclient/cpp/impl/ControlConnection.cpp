@@ -137,8 +137,9 @@ ControlConnection& ControlConnection::getOrCreateControlConnection(
   std::shared_ptr<ControlConnection> newControlConn(
       new ControlConnection(service));
   {
-    thrift::HostAddress preferredServer;
-    newControlConn->getPreferredServer(preferredServer, failure, service, true);
+    std::set<thrift::HostAddress> failedServers;
+    auto preferredServer = newControlConn->getPreferredServer(failure,
+        failedServers, service, true);
     // check again if new control host already exists
     for (const auto& kv : allConnections) {
       const std::shared_ptr<ControlConnection>& controlConn = kv.second;
@@ -156,26 +157,10 @@ ControlConnection& ControlConnection::getOrCreateControlConnection(
   return *allConnections[service];
 }
 
-void ControlConnection::getLocatorPreferredServer(
-    thrift::HostAddress& prefHostAddr,
-    std::set<thrift::HostAddress>& failedServers,
-    std::set<std::string> serverGroups) {
-  m_controlLocator->getPreferredServer(prefHostAddr, m_snappyServerTypeSet,
-      serverGroups, failedServers);
-}
-
-void ControlConnection::getPreferredServer(thrift::HostAddress& preferredServer,
-    SQLException& failure, ClientService* service, bool forFailover) {
-  std::set<thrift::HostAddress> failedServers;
-  std::set<std::string> serverGroups;
-  return getPreferredServer(preferredServer, failure, failedServers,
-      serverGroups, service, forFailover);
-}
-
-void ControlConnection::getPreferredServer(thrift::HostAddress& preferredServer,
-    SQLException& failure, std::set<thrift::HostAddress>& failedServers,
-    std::set<std::string>& serverGroups, ClientService* service,
+thrift::HostAddress ControlConnection::getPreferredServer(SQLException& failure,
+    std::set<thrift::HostAddress>& failedServers, ClientService* service,
     bool forFailover) {
+  thrift::HostAddress preferredServer;
   if (!m_controlLocator) {
     failoverToAvailableHost(failedServers, false, failure, service);
     forFailover = true;
@@ -185,11 +170,11 @@ void ControlConnection::getPreferredServer(thrift::HostAddress& preferredServer,
   while (true) {
     try {
       if (forFailover) {
-        //refresh the full host list
+        // refresh the full host list
         std::vector<HostAddress> prefServerAndAllHosts;
         m_controlLocator->getAllServersWithPreferredServer(
-            prefServerAndAllHosts, m_snappyServerTypeSet, serverGroups,
-            failedServers);
+            prefServerAndAllHosts, m_snappyServerTypeSet,
+            service->getServerGroups(), failedServers);
         if (!prefServerAndAllHosts.empty()) {
           preferredServer = prefServerAndAllHosts[0];
           std::vector<HostAddress> allHosts(
@@ -198,27 +183,29 @@ void ControlConnection::getPreferredServer(thrift::HostAddress& preferredServer,
           refreshAllHosts(std::move(allHosts));
         }
       } else {
-        getLocatorPreferredServer(preferredServer, failedServers, serverGroups);
+        m_controlLocator->getPreferredServer(preferredServer,
+            m_snappyServerTypeSet, service->getServerGroups(), failedServers);
       }
       if (preferredServer.port <= 0) {
-        /*For this case we don't have a locator or locator unable to
+        /*
+         * For this case we don't have a locator or locator unable to
          * determine a preferred server, so choose some server randomly
          * as the "preferredServer". In case all servers have failed then
          * the search below will also fail.
          * Remove controlHost from failedServers since it is known to be
          * working at this point (e.g after a reconnect)
-         * */
+         */
         std::set<thrift::HostAddress> skipServers = failedServers;
         if (!failedServers.empty()
             && std::find(failedServers.begin(), failedServers.end(),
                 m_controlHost) != failedServers.end()) {
-          //don't change the original failure list since that is proper
+          // don't change the original failure list since that is proper
           // for the current operation but change for random server search
           skipServers.erase(m_controlHost);
         }
-        searchRandomServer(skipServers, failure, preferredServer);
+        preferredServer = searchRandomServer(skipServers, failure, service);
       }
-      return;
+      return preferredServer;
     } catch (thrift::SnappyException& snEx) {
       FailoverStatus status = NetConnection::getFailoverStatus(
           snEx.exceptionData.sqlState, snEx);
@@ -251,9 +238,9 @@ void ControlConnection::getPreferredServer(thrift::HostAddress& preferredServer,
   }
 }
 
-void ControlConnection::searchRandomServer(
+thrift::HostAddress ControlConnection::searchRandomServer(
     const std::set<thrift::HostAddress>& skipServers, SQLException& failure,
-    thrift::HostAddress& hostAddress) {
+    ClientService* service) {
 
   std::vector<thrift::HostAddress> searchServers;
   // Note: Do not use unordered_set -- reason is http://www.cplusplus.com/forum/general/198319/
@@ -263,19 +250,15 @@ void ControlConnection::searchRandomServer(
     // need random iterator here hence the vector above for searchServers
     std::random_shuffle(searchServers.begin(), searchServers.end());
   }
-  bool findIt = false;
   for (thrift::HostAddress host : searchServers) {
     if (host.serverType == m_snappyServerType
         && !(!skipServers.empty()
             && std::find(skipServers.begin(), skipServers.end(), host)
                 != skipServers.end())) {
-      hostAddress = host;
-      findIt = true;
-      break;
+      return host;
     }
   }
-  if (findIt) return;
-  failoverExhausted(skipServers, failure);
+  failoverExhausted(skipServers, failure, service);
 }
 
 void ControlConnection::failoverToAvailableHost(
@@ -371,7 +354,7 @@ void ControlConnection::failoverToAvailableHost(
         new thrift::LocatorServiceClient(inProtocol, outProtocol));
     return;
   }
-  failoverExhausted(failedServers, failure);
+  failoverExhausted(failedServers, failure, service);
 }
 
 const thrift::SnappyException ControlConnection::unexpectedError(
@@ -427,10 +410,17 @@ void ControlConnection::refreshAllHosts(
 }
 
 void ControlConnection::failoverExhausted(
-    const std::set<thrift::HostAddress>& failedServers, SQLException& failure) {
+    const std::set<thrift::HostAddress>& failedServers, SQLException& failure,
+    ClientService* service) {
   std::string reason;
-  // use original failure if it is not a null message
-  if (!failure.getReason().empty()) {
+  if (failure.getReason().empty()) {
+    if (service && service->m_isolationLevel != IsolationLevel::NONE) {
+      failure.setSQLState(SQLState::DATA_CONTAINER_CLOSED);
+    } else {
+      failure.setSQLState(SQLState::CONNECTION_FAILED);
+    }
+  } else {
+    // append to original failure reason if it is not a null message
     reason = failure.getReason();
     reason.append(LogWriter::NEWLINE).push_back('\t');
   }
