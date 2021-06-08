@@ -196,14 +196,6 @@ allprojects {
     }
   }
 
-  // force same output directory for IDEA and gradle
-  idea {
-    module {
-      outputDir file(project.sourceSets.main.java.outputDir)
-      testOutputDir file(project.sourceSets.test.java.outputDir)
-    }
-  }
-
   group = 'io.snappydata'
   version = PRODUCT_VERSION
 
@@ -211,6 +203,14 @@ allprojects {
   apply plugin: 'com.github.johnrengelman.shadow'
   apply plugin: 'maven'
   apply plugin: 'idea'
+
+  // force same output directory for IDEA and gradle
+  idea {
+    module {
+      outputDir file(project.sourceSets.main.java.outputDir)
+      testOutputDir file(project.sourceSets.test.java.outputDir)
+    }
+  }
 }
 
 def writeProperties(def parent, def name, def comment, def propsMap) {
@@ -418,21 +418,58 @@ subprojects {
     reports.junitXml.destination = file(workingDir)
   }
 
-  tasks.getByName("dunitTest") { it.configure {
-    dependsOn "${subprojectBase}storeProduct"
-    maxParallelForks = Math.max((int)Math.sqrt(Runtime.getRuntime().availableProcessors() + 1) + 1, 2)
-    minHeapSize = '2g'
-    maxHeapSize = '2g'
+  if (rootProject.name == 'snappy-store') {
+    task dunitTest(type:Test) {
+      dependsOn "${subprojectBase}storeProduct"
+      maxParallelForks = Math.max((int)Math.sqrt(Runtime.getRuntime().availableProcessors() + 1) + 1, 2)
+      minHeapSize = '2g'
+      maxHeapSize = '2g'
 
-    workingDir = "${testResultsBase}/dunit"
+      includes.clear()
 
-    binResultsDir = file("${workingDir}/binary/${project.name}")
-    reports.html.destination = file("${workingDir}/html/${project.name}")
-    reports.junitXml.destination = file(workingDir)
+      def single = System.getProperty('dunit.single')
+      if (single == null || single.length() == 0) {
+        single = rootProject.hasProperty('dunit.single') ?
+            rootProject.property('dunit.single') : null
+      }
+      if (single == null || single.length() == 0) {
+        includes = [ '**/*DUnitTest.class', '**/*DUnit.class' ]
+        excludes = [
+            '**/*Suite.class', '**/*DUnitSecurityTest.class', '**/NCJ*DUnit.class', '**/*HDFS*DUnit*.class',
+            '**/BackwardCompatabilityPart*DUnit.class', '**/*Perf*DUnit.class', '**/ListAggDUnit.class',
+            '**/SingleHop*TransactionDUnit.class', '**/*Parallel*AsyncEvent*DUnit.class',
+            '**/pivotal/gemfirexd/wan/**/*DUnit.class', '**/*DUnitRecoveryTest.class'
+        ]
+      } else {
+        include single
+      }
 
-    // try to avoid long "tail" in parallel runs where some workers finish early
-    forkEvery 10
-  } }
+      workingDir = "${testResultsBase}/dunit"
+
+      binResultsDir = file("${workingDir}/binary/${project.name}")
+      reports.html.destination = file("${workingDir}/html/${project.name}")
+      reports.junitXml.destination = file(workingDir)
+
+      // try to avoid long "tail" in parallel runs where some workers finish early
+      forkEvery 10
+    }
+  } else {
+    tasks.named('dunitTest').configure {
+      dependsOn "${subprojectBase}storeProduct"
+      maxParallelForks = Math.max((int)Math.sqrt(Runtime.getRuntime().availableProcessors() + 1) + 1, 2)
+      minHeapSize = '2g'
+      maxHeapSize = '2g'
+
+      workingDir = "${testResultsBase}/dunit"
+
+      binResultsDir = file("${workingDir}/binary/${project.name}")
+      reports.html.destination = file("${workingDir}/html/${project.name}")
+      reports.junitXml.destination = file(workingDir)
+
+      // try to avoid long "tail" in parallel runs where some workers finish early
+      forkEvery 10
+    }
+  }
 
   task wanTest(type:Test) {
     dependsOn "${subprojectBase}storeProduct"
