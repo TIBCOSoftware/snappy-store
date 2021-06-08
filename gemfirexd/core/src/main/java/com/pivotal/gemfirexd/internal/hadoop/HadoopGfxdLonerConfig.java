@@ -58,7 +58,7 @@ public class HadoopGfxdLonerConfig {
     this.namenodeUrl = bootProps.getProperty(Property.GFXD_HD_NAMENODEURL);
     this.hdfsHomeDirs = bootProps.getProperty(Property.GFXD_HD_HOMEDIR);
     // hdfs home directory cannot be null when booted as an loner instance 
-    // for hadoop map reduce and pxf 
+    // for hadoop map reduce
     assert this.hdfsHomeDirs != null;
     
     config = new Configuration();
