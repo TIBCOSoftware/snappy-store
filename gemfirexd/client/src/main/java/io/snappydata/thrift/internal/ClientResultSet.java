@@ -273,7 +273,7 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
     // doing reverse iteration to prefer column names at front in case of
     // column name clashes
     ColumnDescriptor desc;
-    String name, tableName;
+    String name, upper, tableName, fullName;
     for (ListIterator<ColumnDescriptor> itr = metadata.listIterator(size);
          itr.hasPrevious(); index--) {
       desc = itr.previous();
@@ -284,12 +284,30 @@ public final class ClientResultSet extends ClientFetchColumnValue implements
       tableName = desc.getFullTableName();
       // allow looking up using name, table.name and schema.table.name
       columnNameToIndex.put(name, index);
+      upper = SharedUtils.SQLToUpperCase(name);
+      // also add upper-case variant to map
+      if (!name.equals(upper)) {
+        columnNameToIndex.putIfAbsent(upper, index, -1);
+      }
       if (tableName != null && !tableName.isEmpty()) {
-        columnNameToIndex.put(tableName + '.' + name, index);
         dotIndex = tableName.indexOf('.');
-        if (dotIndex > 0) {
-          columnNameToIndex.put(tableName.substring(dotIndex + 1) + '.'
-              + name, index);
+        if (dotIndex != 0) {
+          fullName = tableName + '.' + name;
+          columnNameToIndex.put(fullName, index);
+          // also add upper-case variant to map
+          upper = SharedUtils.SQLToUpperCase(fullName);
+          if (!fullName.equals(upper)) {
+            columnNameToIndex.putIfAbsent(upper, index, -1);
+          }
+        }
+        if (dotIndex >= 0) {
+          fullName = tableName.substring(dotIndex + 1) + '.' + name;
+          columnNameToIndex.put(fullName, index);
+          // also add upper-case variant to map
+          upper = SharedUtils.SQLToUpperCase(fullName);
+          if (!fullName.equals(upper)) {
+            columnNameToIndex.putIfAbsent(upper, index, -1);
+          }
         }
       }
     }
