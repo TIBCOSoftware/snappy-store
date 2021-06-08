@@ -1463,18 +1463,6 @@
       <section name="com/pivotal/gemfirexd/tools/utils/">
         <attribute name="Sealed" value="false"/>
       </section>
-      <section name="com/pivotal/pxf/plugins/gemfirexd/">
-        <attribute name="Sealed" value="false"/>
-      </section>
-      <section name="com/pivotal/pxf/plugins/gemfirexd/">
-        <attribute name="Sealed" value="false"/>
-      </section>
-      <section name="com/pivotal/pxf/plugins/gemfirexd/">
-        <attribute name="Sealed" value="false"/>
-      </section>
-      <section name="com/pivotal/pxf/plugins/gemfirexd/util/">
-        <attribute name="Sealed" value="false"/>
-      </section>
       <section name="org/slf4j/">
         <attribute name="Sealed" value="false"/>
       </section>

@@ -24,24 +24,18 @@ dependencies {
   compile project(subprojectBase + 'gemfire-trove')
 }
 
-ext {
-  isEnterprise = 'false'
-}
 
 // Creates the version properties file and writes it to the resources dir
 task createVersionPropertiesFile(dependsOn: 'processResources') {
   def propertiesDir = file("${sourceSets.main.java.outputDir}/com/pivotal/gemfirexd/internal")
   outputs.file "${propertiesDir}/GemFireXDVersion.properties"
   inputs.file "${rootProject.projectDir}/build.gradle"
-  if (rootProject.hasProperty('snappydata.enterprise')) {
-    isEnterprise = 'true'
-  }
 
   doLast {
     def props = [
       'Product-Name'      : PRODUCT_NAME,
       'Product-Version'   : version,
-      'Enterprise-Edition': isEnterprise,
+      'Enterprise-Edition': 'true',
       'Build-Id'          : buildIdPrefix + buildNumber,
       'Build-Date'        : buildDate,
       'Build-Platform'    : "${osName.getName()} ${osVersion} ${osArch}",

@@ -1164,8 +1164,8 @@ public class utilMain implements java.security.PrivilegedAction {
 	public static String convertGfxdMessageToSnappy(String message) {
 		if (basePrompt.contains("snappy")) {
 			GemFireVersion.getInstance(GemFireXDVersion.class, SharedUtils.GFXD_VERSION_PROPERTIES);
-			String productEditionType = GemFireVersion.isEnterpriseEdition() ? "TIBCO ComputeDB" : "SnappyData";
-			return pattern.matcher(message).replaceAll(productEditionType);
+			// String productEditionType = GemFireVersion.isEnterpriseEdition() ? "TIBCO ComputeDB" : "SnappyData";
+			return pattern.matcher(message).replaceAll("SnappyData");
 		} else {
 			return message;
 		}
