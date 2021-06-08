@@ -35,8 +35,7 @@ allprojects {
 
   repositories {
     mavenCentral()
-    maven { url 'https://dl.bintray.com/big-data/maven' }
-    maven { url 'http://repo.spring.io/libs-release' }
+    maven { url 'https://repo.spring.io/libs-release' }
     maven { url 'https://app.camunda.com/nexus/content/repositories/public' }
   }
 
@@ -56,7 +55,6 @@ allprojects {
     memcachedVersion = '2.12.3'
     antVersion = '1.9.13'
     antlr2Version = '2.7.7'
-    pxfVersion = '2.5.1.0'
     osgiVersion = '6.0.0'
     jettyVersion = '9.2.26.v20180806'
     hadoopVersion = '3.2.0'
@@ -404,7 +402,6 @@ subprojects {
       exclude '**/*HDFS*.class'
       exclude '**/*DUnit*.class'
       exclude '**/derbyTesting/**'
-      exclude '**/pxf/**'
     } else {
       include single
     }
@@ -738,8 +735,7 @@ def includeJar(def jarFile) {
   return jarName.contains('jetty') || jarName.contains('spring') ||
     jarName.contains('hadoop') || jarName.contains('protobuf') ||
     jarName.contains('jersey') || jarName.contains('jetty') ||
-    jarName.contains('jsr305') || jarName.contains('pxf') ||
-    jarName.contains('jline')
+    jarName.contains('jsr305') || jarName.contains('jline')
 }
 
 jar.enabled = false

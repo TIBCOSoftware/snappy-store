@@ -26,7 +26,6 @@ dependencies {
   compileOnly files("${System.getProperty('java.home')}/../lib/tools.jar")
   compileOnly "xalan:xalan:${xalanVersion}"
   compileOnly "xalan:serializer:${xalanVersion}"
-  compileOnly "com.pivotal:pxf-api:${pxfVersion}"
   compile "org.osgi:org.osgi.core:${osgiVersion}"
   compile "org.apache.ant:ant:${antVersion}"
   compile "javax.servlet:javax.servlet-api:${servletAPIVersion}"
