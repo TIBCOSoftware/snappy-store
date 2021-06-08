@@ -45,7 +45,7 @@ class SSLSocketFactory;
 
 class SSLParameters {
 private:
-  static const std::set<std::string> s_sslProperties;
+  static const std::unordered_set<std::string> s_sslProperties;
 
   std::map<std::string, std::string> m_sslPropValMap;
   SSLProperty m_currentProperty;

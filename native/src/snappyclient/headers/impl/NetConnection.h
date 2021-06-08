@@ -60,7 +60,7 @@ namespace impl {
   class NetConnection {
   private:
     /** set of SQLState strings that denote failover should be done */
-    static std::set<std::string> failoverSQLStateSet;
+    static std::unordered_set<std::string> failoverSQLStateSet;
   public:
     static FailoverStatus getFailoverStatus(const std::string& sqlState,
         const std::exception& snappyEx);

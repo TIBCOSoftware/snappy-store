@@ -180,29 +180,53 @@ uint32_t ResultSet::getColumnPosition(const std::string& name) const {
     // populate the map on first call
     const std::vector<thrift::ColumnDescriptor>* descriptors =
         m_descriptors ? &m_rows->metadata : m_descriptors;
-    m_columnPositionMap = new std::map<std::string, uint32_t>();
+    m_columnPositionMap = new std::unordered_map<std::string, uint32_t>();
+    std::locale currentLocale;
     uint32_t index = 1;
-    for (std::vector<thrift::ColumnDescriptor>::const_iterator iter =
-        descriptors->begin(); iter != descriptors->end(); ++iter) {
-      const thrift::ColumnDescriptor& cd = *iter;
+    for (const auto& cd : *descriptors) {
       if (cd.__isset.name) {
-        m_columnPositionMap->operator [](cd.name) = index;
-        // also push back the fully qualified name
+        (*m_columnPositionMap)[cd.name] = index;
+        // add lower-case if different
+        auto lower = boost::algorithm::to_lower_copy(cd.name, currentLocale);
+        if (cd.name != lower) {
+          m_columnPositionMap->emplace(lower, index);
+        }
+        // allow looking up using name, table.name and schema.table.name
         if (cd.__isset.fullTableName) {
-          m_columnPositionMap->operator [](cd.fullTableName + "." + cd.name) =
-              index;
+          std::string fullName = cd.fullTableName + "." + cd.name;
+          (*m_columnPositionMap)[fullName] = index;
+          // add lower-case if different
+          lower = boost::algorithm::to_lower_copy(fullName, currentLocale);
+          if (fullName != lower) {
+            m_columnPositionMap->emplace(lower, index);
+          }
+          auto dotPos = cd.fullTableName.find('.');
+          if (dotPos != std::string::npos) {
+            fullName = cd.fullTableName.substr(dotPos + 1) + "." + cd.name;
+            (*m_columnPositionMap)[fullName] = index;
+            // add lower-case if different
+            lower = boost::algorithm::to_lower_copy(fullName, currentLocale);
+            if (fullName != lower) {
+              m_columnPositionMap->emplace(lower, index);
+            }
+          }
         }
       }
       index++;
     }
   }
-  std::map<std::string, uint32_t>::const_iterator findColumn =
-      m_columnPositionMap->find(name);
+  auto findColumn = m_columnPositionMap->find(name);
   if (findColumn != m_columnPositionMap->end()) {
     return findColumn->second;
   } else {
-    throw GET_SQLEXCEPTION2(SQLStateMessage::COLUMN_NOT_FOUND_MSG2,
-        name.c_str());
+    findColumn = m_columnPositionMap->find(
+        boost::algorithm::to_lower_copy(name));
+    if (findColumn != m_columnPositionMap->end()) {
+      return findColumn->second;
+    } else {
+      throw GET_SQLEXCEPTION2(SQLStateMessage::COLUMN_NOT_FOUND_MSG2,
+          name.c_str());
+    }
   }
 }
 
@@ -323,6 +347,16 @@ void ResultSet::cleanupRS() {
   }
 }
 
+void ResultSet::deleteData() noexcept {
+  Utils::handleExceptionsInDestructor("result set (delete data)", [&]() {
+    if (m_isOwner && m_rows) {
+      delete m_rows;
+    }
+    m_rows = nullptr;
+    cleanupRS();
+  });
+}
+
 bool ResultSet::cancelStatement() {
   if (m_rows) {
     const auto statementId = m_rows->statementId;
@@ -350,11 +384,7 @@ void ResultSet::close(bool closeStatement) {
       }
     }
   }
-  if (m_isOwner && m_rows) {
-    delete m_rows;
-  }
-  m_rows = nullptr;
-  cleanupRS();
+  deleteData();
 }
 
 ResultSet::~ResultSet() {
@@ -363,4 +393,5 @@ ResultSet::~ResultSet() {
   Utils::handleExceptionsInDestructor("result set", [&]() {
     close(false);
   });
+  deleteData();
 }

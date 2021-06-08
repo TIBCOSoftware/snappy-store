@@ -23,7 +23,7 @@ using namespace io::snappydata;
 using namespace io::snappydata::client::impl;
 using namespace io::snappydata::thrift;
 
-const std::set<std::string> SSLParameters::s_sslProperties {
+const std::unordered_set<std::string> SSLParameters::s_sslProperties {
     "protocol", "cipher-suites", "client-auth", "enabled-protocols", "keystore",
     "keystore-password", "certificate", "certificate-password", "truststore",
     "truststore-password" };

@@ -159,17 +159,17 @@ ControlConnection& ControlConnection::getOrCreateControlConnection(
 
 thrift::HostAddress ControlConnection::getPreferredServer(SQLException& failure,
     std::set<thrift::HostAddress>& failedServers, ClientService* service,
-    bool forFailover) {
+    bool updateHostList) {
   thrift::HostAddress preferredServer;
   if (!m_controlLocator) {
     failoverToAvailableHost(failedServers, false, failure, service);
-    forFailover = true;
+    updateHostList = true;
   }
   std::lock_guard<std::recursive_mutex> localGuard(m_lock);
   bool firstCall = true;
   while (true) {
     try {
-      if (forFailover) {
+      if (updateHostList) {
         // refresh the full host list
         std::vector<HostAddress> prefServerAndAllHosts;
         m_controlLocator->getAllServersWithPreferredServer(
@@ -188,17 +188,15 @@ thrift::HostAddress ControlConnection::getPreferredServer(SQLException& failure,
       }
       if (preferredServer.port <= 0) {
         /*
-         * For this case we don't have a locator or locator unable to
+         * For this case we don't have a locator or locator able to
          * determine a preferred server, so choose some server randomly
          * as the "preferredServer". In case all servers have failed then
          * the search below will also fail.
          * Remove controlHost from failedServers since it is known to be
          * working at this point (e.g after a reconnect)
          */
-        std::set<thrift::HostAddress> skipServers = failedServers;
-        if (!failedServers.empty()
-            && std::find(failedServers.begin(), failedServers.end(),
-                m_controlHost) != failedServers.end()) {
+        auto skipServers = failedServers;
+        if (!skipServers.empty()) {
           // don't change the original failure list since that is proper
           // for the current operation but change for random server search
           skipServers.erase(m_controlHost);
@@ -212,7 +210,7 @@ thrift::HostAddress ControlConnection::getPreferredServer(SQLException& failure,
       if (status == FailoverStatus::NONE) {
         throw snEx;
       } else if (status == FailoverStatus::RETRY) {
-        forFailover = true;
+        updateHostList = true;
         continue;
       } else {
         failure = std::move(GET_SQLEXCEPTION(snEx));
@@ -234,7 +232,7 @@ thrift::HostAddress ControlConnection::getPreferredServer(SQLException& failure,
     } catch (std::exception& ex) {
       throw unexpectedError(ex, m_controlHost);
     }
-    forFailover = true;
+    updateHostList = true;
   }
 }
 
@@ -243,7 +241,7 @@ thrift::HostAddress ControlConnection::searchRandomServer(
     ClientService* service) {
 
   std::vector<thrift::HostAddress> searchServers;
-  // Note: Do not use unordered_set -- reason is http://www.cplusplus.com/forum/general/198319/
+  // Note: use vector and not unordered_set for proper random_shuffle behaviour
   searchServers.insert(searchServers.end(), m_controlHostSet.begin(),
       m_controlHostSet.end());
   if (searchServers.size() > 2) {
@@ -252,9 +250,7 @@ thrift::HostAddress ControlConnection::searchRandomServer(
   }
   for (thrift::HostAddress host : searchServers) {
     if (host.serverType == m_snappyServerType
-        && !(!skipServers.empty()
-            && std::find(skipServers.begin(), skipServers.end(), host)
-                != skipServers.end())) {
+        && (skipServers.empty() || skipServers.find(host) == skipServers.end())) {
       return host;
     }
   }
@@ -426,7 +422,7 @@ void ControlConnection::failoverExhausted(
   }
   reason.append("Tried available servers: {");
   int index = 0;
-  for (auto const& host : failedServers) {
+  for (const auto& host : failedServers) {
     if (index > 0) reason.push_back(',');
     reason.append(host.toString());
     index++;
@@ -440,16 +436,16 @@ thrift::HostAddress ControlConnection::getConnectedHost(
     const thrift::HostAddress& hostAddr, bool allowCurrent) {
   std::lock_guard<std::recursive_mutex> lockGuard(m_lock);
 
-  auto it = std::find(m_controlHostSet.begin(), m_controlHostSet.end(),
-      hostAddr);
-  if (it != m_controlHostSet.end()) {
-    if (static_cast<int>(it->serverType) != 0) return *it;
+  auto result = m_controlHostSet.find(hostAddr);
+  if (result != m_controlHostSet.end()
+      && static_cast<int>(result->serverType) != 0) {
+    return *result;
   }
   // below is for cases where user-supplied a hostName in hostAddr but the
   // server returned IP addresses in the hostName field, so just pick up
   // the server marked as "current" with minimal port equality checking
   if (allowCurrent) {
-    for (auto& host : m_controlHostSet) {
+    for (const auto& host : m_controlHostSet) {
       if (host.__isset.isCurrent && host.isCurrent && hostAddr.__isset.isCurrent
           && hostAddr.isCurrent && static_cast<int>(host.serverType) != 0
           && host.port == hostAddr.port) {

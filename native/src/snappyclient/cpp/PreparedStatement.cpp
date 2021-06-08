@@ -108,7 +108,7 @@ std::unique_ptr<Result> PreparedStatement::execute(const Parameters& params) {
     // set back in PreparedStatement
     m_warnings = result->getWarnings();
   } else {
-    m_warnings.reset();
+    m_warnings = nullptr;
   }
   return result;
 }
@@ -122,7 +122,7 @@ int32_t PreparedStatement::executeUpdate(const Parameters& params) {
     // set back in PreparedStatement
     m_warnings.reset(new GET_SQLWARNING(result.warnings));
   } else {
-    m_warnings.reset();
+    m_warnings = nullptr;
   }
   if (result.__isset.updateCount) {
     return result.updateCount;
@@ -152,7 +152,7 @@ std::unique_ptr<ResultSet> PreparedStatement::executeQuery(
     // set back in PreparedStatement
     m_warnings = resultSet->getWarnings();
   } else {
-    m_warnings.reset();
+    m_warnings = nullptr;
   }
   return resultSet;
 }
@@ -167,7 +167,7 @@ std::vector<int32_t> PreparedStatement::executeBatch(
     // set back in PreparedStatement
     m_warnings.reset(new GET_SQLWARNING(result.warnings));
   } else {
-    m_warnings.reset();
+    m_warnings = nullptr;
   }
   return result.batchUpdateCounts;
 }
@@ -195,7 +195,7 @@ std::unique_ptr<ResultSet> PreparedStatement::getNextResults(
         // set back in PreparedStatement
         m_warnings = resultSet->getWarnings();
       } else {
-        m_warnings.reset();
+        m_warnings = nullptr;
       }
       return resultSet;
     }
@@ -245,11 +245,11 @@ bool PreparedStatement::cancel() {
 }
 
 void PreparedStatement::close() {
+  m_cursorId = thrift::snappydataConstants::INVALID_ID;
   if (m_prepResult.statementId != thrift::snappydataConstants::INVALID_ID) {
     m_service->closeStatement(m_prepResult.statementId);
+    m_prepResult.statementId = thrift::snappydataConstants::INVALID_ID;
   }
-  m_prepResult.statementId = thrift::snappydataConstants::INVALID_ID;
-  m_cursorId = thrift::snappydataConstants::INVALID_ID;
 }
 
 PreparedStatement::~PreparedStatement() {

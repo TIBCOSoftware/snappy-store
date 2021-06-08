@@ -38,6 +38,7 @@
 
 #include <exception>
 #include <mutex>
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -129,7 +130,7 @@ public:
 
   thrift::HostAddress getPreferredServer(SQLException& failure,
       std::set<thrift::HostAddress>& failedServers, ClientService* service,
-      bool forFailover);
+      bool updateHostList);
 
   thrift::HostAddress searchRandomServer(
       const std::set<thrift::HostAddress>& skipServers, SQLException& failure,

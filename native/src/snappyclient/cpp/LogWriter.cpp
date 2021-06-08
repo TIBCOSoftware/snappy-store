@@ -344,14 +344,13 @@ void LogWriter::close() noexcept {
             << std::endl;
       }
     }
-    m_rawStream.reset();
+    m_rawStream = nullptr;
   }
 }
 
 std::ostream& LogWriter::getRawStream() {
-  std::ostream* stream = m_rawStream.get();
-  if (stream) {
-    return *stream;
+  if (m_rawStream) {
+    return *m_rawStream;
   } else {
     // output to stdout by default
     return std::cout;

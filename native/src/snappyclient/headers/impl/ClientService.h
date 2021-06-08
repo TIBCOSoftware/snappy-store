@@ -138,6 +138,9 @@ private:
   protocol::TProtocol* createProtocol(thrift::HostAddress& hostAddr,
       const thrift::ServerType::type serverType, const bool useFramedTransport);
 
+  bool updateFailedServersForCurrent(
+      std::set<thrift::HostAddress>* failedServers, bool tryFailover);
+
   /**
    * Reconnect the underlying socket if connection had failed previously
    * and "auto-reconnect" is set to true.
@@ -145,12 +148,7 @@ private:
    * The "checkIsolation" argument checks if a transaction is currently
    * in progress and will skip creating the new connection if so.
    */
-  void reconnectToServerIfRequired(IsolationLevel checkIsolation,
-      std::set<thrift::HostAddress> failedServers);
-
-  void updateFailedServersForCurrent(
-      std::set<thrift::HostAddress>& failedServers, bool checkAllFailed,
-      SQLException& failure);
+  void reconnectToServerIfRequired(IsolationLevel checkIsolation);
 
   friend class ControlConnection;
 
@@ -158,28 +156,39 @@ protected:
   virtual void checkConnection(const char* op);
 
   virtual void handleSnappyException(const char* op,
-      std::set<thrift::HostAddress>& failedServers,
-      const thrift::SnappyException& se, bool tryFailover = false,
-      bool checkClosed = true);
+      const thrift::SnappyException& se,
+      std::set<thrift::HostAddress>* failedServers = nullptr,
+      bool tryFailover = false, bool checkClosed = true);
 
   virtual void handleTTransportException(const char* op,
-      std::set<thrift::HostAddress>& failedServers,
-      const transport::TTransportException& tte, bool tryFailover = false,
-      bool checkClosed = true);
+      const transport::TTransportException& tte,
+      std::set<thrift::HostAddress>* failedServers = nullptr,
+      bool tryFailover = false, bool checkClosed = true);
 
   virtual void handleTProtocolException(const char* op,
-      std::set<thrift::HostAddress>& failedServers,
-      const protocol::TProtocolException& tpe, bool tryFailover = false,
-      bool checkClosed = true);
+      const protocol::TProtocolException& tpe,
+      std::set<thrift::HostAddress>* failedServers = nullptr,
+      bool tryFailover = false, bool checkClosed = true);
 
-  virtual void handleTException(const char* op,
-      std::set<thrift::HostAddress>& failedServers, const TException& te,
+  virtual void handleTException(const char* op, const TException& te,
+      std::set<thrift::HostAddress>* failedServers = nullptr,
       bool tryFailover = false, bool checkClosed = true);
 
   virtual void handleStdException(const char* op, const std::exception& stde,
       bool checkClosed = true);
 
   virtual void handleUnknownException(const char* op, bool checkClosed = true);
+
+  /**
+   * Generic handling for thrift layer exceptions. If this returns true,
+   * then caller should assume that an exception depending on the
+   * specific type of thrift exception should be thrown. If this returns
+   * false, then caller should skip throwing an exception. In other
+   * cases this method itself will throw the required exception.
+   */
+  virtual bool handleThriftException(const char* op,
+      std::set<thrift::HostAddress>* failedServers, bool tryFailover,
+      bool checkClosed);
 
   [[noreturn]] void throwSQLExceptionForNodeFailure(const char* op,
       const std::exception& se, FailoverStatus status);
@@ -199,18 +208,7 @@ protected:
    * Should only be invoked for forceful closure of socket. This also
    * marks "m_connFailed" as true so subsequent operations will fail.
    */
-  void destroyTransport() noexcept;
-
-  /**
-   * Generic handling for thrift layer exceptions. If this returns true,
-   * then caller should assume that an exception depending on the
-   * specific type of thrift exception should be thrown. If this returns
-   * false, then caller should skip throwing an exception. In other
-   * cases this method itself will throw the required exception.
-   */
-  virtual bool handleThriftException(const char* op,
-      std::set<thrift::HostAddress>& failedServers, const TException& te,
-      bool tryFailover, bool checkClosed);
+  void closeTransport() noexcept;
 
 private:
   // the static hostName and hostId used by all connections

@@ -187,9 +187,7 @@ bool DatabaseMetaData::searchFeature(
 
 bool DatabaseMetaData::isFeatureSupported(
     DatabaseFeature::type feature) const {
-  const std::set<thrift::ServiceFeature::type>& supportedFeatures =
-      m_metadata.supportedFeatures;
-
+  const auto& supportedFeatures = m_metadata.supportedFeatures;
   return supportedFeatures.find(feature) != supportedFeatures.end();
 }
 
@@ -375,14 +373,12 @@ RowIdLifetime DatabaseMetaData::getDefaultRowIdLifeTime() const noexcept {
   return static_cast<RowIdLifetime>(m_metadata.rowIdLifeTime);
 }
 
-bool DatabaseMetaData::supportsConvert(SQLType fromType,
-    SQLType toType) const {
-  std::map<thrift::SnappyType::type, std::set<thrift::SnappyType::type> >
-      ::const_iterator result = m_metadata.supportedCONVERT.find(
-          static_cast<thrift::SnappyType::type>(fromType));
+bool DatabaseMetaData::supportsConvert(SQLType fromType, SQLType toType) const {
+  auto result = m_metadata.supportedCONVERT.find(
+      static_cast<thrift::SnappyType::type>(fromType));
   if (result != m_metadata.supportedCONVERT.end()) {
-    return result->second.find(static_cast<thrift::SnappyType::type>(
-        toType)) != result->second.end();
+    return result->second.find(static_cast<thrift::SnappyType::type>(toType))
+        != result->second.end();
   } else {
     return false;
   }

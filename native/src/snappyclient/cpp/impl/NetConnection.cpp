@@ -47,7 +47,7 @@ using namespace io::snappydata;
 using namespace io::snappydata::client;
 using namespace io::snappydata::client::impl;
 
-std::set<std::string> NetConnection::failoverSQLStateSet = { "08001",
+std::unordered_set<std::string> NetConnection::failoverSQLStateSet = { "08001",
  "08003", "08004", "08006", "X0J15", "X0Z32", "XN001", "XN014", "XN016",
  "58009", "58014", "58015", "58016", "58017", "57017", "58010", "30021",
  "XJ040", "XJ041", "XSDA3", "XSDA4", "XSDAJ", "XJ217" };

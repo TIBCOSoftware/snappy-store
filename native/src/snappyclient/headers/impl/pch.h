@@ -42,6 +42,7 @@ extern "C" {
 
 #include <algorithm>
 #include <fstream>
+#include <string>
 #include <thread>
 #include <vector>
 

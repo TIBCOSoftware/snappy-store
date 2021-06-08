@@ -596,6 +596,10 @@ public final class ClientService extends ReentrantLock implements LobService {
     return this.currentDefaultSchema;
   }
 
+  public final String getUserName() {
+    return this.connArgs.getUserName();
+  }
+
   final void setTXFlag(TransactionAttribute txFlag, boolean val) {
     this.txFlags[txFlag.ordinal()] = val ? (byte)1 : -1;
   }
@@ -2277,7 +2281,7 @@ public final class ClientService extends ReentrantLock implements LobService {
     // create a new connection to fire cancel since original statement
     // connection will be busy and locked; set load-balance to false
     OpenConnectionArgs connArgs = new OpenConnectionArgs(this.connArgs,
-        this.connectionProperties);
+        this.connectionProps);
     connArgs.getProperties().put(ClientAttribute.LOAD_BALANCE, "false");
     ClientService service = new ClientService(source.hostAddr, connArgs);
     try {

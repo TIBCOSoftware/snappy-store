@@ -454,7 +454,7 @@ int32_t Connection::executeUpdate(const std::string& sql,
     // set back in Connection
     m_warnings.reset(new GET_SQLWARNING(result.warnings));
   } else {
-    m_warnings.reset();
+    m_warnings = nullptr;
   }
   if (result.__isset.updateCount) {
     return result.updateCount;
@@ -474,7 +474,7 @@ std::unique_ptr<std::vector<int32_t> > Connection::executeBatch(
     // set back in Connection
     m_warnings.reset(new GET_SQLWARNING(result.warnings));
   } else {
-    m_warnings.reset();
+    m_warnings = nullptr;
   }
   if (result.__isset.batchUpdateCounts) {
     return std::unique_ptr<std::vector<int32_t> >(

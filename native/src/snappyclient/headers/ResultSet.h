@@ -64,7 +64,7 @@ namespace client {
     const bool m_scrollable;
     const bool m_isOwner;
     std::vector<thrift::ColumnDescriptor>* m_descriptors;
-    mutable std::map<std::string, uint32_t>* m_columnPositionMap;
+    mutable std::unordered_map<std::string, uint32_t>* m_columnPositionMap;
 
     void initRowData(bool clearData);
 
@@ -125,6 +125,8 @@ namespace client {
     void deleteRow(UpdatableRow* row, int32_t rowIndex);
 
     void cleanupRS();
+
+    void deleteData() noexcept;
 
     template<typename TRow, typename TRowP, bool updatable>
     class Itr final {
