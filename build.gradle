@@ -23,7 +23,7 @@ buildscript {
   }
   dependencies {
     classpath 'gradle.plugin.ca.coglinc2:javacc-gradle-plugin:3.0.0'
-    classpath 'com.github.jengelman.gradle.plugins:shadow:4.0.3'
+    classpath 'com.github.jengelman.gradle.plugins:shadow:5.2.0'
     classpath 'de.undercouch:gradle-download-task:3.4.3'
   }
 }
