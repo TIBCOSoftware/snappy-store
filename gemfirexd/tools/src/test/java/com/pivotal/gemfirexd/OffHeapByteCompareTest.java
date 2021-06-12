@@ -49,22 +49,21 @@ import com.pivotal.gemfirexd.internal.iapi.types.SQLChar;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 
 /**
- * 
  * @author asifs
- *
  */
 public class OffHeapByteCompareTest extends ByteCompareTest {
   private final int maxBatchSize;
-  private final Map<Integer, ReentrantReadWriteWriteShareLock>map ;
+  private final Map<Integer, ReentrantReadWriteWriteShareLock> map;
   private OffHeapByteSource[] byteSources;
-  public OffHeapByteCompareTest(String name) throws Exception{
+
+  public OffHeapByteCompareTest(String name) throws Exception {
     super(name);
     Class<?> clazz = OffHeapRegionEntryUtils.class;
     Field field = clazz.getDeclaredField("MAX_BATCH_SIZE");
     field.setAccessible(true);
     maxBatchSize = field.getInt(null);
-     map = new HashMap<Integer, ReentrantReadWriteWriteShareLock>();
-    
+    map = new HashMap<Integer, ReentrantReadWriteWriteShareLock>();
+
   }
 
   public static void main(String[] args) {
@@ -73,12 +72,12 @@ public class OffHeapByteCompareTest extends ByteCompareTest {
 
   @Override
   public void setUp() throws Exception {
-    super.setUp();   
-     System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "500m");
+    System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "500m");
     System.setProperty("gemfire."
         + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
     System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,
         "true");
+    super.setUp();
   }
 
   @Override

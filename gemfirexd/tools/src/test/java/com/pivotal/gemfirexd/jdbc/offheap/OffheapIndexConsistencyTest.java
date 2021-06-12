@@ -21,24 +21,19 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import org.apache.derbyTesting.junit.JDBC;
-
 import com.gemstone.gemfire.cache.EntryExistsException;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.internal.cache.CacheObserverHolder;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
 import com.gemstone.gemfire.internal.cache.xmlcache.RegionAttributesCreation;
-import com.pivotal.gemfirexd.TestUtil;
-import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserver;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverAdapter;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.management.GfxdManagementService;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
-import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedPreparedStatement;
 import com.pivotal.gemfirexd.jdbc.IndexConsistencyTest;
 import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
-import com.pivotal.gemfirexd.jdbc.JdbcTestBase.RegionMapClearDetector;
+
 /**
  * 
  * @author asif
@@ -53,24 +48,24 @@ public class OffheapIndexConsistencyTest extends IndexConsistencyTest {
 
   @Override
   public void setUp() throws Exception {
-    super.setUp();
     System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "500m");
-    System.setProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
-    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,"true");
+    System.setProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
+    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY, "true");
     LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER = true;
     rmcd = new JdbcTestBase.RegionMapClearDetector();
     CacheObserverHolder.setInstance(rmcd);
     GemFireXDQueryObserverHolder.putInstance(rmcd);
+    super.setUp();
   }
-  
+
   @Override
   public void tearDown() throws Exception {
-	LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER = false;
-	CacheObserverHolder.setInstance(null);
-	GemFireXDQueryObserverHolder.clearInstance();
-	super.tearDown();
+    LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER = false;
+    CacheObserverHolder.setInstance(null);
+    GemFireXDQueryObserverHolder.clearInstance();
+    super.tearDown();
     System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
-    System.clearProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
+    System.clearProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
     System.clearProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY);
   }
 
@@ -131,9 +126,9 @@ public class OffheapIndexConsistencyTest extends IndexConsistencyTest {
       GemFireXDQueryObserverHolder.putInstance(new GemFireXDQueryObserverAdapter());
       conn = getConnection();
       s = conn.createStatement();
-      s.execute("Drop table Child ");
+      s.execute("Drop table if exists Child");
       this.waitTillAllClear();
-      s.execute("Drop table INSTRUMENTS ");
+      s.execute("Drop table if exists INSTRUMENTS");
       this.waitTillAllClear();
     }
   }
@@ -176,9 +171,9 @@ public class OffheapIndexConsistencyTest extends IndexConsistencyTest {
       GemFireXDQueryObserverHolder.putInstance(new GemFireXDQueryObserverAdapter());
       conn = getConnection();
       s = conn.createStatement();
-      s.execute("Drop table Child ");
+      s.execute("Drop table if exists Child");
       this.waitTillAllClear();
-      s.execute("Drop table INSTRUMENTS ");
+      s.execute("Drop table if exists INSTRUMENTS");
       this.waitTillAllClear();
     }
   }
@@ -274,9 +269,9 @@ public class OffheapIndexConsistencyTest extends IndexConsistencyTest {
       throw sqle;
     } finally {
       GemFireXDQueryObserverHolder.putInstance(new GemFireXDQueryObserverAdapter());
-      s.execute("Drop table Child ");
+      s.execute("Drop table if exists Child");
       this.waitTillAllClear();
-      s.execute("Drop table INSTRUMENTS ");
+      s.execute("Drop table if exists INSTRUMENTS");
       this.waitTillAllClear();
     }
 
@@ -368,9 +363,9 @@ public class OffheapIndexConsistencyTest extends IndexConsistencyTest {
       throw sqle;
     } finally {
       GemFireXDQueryObserverHolder.putInstance(new GemFireXDQueryObserverAdapter());
-      s.execute("Drop table Child ");
+      s.execute("Drop table if exists Child");
       this.waitTillAllClear();
-      s.execute("Drop table INSTRUMENTS ");
+      s.execute("Drop table if exists INSTRUMENTS");
       this.waitTillAllClear();
     }
 

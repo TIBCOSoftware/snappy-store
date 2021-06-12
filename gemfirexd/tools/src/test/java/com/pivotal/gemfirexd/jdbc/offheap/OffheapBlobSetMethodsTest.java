@@ -28,7 +28,8 @@ import junit.framework.TestSuite;
 import junit.textui.TestRunner;
 
 public class OffheapBlobSetMethodsTest extends BlobSetMethodsTest {
-  private RegionMapClearDetector rmcd = null;	
+
+  private RegionMapClearDetector rmcd = null;
 
   public static void main(String[] args) {
     TestRunner.run(new TestSuite(OffheapBlobSetMethodsTest.class));
@@ -40,14 +41,14 @@ public class OffheapBlobSetMethodsTest extends BlobSetMethodsTest {
 
   @Override
   public void setUp() throws Exception {
-    super.setUp();
     System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "500m");
-    System.setProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
-    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,"true");
+    System.setProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
+    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY, "true");
     LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER = true;
     rmcd = new JdbcTestBase.RegionMapClearDetector();
     CacheObserverHolder.setInstance(rmcd);
     GemFireXDQueryObserverHolder.putInstance(rmcd);
+    super.setUp();
   }
 
   @Override
@@ -68,21 +69,14 @@ public class OffheapBlobSetMethodsTest extends BlobSetMethodsTest {
   public String getSuffix() {
     return " offheap ";
   }
-  
+
   @Override
   public void waitTillAllClear() {
-	try {  
-    rmcd.waitTillAllClear();
-	}catch(InterruptedException ie) {
-	  Thread.currentThread().interrupt();
-	  throw new GemFireXDRuntimeException(ie);
-	}
+    try {
+      rmcd.waitTillAllClear();
+    } catch (InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      throw new GemFireXDRuntimeException(ie);
+    }
   }
-  
-  @Override
-  protected void doEndOffHeapValidations() throws Exception {
-    //TODO:Asif: Remove this once the LOBS are correctly accounted for 
-  }
-
-
 }

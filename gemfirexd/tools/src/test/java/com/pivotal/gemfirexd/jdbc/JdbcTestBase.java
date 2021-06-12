@@ -178,6 +178,10 @@ public class JdbcTestBase extends TestUtil implements UnitTest {
             } catch (Exception ignore) {
             }
           }
+          try {
+            SimpleMemoryAllocatorImpl.freeOffHeapMemory();
+          } catch (Exception ignore) {
+          }
           System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
           System.clearProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
           System.clearProperty("gemfirexd.TEST_FLAG_OFFHEAP_ENABLE");

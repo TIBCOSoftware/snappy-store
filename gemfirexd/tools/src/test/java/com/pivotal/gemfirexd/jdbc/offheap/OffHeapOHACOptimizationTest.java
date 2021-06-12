@@ -77,8 +77,8 @@ import com.pivotal.gemfirexd.internal.impl.sql.execute.SortResultSet;
 import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
 
 public class OffHeapOHACOptimizationTest extends JdbcTestBase {
-  private RegionMapClearDetector rmcd = null;	
-	 	
+  private RegionMapClearDetector rmcd = null;
+
   public OffHeapOHACOptimizationTest(String name) {
     super(name);
   }
@@ -94,30 +94,29 @@ public class OffHeapOHACOptimizationTest extends JdbcTestBase {
 
   @Override
   public void setUp() throws Exception {
-    super.setUp();
     System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "500m");
     System.setProperty("gemfire."
         + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
     System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,
-        "true");  
+        "true");
     LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER = true;
     rmcd = new JdbcTestBase.RegionMapClearDetector();
     CacheObserverHolder.setInstance(rmcd);
     GemFireXDQueryObserverHolder.putInstance(rmcd);
+    super.setUp();
   }
 
   @Override
   public void tearDown() throws Exception {
-	LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER = false;
-	CacheObserverHolder.setInstance(null);
-	GemFireXDQueryObserverHolder.clearInstance(); 
+    LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER = false;
+    CacheObserverHolder.setInstance(null);
+    GemFireXDQueryObserverHolder.clearInstance();
     super.tearDown();
     System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
     System.clearProperty("gemfire."
         + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
     System.clearProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY);
   }
-  
   
   ////////////////////////////////order by test///////////////////////////////////////////////
   public void testOrderByUnsortedRowsOptimizedDueToProjection_pr()
