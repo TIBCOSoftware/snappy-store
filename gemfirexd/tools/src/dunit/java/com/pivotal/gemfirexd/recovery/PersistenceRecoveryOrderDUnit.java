@@ -154,11 +154,10 @@ public class PersistenceRecoveryOrderDUnit extends DistributedSQLTestBase {
       assertEquals(2, count);
     }*/
 
-    restartVMNums(-2);
+    restartVMNums(-1, -2);
     for (int i = 8; i >= 1; i--) {
       st1.execute("DROP TABLE T" + i);
     }
-    stopVMNums(-2);
   }
 
   public void testParallelInitializationColocatedTable2() throws Exception {

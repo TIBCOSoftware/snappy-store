@@ -411,6 +411,7 @@ public class WanTest extends JdbcTestBase {
     // set the base dir property via the conenction params & see that it is
     // present as
     // system property
+    System.clearProperty(GfxdConstants.SYS_PERSISTENT_DIR_PROP);
     Properties info = new Properties();
     final char fileSeparator = File.separatorChar;
     String dir = "." + fileSeparator + "testGfxdBaseDirPathSetViaProperties";

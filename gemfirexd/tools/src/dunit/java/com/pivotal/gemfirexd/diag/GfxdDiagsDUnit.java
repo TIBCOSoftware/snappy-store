@@ -351,18 +351,20 @@ public class GfxdDiagsDUnit extends DistributedSQLTestBase {
     // first one client with nothing
     assertTrue("expected 4 results but failed on " + (++numResults), rs.next());
     assertEquals("accessor(normal)", rs.getString(1));
-    assertEquals(null, rs.getString(2));
+    assertNull(rs.getString(2));
     assertEquals("", rs.getString(3));
     // next a server with nothing
     assertTrue("expected 4 results but failed on " + (++numResults), rs.next());
     assertEquals("datastore(normal)", rs.getString(1));
-    assertEquals(null, rs.getString(2));
+    assertNull(rs.getString(2));
     assertEquals("", rs.getString(3));
     // next a server with network server
     assertTrue("expected 4 results but failed on " + (++numResults), rs.next());
     assertEquals("datastore(normal)", rs.getString(1));
-    assertEquals(null, rs.getString(2));
-    assertEquals("localhost/127.0.0.1[" + netPort + ']', rs.getString(3));
+    assertNull(rs.getString(2));
+    String netServer = rs.getString(3);
+    assertTrue(netServer.equals("localhost/127.0.0.1[" + netPort + ']') ||
+        netServer.equals("127.0.0.1/127.0.0.1[" + netPort + ']'));
     // last hydra's GemFireXD locator
     assertTrue("expected 4 results but failed on " + (++numResults), rs.next());
     assertEquals("locator(normal)", rs.getString(1));

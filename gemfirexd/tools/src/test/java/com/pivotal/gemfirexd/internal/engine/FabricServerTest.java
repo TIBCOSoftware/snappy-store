@@ -307,9 +307,9 @@ public class FabricServerTest extends TestUtil implements UnitTest {
       final ResultSet rs = conn.createStatement().executeQuery(
           "select id from sys.members");
       assertTrue(rs.next());
-      assertTrue("member ID " + rs.getString(1)
-          + " does not contain localhost",
-          rs.getString(1).contains("localhost"));
+      final String id = rs.getString(1);
+      assertTrue("member ID " + id + " does not contain localhost or 127.0.0.1",
+          id.contains("localhost") || id.contains("127.0.0.1"));
       assertFalse(rs.next());
       conn.close();
     } finally {

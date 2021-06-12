@@ -452,7 +452,7 @@ public class OffHeapRegionEntryUtils {
 
     SimpleMemoryAllocatorImpl.skipRefCountTracking();
     @Retained @Released Object val = RegionEntryUtils
-        .convertOffHeapEntrytoByteSourceRetain(re, null, false, true);
+        .convertOffHeapEntrytoByteSourceRetain(re, null, null, false, true);
     SimpleMemoryAllocatorImpl.unskipRefCountTracking();
     try {
       if (val instanceof OffHeapByteSource) {

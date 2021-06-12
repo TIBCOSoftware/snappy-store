@@ -348,16 +348,18 @@ subprojects {
   // Here we want to disable all transitive dependencies on external artifacts.  This
   // allows us to lock down library versions.  However, we want project dependencies to
   // be transitive such that the libraries of a dependent project are automatically included.
-  configurations.all {
-    dependencies.all { dep ->
-      if (dep instanceof ModuleDependency && !(dep instanceof ProjectDependency)) {
-        dep.transitive = false
+  configurations.all { conf ->
+    if (!conf.name.startsWith('test')) {
+      dependencies.all { dep ->
+        if (dep instanceof ModuleDependency && !(dep instanceof ProjectDependency)) {
+          dep.transitive = false
+        }
       }
-    }
-    resolutionStrategy {
-      // fail eagerly on version conflict (includes transitive dependencies)
-      // e.g. multiple different versions of the same dependency (group and name are equal)
-      failOnVersionConflict()
+      resolutionStrategy {
+        // fail eagerly on version conflict (includes transitive dependencies)
+        // e.g. multiple different versions of the same dependency (group and name are equal)
+        failOnVersionConflict()
+      }
     }
   }
 
@@ -384,7 +386,7 @@ subprojects {
 
   test {
     dependsOn "${subprojectBase}storeProduct"
-    maxParallelForks = Runtime.getRuntime().availableProcessors()
+    maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
     minHeapSize = '1g'
     maxHeapSize = '1g'
 

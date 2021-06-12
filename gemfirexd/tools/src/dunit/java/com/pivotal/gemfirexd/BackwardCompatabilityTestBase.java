@@ -317,7 +317,7 @@ public abstract class BackwardCompatabilityTestBase extends
     }
   }
 
-  private static String getGFXDVersionDir(String versionDir) {
+  protected static String getGFXDVersionDir(String versionDir) {
     return ABSOLUTE_PATH_PAT.matcher(versionDir).find()
         ? versionDir : GCM_WHERE + '/' + versionDir;
   }

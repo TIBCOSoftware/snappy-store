@@ -435,7 +435,7 @@ public class BugsTest extends JdbcTestBase {
       Statement st = conn.createStatement();
       // Test local directory
       long currTime = System.nanoTime();
-      String locDirName = "/tmp/" + System.getenv().get("USER") + "-"
+      String locDirName = "/var/tmp/" + System.getenv().get("USER") + "-"
           + currTime;
       File locDir = new File(locDirName);
       assertTrue(locDir.mkdir());
@@ -462,7 +462,7 @@ public class BugsTest extends JdbcTestBase {
         }
       }
       File remDir = new File(remDirName);
-      getLogger().info("Using remote directory " + remDir.getAbsolutePath());
+      getLogger().info("Using (possible) remote directory " + remDir.getAbsolutePath());
       assertTrue(remDir.mkdir());
       this.deleteDirs[1] = remDir.getAbsolutePath();
       st.execute("create diskstore teststore_loc ('" + locDirName + "') MAXLOGSIZE 2");
@@ -486,8 +486,8 @@ public class BugsTest extends JdbcTestBase {
       rs.next();
       assertEquals(5000, rs.getInt(1));
 
-      HashSet<String> preBlowDoneDirs = new HashSet<>();
-      preBlowDoneDirs.addAll(NativeCalls.TEST_CHK_FALLOC_DIRS);
+      HashSet<String> preBlowDoneDirs =
+          new HashSet<>(NativeCalls.TEST_CHK_FALLOC_DIRS);
       NativeCalls.TEST_CHK_FALLOC_DIRS.clear();
       // Test remote now
       NativeCalls.TEST_NO_FALLOC_DIRS = new HashSet<>();
@@ -506,8 +506,8 @@ public class BugsTest extends JdbcTestBase {
       rs = st.getResultSet();
       rs.next();
       assertEquals(5000, rs.getInt(1));
-      HashSet<String> preBlowNotDoneDirs = new HashSet<>();
-      preBlowNotDoneDirs.addAll(NativeCalls.TEST_NO_FALLOC_DIRS);
+      HashSet<String> preBlowNotDoneDirs =
+          new HashSet<>(NativeCalls.TEST_NO_FALLOC_DIRS);
       if (hasExportDir) {
         assertTrue(NativeCalls.TEST_CHK_FALLOC_DIRS.isEmpty());
         assertEquals(preBlowDoneDirs.size(), preBlowNotDoneDirs.size());

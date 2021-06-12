@@ -1120,8 +1120,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         }
         schemaName = rcd.getSourceSchemaName();
         tableName = rcd.getSourceTableName();
-        fullTableName = schemaName != null ? (schemaName + '.' + tableName)
-            : tableName;
+        fullTableName = schemaName != null && !schemaName.isEmpty()
+            ? (schemaName + '.' + tableName) : tableName;
         columnDesc.setFullTableName(fullTableName);
 
         int nullable = DataTypeUtilities.isNullable(dtd);
@@ -1151,36 +1151,23 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         if (jdbcType == Types.JAVA_OBJECT) {
           typeName = typeId.getSQLTypeName();
           className = typeId.getResultSetMetaDataTypeName();
-          columnDesc.setUdtTypeAndClassName(typeName
-              + (className != null ? ":" + className : ""));
+          columnDesc.setUdtTypeAndClassName(
+              className != null ? typeName + ':' + className : typeName);
         }
         descriptors.add(columnDesc);
       }
     } else {
       String schemaName, tableName, fullTableName;
       String typeName, className;
-      String prevSchemaName = null, prevTableName = null;
-      String prevTypeName = null, prevClassName = null;
       int jdbcType, scale;
       for (int colIndex = 1; colIndex <= columnCount; colIndex++) {
         ColumnDescriptor columnDesc = new ColumnDescriptor();
         columnDesc.setName(rsmd.getColumnName(colIndex));
         schemaName = rsmd.getSchemaName(colIndex);
         tableName = rsmd.getTableName(colIndex);
-        if (colIndex > 1) {
-          if ((schemaName != null && !schemaName.equals(prevSchemaName))
-              || (tableName != null && !tableName.equals(prevTableName))) {
-            fullTableName = schemaName != null ? (schemaName + '.' + tableName)
-                : tableName;
-            columnDesc.setFullTableName(fullTableName);
-          }
-        } else {
-          fullTableName = schemaName != null ? (schemaName + '.' + tableName)
-              : tableName;
-          columnDesc.setFullTableName(fullTableName);
-        }
-        prevSchemaName = schemaName;
-        prevTableName = tableName;
+        fullTableName = schemaName != null && !schemaName.isEmpty()
+            ? (schemaName + '.' + tableName) : tableName;
+        columnDesc.setFullTableName(fullTableName);
 
         int nullable = rsmd.isNullable(colIndex);
         if (nullable == ResultSetMetaData.columnNullable) {
@@ -1208,13 +1195,8 @@ public final class SnappyDataServiceImpl extends LocatorServiceImpl implements
         if (jdbcType == Types.JAVA_OBJECT) {
           typeName = rsmd.getColumnTypeName(colIndex);
           className = rsmd.getColumnClassName(colIndex);
-          if ((typeName != null && !typeName.equals(prevTypeName))
-              || (className != null && !className.equals(prevClassName))) {
-            columnDesc.setUdtTypeAndClassName(typeName
-                + (className != null ? ":" + className : ""));
-          }
-          prevTypeName = typeName;
-          prevClassName = className;
+          columnDesc.setUdtTypeAndClassName(
+              className != null ? typeName + ':' + className : typeName);
         }
         descriptors.add(columnDesc);
       }

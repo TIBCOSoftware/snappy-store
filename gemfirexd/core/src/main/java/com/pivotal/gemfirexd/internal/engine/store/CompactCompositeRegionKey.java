@@ -305,7 +305,7 @@ public final class CompactCompositeRegionKey extends CompactCompositeKey
         }
         else if (OffHeapRegionEntry.class.isAssignableFrom(rclass)) {
           retVal = RegionEntryUtils.convertOffHeapEntrytoByteSourceRetain(
-              (OffHeapRegionEntry)retVal, null, false, true);
+              (OffHeapRegionEntry)retVal, null, null, false, true);
         }
       }
     }

@@ -7698,8 +7698,7 @@ class DRDAConnThread extends Thread {
   private final void addServerInformation(final StringBuilder sb) {
     final java.net.Socket sock = this.session.clientSocket;
     final java.net.InetAddress addr = sock.getLocalAddress();
-    final String host = addr.getHostName();
-    sb.append("(Server=").append(host != null ? host : addr.getHostAddress());
+    sb.append("(Server=").append(addr);
     sb.append('[').append(sock.getLocalPort()).append("],");
     sb.append(currentThread()).append(") ");
   }

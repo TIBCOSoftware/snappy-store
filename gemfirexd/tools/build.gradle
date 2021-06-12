@@ -69,6 +69,11 @@ dependencies {
   compileOnly "org.eclipse.jetty:jetty-xml:${jettyVersion}"
   compileOnly "com.google.code.findbugs:jsr305:${jsr305Version}"
 
+  testCompile "org.apache.hadoop:hadoop-annotations:${hadoopVersion}"
+  testCompile "org.apache.hadoop:hadoop-auth:${hadoopVersion}"
+  testCompile "org.apache.hadoop:hadoop-common:${hadoopVersion}"
+  testCompile "org.apache.hadoop:hadoop-hdfs:${hadoopVersion}"
+  testCompile "org.apache.hadoop:hadoop-mapreduce-client-core:${hadoopVersion}"
   testCompile "org.apache.hbase:hbase-common:${hbaseVersion}"
   testCompile "org.apache.hbase:hbase-protocol:${hbaseVersion}"
   testCompile "org.apache.hbase:hbase-client:${hbaseVersion}"
@@ -91,9 +96,7 @@ dependencies {
   testCompile "oro:oro:${oroVersion}"
   testCompile "dom4j:dom4j:${dom4jVersion}"
   // Embedded Apache Directory Server for LDAP tests
-  testCompile(group: 'org.apache.directory.server', name: 'apacheds-all', version: apacheDsVersion) {
-    exclude(group: 'org.apache.directory.shared', module: 'shared-ldap-schema')
-  }
+  testCompile "org.apache.directory.server:apacheds-server-jndi:${apacheDsVersion}"
 
   testRuntime project(subprojectBase + 'snappydata-store-core')
 }

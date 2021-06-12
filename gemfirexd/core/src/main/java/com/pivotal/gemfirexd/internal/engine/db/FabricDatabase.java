@@ -1385,14 +1385,14 @@ public final class FabricDatabase implements ModuleControl,
         for (GemFireContainer container : uninitializedContainers) {
           if (logger.infoEnabled() &&
               !Misc.isSnappyHiveMetaTable(container.getSchemaName())) {
-            logger.info("FabricDatabase: start initializing container: "
+            logger.info("FabricDatabase.reconnect: start initializing container: "
                 + container);
           }
           container.initializeRegion();
           // wait for notification
           if (logger.infoEnabled() &&
               !Misc.isSnappyHiveMetaTable(container.getSchemaName())) {
-            logger.info("FabricDatabase: end initializing container: "
+            logger.info("FabricDatabase.reconnect: end initializing container: "
                 + container);
           }
         }
@@ -1411,7 +1411,6 @@ public final class FabricDatabase implements ModuleControl,
           // check if one is done or goes into WAITING, then submit next
           final FabricService service = FabricServiceManager
               .currentFabricServiceInstance();
-          ReentrantLock lock = new ReentrantLock();
           Future<Boolean> f = execService.submit(() -> {
             boolean initialized = false;
             try {
@@ -1481,7 +1480,7 @@ public final class FabricDatabase implements ModuleControl,
           for (GemFireContainer container : failed) {
             if (logger.infoEnabled() &&
                 !Misc.isSnappyHiveMetaTable(container.getSchemaName())) {
-              logger.info("FabricDatabase: start initializing container: "
+              logger.info("FabricDatabase.retry: start initializing container: "
                   + container);
             }
 
@@ -1489,7 +1488,7 @@ public final class FabricDatabase implements ModuleControl,
 
             if (logger.infoEnabled() &&
                 !Misc.isSnappyHiveMetaTable(container.getSchemaName())) {
-              logger.info("FabricDatabase: end initializing container: "
+              logger.info("FabricDatabase.retry: end initializing container: "
                   + container);
             }
           }
