@@ -185,7 +185,7 @@ uint32_t ResultSet::getColumnPosition(const std::string& name) const {
     uint32_t index = 1;
     for (const auto& cd : *descriptors) {
       if (cd.__isset.name) {
-        (*m_columnPositionMap)[cd.name] = index;
+        m_columnPositionMap->emplace(cd.name, index);
         // add lower-case if different
         auto lower = boost::algorithm::to_lower_copy(cd.name, currentLocale);
         if (cd.name != lower) {
@@ -193,17 +193,19 @@ uint32_t ResultSet::getColumnPosition(const std::string& name) const {
         }
         // allow looking up using name, table.name and schema.table.name
         if (cd.__isset.fullTableName) {
-          std::string fullName = cd.fullTableName + "." + cd.name;
-          (*m_columnPositionMap)[fullName] = index;
-          // add lower-case if different
-          lower = boost::algorithm::to_lower_copy(fullName, currentLocale);
-          if (fullName != lower) {
-            m_columnPositionMap->emplace(lower, index);
-          }
           auto dotPos = cd.fullTableName.find('.');
+          if (dotPos != 0) {
+            auto fullName = cd.fullTableName + "." + cd.name;
+            m_columnPositionMap->emplace(fullName, index);
+            // add lower-case if different
+            lower = boost::algorithm::to_lower_copy(fullName, currentLocale);
+            if (fullName != lower) {
+              m_columnPositionMap->emplace(lower, index);
+            }
+          }
           if (dotPos != std::string::npos) {
-            fullName = cd.fullTableName.substr(dotPos + 1) + "." + cd.name;
-            (*m_columnPositionMap)[fullName] = index;
+            auto fullName = cd.fullTableName.substr(dotPos + 1) + "." + cd.name;
+            m_columnPositionMap->emplace(fullName, index);
             // add lower-case if different
             lower = boost::algorithm::to_lower_copy(fullName, currentLocale);
             if (fullName != lower) {

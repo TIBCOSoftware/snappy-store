@@ -92,7 +92,8 @@ namespace client {
       if (m_descriptor.__isset.fullTableName) {
         const std::string& tableName = m_descriptor.fullTableName;
         size_t dotPos;
-        if ((dotPos = tableName.find('.')) != std::string::npos) {
+        if ((dotPos = tableName.find('.')) != std::string::npos &&
+            dotPos != 0) {
           return tableName.substr(0, dotPos);
         }
       }
@@ -112,8 +113,10 @@ namespace client {
       return "";
     }
 
-    const std::string& getFullTableName() const noexcept {
-      return m_descriptor.fullTableName;
+    std::string getFullTableName() const noexcept {
+      const std::string& fullName = m_descriptor.fullTableName;
+      return fullName.empty() || fullName[0] != '.'
+          ? fullName : fullName.substr(1);
     }
 
     ColumnNullability getNullability() const noexcept {
