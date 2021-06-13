@@ -294,8 +294,15 @@ public class GfxdSerialWanDUnit extends GfxdWanTestBase {
           + "match the result from GemFireXD.");
     }
   }
-  
+
   public void testSerialWanNewDunitConfig() throws Exception {
+    // skip the test if number of available VMs is less than 16
+    String numVMs = System.getProperty("gemfire.DUnitLauncher.NUM_VMS");
+    if (numVMs != null && Integer.parseInt(numVMs) < 16) {
+      getLogWriter().warn("testSerialWanNewDunitConfig: skipping for JVMs = " + numVMs);
+      return;
+    }
+
     startSites();
     addExpectedException(new String[] { SITE_A, SITE_B, SITE_C, SITE_D },
         new Object[] { FunctionExecutionException.class });

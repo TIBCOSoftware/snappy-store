@@ -322,6 +322,11 @@ task cleanReports { doLast {
 
 
 subprojects {
+
+  int maxWorkers = project.hasProperty('org.gradle.workers.max') ?
+                   project.property('org.gradle.workers.max') as int :
+                   Runtime.getRuntime().availableProcessors()
+
   // apply compiler options
   compileJava.options.encoding = 'UTF-8'
 
@@ -386,7 +391,7 @@ subprojects {
 
   test {
     dependsOn "${subprojectBase}storeProduct"
-    maxParallelForks = Runtime.getRuntime().availableProcessors() * 2
+    maxParallelForks = maxWorkers
     minHeapSize = '1g'
     maxHeapSize = '1g'
 
@@ -423,7 +428,7 @@ subprojects {
   if (rootProject.name == 'snappy-store') {
     task dunitTest(type:Test) {
       dependsOn "${subprojectBase}storeProduct"
-      maxParallelForks = Math.max((int)Math.sqrt(Runtime.getRuntime().availableProcessors() + 1) + 1, 2)
+      maxParallelForks = Math.max(Math.sqrt(maxWorkers + 1) + 1 as int, 2)
       minHeapSize = '2g'
       maxHeapSize = '2g'
 
@@ -458,7 +463,7 @@ subprojects {
   } else {
     tasks.named('dunitTest').configure {
       dependsOn "${subprojectBase}storeProduct"
-      maxParallelForks = Math.max((int)Math.sqrt(Runtime.getRuntime().availableProcessors() + 1) + 1, 2)
+      maxParallelForks = Math.max(Math.sqrt(maxWorkers + 1) + 1 as int, 2)
       minHeapSize = '2g'
       maxHeapSize = '2g'
 
@@ -475,7 +480,7 @@ subprojects {
 
   task wanTest(type:Test) {
     dependsOn "${subprojectBase}storeProduct"
-    maxParallelForks = (int)Math.sqrt(Runtime.getRuntime().availableProcessors() + 1)
+    maxParallelForks = Math.sqrt(maxWorkers + 1) as int
     minHeapSize = '1g'
     maxHeapSize = '1g'
 
@@ -505,7 +510,7 @@ subprojects {
 
   task integrationTest(type:Test) {
     dependsOn "${subprojectBase}storeProduct"
-    maxParallelForks = Runtime.getRuntime().availableProcessors()
+    maxParallelForks = maxWorkers
 
     includes.clear()
 
