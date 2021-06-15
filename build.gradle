@@ -582,7 +582,7 @@ subprojects {
             packaging 'jar'
             // optionally artifactId can be defined here
             description 'SnappyData store based off Pivotal GemFireXD'
-            url 'http://www.snappydata.io'
+            url 'https://github.com/TIBCOSoftware/snappydata'
 
             scm {
               connection 'scm:git:https://github.com/TIBCOSoftware/snappy-store.git'
