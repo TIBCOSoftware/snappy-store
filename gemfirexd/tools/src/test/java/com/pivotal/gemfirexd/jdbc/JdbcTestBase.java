@@ -23,18 +23,24 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.sql.CallableStatement;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.text.MessageFormat;
 import java.util.Map;
+import java.util.Properties;
 import java.util.TreeMap;
 
 import com.gemstone.gemfire.cache.CacheClosedException;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.RegionEvent;
+import com.gemstone.gemfire.cache.asyncqueue.AsyncEventQueue;
 import com.gemstone.gemfire.cache.hdfs.internal.HDFSStoreImpl;
+import com.gemstone.gemfire.cache.wan.GatewaySender;
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.internal.FileUtil;
 import com.gemstone.gemfire.internal.cache.CacheObserver;
+import com.gemstone.gemfire.internal.cache.CacheObserverHolder;
 import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
 import com.gemstone.gemfire.internal.cache.Oplog;
 import com.gemstone.gemfire.internal.cache.PartitionedRegion;
@@ -42,14 +48,16 @@ import com.gemstone.gemfire.internal.offheap.SimpleMemoryAllocatorImpl;
 import com.gemstone.junit.UnitTest;
 import com.pivotal.gemfirexd.TestUtil;
 import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverAdapter;
+import com.pivotal.gemfirexd.internal.engine.GemFireXDQueryObserverHolder;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
-import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
+import com.pivotal.gemfirexd.internal.impl.sql.catalog.GfxdDataDictionary;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.DropTableNode;
 import com.pivotal.gemfirexd.internal.impl.sql.compile.StatementNode;
 import io.snappydata.test.memscale.OffHeapHelper;
+import org.apache.derbyTesting.junit.CleanDatabaseTestSetup;
 import org.apache.derbyTesting.junit.JDBC;
 
 public class JdbcTestBase extends TestUtil implements UnitTest {
@@ -155,6 +163,45 @@ public class JdbcTestBase extends TestUtil implements UnitTest {
     try {
       this.doEndOffHeapValidations();
     } finally {
+      CacheObserverHolder.setInstance(null);
+      GemFireXDQueryObserverHolder.clearInstance();
+      // cleanup all tables and eventListeners/gateways
+      if (GemFireStore.getBootedInstance() != null) {
+        GfxdDataDictionary.SKIP_CATALOG_OPS.get().skipDDLocks = true;
+        try {
+          Connection conn = TestUtil.jdbcConn;
+          if (conn == null || conn.isClosed()) {
+            Properties props = new Properties();
+            if (TestUtil.bootUserName != null) {
+              props.setProperty("user", TestUtil.bootUserName);
+              props.setProperty("password", TestUtil.bootUserPassword);
+            }
+            conn = DriverManager.getConnection(TestUtil.getProtocol(), props);
+          }
+          Statement stmt = conn.createStatement();
+          CleanDatabaseTestSetup.cleanDatabase(conn, false);
+          GemFireCacheImpl cache = GemFireCacheImpl.getExisting();
+          for (AsyncEventQueue queue : cache.getAsyncEventQueues()) {
+            try {
+              stmt.execute("drop asynceventlistener if exists \""
+                  + queue.getId() + '"');
+            } catch (SQLException ignored) {
+            }
+          }
+          for (GatewaySender sender : cache.getGatewaySenders()) {
+            try {
+              stmt.execute("drop gatewaysender if exists \""
+                  + sender.getId() + '"');
+            } catch (SQLException ignored) {
+            }
+          }
+          conn.close();
+          jdbcConn = null;
+        } catch (SQLException ignored) {
+        } finally {
+          GfxdDataDictionary.SKIP_CATALOG_OPS.get().skipDDLocks = false;
+        }
+      }
       try {
         shutDown();
         currentUserName = null;
@@ -226,12 +273,14 @@ public class JdbcTestBase extends TestUtil implements UnitTest {
       Integer alertThreshold, String initParamStr, Connection conn)
       throws SQLException {
 
+    boolean doClose = false;
     if (conn == null) {
       conn = getConnection();
+      doClose = true;
     }
     String createDDL = MessageFormat.format("CREATE ASYNCEVENTLISTENER {1} "
-        + "(listenerclass ''{2}'' initparams ''{10}'' "
-        + "{3} {4} {5} {6} {7} {8} {9} {11}) server groups ({0})",
+          + "(listenerclass ''{2}'' initparams ''{10}'' "
+          + "{3} {4} {5} {6} {7} {8} {9} {11}) server groups ({0})",
         serverGroups, ID, className,
         batchSize != null ? "BATCHSIZE " + batchSize : "",
         batchTimeInterval != null ? "BATCHTIMEINTERVAL "
@@ -246,41 +295,30 @@ public class JdbcTestBase extends TestUtil implements UnitTest {
             + alertThreshold : "",
         initParamStr != null ? initParamStr : "",
         diskSync != null ? "DISKSYNCHRONOUS "
-               + diskSync : "");
+            + diskSync : "");
 
     conn.createStatement().execute(createDDL);
+    if (doClose) conn.close();
   }
 
   static void startAsyncEventListener(String ID) throws SQLException {
-    startAsyncEventListener(ID, null);
-  }
-
-  static void startAsyncEventListener(String ID, Connection conn) throws SQLException {
-
-    try {
-      if (conn == null) {
-        conn = getConnection();
-      }
-      CallableStatement cs = conn
-          .prepareCall("call SYS.START_ASYNC_EVENT_LISTENER (?)");
-      cs.setString(1, ID);
-      cs.execute();
-    } catch (SQLException sqle) {
-      throw GemFireXDRuntimeException.newRuntimeException(null, sqle);
-    }
+    Connection conn = getConnection();
+    CallableStatement cs = conn
+        .prepareCall("call SYS.START_ASYNC_EVENT_LISTENER (?)");
+    cs.setString(1, ID);
+    cs.execute();
+    cs.close();
+    conn.close();
   }
 
   static void stopAsyncEventListener(String ID) throws SQLException {
-
-    try {
-      Connection conn = getConnection();
-      CallableStatement cs = conn
-          .prepareCall("call SYS.STOP_ASYNC_EVENT_LISTENER (?)");
-      cs.setString(1, ID);
-      cs.execute();
-    } catch (SQLException sqle) {
-      throw GemFireXDRuntimeException.newRuntimeException(null, sqle);
-    }
+    Connection conn = getConnection();
+    CallableStatement cs = conn
+        .prepareCall("call SYS.STOP_ASYNC_EVENT_LISTENER (?)");
+    cs.setString(1, ID);
+    cs.execute();
+    cs.close();
+    conn.close();
   }
 
   public void cleanUpDirs(final File[] dirs) {
