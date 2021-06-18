@@ -534,6 +534,7 @@ subprojects {
   test.dependsOn subprojectBase + 'cleanTestOutput'
   dunitTest.dependsOn subprojectBase + 'cleanDUnitOutput'
   wanTest.dependsOn subprojectBase + 'cleanWanOutput'
+  wanTest.mustRunAfter dunitTest
   integrationTest.dependsOn subprojectBase + 'cleanIntegrationOutput'
   check.dependsOn.clear()
   check.dependsOn test, dunitTest, wanTest

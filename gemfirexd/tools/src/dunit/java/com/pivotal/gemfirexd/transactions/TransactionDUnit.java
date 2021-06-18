@@ -145,6 +145,12 @@ public class TransactionDUnit extends DistributedSQLTestBase {
   }
 
   @Override
+  protected void vmTearDown() throws Exception {
+    GemFireXDQueryObserverHolder.clearInstance();
+    super.vmTearDown();
+  }
+
+  @Override
   public void afterClass() throws Exception {
     globalClientVMs = null;
     globalServerVMs = null;
@@ -1452,15 +1458,18 @@ public class TransactionDUnit extends DistributedSQLTestBase {
       int numDeletesExpected) throws Exception {
 
     WaitCriterion checkAll = new WaitCriterion() {
+      private long numInserted;
+      private long numDeleted;
+
       @Override
       public boolean done() {
-        long numInserted = 0;
-        long numDeleted = 0;
+        numInserted = 0;
+        numDeleted = 0;
         Map<?, ?> results = invokeInEveryVM(new CheckIndex());
         for (Object o : results.values()) {
           if (o != null) {
             long v = (Long)o;
-            numInserted += (v >> 32L);
+            numInserted += (v >>> 32L);
             numDeleted += (v & 0xffffffffL);
           }
         }
@@ -1471,7 +1480,8 @@ public class TransactionDUnit extends DistributedSQLTestBase {
       @Override
       public String description() {
         return "Waiting for numInserts to be " + numInsertsExpected +
-            " numDeletes to be " + numDeletesExpected;
+            " numDeletes to be " + numDeletesExpected +
+            "(inserts=" + numInserted + ", deletes=" + numDeleted + ')';
       }
     };
     waitForCriterion(checkAll, 30000, 100, true);
@@ -1699,14 +1709,19 @@ public class TransactionDUnit extends DistributedSQLTestBase {
       ps.setInt(1, i);
       ps.setInt(2, i);
       ps.executeUpdate();
-      conn.commit();
     }
+    PreparedStatement psDelete = conn.prepareStatement("delete from tran.t1 "
+        + "where c1 = ?");
+    conn.commit();
 
+    ResultSet rs = conn.createStatement().executeQuery(
+        "select count(*) from tran.t1");
+    assertTrue(rs.next());
+    assertEquals(numRows, rs.getInt(1));
+    assertFalse(rs.next());
     // GemFireXDQueryObserver old = null;
     invokeInEveryVM(getClass(), "installIndexObserver",
         new Object[] { "tran.IndexCol2", null });
-    PreparedStatement psDelete = conn.prepareStatement("delete from tran.t1 "
-        + "where c1 = ?");
     // old = GemFireXDQueryObserverHolder.setInstance(checkIndex);
     for (int i = 0; i < numRows; i++) {
       psDelete.setInt(1, i);
