@@ -333,8 +333,7 @@ if (((rootProject.name.contains('native') || rootProject.name.contains('odbc'))
               cppCompiler.args '/JMC', '/Od', '/ZI', '/RTC1', '/MDd'
             } else {
               cppCompiler.define 'NDEBUG'
-              cppCompiler.args '/O2', '/GL', '/Gy', '/Oi', '/Zi', '/MD'
-              linker.args '/LTCG'
+              cppCompiler.args '/O2', '/Gy', '/Oi', '/Zi', '/MD'
             }
           }
         }
