@@ -37,19 +37,23 @@
  * LogWriter.cpp
  */
 
-#include "LogWriter.h"
+#include "impl/pch.h"
 
-#include <fstream>
-#include <boost/make_shared.hpp>
+#include "impl/InternalLogger.h"
+
+#include <iostream>
+
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
 #include <boost/chrono/system_clocks.hpp>
 #include <boost/chrono/io/time_point_io.hpp>
-#include <boost/filesystem/fstream.hpp>
-#include <boost/thread/thread.hpp>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
-#include "SQLException.h"
-#include "Utils.h"
-#include "impl/InternalUtils.h"
-#include "impl/InternalLogger.h"
 #include "types/Timestamp.h"
 
 using namespace io::snappydata;
@@ -61,6 +65,7 @@ void LogLevel::staticInitialize() {
   s_allLogLevels["all"] = LogLevel::all;
   s_allLogLevels["trace"] = LogLevel::trace;
   s_allLogLevels["debug"] = LogLevel::debug;
+  s_allLogLevels["fine"] = LogLevel::fine;
   s_allLogLevels["info"] = LogLevel::info;
   s_allLogLevels["warn"] = LogLevel::warn;
   s_allLogLevels["error"] = LogLevel::error;
@@ -76,6 +81,8 @@ const char* LogLevel::toString(const LogLevel::type logLevel) {
       return "trace";
     case debug:
       return "debug";
+    case fine:
+      return "fine";
     case info:
       return "info";
     case warn:
@@ -90,7 +97,7 @@ const char* LogLevel::toString(const LogLevel::type logLevel) {
   }
 }
 
-const LogLevel::type LogLevel::fromString(const std::string& levelString,
+LogLevel::type LogLevel::fromString(const std::string& levelString,
     const LogWriter& logger) {
   const std::map<const std::string, LogLevel::type>::const_iterator search =
       s_allLogLevels.find(levelString);
@@ -102,7 +109,7 @@ const LogLevel::type LogLevel::fromString(const std::string& levelString,
   }
 }
 
-int TraceFlag::g_idGenerator = 0;
+uint32_t TraceFlag::g_idGenerator = 0;
 
 const TraceFlag TraceFlag::ClientHA("ClientHA", TraceFlag::getNextId());
 const TraceFlag TraceFlag::ClientStatement("ClientStatement",
@@ -113,11 +120,11 @@ const TraceFlag TraceFlag::ClientStatementMillis("ClientStatementMillis",
     TraceFlag::getNextId());
 const TraceFlag TraceFlag::ClientConn("ClientConn", TraceFlag::getNextId());
 
-const int TraceFlag::getNextId() noexcept {
+uint32_t TraceFlag::getNextId() noexcept {
   return g_idGenerator++;
 }
 
-TraceFlag::TraceFlag(const std::string& name, const int id,
+TraceFlag::TraceFlag(const std::string& name, const uint32_t id,
     const TraceFlag* parent1, const TraceFlag* parent2,
     const TraceFlag* parent3, const TraceFlag* parent4) :
     m_name(name), m_id(id), m_globalSet(false) {
@@ -128,7 +135,7 @@ TraceFlag::TraceFlag(const std::string& name, const int id,
 }
 
 void TraceFlag::addParentFlag(const TraceFlag* parent) {
-  if (parent != NULL) {
+  if (parent) {
     m_parentFlags.push_back(parent);
     parent->m_childFlags.push_back(this);
   }
@@ -194,14 +201,14 @@ void LogWriter::staticInitialize() {
 }
 
 LogWriter::LogWriter(const std::string& logFile, const LogLevel::type logLevel,
-    bool overwrite) : m_buffer(NULL) {
+    bool overwrite) : m_buffer(nullptr) {
   initTraceFlags();
   initialize(logFile, logLevel, overwrite);
 }
 
 LogWriter::LogWriter(std::ostream* logStream, const std::string& logFile,
     const LogLevel::type logLevel) : m_rawStream(logStream),
-        m_logFile(logFile), m_logLevel(logLevel), m_buffer(NULL) {
+        m_logFile(logFile), m_logLevel(logLevel), m_buffer(nullptr) {
   initTraceFlags();
   logStream->exceptions(std::ofstream::failbit | std::ofstream::badbit);
   // use local timezone for formatting
@@ -210,20 +217,20 @@ LogWriter::LogWriter(std::ostream* logStream, const std::string& logFile,
 
 LogWriter::~LogWriter() {
   close();
-  if (m_traceFlags != NULL) {
+  if (m_traceFlags) {
     delete[] m_traceFlags;
-    m_traceFlags = NULL;
+    m_traceFlags = nullptr;
   }
-  if (m_buffer != NULL) {
+  if (m_buffer) {
     delete[] m_buffer;
-    m_buffer = NULL;
+    m_buffer = nullptr;
   }
 }
 
 void LogWriter::initTraceFlags() {
-  const int nTotalFlags = TraceFlag::maxGlobalId();
+  const uint32_t nTotalFlags = TraceFlag::maxGlobalId();
   m_traceFlags = new char[nTotalFlags];
-  for (int i = 0; i < nTotalFlags; i++) {
+  for (uint32_t i = 0; i < nTotalFlags; i++) {
     m_traceFlags[i] = 0;
   }
 }
@@ -252,10 +259,11 @@ void LogWriter::initialize(const std::string& logFile,
             const size_t dashIndex = targetFileName.find_last_of('-');
 
             if (dashIndex != std::string::npos) {
-              char* remaining = NULL;
+              char* remaining = nullptr;
               int rolloverIndex = ::strtol(
                   targetFileName.data() + dashIndex + 1, &remaining, 10);
-              if (remaining != NULL && (*remaining == '.' || *remaining == 0)) {
+              if (remaining
+                  && (*remaining == '.' || *remaining == 0)) {
                 targetFileName = targetFileName.substr(0, dashIndex + 1).append(
                     std::to_string(rolloverIndex + 1)).append(remaining);
                 rolledOver = true;
@@ -293,7 +301,7 @@ void LogWriter::initialize(const std::string& logFile,
       fs->open(logpath, std::ios::out | std::ios::binary |
           (overwrite ? std::ios::trunc : std::ios::ate));
       // increase buffer
-      if (m_buffer == NULL) {
+      if (!m_buffer) {
         m_buffer = new char[DEFAULT_BUFSIZE];
       }
       fs->rdbuf()->pubsetbuf(m_buffer, DEFAULT_BUFSIZE);
@@ -308,13 +316,13 @@ void LogWriter::initialize(const std::string& logFile,
   }
 }
 
-void LogWriter::close() {
+void LogWriter::close() noexcept {
   std::ostream* oldOut = m_rawStream.get();
-  if (oldOut != NULL) {
+  if (oldOut) {
     try {
       oldOut->flush();
       std::ofstream* oldFS = dynamic_cast<std::ofstream*>(oldOut);
-      if (oldFS != NULL) {
+      if (oldFS) {
         oldFS->close();
       }
     } catch (const std::exception& se) {
@@ -336,14 +344,13 @@ void LogWriter::close() {
             << std::endl;
       }
     }
-    m_rawStream.reset();
+    m_rawStream = nullptr;
   }
 }
 
 std::ostream& LogWriter::getRawStream() {
-  std::ostream* stream = m_rawStream.get();
-  if (stream != NULL) {
-    return *stream;
+  if (m_rawStream) {
+    return *m_rawStream;
   } else {
     // output to stdout by default
     return std::cout;
@@ -372,7 +379,7 @@ std::ostream& LogWriter::print(const LogLevel::type logLevel,
       if (Utils::getCurrentThreadName(" <", out)) {
         out << '>';
       }
-      out << " tid=0x" << std::hex << boost::this_thread::get_id() << std::dec
+      out << " tid=0x" << std::hex << std::this_thread::get_id() << std::dec
           << "] ";
       return out;
     } catch (const std::exception& se) {
@@ -397,7 +404,7 @@ std::ostream& LogWriter::print(const LogLevel::type logLevel,
 std::ostream& LogWriter::printCompact(const LogLevel::type logLevel,
     const char* flag) {
   std::ostream& out = getRawStream();
-  const boost::thread::id tid = boost::this_thread::get_id();
+  const std::thread::id tid = std::this_thread::get_id();
 
   impl::InternalLogger::compactLogThreadName(out, tid);
   return impl::InternalLogger::printCompact_(out, logLevel, flag, tid);
@@ -414,6 +421,9 @@ std::ostream& LogWriter::warn() {
 }
 std::ostream& LogWriter::info() {
   return global().print(LogLevel::info, LOGGING_FLAG);
+}
+std::ostream& LogWriter::fine() {
+  return global().print(LogLevel::fine, LOGGING_FLAG);
 }
 std::ostream& LogWriter::debug() {
   return global().print(LogLevel::debug, LOGGING_FLAG);

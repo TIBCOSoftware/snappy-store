@@ -49,7 +49,7 @@ namespace io {
 namespace snappydata {
 namespace client {
 
-  class ParametersBatch {
+  class ParametersBatch final {
   private:
     std::vector<thrift::Row> m_batch;
     const size_t m_numParams;
@@ -62,11 +62,41 @@ namespace client {
     ParametersBatch(const PreparedStatement& pstmt);
 
     /**
-     * Allocates a new set of parameters, adds to end of this batch
-     * and returns it. Caller must use the returned Parameters object
-     * to add the required parameters.
+     * Get the number of parameters in each row of the batch
+     * (i.e. number of columns).
      */
-    Parameters& createParameters();
+    inline size_t numParams() const noexcept {
+      return m_numParams;
+    }
+
+    /**
+     * Like vector.reserve, increase the capacity of this batch to a value
+     * that's greater or equal to newCapacity.
+     */
+    void reserve(size_t newCapacity);
+
+    /**
+     * Move the given Parameters appending to the end of this batch.
+     * Like the name suggests, the passed parameters are henceforth "owned"
+     * by this ParametersBatch and are no longer usable from outside.
+     */
+    void moveParameters(Parameters& params);
+
+    /**
+     * Get the number of rows in this batch.
+     */
+    inline size_t batchSize() const noexcept {
+      return m_batch.size();
+    }
+
+    /**
+     * Get the parameters at the given index of the batch. If the index is out
+     * of range, then it throws a std::out_of_range exception like std::vector.
+     *
+     * The returned set of parameters is created on the fly, so callers can
+     * use std::move explicitly on the result to avoid a copy if required.
+     */
+    Parameters parametersAt(size_t index);
 
     ~ParametersBatch() {
     }

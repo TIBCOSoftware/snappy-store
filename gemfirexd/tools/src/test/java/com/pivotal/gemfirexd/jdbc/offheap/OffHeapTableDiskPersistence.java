@@ -46,41 +46,39 @@ import com.pivotal.gemfirexd.jdbc.TableDiskPersistenceTest;
 import com.pivotal.gemfirexd.jdbc.JdbcTestBase.RegionMapClearDetector;
 import com.pivotal.gemfirexd.jdbc.offheap.OffHeapTest.DataGenerator;
 
-public class OffHeapTableDiskPersistence  extends TableDiskPersistenceTest {
+public class OffHeapTableDiskPersistence extends TableDiskPersistenceTest {
   private RegionMapClearDetector rmcd = null;
-  
+
   public OffHeapTableDiskPersistence(String name) {
     super(name);
   }
 
-  public static void main(String[] args)
-  {
+  public static void main(String[] args) {
     TestRunner.run(new TestSuite(OffHeapTableDiskPersistence.class));
   }
-  
+
   @Override
   public void setUp() throws Exception {
-    super.setUp();
     System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "500m");
-    System.setProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
-    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,"true");
+    System.setProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
+    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY, "true");
     LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER = true;
     rmcd = new JdbcTestBase.RegionMapClearDetector();
     CacheObserverHolder.setInstance(rmcd);
     GemFireXDQueryObserverHolder.putInstance(rmcd);
+    super.setUp();
   }
-  
+
   @Override
   public void tearDown() throws Exception {
-	LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER = false;
-	CacheObserverHolder.setInstance(null);
-	GemFireXDQueryObserverHolder.clearInstance();  
+    LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER = false;
+    CacheObserverHolder.setInstance(null);
+    GemFireXDQueryObserverHolder.clearInstance();
     super.tearDown();
     System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
-    System.clearProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
+    System.clearProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
     System.clearProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY);
   }
-  
   
   @Override
   public String getSuffix() {
@@ -294,6 +292,5 @@ public class OffHeapTableDiskPersistence  extends TableDiskPersistenceTest {
 	  throw new GemFireXDRuntimeException(ie);
 	}
   }
-  
   
 }

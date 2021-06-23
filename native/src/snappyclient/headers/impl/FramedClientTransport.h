@@ -18,7 +18,7 @@
 #ifndef FRAMEDCLIENTTRANSPORT_H_
 #define FRAMEDCLIENTTRANSPORT_H_
 
-#include "BufferedClientTransport.h"
+#include "impl/BufferedClientTransport.h"
 
 namespace io {
 namespace snappydata {
@@ -29,7 +29,7 @@ namespace impl {
       virtual public ClientTransport {
   public:
     FramedClientTransport(
-        const boost::shared_ptr<BufferedClientTransport>& transport,
+        const std::shared_ptr<BufferedClientTransport>& transport,
         uint32_t wsz);
 
     virtual ~FramedClientTransport() {
@@ -54,9 +54,9 @@ namespace impl {
     TSocket* getSocket() noexcept;
 
   private:
-    inline boost::shared_ptr<BufferedClientTransport> getClientTransport()
+    inline std::shared_ptr<BufferedClientTransport> getClientTransport()
         noexcept {
-      return boost::static_pointer_cast<BufferedClientTransport>(
+      return std::static_pointer_cast<BufferedClientTransport>(
           getUnderlyingTransport());
     }
   };

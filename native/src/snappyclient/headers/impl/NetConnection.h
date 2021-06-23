@@ -33,35 +33,42 @@
  * LICENSE file.
  */
 
-#ifndef DNSCACHESERVICE_H_
-#define DNSCACHESERVICE_H_
+/*
+ * NetConnection.h
+ *
+ *  Created on: 15-Jul-2019
+ *      Author: pbisen
+ */
 
-#include "snappydata_struct_HostAddress.h"
+#ifndef IMPL_NETCONNECTION_H_
+#define IMPL_NETCONNECTION_H_
+
+#include <thrift/Thrift.h>
+
+using namespace apache::thrift;
 
 namespace io {
 namespace snappydata {
+namespace client {
+namespace impl {
 
-  /**
-   * A simple DNS caching service purged as per TTL or fixed interval
-   * if no DNS TTL is found in the record. Also allows setting an upper
-   * limit on the size of the DNS cache.
-   */
-  class DNSCacheService {
+  enum class FailoverStatus : unsigned char {
+    NONE,         /** no failover to be done */
+    NEW_SERVER,   /** failover to a new server */
+    RETRY         /** retry to the same server */
+  };
+  class NetConnection {
   private:
-    DNSCacheService();
-
-    static DNSCacheService g_instance;
-
+    /** set of SQLState strings that denote failover should be done */
+    static std::unordered_set<std::string> failoverSQLStateSet;
   public:
-
-    static DNSCacheService& instance() {
-      return g_instance;
-    }
-
-    void resolve(thrift::HostAddress& hostAddr) const;
+    static FailoverStatus getFailoverStatus(const std::string& sqlState,
+        const std::exception& snappyEx);
   };
 
+} /* namespace impl */
+} /* namespace client */
 } /* namespace snappydata */
 } /* namespace io */
 
-#endif /* DNSCACHESERVICE_H_ */
+#endif /* IMPL_NETCONNECTION_H_ */

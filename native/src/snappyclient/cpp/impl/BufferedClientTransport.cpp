@@ -33,9 +33,9 @@
  * LICENSE file.
  */
 
-#include "BufferedClientTransport.h"
+#include "impl/pch.h"
 
-#include "common/Base.h"
+#include "impl/BufferedClientTransport.h"
 
 extern "C" {
 #ifdef _WINDOWS
@@ -44,13 +44,16 @@ extern "C" {
 #include <arpa/inet.h>
 #endif
 #include <stdlib.h>
-}
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <assert.h>
+}
 
 using namespace io::snappydata::client::impl;
 
 BufferedClientTransport::BufferedClientTransport(
-    const boost::shared_ptr<TSocket>& socket, uint32_t rsz, uint32_t wsz,
+    const std::shared_ptr<TSocket>& socket, uint32_t rsz, uint32_t wsz,
     bool writeFramed) : TBufferedTransport(socket, rsz, wsz),
         m_writeFramed(writeFramed), m_doWriteFrameSize(true) {
   initStart();
@@ -137,7 +140,7 @@ void BufferedClientTransport::writeSlow(const uint8_t* buf, uint32_t len) {
 }
 
 namespace _snappy_impl {
-  struct PositionInit {
+  struct PositionInit final {
     BufferedClientTransport& m_trans;
 
     PositionInit(BufferedClientTransport& trans) : m_trans(trans) {

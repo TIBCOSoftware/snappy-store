@@ -47,7 +47,7 @@ namespace snappydata {
 namespace client {
 
   // TODO: SW: add move constructors for all C++ classes
-  class ColumnDescriptor: public ColumnDescriptorBase {
+  class ColumnDescriptor final: public ColumnDescriptorBase {
   private:
     ColumnDescriptor(thrift::ColumnDescriptor& descriptor,
         const uint32_t columnIndex) :

@@ -456,13 +456,14 @@ public class BackwardCompatabilityDUnit extends BackwardCompatabilityTestBase {
     for(int i = 0; i < versions.length; i++) {
       String version = versions[i];
       String versionDir = versionDirs[i];
-      if (versionDir == null) {
+      if (!new File(getGFXDVersionDir(versionDir)).exists()) {
         continue;
       }
       String prevProduct = products[i];
-      
-      getLogWriter().info("Testing disk store upgrade from " + prevProduct + "-" + version + " to current GemFireXD build version");
-      
+
+      getLogWriter().info("Testing disk store upgrade from " + prevProduct +
+          "-" + version + " to current GemFireXD build version");
+
       String currentDir = getSysDirName();
       String locatorDir = currentDir + "/locatorDir";
       String serverOneDir = currentDir + "/serverOneDir";

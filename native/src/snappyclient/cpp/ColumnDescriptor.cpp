@@ -19,6 +19,8 @@
  * ColumnDescriptor.cpp
  */
 
+#include "impl/pch.h"
+
 #include "ColumnDescriptor.h"
 
 using namespace io::snappydata::client;
@@ -161,7 +163,7 @@ bool ColumnDescriptor::isCurrency() const noexcept {
 }
 
 uint32_t ColumnDescriptor::getDisplaySize() const noexcept {
-  uint32_t size;
+  int32_t size;
   switch (m_descriptor.type) {
     case thrift::SnappyType::TIMESTAMP:
       return 26;
@@ -188,14 +190,14 @@ uint32_t ColumnDescriptor::getDisplaySize() const noexcept {
     case thrift::SnappyType::LONGVARBINARY:
     case thrift::SnappyType::BLOB:
       size = (2 * getPrecision());
-      return (size > 0 ? size : 30);
+      return (size > 0 ? static_cast<uint32_t>(size) : 30);
     case thrift::SnappyType::DECIMAL:
       size = getPrecision();
-      // As per microsoft document for Dispaly Size, for decimal type display size = precision + 2
-      // Fixed- JIRA SDENT-76
-      return (size + 2);
+      // As per microsoft document for Display Size, for decimal type
+      // display size = precision + 2. Fixes JIRA SDENT-76.
+      return (size > 0 ? static_cast<uint32_t>(size) + 2 : 2);
     default:
       size = getPrecision();
-      return (size > 0 ? size : 15);
+      return (size > 0 ? static_cast<uint32_t>(size) : 15);
   }
 }

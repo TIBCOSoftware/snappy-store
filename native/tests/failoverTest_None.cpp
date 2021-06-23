@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
     //choose server -which one to stop-- for this test running only two server with default port configuration
     int connectPort = conn.getCurrentHostAddress().port;
     string serverDir="./work/";
-    if(connectPort != 1528){
+    if(connectPort != 1527){
       serverDir.append("localhost-server-2");
     }else{
     serverDir.append("localhost-server-1");

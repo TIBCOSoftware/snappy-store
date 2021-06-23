@@ -37,6 +37,8 @@
  * DatabaseMetaData.cpp
  */
 
+#include "impl/pch.h"
+
 #include "DatabaseMetaData.h"
 
 #include <set>
@@ -185,9 +187,7 @@ bool DatabaseMetaData::searchFeature(
 
 bool DatabaseMetaData::isFeatureSupported(
     DatabaseFeature::type feature) const {
-  const std::set<thrift::ServiceFeature::type>& supportedFeatures =
-      m_metadata.supportedFeatures;
-
+  const auto& supportedFeatures = m_metadata.supportedFeatures;
   return supportedFeatures.find(feature) != supportedFeatures.end();
 }
 
@@ -344,8 +344,8 @@ int32_t DatabaseMetaData::maxUserNameLength() const noexcept {
   return m_metadata.maxUserNameLength;
 }
 
-int32_t DatabaseMetaData::defaultTransactionIsolation() const noexcept {
-  return m_metadata.defaultTransactionIsolation;
+IsolationLevel DatabaseMetaData::defaultTransactionIsolation() const noexcept {
+  return static_cast<IsolationLevel>(m_metadata.defaultTransactionIsolation);
 }
 
 int32_t DatabaseMetaData::getDefaultResultSetType() const noexcept {
@@ -363,18 +363,22 @@ bool DatabaseMetaData::isSQLStateXOpen() const noexcept {
   return m_metadata.sqlStateIsXOpen;
 }
 
+bool DatabaseMetaData::isReadOnly() const noexcept {
+  auto result = m_metadata.transactionDefaults.find(
+      thrift::TransactionAttribute::READ_ONLY_CONNECTION);
+  return result != m_metadata.transactionDefaults.end() && result->second;
+}
+
 RowIdLifetime DatabaseMetaData::getDefaultRowIdLifeTime() const noexcept {
   return static_cast<RowIdLifetime>(m_metadata.rowIdLifeTime);
 }
 
-bool DatabaseMetaData::supportsConvert(SQLType fromType,
-    SQLType toType) const {
-  std::map<thrift::SnappyType::type, std::set<thrift::SnappyType::type> >
-      ::const_iterator result = m_metadata.supportedCONVERT.find(
-          static_cast<thrift::SnappyType::type>(fromType));
+bool DatabaseMetaData::supportsConvert(SQLType fromType, SQLType toType) const {
+  auto result = m_metadata.supportedCONVERT.find(
+      static_cast<thrift::SnappyType::type>(fromType));
   if (result != m_metadata.supportedCONVERT.end()) {
-    return result->second.find(static_cast<thrift::SnappyType::type>(
-        toType)) != result->second.end();
+    return result->second.find(static_cast<thrift::SnappyType::type>(toType))
+        != result->second.end();
   } else {
     return false;
   }
@@ -385,6 +389,13 @@ bool DatabaseMetaData::supportsTransactionIsolationLevel(
   return searchFeature(
       thrift::ServiceFeatureParameterized::TRANSACTIONS_SUPPORT_ISOLATION,
       static_cast<int32_t>(isolation));
+}
+
+bool DatabaseMetaData::supportsResultSetType(
+    ResultSetType rsType) const {
+  return searchFeature(
+      thrift::ServiceFeatureParameterized::RESULTSET_TYPE,
+      static_cast<int32_t>(rsType));
 }
 
 bool DatabaseMetaData::supportsResultSetReadOnly(

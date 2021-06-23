@@ -204,9 +204,19 @@ namespace client {
     static const SQLState NULL_HANDLE;
 
     /**
+     * Denotes that client failed to connect to the server.
+     */
+    static const SQLState CONNECTION_FAILED;
+
+    /**
      * Denotes that connection was attempted on an active connection.
      */
     static const SQLState CONNECTION_IN_USE;
+
+    /**
+     * Denotes that server rejected client connection.
+     */
+    static const SQLState CONNECTION_REJECTED;
 
     /**
      * Denotes that return string was truncated.

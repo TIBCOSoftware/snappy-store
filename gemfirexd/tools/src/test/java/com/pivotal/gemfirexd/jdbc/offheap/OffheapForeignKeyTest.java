@@ -16,9 +16,6 @@
  */
 package com.pivotal.gemfirexd.jdbc.offheap;
 
-import junit.framework.TestSuite;
-import junit.textui.TestRunner;
-
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.gemstone.gemfire.internal.cache.CacheObserverHolder;
 import com.gemstone.gemfire.internal.cache.LocalRegion;
@@ -27,44 +24,44 @@ import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
 import com.pivotal.gemfirexd.internal.engine.management.GfxdManagementService;
 import com.pivotal.gemfirexd.jdbc.ForeignKeyTest;
 import com.pivotal.gemfirexd.jdbc.JdbcTestBase;
-import com.pivotal.gemfirexd.jdbc.JdbcTestBase.RegionMapClearDetector;
+import junit.framework.TestSuite;
+import junit.textui.TestRunner;
 
 public class OffheapForeignKeyTest extends ForeignKeyTest {
-  private RegionMapClearDetector rmcd = null;	
-  
+
+  private RegionMapClearDetector rmcd = null;
+
   public static void main(String[] args) {
     TestRunner.run(new TestSuite(OffheapForeignKeyTest.class));
   }
-  
-  
+
   public OffheapForeignKeyTest(String name) {
-    super(name); 
+    super(name);
   }
-  
-  
+
   @Override
   public void setUp() throws Exception {
-    super.setUp();
     System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "500m");
-    System.setProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
-    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,"true");
+    System.setProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
+    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY, "true");
     LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER = true;
     rmcd = new JdbcTestBase.RegionMapClearDetector();
     CacheObserverHolder.setInstance(rmcd);
     GemFireXDQueryObserverHolder.putInstance(rmcd);
+    super.setUp();
   }
-  
+
   @Override
   public void tearDown() throws Exception {
-	LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER = false;
-	CacheObserverHolder.setInstance(null);
-	GemFireXDQueryObserverHolder.clearInstance();    
+    LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER = false;
+    CacheObserverHolder.setInstance(null);
+    GemFireXDQueryObserverHolder.clearInstance();
     super.tearDown();
     System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
-    System.clearProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
+    System.clearProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
     System.clearProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY);
   }
-  
+
   @Override
   protected String getSuffix() {
     return " offheap ";
@@ -72,11 +69,11 @@ public class OffheapForeignKeyTest extends ForeignKeyTest {
 
   @Override
   public void waitTillAllClear() {
-	try {  
-    rmcd.waitTillAllClear();
-	}catch(InterruptedException ie) {
-	  Thread.currentThread().interrupt();
-	  throw new GemFireXDRuntimeException(ie);
-	}
+    try {
+      rmcd.waitTillAllClear();
+    } catch (InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      throw new GemFireXDRuntimeException(ie);
+    }
   }
 }

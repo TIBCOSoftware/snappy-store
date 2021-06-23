@@ -22,31 +22,30 @@ import com.pivotal.gemfirexd.internal.engine.management.GfxdManagementService;
 
 /**
  * @author kneeraj
- *
  */
 public class IndexPersistenceOffHeapTest extends IndexPersistenceTest {
 
   public void setUp() throws Exception {
-    super.setUp();
     System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "500m");
-    System.setProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
-    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,"true");
+    System.setProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
+    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY, "true");
+    super.setUp();
   }
-  
+
   @Override
   public void tearDown() throws Exception {
     super.tearDown();
     System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
-    System.clearProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
+    System.clearProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
     System.clearProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY);
   }
 
   protected String offHeap() {
-    return " offheap";  
+    return " offheap";
   }
-  
+
   public IndexPersistenceOffHeapTest(String name) {
     super(name);
   }
-  
+
 }

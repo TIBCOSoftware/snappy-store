@@ -50,7 +50,7 @@ namespace types {
   class LobBase {
   public:
     LobBase();
-    ~LobBase();
+    virtual ~LobBase();
   };
 
 } /* namespace types */

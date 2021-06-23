@@ -83,6 +83,7 @@
 
 /* define the macro for DLL export/import on windows */
 #ifdef _WINDOWS
+#  define _SNAPPY_PATH_SEPARATOR "\\"
 #  define DLLEXPORT __declspec(dllexport)
 #  define DLLIMPORT __declspec(dllimport)
 #  ifdef DLLBUILD
@@ -91,6 +92,7 @@
 #    define DLLPUBLIC DLLIMPORT
 #  endif
 #else
+#  define _SNAPPY_PATH_SEPARATOR "/"
 #  define DLLPUBLIC
 #endif
 
@@ -106,7 +108,11 @@
 #endif
 
 #include <cstdint>
+#include <functional>
+#include <memory>
 #include <string>
+
+#define SKIP_UNUSED_WARNING(x) (void)(x)
 
 #define BOOST_FILESYSTEM_NO_DEPRECATED
 #define BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS

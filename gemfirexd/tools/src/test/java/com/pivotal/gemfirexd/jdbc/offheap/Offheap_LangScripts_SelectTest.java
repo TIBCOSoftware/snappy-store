@@ -16,39 +16,38 @@
  */
 package com.pivotal.gemfirexd.jdbc.offheap;
 
-import junit.framework.TestSuite;
-import junit.textui.TestRunner;
-
 import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.pivotal.gemfirexd.internal.engine.management.GfxdManagementService;
 import com.pivotal.gemfirexd.jdbc.LangScripts_SelectTest;
+import junit.framework.TestSuite;
+import junit.textui.TestRunner;
 
 public class Offheap_LangScripts_SelectTest extends LangScripts_SelectTest {
 
   public static void main(String[] args) {
     TestRunner.run(new TestSuite(Offheap_LangScripts_SelectTest.class));
   }
-  
+
   public Offheap_LangScripts_SelectTest(String name) {
-    super(name); 
+    super(name);
   }
-  
+
   @Override
   public void setUp() throws Exception {
-    super.setUp();
     System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "500m");
-    System.setProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
-    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,"true");
+    System.setProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
+    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY, "true");
+    super.setUp();
   }
-  
+
   @Override
   public void tearDown() throws Exception {
     super.tearDown();
     System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
-    System.clearProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
+    System.clearProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
     System.clearProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY);
   }
-  
+
   @Override
   protected String getOffHeapSuffix() {
     return " offheap ";

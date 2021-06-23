@@ -3191,9 +3191,33 @@ public class GfxdSystemProcedures extends SystemProcedures {
       final int numColumns = columns.length;
       ArrayList<StatementPermission> permissions = new ArrayList<>(
           numColumns + 1);
-      GemFireContainer rowContainer = (GemFireContainer)Misc.getRegionForTable(
-          tableName, true).getUserAttribute();
-      TableDescriptor td = rowContainer.getTableDescriptor();
+      Region<?, ?> region = Misc.getRegionForTable(tableName, false);
+      TableDescriptor td;
+      if (region != null) {
+        GemFireContainer container = (GemFireContainer)region.getUserAttribute();
+        td = container.getTableDescriptor();
+      } else {
+        // can be a VTI so lookup the data dictionary
+        TransactionController tc = lcc.getTransactionExecute();
+        DataDictionary dd = lcc.getDataDictionary();
+        int mode = dd.startReading(lcc);
+        try {
+          SchemaDescriptor sd;
+          String table;
+          int dotIndex = tableName.indexOf('.');
+          if (dotIndex == -1) {
+            sd = lcc.getDefaultSchema();
+            table = tableName;
+          } else {
+            sd = dd.getSchemaDescriptor(
+                tableName.substring(0, dotIndex), tc, true);
+            table = tableName.substring(dotIndex + 1);
+          }
+          td = dd.getTableDescriptor(table, sd, tc);
+        } finally {
+          dd.doneReading(mode, lcc);
+        }
+      }
       if (td == null) {
         throw StandardException.newException(SQLState.LANG_TABLE_NOT_FOUND,
             tableName);

@@ -54,7 +54,7 @@ namespace client {
     ROWID_VALID_FOREVER = thrift::RowIdLifetime::ROWID_VALID_FOREVER
   };
 
-  class DatabaseMetaDataArgs {
+  class DatabaseMetaDataArgs final {
   private:
     thrift::ServiceMetaDataArgs m_args;
 
@@ -97,7 +97,7 @@ namespace client {
     DatabaseMetaDataArgs& setType(const SQLType& type);
   };
 
-  class DatabaseMetaData {
+  class DatabaseMetaData final {
   private:
     thrift::ServiceMetaData m_metadata;
 
@@ -161,13 +161,15 @@ namespace client {
     int32_t getMaxCatalogNameLength() const noexcept;
     int32_t maxTableNameLength() const noexcept;
     int32_t maxUserNameLength() const noexcept;
-    int32_t defaultTransactionIsolation() const noexcept;
+    IsolationLevel defaultTransactionIsolation() const noexcept;
     int32_t getDefaultResultSetType() const noexcept;
     ResultSetHoldability getDefaultHoldability() const noexcept;
     bool isSQLStateXOpen() const noexcept;
+    bool isReadOnly() const noexcept;
     RowIdLifetime getDefaultRowIdLifeTime() const noexcept;
     bool supportsConvert(SQLType fromType, SQLType toType) const;
     bool supportsTransactionIsolationLevel(IsolationLevel isolation) const;
+    bool supportsResultSetType(ResultSetType rsType) const;
     bool supportsResultSetReadOnly(ResultSetType rsType) const;
     bool supportsResultSetUpdatable(ResultSetType rsType) const;
     bool othersUpdatesVisible(ResultSetType rsType) const;

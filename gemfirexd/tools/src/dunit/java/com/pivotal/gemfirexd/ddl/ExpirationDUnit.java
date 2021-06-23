@@ -22,9 +22,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import com.gemstone.gnu.trove.TIntHashSet;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
-import com.gemstone.gnu.trove.TIntHashSet;
 
 @SuppressWarnings("serial")
 public class ExpirationDUnit extends DistributedSQLTestBase {
@@ -243,11 +243,14 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
     long elapsed = System.currentTimeMillis() - start;
     if (elapsed < 2000) {
       Thread.sleep(2000 - elapsed);
-    } else if (elapsed > 3000) {
+    } else if (elapsed >= 3000) {
       expected = null;
     }
 
     validateResults("EMP.TESTTABLE_ONE", expected);
+    if (System.currentTimeMillis() - start >= 3000) {
+      expected = null;
+    }
     validateResults("EMP.TESTTABLE_TWO", expected);
     Thread.sleep(1500);
     validateResults("EMP.TESTTABLE_ONE", null);
@@ -383,7 +386,6 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
         while (rs.next()) {
           ids.add(rs.getInt("ID"));
         }
-        ;
         assertEquals(expected, ids);
       }
     }

@@ -37,11 +37,18 @@
  * UpdatableRow.cpp
  */
 
+#include "impl/pch.h"
+
 #include "UpdatableRow.h"
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
 #include <boost/dynamic_bitset.hpp>
-
-#include "Utils.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 using namespace io::snappydata;
 using namespace io::snappydata::client;
@@ -50,7 +57,7 @@ inline thrift::ColumnValue* UpdatableRow::getColumnValueForUpdate(
     const uint32_t columnIndex) {
   if (m_updatable) {
     thrift::ColumnValue* cv = getColumnValue_(columnIndex);
-    if (m_changedColumns == NULL) {
+    if (!m_changedColumns) {
       m_changedColumns = new DynamicBitSet(m_values.size() + 1);
     }
     m_changedColumns->set(columnIndex, true);
@@ -65,13 +72,14 @@ inline thrift::ColumnValue* UpdatableRow::getColumnValueForUpdate(
 std::vector<int32_t> UpdatableRow::getChangedColumnsAsVector() {
   DynamicBitSet* bitSet = m_changedColumns;
   std::vector<int32_t> changedColumns;
-  if (bitSet != NULL) {
+  if (bitSet) {
+    changedColumns.reserve(bitSet->size());
     for (size_t pos = bitSet->find_first(); pos != DynamicBitSet::npos;
         pos = bitSet->find_next(pos)) {
       changedColumns.push_back(static_cast<int32_t>(pos));
     }
   }
-  return std::move(changedColumns);
+  return changedColumns;
 }
 
 void UpdatableRow::setBoolean(const uint32_t columnIndex, const bool v) {
@@ -121,9 +129,9 @@ void UpdatableRow::setString(const uint32_t columnIndex, std::string&& v) {
 
 void UpdatableRow::setDecimal(const uint32_t columnIndex, const Decimal& v) {
   thrift::ColumnValue* cv = getColumnValueForUpdate(columnIndex);
-  std::shared_ptr<thrift::Decimal> dec(new thrift::Decimal());
-  v.copyTo(*dec);
-  cv->set(dec);
+  thrift::Decimal dec;
+  v.copyTo(dec);
+  cv->setDecimal(std::move(dec));
 }
 
 void UpdatableRow::setDate(const uint32_t columnIndex, const DateTime v) {

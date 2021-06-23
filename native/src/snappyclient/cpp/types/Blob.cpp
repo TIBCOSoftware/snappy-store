@@ -37,7 +37,9 @@
  * Blob.cpp
  */
 
-#include "Types.h"
+#include "impl/pch.h"
+
+#include "types/Blob.h"
 
 using namespace io::snappydata::client::types;
 

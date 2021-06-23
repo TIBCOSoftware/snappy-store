@@ -33,42 +33,41 @@
  * LICENSE file.
  */
 
-/*
- * NetConnection.h
- *
- *  Created on: 15-Jul-2019
- *      Author: pbisen
- */
+#ifndef MESSAGEREGISTRY_H_
+#define MESSAGEREGISTRY_H_
 
-#ifndef SRC_SNAPPYCLIENT_CPP_IMPL_NETCONNECTION_H_
-#define SRC_SNAPPYCLIENT_CPP_IMPL_NETCONNECTION_H_
-
-#include <thrift/Thrift.h>
-
-using namespace apache::thrift;
+#include "common/MessageBase.h"
+#include "impl/ThreadSafeMap.h"
 
 namespace io {
 namespace snappydata {
-namespace client {
 namespace impl {
 
-  enum class FailoverStatus :unsigned char{
-    NONE,         /** no failover to be done */
-    NEW_SERVER,   /** failover to a new server */
-    RETRY         /** retry to the same server */
-  };
-  class NetConnection{
+  /**
+   * Singleton class to register all messages and lookup as required.
+   */
+  class MessageRegistry
+  {
   private:
-    /** set of SQLState strings that denote failover should be done */
-    static std::set<std::string> failoverSQLStateSet;
+    ThreadSafeMap<std::string, MessageBase*> m_allMessages;
+
+    MessageRegistry();
+
+    static MessageRegistry s_instance;
+
   public:
-    static FailoverStatus getFailoverStatus(const std::string& sqlState,
-        const int32_t& errorCode, const TException& snappyEx);
+
+    inline static MessageRegistry& instance() noexcept {
+      return s_instance;
+    }
+
+    void addMessage(MessageBase& msg);
+    void removeMessage(const MessageBase& msg);
+    MessageBase* lookup(const std::string& messageId) const;
   };
 
 } /* namespace impl */
-} /* namespace client */
 } /* namespace snappydata */
 } /* namespace io */
 
-#endif /* SRC_SNAPPYCLIENT_CPP_IMPL_NETCONNECTION_H_ */
+#endif /* MESSAGEREGISTRY_H_ */

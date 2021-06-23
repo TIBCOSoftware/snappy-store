@@ -20,27 +20,25 @@ import com.gemstone.gemfire.distributed.internal.DistributionConfig;
 import com.pivotal.gemfirexd.internal.engine.management.GfxdManagementService;
 import com.pivotal.gemfirexd.jdbc.LocalCSLMIndexTest;
 
-public class OffheapLocalCSLMIndexTest extends LocalCSLMIndexTest{
-
+public class OffheapLocalCSLMIndexTest extends LocalCSLMIndexTest {
 
   public OffheapLocalCSLMIndexTest(String name) {
     super(name);
   }
-  
-  
+
   @Override
   public void setUp() throws Exception {
     System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "500m");
-    System.setProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
-    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,"true");
+    System.setProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
+    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY, "true");
     super.setUp();
   }
-  
+
   @Override
   public void tearDown() throws Exception {
     super.tearDown();
     System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
-    System.clearProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
+    System.clearProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
     System.clearProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY);
   }
 
@@ -48,6 +46,5 @@ public class OffheapLocalCSLMIndexTest extends LocalCSLMIndexTest{
   public String getSuffix() {
     return " offheap ";
   }
-
 
 }

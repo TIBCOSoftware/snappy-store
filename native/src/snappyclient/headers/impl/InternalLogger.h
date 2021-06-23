@@ -36,33 +36,19 @@
 #ifndef INTERNALLOGGER_H_
 #define INTERNALLOGGER_H_
 
-#include <boost/thread/thread.hpp>
+#include <thread>
 
-#include "ThreadSafeMap.h"
 #include "LogWriter.h"
-
-namespace boost {
-  extern std::size_t hash_value(const thread::id &v);
-}
-
-namespace std {
-  template<>
-  struct hash<boost::thread::id> {
-    std::size_t operator()(const boost::thread::id& v) const {
-      return boost::hash_value(v);
-    }
-  };
-}
+#include "impl/ThreadSafeMap.h"
 
 namespace io {
 namespace snappydata {
 namespace client {
 namespace impl {
 
-  class InternalLogger {
+  class InternalLogger final {
   private:
     InternalLogger() = delete; // no instance
-	~InternalLogger() = delete; // no instance
     InternalLogger(const InternalLogger&) = delete; // no instance
     InternalLogger& operator=(const InternalLogger&) = delete; // no instance
 
@@ -70,17 +56,17 @@ namespace impl {
      * the common map from thread ID to its name used by all LogWriters
      * to dump names of any new thread IDs in compact logging
      */
-    static ThreadSafeMap<boost::thread::id, std::string> s_threadNames;
+    static ThreadSafeMap<std::thread::id, std::string> s_threadNames;
 
     static std::ostream& printCompact_(std::ostream& out,
         const LogLevel::type logLevel, const char* flag,
-        const boost::thread::id tid);
+        const std::thread::id tid);
 
     static void compactLogThreadName(std::ostream& out,
-        const boost::thread::id tid);
+        const std::thread::id tid);
 
     static void compactHeader(std::ostream& out,
-        const boost::thread::id tid, const char* opId,
+        const std::thread::id tid, const char* opId,
         const char* opSql, const int64_t sqlId, const bool isStart,
         const int64_t nanos, const int64_t milliTime,
         const int64_t connId, const std::string& token);
@@ -88,13 +74,13 @@ namespace impl {
     friend class io::snappydata::client::LogWriter;
 
   public:
-    static void traceCompact(const boost::thread::id tid,
+    static void traceCompact(const std::thread::id tid,
         const char* opId, const char* opSql, const int64_t sqlId,
         const bool isStart, const int64_t nanos, const int64_t connId,
-        const std::string& token, const std::exception* se = NULL,
+        const std::string& token, const std::exception* se = nullptr,
         const int64_t milliTime = 0);
 
-    static void traceCompact(const boost::thread::id tid,
+    static void traceCompact(const std::thread::id tid,
         const char* opId, const char* opSql, const int64_t sqlId,
         const bool isStart, const int64_t nanos, const int64_t connId,
         const std::string& token, const SQLException* sqle,

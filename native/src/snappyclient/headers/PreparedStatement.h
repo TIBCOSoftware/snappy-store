@@ -53,7 +53,11 @@ namespace io {
 namespace snappydata {
 namespace client {
 
-  class PreparedStatement {
+  namespace impl {
+    class ClientService;
+  }
+
+  class PreparedStatement final {
   private:
     std::shared_ptr<ClientService> m_service;
     StatementAttributes m_attrs;
@@ -78,7 +82,7 @@ namespace client {
     PreparedStatement operator=(const PreparedStatement&) = delete;
 
     inline ClientService& checkAndGetService() const {
-      if (m_service != NULL) {
+      if (m_service) {
         return *m_service;
       } else {
         throw GET_SQLEXCEPTION2(SQLStateMessage::ALREADY_CLOSED_MSG);
@@ -112,7 +116,7 @@ namespace client {
     }
 
     inline bool hasWarnings() const noexcept {
-      return m_warnings != NULL || m_prepResult.__isset.warnings;
+      return m_warnings || m_prepResult.__isset.warnings;
     }
 
     std::unique_ptr<SQLWarning> getWarnings();

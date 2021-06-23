@@ -33,14 +33,23 @@
  * LICENSE file.
  */
 
-#ifndef THREADSAFECONTAINER_H_
-#define THREADSAFECONTAINER_H_
-
-#include "common/Base.h"
+#ifndef THREADSAFEMAP_H_
+#define THREADSAFEMAP_H_
 
 #include <unordered_map>
+
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
 #include <boost/thread/shared_mutex.hpp>
 #include <boost/thread/locks.hpp>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
+#include "common/Base.h"
 
 namespace io {
 namespace snappydata {
@@ -58,6 +67,8 @@ namespace snappydata {
    * <p>
    * A generic concurrent segemented map will be better
    * but no pressing need so far.
+   * <p>
+   * TODO: provide move semantics
    */
   template<typename K, typename V,
       typename TMAP = std::unordered_map<K, V> >
@@ -82,7 +93,7 @@ namespace snappydata {
 
       typename TMAP::const_iterator search = m_map.find(k);
       if (search != m_map.end()) {
-        if (result != NULL) {
+        if (result) {
           *result = search->second;
         }
         return true;
@@ -134,7 +145,7 @@ namespace snappydata {
 
       typename TMAP::iterator search = m_map.find(k);
       if (search != m_map.end()) {
-        if (oldValue != NULL) {
+        if (oldValue) {
           *oldValue = search->second;
         }
         m_map.erase(search);
@@ -167,12 +178,11 @@ namespace snappydata {
     bool put(const K& k, const V& v, V* oldValue) {
       LockGuard sync(m_lock);
 
-      std::pair<typename TMAP::iterator, bool> result = m_map.insert(
-          std::make_pair(k, v));
+      auto result = m_map.emplace(k, v);
       if (result.second) {
         return true;
       } else {
-        if (oldValue != NULL) {
+        if (oldValue) {
           *oldValue = (result.first)->second;
         }
         (result.first)->second = v;
@@ -184,8 +194,7 @@ namespace snappydata {
     bool put(const K& k, const V& v, TPROC& oldValueProc) {
       LockGuard sync(m_lock);
 
-      std::pair<typename TMAP::iterator, bool> result = m_map.insert(
-          std::make_pair(k, v));
+      auto result = m_map.emplace(k, v);
       if (result.second) {
         return true;
       } else {
@@ -199,18 +208,17 @@ namespace snappydata {
     {
       LockGuard sync(m_lock);
 
-      return m_map.insert(std::make_pair(k, v)).second;
+      return m_map.emplace(k, v).second;
     }
 
     bool putIfAbsent(const K& k, const V& v, V* oldValue) {
       LockGuard sync(m_lock);
 
-      std::pair<typename TMAP::iterator, bool> result = m_map.insert(
-          std::make_pair(k, v));
+      auto result = m_map.emplace(k, v);
       if (result.second) {
         return true;
       } else {
-        if (oldValue != NULL) {
+        if (oldValue) {
           *oldValue = (result.first)->second;
         }
         return false;
@@ -221,8 +229,7 @@ namespace snappydata {
     bool putIfAbsent(const K& k, const V& v, PROC& oldValueProc) {
       LockGuard sync(m_lock);
 
-      std::pair<typename TMAP::iterator, bool> result = m_map.insert(
-          std::make_pair(k, v));
+      auto result = m_map.emplace(k, v);
       if (result.second) {
         return true;
       } else {
@@ -341,4 +348,4 @@ namespace snappydata {
 } /* namespace snappydata */
 } /* namespace io */
 
-#endif /* THREADSAFECONTAINER_H_ */
+#endif /* THREADSAFEMAP_H_ */

@@ -33,7 +33,10 @@
  * LICENSE file.
  */
 
-#include "MessageRegistry.h"
+#include "impl/pch.h"
+
+#include "impl/MessageRegistry.h"
+
 #include <sstream>
 
 using namespace io::snappydata;
@@ -77,7 +80,7 @@ void MessageRegistry::removeMessage(const MessageBase& msg) {
 }
 
 MessageBase* MessageRegistry::lookup(const std::string& messageId) const {
-  MessageBase* result = NULL;
+  MessageBase* result = nullptr;
   m_allMessages.get(messageId, &result);
   return result;
 }

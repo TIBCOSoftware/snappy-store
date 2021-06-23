@@ -37,17 +37,15 @@
  * Decimal.cpp
  */
 
-#include "Types.h"
+#include "impl/pch.h"
 
-#include "../impl/InternalUtils.h"
-#include <boost/lexical_cast.hpp>
-#include <boost/numeric/conversion/cast.hpp>
+#include "types/Decimal.h"
 
 using namespace io::snappydata;
 using namespace io::snappydata::client::types;
 
-Decimal Decimal::ZERO((uint32_t)0);
-Decimal Decimal::ONE((uint32_t)1);
+Decimal Decimal::ZERO(static_cast<uint32_t>(0));
+Decimal Decimal::ONE(static_cast<uint32_t>(1));
 
 uint32_t Decimal::TEN_POWERS_TABLE[] = {
     10,                    // 1 / 10^1
@@ -62,7 +60,7 @@ uint32_t Decimal::TEN_POWERS_TABLE[] = {
 };
 
 Decimal::Decimal(const thrift::Decimal& dec) :
-    m_scale(dec.scale), m_precision(0) {
+    m_scale(static_cast<size_t>(dec.scale > 0 ? dec.scale : 0)), m_precision(0) {
   initializeBigInteger(dec.signum, (const int8_t*)dec.magnitude.c_str(),
       dec.magnitude.size(), true);
 }
@@ -149,7 +147,7 @@ Decimal::Decimal(const float v, const size_t precision) :
   // TODO: make this efficient using code like in JDK's BigDecimal
   std::string str;
   Utils::convertFloatToString(v, str, precision);
-  parseString(str, -1);
+  parseString(str, 0);
 }
 
 Decimal::Decimal(const double v, const size_t precision) :
@@ -157,7 +155,7 @@ Decimal::Decimal(const double v, const size_t precision) :
   // TODO: make this efficient using code like in JDK's BigDecimal
   std::string str;
   Utils::convertDoubleToString(v, str, precision);
-  parseString(str, -1);
+  parseString(str, 0);
 }
 
 void Decimal::parseString(const std::string& str, const uint32_t columnIndex) {
@@ -185,7 +183,7 @@ void Decimal::parseString(const std::string& str, const uint32_t columnIndex) {
   }
   if (hasDot) {
     size_t sz = str.length();
-    size_t wholeDigitsWithSign = p - start;
+    size_t wholeDigitsWithSign = static_cast<size_t>(p - start);
     m_scale = sz - wholeDigitsWithSign - 1;
     // convert directly if there are only zeros/sign and dot at start
     if (onlyZerosOrDots) {
@@ -259,8 +257,8 @@ const mpz_t* Decimal::getBigInteger(mpz_t* copy) const noexcept {
     mpz_init_set(*copy, m_bigInt);
     uint32_t nPowersOf10 = sizeof(TEN_POWERS_TABLE)
         / sizeof(TEN_POWERS_TABLE[0]);
-    size_t scale = m_scale;
-    size_t ndivs = scale / nPowersOf10;
+    int64_t scale = static_cast<int64_t>(m_scale);
+    int64_t ndivs = scale / nPowersOf10;
     while (--ndivs >= 0) {
       mpz_fdiv_q_ui(*copy, *copy, TEN_POWERS_TABLE[nPowersOf10 - 1]);
       scale -= nPowersOf10;
@@ -327,7 +325,7 @@ size_t Decimal::toByteArray(std::string& str) const {
   if (nbytes > 0) {
     str.resize(len + nbytes);
     char* resultChars = const_cast<char*>(str.data()) + len;
-    mpz_export(resultChars, NULL, 1,
+    mpz_export(resultChars, nullptr, 1,
         1 /* size of each element i.e. byte in byte[] */, 1 /* big endian */, 0,
         m_bigInt);
   }
@@ -341,7 +339,7 @@ bool Decimal::wholeDigits(uint8_t* bytes, const size_t maxLen,
   // calculate the required length
   actualLen = (mpz_sizeinbase(*intVal, 2) + 7) / 8;
   if (actualLen <= maxLen) {
-    mpz_export(bytes, NULL, 1, 1 /* size of each element i.e. byte in byte[] */,
+    mpz_export(bytes, nullptr, 1, 1 /* size of each element i.e. byte in byte[] */,
         1 /* big endian */, 0, *intVal);
     return true;
   } else {
@@ -359,7 +357,7 @@ size_t Decimal::toString(std::string& str) const {
   // convert the integer to string first
   char buf[thrift::snappydataConstants::DECIMAL_MAX_PRECISION + 4];
   char* bufp = buf;
-  io::snappydata::client::impl::FreePointer freep(0);
+  std::unique_ptr<char, decltype(std::free)*> freep(nullptr, std::free);
   size_t ndigits = mpz_sizeinbase(m_bigInt, 10);
   if (ndigits > 128) {
     bufp = new char[ndigits + 2];
@@ -381,7 +379,8 @@ size_t Decimal::toString(std::string& str) const {
   }
   // check for sign (using signed version of size_t)
   // now the three cases of '.' inside, before and not at all
-  ptrdiff_t wholeDigits = (ndigits - m_scale);
+  ptrdiff_t wholeDigits = static_cast<ptrdiff_t>(ndigits)
+      - static_cast<ptrdiff_t>(m_scale);
   if (wholeDigits > 0) {
     size_t wholeDigitsWithSign = static_cast<size_t>(wholeDigits + neg);
     str.append(bufp, wholeDigitsWithSign);

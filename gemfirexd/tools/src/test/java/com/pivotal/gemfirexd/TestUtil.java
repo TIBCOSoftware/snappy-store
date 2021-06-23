@@ -206,8 +206,14 @@ public class TestUtil extends TestCase {
   private static boolean oldDMVerbose = false;
 
   static {
-    InitializeRun.setUp();
+    globalSetUp();
     initSysProperties = System.getProperties().stringPropertyNames();
+  }
+
+  public static void globalSetUp() {
+    InitializeRun.setUp();
+    System.setProperty(GfxdConstants.SYS_PERSISTENT_DIR_PROP,
+        System.getProperty("user.dir"));
   }
 
   public static final void reduceLogLevel(String logLevel) {
@@ -477,20 +483,21 @@ public class TestUtil extends TestCase {
       props = new Properties();
     }
     if (currentTestClass != null && currentTest != null) {
+      String cwd = System.getProperty("user.dir");
       String testName = getTestName();
       if (setPropertyIfAbsent(props, DistributionConfig.LOG_FILE_NAME,
-          testName + ".log")) {
+          cwd + '/' + testName + ".log")) {
         // if no log-file property then also set the system property for
         // GemFireXD log-file that will also get used for JDBC clients
         setPropertyIfAbsent(null, GfxdConstants.GFXD_LOG_FILE,
-            testName + ".log");
+            cwd + '/' + testName + ".log");
       }
       setPropertyIfAbsent(props,
           DistributionConfig.STATISTIC_ARCHIVE_FILE_NAME,
-          testName + ".gfs");
+          cwd + '/' + testName + ".gfs");
       // also set the client driver properties
       setPropertyIfAbsent(null, GfxdConstants.GFXD_CLIENT_LOG_FILE,
-          testName + "-client.log");
+          cwd + '/' + testName + "-client.log");
     }
 
     // set default bind-address to localhost so tests can be run

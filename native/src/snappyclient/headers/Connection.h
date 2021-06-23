@@ -52,7 +52,6 @@
 #include "Row.h"
 
 #include <map>
-#include <set>
 #include <vector>
 #include <memory>
 
@@ -67,12 +66,12 @@ namespace client {
    * the attribute name passed when creating a {@link Connection},
    * help message, possible values and flags for the attribute.
    */
-  class ConnectionProperty {
+  class ConnectionProperty final {
   private:
     /** name of the connection property */
-    const std::string m_propName;
+    std::string m_propName;
     /** help message for the property */
-    const std::string m_helpMessage;
+    std::string m_helpMessage;
     /**
      * list of all possible values for the property,
      * if the property can only take on a set of fixed values
@@ -81,21 +80,18 @@ namespace client {
     /* size of m_possibleValues array */
     int m_numPossibleValues;
     /**
-     * default value to be displayed, if m_possibleValues is NULL else
+     * default value to be displayed, if m_possibleValues is nullptr else
      * the first one from m_possibleValues is displayed
      */
     const char* m_defaultValue;
     /** any {@link Flags} for the property */
-    const int m_flags;
+    int m_flags;
 
     static std::map<std::string, ConnectionProperty> s_properties;
 
     static void staticInitialize();
 
     friend class impl::ClientService;
-
-    // disable assignment operator
-    const ConnectionProperty& operator=(const ConnectionProperty&) = delete;
 
   public:
     /** flags for the property */
@@ -122,6 +118,8 @@ namespace client {
       F_IS_FILENAME = 0x100
     };
 
+    ConnectionProperty();
+
     ConnectionProperty(const std::string& propName, const char* helpMessage,
         const char** possibleValues, const char* defaultValue, const int flags);
 
@@ -146,7 +144,7 @@ namespace client {
       return m_possibleValues;
     }
 
-    const int getNumPossibleValues() const noexcept {
+    int getNumPossibleValues() const noexcept {
       return m_numPossibleValues;
     }
 
@@ -154,12 +152,12 @@ namespace client {
       return m_defaultValue;
     }
 
-    const int getFlags() const noexcept {
+    int getFlags() const noexcept {
       return m_flags;
     }
   };
 
-  class Connection {
+  class Connection final {
   private:
     std::shared_ptr<ClientService> m_service;
     std::unique_ptr<SQLWarning> m_warnings;
@@ -203,11 +201,11 @@ namespace client {
         const std::map<std::string, std::string>& properties);
 
     inline bool isOpen() const noexcept {
-      return m_service != NULL;
+      return m_service != nullptr;
     }
 
     inline ClientService& checkAndGetService() const {
-      if (m_service != NULL) {
+      if (m_service) {
         return *m_service;
       } else {
         throw GET_SQLEXCEPTION2(SQLStateMessage::NO_CURRENT_CONNECTION_MSG1);
@@ -215,6 +213,8 @@ namespace client {
     }
 
     const thrift::HostAddress& getCurrentHostAddress() const noexcept;
+
+    std::string toString() const noexcept;
 
     const thrift::OpenConnectionArgs& getConnectionArgs() const noexcept;
 
@@ -314,6 +314,8 @@ namespace client {
         DatabaseMetaDataArgs& metadaArgs, int32_t scope, bool nullable);
 
     // end metadata API
+
+    void cancelCurrentStatement();
 
     void close();
 

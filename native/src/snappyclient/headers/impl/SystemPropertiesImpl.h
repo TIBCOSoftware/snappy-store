@@ -36,15 +36,15 @@
 #ifndef SYSTEMPROPERTIESIMPL_H_
 #define SYSTEMPROPERTIESIMPL_H_
 
-#include "ThreadSafeMap.h"
-
 #include <boost/lexical_cast.hpp>
+
+#include "impl/ThreadSafeMap.h"
 
 namespace io {
 namespace snappydata {
 namespace impl {
 
-  class SystemPropertiesImpl {
+  class SystemPropertiesImpl final {
   private:
     ThreadSafeMap<std::string, std::string> m_props;
 
@@ -62,6 +62,7 @@ namespace impl {
       T m_result;
 
       inline void operator()(const std::string& k, const std::string& v) {
+        SKIP_UNUSED_WARNING(k);
         m_result = boost::lexical_cast<T>(v);
       }
     };
@@ -128,7 +129,7 @@ namespace impl {
      */
     template<typename V>
     static V getValue(const std::string& propName, const V& def) {
-      CastString<V> castResult = { (V)0 };
+      CastString<V> castResult = { static_cast<V>(0) };
       try {
         if (s_instance.m_props.get(propName, castResult)) {
           return castResult.m_result;
@@ -144,7 +145,7 @@ namespace impl {
     /**
      * Clear value for given property name.
      *
-     * @return pointer to old value associated with name or NULL.
+     * @return true if property was present and was cleared
      */
     bool clearProperty(const std::string& propName);
   };

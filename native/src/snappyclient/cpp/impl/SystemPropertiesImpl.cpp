@@ -33,15 +33,20 @@
  * LICENSE file.
  */
 
-#include "SystemPropertiesImpl.h"
+#include "impl/pch.h"
 
-#include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
+#include "impl/SystemPropertiesImpl.h"
+
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
-
-#include "InternalUtils.h"
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 using namespace io::snappydata::impl;
 using namespace io::snappydata::client::impl;

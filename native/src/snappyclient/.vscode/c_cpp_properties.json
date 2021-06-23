@@ -12,10 +12,9 @@
                 "${workspaceFolder}",
                 "${workspaceFolder}/headers",
                 "${workspaceFolder}/cpp",
-                "${workspaceFolder}/../../dist/boost-1.65.1/include",
-                "${workspaceFolder}/../../dist/thrift-1.0.0-2/include",
-                "${workspaceFolder}/../../dist/unixODBC-2.3.4/include",
-                "${workspaceFolder}/../../dist/googletest-1.8.0/include"
+                "${workspaceFolder}/../../dist/boost-1.76.0/include",
+                "${workspaceFolder}/../../dist/thrift-0.14.1/include",
+                "${workspaceFolder}/../../dist/googletest-1.10.0/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

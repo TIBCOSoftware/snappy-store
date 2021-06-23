@@ -2390,6 +2390,24 @@ public class DistributedSQLTestBase extends DistributedTestBase {
     deleteOrCreateDataDictionaryDir(false);
   }
 
+  public static void deleteDataFiles() {
+    File dir = new File(getSysDiskDir());
+    File[] files = dir.listFiles();
+    if (files != null) {
+      boolean deleted = false;
+      for (File file : files) {
+        if (file.getPath().contains("BACKUPGFXD-DEFAULT-DISKSTORE")) {
+          deleted |= file.delete();
+        }
+      }
+      if (deleted) {
+        getGlobalLogger().info(
+            "For Test: " + currentClassName + ":" + currentTestName
+                + " found and deleted default datastore files in: " + dir);
+      }
+    }
+  }
+
   public static void deleteGlobalIndexCachinDir() {
     File dir = new File(getSysDiskDir(), "globalIndex");
     boolean result = TestUtil.deleteDir(dir);
@@ -2463,6 +2481,7 @@ public class DistributedSQLTestBase extends DistributedTestBase {
   public static void deleteTestArtifacts() {
     try {
       deleteDataDictionaryDir();
+      deleteDataFiles();
       deleteGlobalIndexCachinDir();
       final DistributedSQLTestBase test = testInstance;
       final String[] testSpecificDirs;

@@ -45,9 +45,6 @@
 #include "SQLException.h"
 #include "Utils.h"
 
-#include <map>
-#include <vector>
-
 #include "types/Blob.h"
 #include "types/Clob.h"
 #include "types/DateTime.h"

@@ -38,37 +38,37 @@
  *  Created on: 15-Jul-2019
  *      Author: pbisen
  */
-#include "SQLState.h"
-#include "SQLException.h"
-#include "NetConnection.h"
 
+#include "impl/pch.h"
+
+#include "impl/NetConnection.h"
 
 using namespace io::snappydata;
 using namespace io::snappydata::client;
 using namespace io::snappydata::client::impl;
 
-std::set<std::string> NetConnection::failoverSQLStateSet={ "08001",
+std::unordered_set<std::string> NetConnection::failoverSQLStateSet = { "08001",
  "08003", "08004", "08006", "X0J15", "X0Z32", "XN001", "XN014", "XN016",
  "58009", "58014", "58015", "58016", "58017", "57017", "58010", "30021",
  "XJ040", "XJ041", "XSDA3", "XSDA4", "XSDAJ", "XJ217" };
 
 FailoverStatus NetConnection::getFailoverStatus(const std::string& sqlState,
-    const int32_t& errorCode, const TException& snappyEx){
+    const std::exception& snappyEx) {
 
-  if( ! sqlState.compare(SQLState::SNAPPY_NODE_SHUTDOWN.getSQLState())
-      || !sqlState.compare(SQLState::NODE_BUCKET_MOVED.getSQLState())){
+  if (!sqlState.compare(SQLState::SNAPPY_NODE_SHUTDOWN.getSQLState())
+      || !sqlState.compare(SQLState::NODE_BUCKET_MOVED.getSQLState())) {
     return FailoverStatus::RETRY;
   }
   /* for 08001 we have to, unfortunately, resort to string search to
   * determine if failover makes sense or it is due to some problem
   * with authentication or invalid properties */
-  else if(!sqlState.compare("08001")){
+  else if (!sqlState.compare("08001")) {
     std::string msg(snappyEx.what());
-    if(!msg.empty() &&
-        ((msg.find("rror")!=std::string::npos)  // cater to CONNECT_UNABLE_TO_CONNECT_TO_SERVER
-            || (msg.find("xception")!=std::string::npos ) // cater to CONNECT_SOCKET_EXCEPTION
-            ||(msg.find("ocket")!=std::string::npos))// cater to CONNECT_UNABLE_TO_OPEN_SOCKET_STREAM
-      ){
+    if (!msg.empty() &&
+        ((msg.find("rror") != std::string::npos) // cater to CONNECT_UNABLE_TO_CONNECT_TO_SERVER
+            || (msg.find("xception") != std::string::npos ) // cater to CONNECT_SOCKET_EXCEPTION
+            ||(msg.find("ocket") != std::string::npos)) // cater to CONNECT_UNABLE_TO_OPEN_SOCKET_STREAM
+       ) {
       return FailoverStatus::NEW_SERVER;
     }
   }
@@ -76,18 +76,13 @@ FailoverStatus NetConnection::getFailoverStatus(const std::string& sqlState,
    *  determine if failover makes sense or it is due to some problem
    *  with authentication
    */
-  else if(!sqlState.compare("08004")){
-      std::string msg(snappyEx.what());
-      if(!msg.empty() &&
-         (msg.find("connection refused") !=std::string::npos)
-         ){
-        return FailoverStatus::NEW_SERVER;
-      }
+  else if (!sqlState.compare("08004")) {
+    std::string msg(snappyEx.what());
+    if (!msg.empty() && (msg.find("connection refused") != std::string::npos)) {
+      return FailoverStatus::NEW_SERVER;
     }
-  else if(failoverSQLStateSet.find(sqlState)!= failoverSQLStateSet.end()){
+  } else if (failoverSQLStateSet.find(sqlState) != failoverSQLStateSet.end()) {
     return FailoverStatus::NEW_SERVER;
   }
   return FailoverStatus::NONE;
 }
-
-

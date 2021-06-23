@@ -33,73 +33,35 @@
  * LICENSE file.
  */
 
-#ifndef BUFFEREDCLIENTTRANSPORT_H_
-#define BUFFEREDCLIENTTRANSPORT_H_
+#ifndef DNSCACHESERVICE_H_
+#define DNSCACHESERVICE_H_
 
-#include <boost/shared_ptr.hpp>
-
-#include <thrift/transport/TSocket.h>
-#include <thrift/transport/TBufferTransports.h>
-
-#include "ClientTransport.h"
-
-using namespace apache::thrift::transport;
+#include "snappydata_struct_HostAddress.h"
 
 namespace io {
 namespace snappydata {
-namespace client {
-namespace impl {
-
-  class BufferedClientTransport;
 
   /**
-   * This exposes a few protected members and enables writing "frames"
-   * without the overhead of having to create buffer for entire message
-   * just writing size of first buffer as expected by SnappyData selectors.
+   * A simple DNS caching service purged as per TTL or fixed interval
+   * if no DNS TTL is found in the record. Also allows setting an upper
+   * limit on the size of the DNS cache.
    */
-  class BufferedClientTransport : public TBufferedTransport,
-      public ClientTransport {
-  public:
-    BufferedClientTransport(const boost::shared_ptr<TSocket>& socket,
-        uint32_t rsz, uint32_t wsz, bool writeFramed);
-
-    virtual ~BufferedClientTransport() {
-    }
-
-    void initStart();
-
-    void writeFrameSize();
-
-    virtual void writeSlow(const uint8_t* buf, uint32_t len);
-
-    virtual void flush();
-
-    bool isTransportOpen() {
-      return isOpen();
-    }
-
-    void closeTransport() {
-      close();
-    }
-
-    void setReceiveBufferSize(uint32_t rsz);
-
-    void setSendBufferSize(uint32_t wsz);
-
-    uint32_t getReceiveBufferSize() noexcept;
-
-    uint32_t getSendBufferSize() noexcept;
-
-    TSocket* getSocket() noexcept;
-
+  class DNSCacheService {
   private:
-    const bool m_writeFramed;
-    bool m_doWriteFrameSize;
+    DNSCacheService();
+
+    static DNSCacheService g_instance;
+
+  public:
+
+    static DNSCacheService& instance() {
+      return g_instance;
+    }
+
+    void resolve(thrift::HostAddress& addr);
   };
 
-} /* namespace impl */
-} /* namespace client */
 } /* namespace snappydata */
 } /* namespace io */
 
-#endif /* BUFFEREDCLIENTTRANSPORT_H_ */
+#endif /* DNSCACHESERVICE_H_ */

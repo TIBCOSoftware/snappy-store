@@ -38,7 +38,7 @@
 
 #include "SQLMessage.h"
 
-#include <exception>
+#include <stdexcept>
 
 namespace io {
 namespace snappydata {
@@ -48,7 +48,7 @@ namespace client {
     class ClientService;
   }
 
-  class SQLStateMessage {
+  class SQLStateMessage final {
   private:
     // no constructors or default operators
     SQLStateMessage() = delete;
@@ -359,6 +359,18 @@ namespace client {
      * Message string for "TYPE_ATTRIBUTE_VIOLATION" SQLState.
      */
     static SQLMessage2<int, int> TYPE_ATTRIBUTE_VIOLATION_MSG;
+
+    /**
+     * Message string for "CONNECTION_FAILED" SQLState.
+     */
+    static SQLMessage3<const char*, std::exception, const char*>
+        CONNECTION_FAILED_MSG;
+
+    /**
+     * Message string for "CONNECTION_REJECTED" SQLState.
+     */
+    static SQLMessage3<const char*, std::exception, const char*>
+        CONNECTION_REJECTED_MSG;
 
     /**
      * Message string for "SNAPPY_NODE_SHUTDOWN" SQLState.

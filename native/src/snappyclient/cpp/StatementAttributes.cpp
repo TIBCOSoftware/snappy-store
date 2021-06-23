@@ -37,6 +37,8 @@
  * StatementAttributes.cpp
  */
 
+#include "impl/pch.h"
+
 #include "StatementAttributes.h"
 
 using namespace io::snappydata::client;
@@ -68,20 +70,22 @@ bool StatementAttributes::isFetchDirectionReverse() const noexcept {
 }
 
 uint32_t StatementAttributes::getLobChunkSize() const noexcept {
-  return m_attrs->__isset.lobChunkSize ? m_attrs->lobChunkSize
+  return m_attrs->__isset.lobChunkSize
+      ? static_cast<uint32_t>(m_attrs->lobChunkSize)
       : thrift::snappydataConstants::DEFAULT_LOB_CHUNKSIZE;
 }
 
 uint32_t StatementAttributes::getMaxRows() const noexcept {
-  return m_attrs->__isset.maxRows ? m_attrs->maxRows : 0;
+  return m_attrs->__isset.maxRows ? static_cast<uint32_t>(m_attrs->maxRows) : 0;
 }
 
 uint32_t StatementAttributes::getMaxFieldSize() const noexcept {
-  return m_attrs->__isset.maxFieldSize ? m_attrs->maxFieldSize : 0;
+  return m_attrs->__isset.maxFieldSize
+      ? static_cast<uint32_t>(m_attrs->maxFieldSize) : 0;
 }
 
 uint32_t StatementAttributes::getTimeout() const noexcept {
-  return m_attrs->__isset.timeout ? m_attrs->timeout : 0;
+  return m_attrs->__isset.timeout ? static_cast<uint32_t>(m_attrs->timeout) : 0;
 }
 
 const std::string& StatementAttributes::getCursorName() const noexcept {
@@ -111,7 +115,7 @@ void StatementAttributes::setUpdatable(bool updatable) {
 }
 
 void StatementAttributes::setBatchSize(uint32_t batchSize) {
-  m_attrs->__set_batchSize(batchSize);
+  m_attrs->__set_batchSize(static_cast<int32_t>(batchSize));
 }
 
 void StatementAttributes::setFetchDirectionReverse(bool fetchDirection) {
@@ -119,19 +123,19 @@ void StatementAttributes::setFetchDirectionReverse(bool fetchDirection) {
 }
 
 void StatementAttributes::setLobChunkSize(uint32_t size) {
-  m_attrs->__set_lobChunkSize(size);
+  m_attrs->__set_lobChunkSize(static_cast<int32_t>(size));
 }
 
 void StatementAttributes::setMaxRows(uint32_t num) {
-  m_attrs->__set_maxRows(num);
+  m_attrs->__set_maxRows(static_cast<int32_t>(num));
 }
 
 void StatementAttributes::setMaxFieldSize(uint32_t size) {
-  m_attrs->__set_maxFieldSize(size);
+  m_attrs->__set_maxFieldSize(static_cast<int32_t>(size));
 }
 
 void StatementAttributes::setTimeout(uint32_t timeout) {
-  m_attrs->__set_timeout(timeout);
+  m_attrs->__set_timeout(static_cast<int32_t>(timeout));
 }
 
 void StatementAttributes::setCursorName(const std::string& name) {

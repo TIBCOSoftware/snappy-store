@@ -69,12 +69,15 @@ public:
   static const std::string USERNAME;
   static const std::string USERNAME_ALT;
   static const std::string PASSWORD;
+  static const std::string CREDENTIAL_MANAGER;
   static const std::string READ_TIMEOUT;
   static const std::string KEEPALIVE_IDLE;
   static const std::string KEEPALIVE_INTVL;
   static const std::string KEEPALIVE_CNT;
   static const std::string LOAD_BALANCE;
   static const std::string SECONDARY_LOCATORS;
+  static const std::string AUTO_RECONNECT;
+  static const std::string DEFAULT_SCHEMA;
   static const std::string SERVER_GROUPS;
   static const std::string SINGLE_HOP_ENABLED;
   static const std::string SINGLE_HOP_MAX_CONNECTIONS;

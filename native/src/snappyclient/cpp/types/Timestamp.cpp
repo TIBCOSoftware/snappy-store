@@ -37,15 +37,21 @@
  * Timestamp.cpp
  */
 
-#include "Types.h"
-#include "../impl/InternalUtils.h"
+#include "impl/pch.h"
 
-#include <boost/date_time/time_duration.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include "types/Timestamp.h"
+#include "impl/TimeUtils.h"
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
 #include <boost/chrono/io/time_point_io.hpp>
-
-#include <boost/spirit/include/qi.hpp>
+#include <boost/date_time/time_duration.hpp>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 using namespace io::snappydata::client;
 using namespace io::snappydata::client::impl;
@@ -89,7 +95,7 @@ namespace _snappy_impl {
 
 void Timestamp::setNanos(int32_t nanos) {
   if (nanos >= 0 && nanos < NANOS_MAX) {
-    m_nanos = nanos;
+    m_nanos = static_cast<uint32_t>(nanos);
   } else {
     throw GET_SQLEXCEPTION2(
         SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG3, nanos,
@@ -117,8 +123,11 @@ Timestamp Timestamp::parseString(const std::string& str,
         boost::date_time::parse_delimited_time_duration<
             _snappy_impl::nano_time_duration>(timeStr);
 	// nanoseconds will lie within int32 limits
-	return Timestamp(ymd.year, ymd.month, ymd.day, td.hours(), td.minutes(),
-        td.seconds(), static_cast<int32_t>(td.fractional_seconds()), utc);
+	return Timestamp(ymd.year, ymd.month, ymd.day,
+        boost::numeric_cast<uint16_t>(td.hours()),
+        boost::numeric_cast<uint16_t>(td.minutes()),
+        boost::numeric_cast<uint16_t>(td.seconds()),
+        boost::numeric_cast<int32_t>(td.fractional_seconds()), utc);
   } catch (const std::exception& e) {
     std::string err(str);
     err.append(": ").append(e.what());
@@ -137,13 +146,15 @@ std::string& Timestamp::toString(std::string& str, const bool utc) const {
     const int64_t secsSinceEpoch = getEpochTime();
     try {
       boost::posix_time::ptime dateTime =
-          InternalUtils::convertEpochSecsToPosixTime(secsSinceEpoch);
+          TimeUtils::convertEpochSecsToPosixTime(secsSinceEpoch);
       boost::gregorian::date::ymd_type ymd = dateTime.date().year_month_day();
       boost::posix_time::time_duration td = dateTime.time_of_day();
 
       return DateTime::toString(uint16_t(ymd.year), ymd.month.as_number(),
-          ymd.day.as_number(), td.hours(), td.minutes(), td.seconds(), m_nanos,
-          str);
+          ymd.day.as_number(),
+          boost::numeric_cast<uint16_t>(td.hours()),
+          boost::numeric_cast<uint16_t>(td.minutes()),
+          boost::numeric_cast<uint16_t>(td.seconds()), m_nanos, str);
     } catch (const std::exception&) {
       throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1,
           secsSinceEpoch);
@@ -155,7 +166,7 @@ std::string& Timestamp::toString(std::string& str, const bool utc) const {
 #ifdef _WINDOWS
     if (::localtime_s(&t, &tv) == 0) {
 #else
-    if (::localtime_r(&tv, &t) != NULL) {
+    if (::localtime_r(&tv, &t)) {
 #endif
       return DateTime::toString(uint16_t(t.tm_year + 1900), t.tm_mon + 1,
           t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, m_nanos, str);
@@ -184,12 +195,15 @@ std::ostream& operator <<(std::ostream& stream, Timestamp ts) {
     const int64_t secsSinceEpoch = ts.getEpochTime();
     try {
       boost::posix_time::ptime dateTime =
-          InternalUtils::convertEpochSecsToPosixTime(secsSinceEpoch);
+          TimeUtils::convertEpochSecsToPosixTime(secsSinceEpoch);
       boost::gregorian::date::ymd_type ymd = dateTime.date().year_month_day();
       boost::posix_time::time_duration td = dateTime.time_of_day();
 
       return DateTime::toString(uint16_t(ymd.year), ymd.month.as_number(),
-          ymd.day.as_number(), td.hours(), td.minutes(), td.seconds(),
+          ymd.day.as_number(),
+          boost::numeric_cast<uint16_t>(td.hours()),
+          boost::numeric_cast<uint16_t>(td.minutes()),
+          boost::numeric_cast<uint16_t>(td.seconds()),
           ts.getNanos(), stream);
     } catch (const std::exception&) {
       throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1,
@@ -202,12 +216,12 @@ std::ostream& operator <<(std::ostream& stream, Timestamp ts) {
 #ifdef _WINDOWS
     if (::localtime_s(&t, &tv) == 0) {
 #else
-    if (::localtime_r(&tv, &t) != NULL) {
+    if (::localtime_r(&tv, &t)) {
 #endif
       DateTime::toString(uint16_t(t.tm_year + 1900), t.tm_mon + 1, t.tm_mday,
           t.tm_hour, t.tm_min, t.tm_sec, ts.getNanos(), stream);
       // also append POSIX timezone string
-      return stream << ' ' << InternalUtils::s_localTimeZoneStr;
+      return stream << ' ' << TimeUtils::s_localTimeZoneStr;
     } else {
       throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATE_RANGE_EXCEPTION_MSG1,
           tv);

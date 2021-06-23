@@ -48,27 +48,16 @@ namespace client {
 
   class Parameters : public Row {
   private:
-    // IMPORTANT NOTE: DO NOT ADD ANY ADDITIONAL FIELDS IN THIS CLASS.
-    // If need be then add to thrift::Row since higher layers use
-    // placement new to freely up-convert thrift::Row to this type
-    /**
-     * No copy constructor or assignment operator because its expensive
-     * and implicit shallow copy can have unexpected behaviour for the
-     * users. Use clone()/shallowClone() as required.
-     */
-    Parameters(const Parameters&) = delete;
-    Parameters operator=(const Parameters&) = delete;
+    Parameters(const thrift::Row &other) : Row(other) {
+    }
 
-    // for placement new skip initialization of m_values
-    Parameters(bool skipInitialize) :
-        Row(false) {
+    Parameters(thrift::Row &&other) noexcept : Row(std::move(other)) {
     }
 
     inline void checkBounds(uint32_t paramIndex) const {
       if (paramIndex >= m_values.size()) {
-        throw GET_SQLEXCEPTION2(
-            SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG, paramIndex,
-            m_values.size());
+        throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
+            static_cast<int>(paramIndex), m_values.size());
       }
     }
 
@@ -79,27 +68,32 @@ namespace client {
         m_values[paramNum].set(v);
         return *this;
       } else {
-        throw GET_SQLEXCEPTION2(
-            SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG, paramNum,
-            m_values.size());
+        throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_INVALID_PARAM_POSITION_MSG,
+            static_cast<int>(paramNum), m_values.size());
       }
     }
 
     friend class ParametersBatch;
 
   public:
-    Parameters() : Row() { }
-
-    Parameters(Parameters&& other) :
-        Row(std::move(other)) {
+    Parameters() : Row() {
     }
 
-    Parameters& operator=(Parameters&& other) {
+    Parameters(const Parameters &other) : Row(other) {
+    }
+
+    Parameters(Parameters &&other) noexcept : Row(std::move(other)) {
+    }
+
+    Parameters& operator=(Parameters&& other) noexcept {
       Row::operator =(std::move(other));
       return *this;
     }
 
     Parameters(const PreparedStatement& pstmt);
+
+    virtual ~Parameters() {
+    }
 
     Parameters& setBoolean(uint32_t paramNum, const bool v) {
       return set(paramNum, v);
@@ -111,7 +105,7 @@ namespace client {
 
     Parameters& setUnsignedByte(uint32_t paramNum, const uint8_t v) {
       // thrift API has no unsigned so need to convert to signed
-      return set(paramNum, (const int8_t)v);
+      return set(paramNum, static_cast<int8_t>(v));
     }
 
     Parameters& setShort(uint32_t paramNum, const int16_t v) {
@@ -120,7 +114,7 @@ namespace client {
 
     Parameters& setUnsignedShort(uint32_t paramNum, const uint16_t v) {
       // thrift API has no unsigned so need to convert to signed
-      return set(paramNum, (const int16_t)v);
+      return set(paramNum, static_cast<int16_t>(v));
     }
 
     Parameters& setInt(uint32_t paramNum, const int32_t v) {
@@ -129,7 +123,7 @@ namespace client {
 
     Parameters& setUnsignedInt(uint32_t paramNum, const uint32_t v) {
       // thrift API has no unsigned so need to convert to signed
-      return set(paramNum, (const int32_t)v);
+      return set(paramNum, static_cast<int32_t>(v));
     }
 
     Parameters& setInt64(uint32_t paramNum, const int64_t v) {
@@ -138,7 +132,7 @@ namespace client {
 
     Parameters& setUnsignedInt64(uint32_t paramNum, const uint64_t v) {
       // thrift API has no unsigned so need to convert to signed
-      return set(paramNum, (const int64_t)v);
+      return set(paramNum, static_cast<int64_t>(v));
     }
 
     Parameters& setFloat(uint32_t paramNum, const float v) {
@@ -161,6 +155,12 @@ namespace client {
 
     Parameters& setString(uint32_t paramNum, const char* v, const size_t len);
 
+    Parameters& appendString(uint32_t paramNum, const std::string &v);
+
+    Parameters& appendString(uint32_t paramNum, const char *v);
+
+    Parameters& appendString(uint32_t paramNum, const char *v, const size_t len);
+
     // TODO: somehow have an efficient move version; right now a full
     // transformation copy happens from public Decimal to thrift's Decimal
 
@@ -181,6 +181,9 @@ namespace client {
     Parameters& setBinary(uint32_t paramNum, std::string&& v);
 
     Parameters& setBinary(uint32_t paramNum, const int8_t* v,
+        const size_t len);
+
+    Parameters& appendBinary(uint32_t paramNum, const int8_t *v,
         const size_t len);
 
     Parameters& setArray(uint32_t paramNum, const thrift::Array& v);

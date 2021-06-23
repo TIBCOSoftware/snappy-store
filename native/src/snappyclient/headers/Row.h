@@ -46,7 +46,7 @@
 
 #define GET_DATACONVERSION_ERROR(cv, target, columnNum) \
      GET_SQLEXCEPTION2(SQLStateMessage::LANG_DATA_TYPE_GET_MISMATCH_MSG, \
-         target, Utils::getSQLTypeName(cv), columnNum)
+         target, Utils::getSQLTypeName(cv), static_cast<int>(columnNum))
 
 namespace {
   class ToString;
@@ -58,30 +58,22 @@ namespace client {
 
   class Row : public thrift::Row {
   private:
-    // IMPORTANT NOTE: DO NOT ADD ANY ADDITIONAL FIELDS IN THIS CLASS.
-    // If need be then add to thrift::Row since higher layers use
-    // placement new to freely up-convert thrift::Row to this type
     inline void checkColumnBounds(const uint32_t columnZeroIndex) const {
       if (columnZeroIndex < m_values.size()) {
         return;
       } else if (m_values.size() > 0) {
         throw GET_SQLEXCEPTION2(SQLStateMessage::COLUMN_NOT_FOUND_MSG1,
-            columnZeroIndex + 1, m_values.size());
+            static_cast<int>(columnZeroIndex + 1), m_values.size());
       } else {
         throw GET_SQLEXCEPTION2(SQLStateMessage::NO_CURRENT_ROW_MSG);
       }
     }
 
-    // no copy constructor or assignment
-    Row(const Row& other) = delete;
-    Row& operator=(const Row& other) = delete;
-
     friend class ResultSet;
     friend class Result;
 
   protected:
-    // for placement new skip initialization of m_values
-    Row(bool updatable) : thrift::Row(updatable) {
+    Row(const thrift::Row &other) : thrift::Row(other) {
     }
 
     inline const thrift::ColumnValue& getColumnValue(
@@ -176,12 +168,26 @@ namespace client {
     Row(const size_t initialCapacity) : thrift::Row(initialCapacity) {
     }
 
-    Row(Row&& other) : thrift::Row(std::move(other)) {
+    Row(const Row &other) : thrift::Row(other) {
     }
 
-    Row& operator=(Row&& other) {
+    Row(Row &&other) noexcept : thrift::Row(std::move(other)) {
+    }
+
+    Row(thrift::Row &&other) noexcept : thrift::Row(std::move(other)) {
+    }
+
+    Row& operator=(const Row &other) {
+      thrift::Row::operator =(other);
+      return *this;
+    }
+
+    Row& operator=(Row &&other) noexcept {
       thrift::Row::operator =(std::move(other));
       return *this;
+    }
+
+    virtual ~Row() {
     }
 
     void addColumn(const thrift::ColumnValue& v) {
@@ -376,9 +382,6 @@ namespace client {
 
     size_t numColumns() const {
       return m_values.size();
-    }
-
-    virtual ~Row() {
     }
   };
 

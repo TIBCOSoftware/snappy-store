@@ -2948,6 +2948,8 @@ public class GemFireCacheImpl implements InternalCache, ClientCache, HasCachePer
         CacheLifecycleListener listener = (CacheLifecycleListener) iter.next();
         listener.cacheClosed(this);
       }
+
+      CacheObserverHolder.setInstance(null);
     } // static synchronization on GemFireCache.class
   }
   

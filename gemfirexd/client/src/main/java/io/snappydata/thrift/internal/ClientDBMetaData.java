@@ -2278,7 +2278,7 @@ public class ClientDBMetaData implements DatabaseMetaData {
    */
   @Override
   public String getUserName() throws SQLException {
-    return this.service.connArgs.getUserName();
+    return this.service.getUserName();
   }
 
   /**

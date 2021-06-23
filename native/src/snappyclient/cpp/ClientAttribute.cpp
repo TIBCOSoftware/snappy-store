@@ -33,7 +33,7 @@
  * LICENSE file.
  */
 
-#include "ClientAttribute.h"
+#include "impl/pch.h"
 
 namespace io { namespace snappydata { namespace client {
 
@@ -50,12 +50,15 @@ std::unordered_set<std::string> ClientAttribute::s_attributes;
 const std::string ClientAttribute::USERNAME = ClientAttribute::addToHashSet("user");
 const std::string ClientAttribute::USERNAME_ALT = ClientAttribute::addToHashSet("UserName");
 const std::string ClientAttribute::PASSWORD = ClientAttribute::addToHashSet("password");
+const std::string ClientAttribute::CREDENTIAL_MANAGER = ClientAttribute::addToHashSet("credential-manager");
 const std::string ClientAttribute::READ_TIMEOUT = ClientAttribute::addToHashSet("read-timeout");
 const std::string ClientAttribute::KEEPALIVE_IDLE = ClientAttribute::addToHashSet("keepalive-idle");
 const std::string ClientAttribute::KEEPALIVE_INTVL = ClientAttribute::addToHashSet("keepalive-interval");
 const std::string ClientAttribute::KEEPALIVE_CNT = ClientAttribute::addToHashSet("keepalive-count");
 const std::string ClientAttribute::LOAD_BALANCE = ClientAttribute::addToHashSet("load-balance");
 const std::string ClientAttribute::SECONDARY_LOCATORS = ClientAttribute::addToHashSet("secondary-locators");
+const std::string ClientAttribute::AUTO_RECONNECT = ClientAttribute::addToHashSet("auto-reconnect");
+const std::string ClientAttribute::DEFAULT_SCHEMA = ClientAttribute::addToHashSet("default-schema");
 const std::string ClientAttribute::SERVER_GROUPS = ClientAttribute::addToHashSet("server-groups");
 const std::string ClientAttribute::SINGLE_HOP_ENABLED = ClientAttribute::addToHashSet("single-hop-enabled");
 const std::string ClientAttribute::SINGLE_HOP_MAX_CONNECTIONS = ClientAttribute::addToHashSet("single-hop-max-connections");

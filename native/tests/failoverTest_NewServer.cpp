@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
     }
     int connectPort = conn.getCurrentHostAddress().port;
     string serverDir="./work/";
-    if(connectPort != 1528){
+    if(connectPort != 1527){
       serverDir.append("localhost-server-2");
     }else{
       serverDir.append("localhost-server-1");

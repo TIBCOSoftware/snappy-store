@@ -34,13 +34,13 @@
  */
 
 /**
- * SnappyClient.h: sources all the headers used by SnappyData client,
+ * SnappyDataClient.h: sources all the headers used by SnappyData client,
  * so users can just source this header
  */
 
 
-#ifndef SNAPPYCLIENT_H_
-#define SNAPPYCLIENT_H_
+#ifndef SNAPPYDATACLIENT_H_
+#define SNAPPYDATACLIENT_H_
 
 #include "common/SystemProperties.h"
 #include "ClientAttribute.h"
@@ -62,4 +62,4 @@
 #include "ParametersBatch.h"
 #include "LogWriter.h"
 
-#endif /* SNAPPYCLIENT_H_ */
+#endif /* SNAPPYDATACLIENT_H_ */

@@ -75,7 +75,7 @@ namespace impl {
       return m_messageId;
     }
     size_t getNumMessageParts() const noexcept;
-    const std::string& getMessagePart(int index) const;
+    const std::string& getMessagePart(size_t index) const;
 
     friend class impl::MessageRegistry;
   };

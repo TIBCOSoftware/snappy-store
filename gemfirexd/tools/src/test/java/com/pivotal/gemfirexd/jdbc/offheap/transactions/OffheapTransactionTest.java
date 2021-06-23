@@ -46,22 +46,23 @@ import com.pivotal.gemfirexd.jdbc.JdbcTestBase.RegionMapClearDetector;
 import com.pivotal.gemfirexd.jdbc.transactions.TransactionTest;
 
 public class OffheapTransactionTest extends TransactionTest {
-  
+
   private RegionMapClearDetector rmcd = null;
+
   public OffheapTransactionTest(String name) {
-    super(name);    
+    super(name);
   }
-  
+
   public void setUp() throws Exception {
-    super.setUp();
     System.setProperty("gemfire.OFF_HEAP_TOTAL_SIZE", "500m");
-    System.setProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
-    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY,"true");
-    
+    System.setProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME, "500m");
+    System.setProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY, "true");
+
     LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER = true;
     rmcd = new JdbcTestBase.RegionMapClearDetector();
     CacheObserverHolder.setInstance(rmcd);
     GemFireXDQueryObserverHolder.setInstance(rmcd);
+    super.setUp();
   }
   
   public void testTransactionalIndexKeyBehaviour_1() throws Exception {
@@ -404,42 +405,36 @@ public class OffheapTransactionTest extends TransactionTest {
     } finally {
       try {
         DriverManager.getConnection("jdbc:derby:;shutdown=true");
-      } catch (SQLException sqle) {
-        if (sqle.getMessage().indexOf("shutdown") == -1) {
-          sqle.printStackTrace();
-          throw sqle;
-        }
+      } catch (SQLException ignore) {
       }
       GemFireXDQueryObserverHolder.clearInstance();
     }
-
   }
-  
+
   @Override
   public String getSuffix() {
-    return  " offheap ";
+    return " offheap ";
   }
-  
+
   @Override
   public void tearDown() throws Exception {
     LocalRegion.ISSUE_CALLBACKS_TO_CACHE_OBSERVER = false;
-	CacheObserverHolder.setInstance(null);
-	GemFireXDQueryObserverHolder.clearInstance();  
+    CacheObserverHolder.setInstance(null);
+    GemFireXDQueryObserverHolder.clearInstance();
     super.tearDown();
     System.clearProperty("gemfire.OFF_HEAP_TOTAL_SIZE");
-    System.clearProperty("gemfire."+DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
+    System.clearProperty("gemfire." + DistributionConfig.OFF_HEAP_MEMORY_SIZE_NAME);
     System.clearProperty(GfxdManagementService.DISABLE_MANAGEMENT_PROPERTY);
   }
-  
+
   @Override
   public void waitTillAllClear() {
-	try {  
+    try {
       rmcd.waitTillAllClear();
-	}catch(InterruptedException ie) {
-	  Thread.currentThread().interrupt();
-	  throw new GemFireXDRuntimeException(ie);
-	}
+    } catch (InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      throw new GemFireXDRuntimeException(ie);
+    }
   }
-  
-  
+
 }

@@ -6,7 +6,7 @@ set -e
 # version is updated then that code may also need to be updated correspondingly.
 
 if [ -z ${THRIFT_VERSION} ]; then
-  THRIFT_VERSION=0.10.0
+  THRIFT_VERSION=0.14.1
 fi
 if [ -z ${SOFTWARE_PREFIX} ]; then
   SOFTWARE_PREFIX=/export/shared/software
@@ -19,6 +19,11 @@ export PATH LD_LIBRARY_PATH
 CPP_HEADERS="SnappyDataService.h LocatorService.h snappydata_struct_SnappyException.h"
 
 thrift --gen "cpp:struct_separate_files=true,moveable_types=true,no_concurrent_client=true,no_recursion_limit=true" ../../../gemfirexd/shared/src/main/java/io/snappydata/thrift/common/snappydata.thrift && rm -rf cpp/thrift/ && rm -rf headers/snappydata_* && mv gen-cpp cpp/thrift && rm cpp/thrift/*skele* && mv cpp/thrift/*.h headers/.
+
+# change the cpp class files to use pch.h
+for tname in cpp/thrift/*.cpp; do
+  sed -i '0,/^#include/s//#include "impl\/pch.h"\n\n#include/' "${tname}"
+done
 
 # copy all files from overrides
 for tname in overrides/*cpp; do
@@ -36,7 +41,13 @@ for tname in overrides/*h; do
   fi
 done
 
-# move back non-public headers
+# move some headers having thrift/internal classes to non-public area
 for f in ${CPP_HEADERS}; do
-  mv "headers/${f}" cpp/thrift/.
+  mv "headers/${f}" headers/impl/.
+done
+
+# change include path to have "impl/" for its own header in the cpp file
+for f in ${CPP_HEADERS}; do
+  cppFile="`echo $f | sed s/.h$/.cpp/`"
+  sed -i "s:$f:impl/$f:g" "cpp/thrift/${cppFile}"
 done

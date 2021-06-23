@@ -69,13 +69,15 @@ namespace client {
 
   class SQLException;
 
-  class SQLException : std::exception {
+  class SQLException : public std::exception {
   public:
     SQLException(const char* file, int line, const SQLState& state,
-        const std::string& reason, SQLException* next = NULL);
+        const std::string& reason, SQLException* next = nullptr);
 
     SQLException(const char* file, int line,
         const thrift::SnappyException& se);
+
+    SQLException(const char* file, int line);
 
     SQLException(const char* file, int line, const std::exception& ex);
 
@@ -85,10 +87,20 @@ namespace client {
     // move constructor
     SQLException(SQLException&& other);
 
-    virtual SQLException* clone() const;
+    SQLException& operator=(const SQLException& other);
+    SQLException& operator=(SQLException&& other);
+
+    static void staticInitialize();
+
+    virtual SQLException* clone(bool move);
 
     const std::string& getReason() const noexcept {
       return m_reason;
+    }
+
+    void setReason(const std::string& reason) noexcept {
+      m_reason = reason;
+      clearRecords();
     }
 
     virtual const char* what() const noexcept {
@@ -103,15 +115,16 @@ namespace client {
       return m_severity;
     }
 
+    void setSQLState(const SQLState& state) noexcept {
+      m_state = state.getSQLState();
+      m_severity = static_cast<int32_t>(state.getSeverity());
+    }
+
     const SQLException* getNextException() const noexcept {
       return m_next;
     }
 
-    void setNextException(SQLException* next) noexcept {
-      m_next = next;
-    }
-
-    const char* getFileName() const noexcept {
+    const std::string& getFileName() const noexcept {
       return m_file;
     }
 
@@ -120,13 +133,36 @@ namespace client {
     }
 
     /** Print the stack trace to given output stream. */
-    virtual std::ostream& printStackTrace(std::ostream& out) const;
+    virtual std::ostream& printStackTrace(std::ostream& out, int level = 0) const;
 
     inline std::string getStackTrace() const {
       std::ostringstream str;
       printStackTrace(str);
       return str.str();
     }
+
+    const std::vector<std::pair<SQLException*, std::string> >&
+    getRecords() const noexcept {
+      return m_records;
+    }
+
+    /**
+     * Fill the records vector of this exception splitting the message and the
+     * next ones in its chain (and their stack traces if "includeStackTrace" is
+     * true) on the given "recordSize".
+     *
+     * The splitting prefers newlines followed by tabs and then lastly spaces.
+     *
+     * The records do not include SQLState or severity, and only the message
+     * with file+line and stacktrace if required.
+     *
+     * NOTE: This method is NOT THREAD-SAFE and it is caller's responsibility
+     * to ensure thread-safety.
+     */
+    virtual void fillRecords(const char* prefix, uint32_t recordSize,
+        bool includeStackTrace);
+
+    void clearRecords() noexcept;
 
     inline std::string toString() const {
       std::ostringstream str;
@@ -136,16 +172,24 @@ namespace client {
 
     virtual void toString(std::ostream& out) const;
 
-    virtual ~SQLException();
+    virtual ~SQLException() noexcept;
 
   protected:
+    static std::string s_processBaseAddress;
+    static std::string s_libraryBaseAddress;
+
     std::string m_reason;
     std::string m_state;
     int32_t m_severity;
     SQLException* m_next;
+    bool m_isServerStack = { false };
+    std::vector<std::pair<SQLException*, std::string> > m_records;
+    uint32_t m_recordSize = { 0 };
+    bool m_recordsHaveStack = { false };
+    const char* m_recordPrefix = { nullptr };
 
-    const char* m_file;
-    const int m_line;
+    std::string m_file;
+    int m_line;
 
 #ifdef __GNUC__
     void* m_stack[STACK_MAX_SIZE]; // exception stack
@@ -156,23 +200,31 @@ namespace client {
 
     void init();
 
-    SQLException(const char* file, int line,
+    inline static std::string trimFile(const char* file) noexcept {
+      const char* pos = ::strstr(file,
+          _SNAPPY_PATH_SEPARATOR "src" _SNAPPY_PATH_SEPARATOR);
+      return pos ? (pos + 1) : file;
+    }
+
+    static void printStackTraceGlobalSuffix(std::ostream& out);
+
+    SQLException(const std::string& file, int line,
         const thrift::SnappyExceptionData& snappyExceptionData) :
         m_reason(snappyExceptionData.reason),
         m_state(snappyExceptionData.sqlState),
-        m_severity(snappyExceptionData.errorCode), m_next(NULL),
+        m_severity(snappyExceptionData.errorCode), m_next(nullptr),
         m_file(file), m_line(line) {
       init();
     }
 
-    SQLException(const char* file, int line, const std::string& reason,
+    SQLException(const std::string& file, int line, const std::string& reason,
         const char* state, const int32_t severity
 #ifdef __GNUC__
         , void* const * stack, size_t stackSize
 #endif
         ) :
         m_reason(reason), m_state(state), m_severity(severity),
-        m_next(NULL), m_file(file), m_line(line) {
+        m_next(nullptr), m_file(file), m_line(line) {
 #ifdef __GNUC__
       copyStack(stack, stackSize);
 #endif
@@ -183,7 +235,7 @@ namespace client {
       return new SQLException(m_file, m_line, snappyExceptionData);
     }
 
-    virtual SQLException* createNextException(const char* file, int line,
+    virtual SQLException* createNextException(const std::string& file, int line,
         const std::string& reason, const char* state, int32_t severity
 #ifdef __GNUC__
         , void* const * stack, size_t stackSize
@@ -200,6 +252,8 @@ namespace client {
         const std::vector<thrift::SnappyExceptionData>& nextExceptions);
 
     void initNextException(const SQLException& other);
+
+    void deleteNextException() noexcept;
 
     /**
      * Get the name of this exception class. Child classes must always
@@ -225,11 +279,11 @@ namespace client {
   class SQLWarning : public SQLException {
   public:
     SQLWarning(const char* file, int line, const SQLState& state,
-        const std::string& reason, SQLWarning* next = NULL);
+        const std::string& reason, SQLWarning* next = nullptr);
 
     SQLWarning(const char* file, int line,
         const thrift::SnappyExceptionData& snappyExceptionData) :
-        SQLException(file, line, snappyExceptionData) {
+      SQLException(SQLException::trimFile(file), line, snappyExceptionData) {
     }
 
     // copy constructor
@@ -238,14 +292,19 @@ namespace client {
     // move constructor
     SQLWarning(SQLWarning&& other);
 
-    virtual SQLException* clone() const;
+    virtual SQLException* clone(bool move);
 
     const SQLWarning* getNextWarning() const;
 
     void setNextWarning(SQLWarning* next);
 
   protected:
-    SQLWarning(const char* file, int line, const std::string& reason,
+    SQLWarning(const std::string& file, int line,
+        const thrift::SnappyExceptionData& snappyExceptionData) :
+      SQLException(file, line, snappyExceptionData) {
+    }
+
+    SQLWarning(const std::string& file, int line, const std::string& reason,
         const char* state, const int32_t severity
 #ifdef __GNUC__
         , void* const * stack, size_t stackSize
@@ -263,7 +322,7 @@ namespace client {
       return new SQLWarning(m_file, m_line, snappyExceptionData);
     }
 
-    virtual SQLException* createNextException(const char* file, int line,
+    virtual SQLException* createNextException(const std::string& file, int line,
         const std::string& reason, const char* state, int32_t severity
 #ifdef __GNUC__
         , void* const * stack, size_t stackSize
@@ -286,10 +345,10 @@ namespace client {
   };
 
   /** For I/O manipulator to get the stack trace. */
-  struct _SqleStack {
+  struct _SqleStack final {
     const SQLException& m_sqle;
   };
-  struct _StdeStack {
+  struct _StdeStack final {
     const std::exception& m_stde;
   };
 

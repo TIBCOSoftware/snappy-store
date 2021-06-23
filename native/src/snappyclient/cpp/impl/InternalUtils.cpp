@@ -33,59 +33,11 @@
  * LICENSE file.
  */
 
-#include "InternalUtils.h"
-
-extern "C" {
-#include <time.h>
-}
-#include <boost/numeric/conversion/cast.hpp>
+#include "impl/pch.h"
 
 using namespace io::snappydata::client::impl;
 
 const char InternalUtils::s_hexDigits[] = "0123456789abcdef";
-
-boost::posix_time::ptime InternalUtils::s_epoch;
-boost::local_time::time_zone_ptr InternalUtils::s_localTimeZone;
-std::string InternalUtils::s_localTimeZoneStr;
-bool InternalUtils::s_initialized = InternalUtils::staticInitialize();
-
-bool InternalUtils::staticInitialize() {
-  s_epoch = boost::posix_time::ptime(boost::gregorian::date(1970, 1, 1));
-
-  // get the local timezone
-  time_t ts = 0;
-  struct tm t;
-  char buf[16], bufA[16];
-  std::string bufStr;
-#ifdef _WINDOWS
-  ::localtime_s(&t, &ts);
-#else
-  ::localtime_r(&ts, &t);
-#endif
-
-  bool addColon = false;
-  size_t buflen = ::strftime(buf, sizeof(buf), "%z", &t);
-  if (buflen == 5 && (buf[3] != ':' && buf[3] != '-')) {
-    addColon = true;
-  }
-  buflen = ::strftime(bufA, sizeof(bufA), "%Z", &t);
-  bufStr.assign(bufA, buflen);
-  bufStr.append(buf);
-  if (addColon) {
-    bufStr.insert(bufStr.length() - 2, ":");
-  }
-
-  s_localTimeZone = boost::local_time::time_zone_ptr(
-      new boost::local_time::posix_time_zone(bufStr));
-  if (s_localTimeZone->std_zone_abbrev().length() > 0) {
-    s_localTimeZoneStr = s_localTimeZone->std_zone_abbrev();
-  } else if (s_localTimeZone->std_zone_name().length() > 0) {
-    s_localTimeZoneStr = s_localTimeZone->std_zone_name();
-  } else {
-    s_localTimeZoneStr = s_localTimeZone->to_posix_string();
-  }
-  return true;
-}
 
 boost::filesystem::path InternalUtils::getPath(const std::string& pathStr) {
   // Locale brain-dead Windows. It does not support UTF8 encodings rather
@@ -93,10 +45,42 @@ boost::filesystem::path InternalUtils::getPath(const std::string& pathStr) {
   // convert to wchar_t here on Windows (at least if filename is not ASCII).
 #ifdef _WINDOWS
   std::wstring wlogFile;
-  if (Utils::convertUTF8ToUTF16(pathStr.c_str(),
-      boost::numeric_cast<int>(pathStr.size()), wlogFile)) {
+  bool result = Utils::convertUTF8ToUTF16(pathStr.c_str(),
+      static_cast<int64_t>(pathStr.size()), [&](int c) {
+    wlogFile.push_back((wchar_t)c);
+  });
+  if (result) {
     return boost::filesystem::path(wlogFile.begin(), wlogFile.end());
   }
 #endif
   return boost::filesystem::path(pathStr);
+}
+
+void InternalUtils::splitCSV(const std::string& csv,
+    const std::function<void(const std::string&)>& proc) {
+  const size_t csvLen = csv.size();
+  if (csvLen > 0) {
+    uint32_t start = 0;
+    std::locale currLocale;
+    // skip leading spaces, if any
+    while (start < csvLen && std::isspace(csv[start], currLocale)) {
+      start++;
+    }
+    uint32_t current = start;
+    while (current < csvLen) {
+      if (csv[current] != ',') {
+        current++;
+      } else {
+        proc(csv.substr(start, current - start));
+        start = ++current;
+      }
+    }
+    // skip trailing spaces, if any
+    while (current > start && std::isspace(csv[current - 1], currLocale)) {
+      current--;
+    }
+    if (current > start) {
+      proc(csv.substr(start, current - start));
+    }
+  }
 }

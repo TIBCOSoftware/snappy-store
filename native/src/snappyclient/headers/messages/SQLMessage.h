@@ -89,8 +89,8 @@ namespace client {
   private:
     SQLMessage1() : SQLMessageBase() {
     }
-    void initialize(const char* messageId, const char* message,
-        const char* messagePart1, const char* messagePart2) {
+    void initialize(const char* messageId, const char* messagePart1,
+        const char* messagePart2) {
       SQLMessageBase::initialize(messageId);
       addMessagePart(messagePart1);
       addMessagePart(messagePart2);
@@ -118,9 +118,8 @@ namespace client {
     SQLMessage2() : SQLMessageBase() {
     }
 
-    void initialize(const char* messageId, const char* message,
-        const char* messagePart1, const char* messagePart2,
-        const char* messagePart3) {
+    void initialize(const char* messageId, const char* messagePart1,
+        const char* messagePart2, const char* messagePart3) {
       SQLMessageBase::initialize(messageId);
       addMessagePart(messagePart1);
       addMessagePart(messagePart2);

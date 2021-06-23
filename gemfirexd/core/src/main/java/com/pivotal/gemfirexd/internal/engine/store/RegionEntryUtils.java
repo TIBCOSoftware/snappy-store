@@ -193,18 +193,8 @@ public final class RegionEntryUtils {
   @Retained
   public static Object getByteSource(RowLocation rowLocation,
       GemFireContainer container, boolean faultIn, boolean valueInVMOnly) {
-    LocalRegion localRgn = null;
-    if (container != null) {
-      localRgn = container.getRegion();
-      if (!valueInVMOnly) {
-        if (container.isPartitioned()) {
-          localRgn = getBucketRegion((PartitionedRegion)localRgn,
-              rowLocation.getBucketID());
-        }
-      }
-    }
     return convertOffHeapEntrytoByteSourceRetain((RegionEntry)rowLocation,
-        localRgn, faultIn, valueInVMOnly);
+        null, container, faultIn, valueInVMOnly);
   }
 
   @Retained
@@ -445,14 +435,18 @@ public final class RegionEntryUtils {
    */
   @Retained
   public static Object convertOffHeapEntrytoByteSourceRetain(
-      RegionEntry offheap, LocalRegion rgn, boolean faultIn,
-      boolean useValueInVMOnly) {
+      RegionEntry offheap, LocalRegion rgn, GemFireContainer container,
+      boolean faultIn, boolean useValueInVMOnly) {
 
-    @Retained Object obj = null;
-    if (useValueInVMOnly) {
-      obj = offheap.getValueInVM(null);
-    }
-    else {
+    @Retained Object obj = offheap.getValueInVM(null);
+    if (!useValueInVMOnly && (obj == null || obj instanceof Token)) {
+      if (rgn == null && container != null) {
+        rgn = container.getRegion();
+        if (container.isPartitioned()) {
+          rgn = getBucketRegion((PartitionedRegion)rgn,
+              ((RowLocation)offheap).getBucketID());
+        }
+      }
       if (faultIn) {
         obj = offheap.getValue(rgn);
       }
@@ -650,7 +644,7 @@ public final class RegionEntryUtils {
       final OffHeapRegionEntry entry, final AbstractCompactExecRow row,
       boolean faultIn) {
     SimpleMemoryAllocatorImpl.setReferenceCountOwner(row);
-    Object source = convertOffHeapEntrytoByteSourceRetain(entry, region,
+    Object source = convertOffHeapEntrytoByteSourceRetain(entry, region, null,
         faultIn, false);
     SimpleMemoryAllocatorImpl.setReferenceCountOwner(null);
 

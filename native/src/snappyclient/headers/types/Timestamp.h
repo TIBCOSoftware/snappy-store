@@ -50,7 +50,7 @@ namespace types {
 
   class Timestamp: public DateTime {
   private:
-    int32_t m_nanos;
+    uint32_t m_nanos;
 
     Timestamp(); // no default constructor
 
@@ -62,7 +62,7 @@ namespace types {
      */
     Timestamp(const int64_t totalNanos) :
         DateTime(totalNanos / NANOS_MAX),
-        m_nanos(static_cast<int32_t>(totalNanos % NANOS_MAX)) {
+        m_nanos(static_cast<uint32_t>(totalNanos % NANOS_MAX)) {
     }
 
     /**
@@ -97,7 +97,7 @@ namespace types {
     }
 
     /** Get the nanoseconds component of this timestamp */
-    inline int32_t getNanos() const noexcept {
+    inline uint32_t getNanos() const noexcept {
       return m_nanos;
     }
 

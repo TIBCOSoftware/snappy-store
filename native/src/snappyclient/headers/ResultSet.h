@@ -49,9 +49,14 @@ namespace io {
 namespace snappydata {
 namespace client {
 
-  class ResultSet {
+  namespace impl {
+    class ClientService;
+  }
+
+  class ResultSet final {
   private:
     thrift::RowSet* m_rows;
+    std::vector<UpdatableRow> m_rowData;
     std::shared_ptr<ClientService> m_service;
     const StatementAttributes m_attrs;
     const int32_t m_batchSize;
@@ -59,13 +64,9 @@ namespace client {
     const bool m_scrollable;
     const bool m_isOwner;
     std::vector<thrift::ColumnDescriptor>* m_descriptors;
-    mutable std::map<std::string, uint32_t>* m_columnPositionMap;
+    mutable std::unordered_map<std::string, uint32_t>* m_columnPositionMap;
 
-    ResultSet(thrift::RowSet* rows,
-        const std::shared_ptr<ClientService>& service,
-        const StatementAttributes& attrs = StatementAttributes::EMPTY,
-        const int32_t batchSize = -1, bool updatable = false,
-        bool scrollable = false, bool isOwner = true);
+    void initRowData(bool clearData);
 
     // no assignment operator or copy constructor
     ResultSet(const ResultSet&);
@@ -74,6 +75,17 @@ namespace client {
     friend class Connection;
     friend class PreparedStatement;
     friend class Result;
+
+    template<bool updatable>
+    inline UpdatableRow* row(size_t index) {
+      if (updatable) {
+        UpdatableRow &row = m_rowData[index];
+        row.m_updatable = true;
+        return &row;
+      } else {
+        return &m_rowData[index];
+      }
+    }
 
     inline void checkOpen(const char* operation) const {
       if (m_rows) {
@@ -94,7 +106,7 @@ namespace client {
     }
 
     inline void copyDescriptors() {
-      if (m_descriptors == NULL && m_rows->metadata.size() > 0) {
+      if (!m_descriptors && m_rows->metadata.size() > 0) {
         m_descriptors = new std::vector<thrift::ColumnDescriptor>(
             m_rows->metadata);
       }
@@ -114,8 +126,10 @@ namespace client {
 
     void cleanupRS();
 
+    void deleteData() noexcept;
+
     template<typename TRow, typename TRowP, bool updatable>
-    class Itr {
+    class Itr final {
     private:
       ResultSet* m_resultSet;
       thrift::RowSet* m_rows;
@@ -131,12 +145,12 @@ namespace client {
           static_cast<thrift::CursorUpdateOperation::type>(0);
 
       void resetPositions() {
-        size_t sz = m_rows->rows.size();
+        size_t sz = m_resultSet->m_rowData.size();
         if (sz > 0) {
-          m_currentRow = new (&m_rows->rows[0]) TRow(updatable);
+          m_currentRow = m_resultSet->row<updatable>(0);
           m_endBatch = m_currentRow + sz;
         } else {
-          m_currentRow = m_endBatch = NULL;
+          m_currentRow = m_endBatch = nullptr;
         }
       }
 
@@ -147,49 +161,49 @@ namespace client {
           resetPositions();
         } else if (offset >= 0) {
           // offset from start of the resultset; check if in current batch
-          size_t sz = m_rows->rows.size();
+          size_t sz = m_resultSet->m_rowData.size();
           if (offset >= batchOffset &&
-              offset < static_cast<int32_t>(batchOffset + sz)) {
-            m_currentRow = new (&m_rows->rows[0]) TRow(updatable);
+              offset < batchOffset + static_cast<int64_t>(sz)) {
+            m_currentRow = m_resultSet->row<updatable>(0);
             m_endBatch = m_currentRow + sz;
             m_currentRow += (offset - batchOffset);
           } else {
             if (m_resultSet->moveToRowSet(offset, m_resultSet->m_batchSize, true)
-                && (sz = m_rows->rows.size()) > 0) {
+                && (sz = m_resultSet->m_rowData.size()) > 0) {
               // check for cursor placed after last row
               if ((m_rows->flags &
                   thrift::snappydataConstants::ROWSET_AFTER_LAST) == 0) {
-                m_currentRow = new (&m_rows->rows[0]) TRow(updatable);
+                m_currentRow = m_resultSet->row<updatable>(0);
                 m_endBatch = m_currentRow + sz;
               } else { // after last
-                m_currentRow = m_endBatch = NULL;
+                m_currentRow = m_endBatch = nullptr;
               }
             } else {
               // indicate end of iteration
-              m_currentRow = m_endBatch = NULL;
+              m_currentRow = m_endBatch = nullptr;
             }
           }
         } else {
           // offset from end of the resultset; check if in current batch
-          size_t sz = m_rows->rows.size();
-          if ((m_rows->flags & thrift::snappydataConstants::
-              ROWSET_LAST_BATCH) != 0 && (sz + offset) >= 0) {
-            m_currentRow = new (&m_rows->rows[0]) TRow(updatable);
+          size_t sz = m_resultSet->m_rowData.size();
+          if ((m_rows->flags & thrift::snappydataConstants::ROWSET_LAST_BATCH)
+              != 0 && (static_cast<int64_t>(sz) + offset) >= 0) {
+            m_currentRow = m_resultSet->row<updatable>(0);
             m_endBatch = m_currentRow + sz;
-            m_currentRow += (sz + offset);
+            m_currentRow += (static_cast<int64_t>(sz) + offset);
           } else {
             if (m_resultSet->moveToRowSet(offset, m_resultSet->m_batchSize, true)
-                && (sz = m_rows->rows.size()) > 0) {
-              m_currentRow = new (&m_rows->rows[0]) TRow(updatable);
+                && (sz = m_resultSet->m_rowData.size()) > 0) {
+              m_currentRow = m_resultSet->row<updatable>(0);
               m_endBatch = m_currentRow + sz;
               // check for cursor placed before first row
               if ((m_rows->flags &
                   thrift::snappydataConstants::ROWSET_BEFORE_FIRST) != 0) {
-                m_currentRow = NULL;
+                m_currentRow = nullptr;
               }
             } else {
               // indicate end of iteration
-              m_currentRow = m_endBatch = NULL;
+              m_currentRow = m_endBatch = nullptr;
             }
           }
         }
@@ -204,17 +218,17 @@ namespace client {
         m_operation = other.m_operation;
       }
 
-      inline SQLException noCurrentRow(const char* operation) const {
-        if (m_rows == NULL) {
-          return GET_SQLEXCEPTION2(
-              SQLStateMessage::LANG_RESULT_SET_NOT_OPEN_MSG, operation);
-        } else {
+      inline SQLException noCurrentRow(const char *operation) const {
+        if (m_rows) {
           return GET_SQLEXCEPTION2(SQLStateMessage::NO_CURRENT_ROW_MSG);
+        } else {
+          return GET_SQLEXCEPTION2(SQLStateMessage::LANG_RESULT_SET_NOT_OPEN_MSG,
+              operation);
         }
       }
 
       inline void checkOnRow(const char* operation) const {
-        if (m_currentRow != NULL) {
+        if (m_currentRow) {
           return;
         } else {
           throw noCurrentRow(operation);
@@ -232,12 +246,12 @@ namespace client {
       }
 
     public:
-      Itr() : m_resultSet(0), m_rows(0), m_currentRow(0), m_endBatch(0),
-          m_insertRow(0), m_operation(NO_OP) {
+      Itr() : m_resultSet(nullptr), m_rows(nullptr), m_currentRow(nullptr), m_endBatch(
+          nullptr), m_insertRow(nullptr), m_operation(NO_OP) {
       }
 
       Itr(ResultSet* rs, int32_t offset) : m_resultSet(rs), m_rows(rs->m_rows),
-          m_insertRow(0) {
+          m_insertRow(nullptr) {
         // m_operation is initialized in init()
         init(offset);
       }
@@ -246,10 +260,10 @@ namespace client {
           m_resultSet(other.m_resultSet), m_rows(other.m_rows),
           m_currentRow(other.m_currentRow), m_endBatch(other.m_endBatch),
           m_operation(other.m_operation) {
-        if (other.m_insertRow != NULL) {
+        if (other.m_insertRow) {
           m_insertRow = new TRow(other.m_insertRow);
         } else {
-          m_insertRow = NULL;
+          m_insertRow = nullptr;
         }
       }
 
@@ -257,7 +271,7 @@ namespace client {
           m_resultSet(other.m_resultSet), m_rows(other.m_rows),
           m_currentRow(other.m_currentRow), m_endBatch(other.m_endBatch),
           m_insertRow(other.m_insertRow), m_operation(other.m_operation) {
-        other.m_insertRow = NULL;
+        other.m_insertRow = nullptr;
         other.clear();
       }
 
@@ -276,28 +290,28 @@ namespace client {
         m_operation = NO_OP;
         resetPositions();
         if (beforeFirst) {
-          m_currentRow = NULL;
+          m_currentRow = nullptr;
         }
       }
 
       void clear() {
-        m_resultSet = NULL;
-        m_rows = NULL;
-        m_currentRow = NULL;
-        m_endBatch = NULL;
+        m_resultSet = nullptr;
+        m_rows = nullptr;
+        m_currentRow = nullptr;
+        m_endBatch = nullptr;
         m_operation = NO_OP;
         clearInsertRow();
       }
 
       inline bool isOnRow() const noexcept {
-        return m_currentRow != NULL;
+        return m_currentRow;
       }
 
       inline bool isBeforeFirst() const noexcept {
-        return m_currentRow == NULL && m_endBatch != NULL;
+        return !m_currentRow && m_endBatch;
       }
 
-      /** Dereference the iterator. No NULL check like STL iterators. */
+      /** Dereference the iterator. No nullptr check like STL iterators. */
       TRow& operator*() const noexcept {
         return *m_currentRow;
       }
@@ -320,7 +334,7 @@ namespace client {
 
       bool next() {
         m_operation = NO_OP;
-        if (m_currentRow != NULL) {
+        if (m_currentRow) {
           ++m_currentRow;
           // check if we have reached end
           if (m_currentRow >= m_endBatch) {
@@ -329,22 +343,22 @@ namespace client {
               // go on to next set of rows
               size_t sz;
               if (m_resultSet->moveToNextRowSet(0)
-                  && (sz = m_rows->rows.size()) > 0) {
-                m_currentRow = new (&m_rows->rows[0]) TRow(updatable);
+                  && (sz = m_resultSet->m_rowData.size()) > 0) {
+                m_currentRow = m_resultSet->row<updatable>(0);
                 m_endBatch = m_currentRow + sz;
               } else {
                 // indicate end of iteration
-                m_currentRow = m_endBatch = NULL;
+                m_currentRow = m_endBatch = nullptr;
                 return false;
               }
             } else {
               // indicate end of iteration
-              m_currentRow = m_endBatch = NULL;
+              m_currentRow = m_endBatch = nullptr;
               return false;
             }
           }
           return true;
-        } else if (m_endBatch != NULL) {
+        } else if (m_endBatch) {
           // before first, so move to the first row
           resetPositions();
           checkOnRow("next");
@@ -363,17 +377,17 @@ namespace client {
         size_t sz;
         m_operation = NO_OP;
         // check if cursor is placed after last
-        if (m_currentRow == NULL) {
-          if (m_endBatch == NULL) {
+        if (!m_currentRow) {
+          if (!m_endBatch) {
             const int32_t batchSize = m_resultSet->m_batchSize;
             // check if there is already a fetched RowSet which is last one
-            if (((m_rows != NULL && (m_rows->flags &
+            if (((m_rows && (m_rows->flags &
                 thrift::snappydataConstants::ROWSET_LAST_BATCH) != 0) ||
                 // position to the (end - batchSize) since we only fetch in
                 // forward direction from server
                 m_resultSet->moveToRowSet(-batchSize, batchSize, true)) &&
-                (sz = m_rows->rows.size()) > 0) {
-              m_endBatch = new (&m_rows->rows[0] + sz) TRow(updatable);
+                (sz = m_resultSet->m_rowData.size()) > 0) {
+              m_endBatch = m_resultSet->row<updatable>(0) + sz;
               m_currentRow = m_endBatch - 1;
               return true;
             }
@@ -384,22 +398,21 @@ namespace client {
           return false;
         }
         // check if we have reached start
-        if (m_currentRow <= &m_rows->rows[0]) {
+        if (m_currentRow <= m_resultSet->row<updatable>(0)) {
           if (m_rows->offset > 0) {
             // go on to previous set of rows
             const int32_t batchSize = m_resultSet->m_batchSize;
             if (m_resultSet->moveToRowSet(-batchSize, batchSize, false)
-                && (sz = m_rows->rows.size()) > 0) {
-              m_currentRow = m_endBatch = new (
-                  &m_rows->rows[0] + sz) TRow(updatable);
+                && (sz = m_resultSet->m_rowData.size()) > 0) {
+              m_currentRow = m_endBatch = m_resultSet->row<updatable>(0) + sz;
             } else {
               // indicate that reached before first
-              m_currentRow = NULL;
+              m_currentRow = nullptr;
               return false;
             }
           } else {
             // indicate that reached before first
-            m_currentRow = NULL;
+            m_currentRow = nullptr;
             return false;
           }
         }
@@ -414,8 +427,8 @@ namespace client {
 
       Itr& operator+=(uint32_t n) {
         m_operation = NO_OP;
-        if (m_currentRow == NULL) {
-          if (m_endBatch == NULL || n == 0) {
+        if (!m_currentRow) {
+          if (!m_endBatch || n == 0) {
             throw noCurrentRow("nextN");
           } else {
             // before first, so move to first and calculate from there
@@ -424,7 +437,7 @@ namespace client {
             n -= 1;
           }
         }
-        thrift::Row* row = (m_currentRow + n);
+        TRow* row = m_currentRow + n;
         // check if we have reached end
         if (row >= m_endBatch) {
           if ((m_rows->flags
@@ -436,21 +449,21 @@ namespace client {
             // move to the required batch offset
             size_t sz;
             if (m_resultSet->moveToRowSet(offset, m_resultSet->m_batchSize,
-                false) && (sz = m_rows->rows.size()) > 0) {
-              m_currentRow = new (&m_rows->rows[0]) TRow(updatable);
+                false) && (sz = m_resultSet->m_rowData.size()) > 0) {
+              m_currentRow = m_resultSet->row<updatable>(0);
               m_endBatch = m_currentRow + sz;
             } else {
               // indicate end of iteration
-              m_currentRow = m_endBatch = NULL;
+              m_currentRow = m_endBatch = nullptr;
               return *this;
             }
           } else {
             // indicate end of iteration
-            m_currentRow = m_endBatch = NULL;
+            m_currentRow = m_endBatch = nullptr;
             return *this;
           }
         } else {
-          m_currentRow = new (row) TRow(updatable);
+          m_currentRow = row;
         }
         return *this;
       }
@@ -459,15 +472,14 @@ namespace client {
         size_t sz;
         m_operation = NO_OP;
         // check if cursor is placed at the end
-        if (m_currentRow == NULL) {
-          if (m_endBatch == NULL) {
+        if (!m_currentRow) {
+          if (!m_endBatch) {
             const int32_t batchSize = m_resultSet->m_batchSize;
             // position to the (end - (batchSize + n)) since we only fetch in
             // forward direction from server
             if (m_resultSet->moveToRowSet(-batchSize - n, batchSize, true)
-                && (sz = m_rows->rows.size()) > 0) {
-              m_currentRow = m_endBatch = new (
-                  &m_rows->rows[0] + sz) TRow(updatable);
+                && (sz = m_resultSet->m_rowData.size()) > 0) {
+              m_currentRow = m_endBatch = m_resultSet->row<updatable>(0) + sz;
             }
           } else {
             // placed at the start
@@ -476,7 +488,7 @@ namespace client {
           return *this;
         }
         // check if we can find the position in current batch
-        thrift::Row* start = &m_rows->rows[0];
+        thrift::Row* start = m_resultSet->row<updatable>(0);
         TRow* row = (m_currentRow - n);
         if (row < start) {
           int32_t offset = m_rows->offset;
@@ -493,17 +505,17 @@ namespace client {
             }
             // move to the required batch offset
             if (m_resultSet->moveToRowSet(-requiredOffset, batchSize, false)
-                && (sz = m_rows->rows.size()) > 0) {
-              row = &m_rows->rows[0];
+                && (sz = m_resultSet->m_rowData.size()) > 0) {
+              row = m_resultSet->row<updatable>(0);
               m_endBatch = (row + sz);
             } else {
               // indicate that reached before first
-              m_currentRow = NULL;
+              m_currentRow = nullptr;
               return *this;
             }
           } else {
             // indicate that reached before first
-            m_currentRow = NULL;
+            m_currentRow = nullptr;
             return *this;
           }
         }
@@ -512,14 +524,14 @@ namespace client {
       }
 
       int32_t position() {
-        return m_currentRow != NULL ? static_cast<int32_t>(
-            (thrift::Row*)m_currentRow - &m_rows->rows[0]) : -1;
+        return m_currentRow ? static_cast<int32_t>(
+            m_currentRow - m_resultSet->row<updatable>(0)) : -1;
       }
 
       TRow* getInsertRow() {
         checkUpdatable("getInsertRow");
 
-        if (m_insertRow != NULL) {
+        if (m_insertRow) {
           return m_insertRow;
         } else {
           return (m_insertRow = new TRow());
@@ -527,9 +539,9 @@ namespace client {
       }
 
       void clearInsertRow() {
-        if (m_insertRow != NULL) {
+        if (m_insertRow) {
           delete m_insertRow;
-          m_insertRow = NULL;
+          m_insertRow = nullptr;
         }
       }
 
@@ -569,6 +581,12 @@ namespace client {
     };
 
   public:
+    ResultSet(thrift::RowSet* rows,
+        const std::shared_ptr<ClientService>& service,
+        const StatementAttributes& attrs = StatementAttributes::EMPTY,
+        const int32_t batchSize = -1, bool updatable = false,
+        bool scrollable = false, bool isOwner = true);
+
     typedef Itr<Row, const Row*, false> const_iterator;
     typedef Itr<UpdatableRow, UpdatableRow*, true> iterator;
 
@@ -618,7 +636,7 @@ namespace client {
     }
 
     inline bool isOpen() const noexcept {
-      return m_rows != NULL;
+      return m_rows;
     }
 
     inline bool isUpdatable() const noexcept {
@@ -631,7 +649,7 @@ namespace client {
 
     uint32_t getColumnCount() const {
       checkOpen("getColumnCount");
-      return static_cast<uint32_t>(m_descriptors == NULL
+      return static_cast<uint32_t>(!m_descriptors
           ? m_rows->metadata.size() : m_descriptors->size());
     }
 
@@ -641,7 +659,7 @@ namespace client {
 
     size_t getCurrentBatchSize() const {
       checkOpen("getCurrentBatchSize");
-      return m_rows->rows.size();
+      return m_rowData.size();
     }
 
     /**
@@ -665,7 +683,7 @@ namespace client {
 
     inline bool hasWarnings() const noexcept {
       const thrift::RowSet* rs = m_rows;
-      return rs != NULL && rs->__isset.warnings;
+      return rs && rs->__isset.warnings;
     }
 
     std::unique_ptr<SQLWarning> getWarnings() const;
@@ -676,7 +694,7 @@ namespace client {
 
     void close(bool closeStatement);
 
-    virtual ~ResultSet();
+    ~ResultSet();
 
   private:
     static const const_iterator ITR_END_CONST;

@@ -205,29 +205,6 @@ task odbcMeta {
   }
 }
 
-/*
-task createClassSizeCatalog {
-  def internalDir = 'com/pivotal/gemfirexd/internal'
-  def internalOut = "${sourceSets.main.java.outputDir}/${internalDir}"
-
-  // need to re-generate class size catalog if any of the classes below change
-  inputs.files [ "${internalOut}/iapi/types/DataValueDescriptor.class",
-    "${internalOut}/impl/services/cache/CachedItem.class",
-    "${internalOut}/impl/store/raw/data/RecordId.class",
-    "${internalOut}/iapi/store/raw/ContainerKey.class",
-    "${internalOut}/iapi/services/cache/SizedCacheable.class" ]
-  outputs.file "src/main/java/${internalDir}/iapi/services/cache/ClassSizeCatalog.java"
-
-  def internalCP = 'com.pivotal.gemfirexd.internal'
-  javaexec {
-    main = 'org.apache.derbyBuild.ClassSizeCrawler'
-    classpath = sourceSets.main.runtimeClasspath
-    // TODO: SW: incomplete code ...
-    args = [ "-DWS=${workspace}", "-DclassDir=${out.dir}", "-Dout=${derby.engine.src.dir}/${derby.dir}/iapi/services/cache/ClassSizeCatalog.java", "-Dprefix.1=${internalCP}.iapi.types", '-Dprefix.2=com.pivotal.gemfirexd.internal.impl, com.pivotal.gemfirexd.internal.iapi.types.DataValueDescriptor' ]
-  }
-}
-*/
-
 compileJava.dependsOn generatePropertiesFiles
 
 // external javadocs
@@ -248,8 +225,8 @@ javadoc.dependsOn.clear()
 shadowJar {
   dependsOn odbcMeta, doSplit, jar
   zip64 = true
-  baseName = 'snappydata-store'
-  classifier = ''
+  archiveBaseName.set('snappydata-store')
+  archiveClassifier.set('')
 
   mergeServiceFiles()
 }
@@ -258,7 +235,7 @@ archivesBaseName = 'snappydata-store-core'
 
 jar {
   dependsOn odbcMeta, doSplit
-  baseName = 'snappydata-store-core'
+  archiveBaseName.set('snappydata-store-core')
 
   doLast {
     // copy the native JNI library

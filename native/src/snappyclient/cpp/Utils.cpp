@@ -37,28 +37,41 @@
  * Utils.cpp
  */
 
-#include "Utils.h"
+#include "impl/pch.h"
 
-#include <sstream>
+#include <cmath>
+#include <cstdlib>
 #include <iostream>
+#include <sstream>
+#include <typeinfo>
+
 #ifdef __GNUC__
 extern "C" {
 #  include <cxxabi.h>
 }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+#pragma GCC diagnostic ignored "-Wdouble-promotion"
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
 #endif
 
-#include <boost/config.hpp>
-#include <boost/lexical_cast.hpp>
+#ifndef _WINDOWS
+#include <boost/process.hpp>
+#endif
 #include <boost/spirit/include/karma.hpp>
-#include <cmath>
 
-#include <thrift/Thrift.h>
-#include <thrift/protocol/TProtocolException.h>
-#include <thrift/transport/TTransportException.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
-#include "LogWriter.h"
-#include "SQLException.h"
-#include "impl/InternalUtils.h"
+#ifdef _WINDOWS
+extern "C" {
+#  include <wincred.h>
+}
+#endif
+
+#include "impl/snappydata_struct_SnappyException.h"
 
 using namespace apache::thrift;
 using namespace io::snappydata;
@@ -174,73 +187,204 @@ void Utils::getHostPort(const std::string& hostPort, std::string& resultHost,
   } catch (const std::exception& se) {
     std::string parseError(
         "INT {failed to parse integer port in host[port] string: ");
-    parseError.append(hostPort);
+    parseError.append(hostPort).push_back('}');
     throwDataFormatError(parseError.c_str(), 0, se);
   }
   std::string parseError("{failed to split given host[port] string: ");
-  parseError.append(hostPort);
-  throwDataFormatError(parseError.c_str(), 0, NULL);
+  parseError.append(hostPort).push_back('}');
+  throwDataFormatError(parseError.c_str(), 0, nullptr);
 }
 
-const char* Utils::getServerTypeString(
-    thrift::ServerType::type serverType) noexcept {
-  switch (serverType) {
-    case thrift::ServerType::THRIFT_SNAPPY_CP:
-      return "THRIFT_SERVER_COMPACTPROTOCOL";
-    case thrift::ServerType::THRIFT_SNAPPY_BP:
-      return "THRIFT_SERVER_BINARYPROTOCOL";
-    case thrift::ServerType::THRIFT_SNAPPY_CP_SSL:
-      return "THRIFT_SERVER_SSL_COMPACTPROTOCOL";
-    case thrift::ServerType::THRIFT_SNAPPY_BP_SSL:
-      return "THRIFT_SERVER_SSL_BINARYPROTOCOL";
-    case thrift::ServerType::THRIFT_LOCATOR_CP:
-      return "THRIFT_LOCATOR_COMPACTPROTOCOL";
-    case thrift::ServerType::THRIFT_LOCATOR_BP:
-      return "THRIFT_LOCATOR_BINARYPROTOCOL";
-    case thrift::ServerType::THRIFT_LOCATOR_CP_SSL:
-      return "THRIFT_LOCATOR_SSL_COMPACTPROTOCOL";
-    case thrift::ServerType::THRIFT_LOCATOR_BP_SSL:
-      return "THRIFT_LOCATOR_SSL_BINARYPROTOCOL";
-    case thrift::ServerType::DRDA:
-      return "DRDA";
-    default:
-      return "THRIFT_SERVER_COMPACTPROTOCOL";
+void Utils::toHexString(const char* bytes, const size_t bytesLen,
+    std::ostream& out) {
+  functor::WriteStream proc = { out };
+  impl::InternalUtils::toHexString(bytes, bytesLen, proc);
+}
+
+void Utils::toHexString(const char* bytes, const size_t bytesLen,
+    std::string& result) {
+  functor::WriteString proc = { result };
+  impl::InternalUtils::toHexString(bytes, bytesLen, proc);
+}
+
+std::string Utils::readPasswordFromManager(const std::string& user,
+    const std::string& passwordKey) {
+#ifdef _WINDOWS
+  PCREDENTIAL pcred;
+  if (::CredRead(passwordKey.c_str(), CRED_TYPE_GENERIC, 0, &pcred)) {
+    std::unique_ptr<CREDENTIAL, decltype(&::CredFree)> p(pcred, ::CredFree);
+    std::string passwd;
+    if (pcred->CredentialBlobSize > 0) {
+      convertUTF16ToUTF8((wchar_t*)pcred->CredentialBlob,
+          pcred->CredentialBlobSize / sizeof(wchar_t), [&](char c) {
+            passwd.push_back(c);
+          });
+    }
+    return passwd;
+  } else {
+    std::string errMsg;
+    DWORD err = ::GetLastError();
+    switch (err) {
+      case ERROR_NOT_FOUND:
+        errMsg = "Missing credentials for ";
+        errMsg.append(user);
+        break;
+      case ERROR_NO_SUCH_LOGON_SESSION:
+        errMsg = "Login session not found to read credentials for ";
+        errMsg.append(user);
+        break;
+      default:
+        errMsg = "Credentials read failed for ";
+        errMsg.append(user).append(" with code = ").append(std::to_string(err));
+        break;
+    }
+    errMsg.append(" in Windows credential manager using the password key '")
+        .append(passwordKey).append("'");
+    throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, errMsg);
   }
+#elif defined(__APPLE__)
+  try {
+    boost::process::ipstream out, err;
+    std::stringstream outVal, errVal;
+
+    const char* user = ::getenv("USER");
+    if (!user) {
+      user = ::getenv("LOGNAME");
+    }
+    if (!user) {
+      throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION,
+          "Keychain lookup failed to get the user with "
+              "USER or LOGNAME environment variables");
+    }
+    boost::process::child c(boost::process::search_path("security"),
+        "find-generic-password", "-w", "-a", user, "-s", passwordKey,
+        boost::process::std_out > out, boost::process::std_err > err);
+
+    while (out >> outVal.rdbuf()) {
+    }
+    while (err >> errVal.rdbuf()) {
+    }
+
+    c.wait();
+    int exitCode = c.exit_code();
+    if (exitCode != 0) {
+      throw std::runtime_error(
+          "exit with error code " + std::to_string(exitCode));
+    }
+    if (errVal.rdbuf()->in_avail() > 0) {
+      throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, errVal.str());
+    } else {
+      return outVal.str();
+    }
+  } catch (const SQLException& sqle) {
+    throw sqle;
+  } catch (const std::exception& ex) {
+    std::string err("Password lookup failure in 'security' tool for ");
+    err.append(user).append(" using the password key '").append(passwordKey)
+        .append("' : ");
+    throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, err.append(ex.what()));
+  }
+#else
+  std::string attribute, value;
+  size_t colonPos = passwordKey.find(':');
+  if (colonPos == std::string::npos) {
+    attribute = passwordKey;
+  } else {
+    attribute = passwordKey.substr(0, colonPos);
+    value = passwordKey.substr(colonPos + 1);
+  }
+  try {
+    boost::process::ipstream out, err;
+    std::stringstream outVal, errVal;
+
+    boost::process::child c(boost::process::search_path("secret-tool"),
+        "lookup", attribute.c_str(), value.c_str(),
+        boost::process::std_out > out, boost::process::std_err > err);
+
+    while (out >> outVal.rdbuf()) {
+    }
+    while (err >> errVal.rdbuf()) {
+    }
+
+    c.wait();
+    int exitCode = c.exit_code();
+    if (exitCode != 0) {
+      throw std::runtime_error(
+          "exit with error code " + std::to_string(exitCode));
+    }
+    if (errVal.rdbuf()->in_avail() > 0) {
+      throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, errVal.str());
+    } else {
+      return outVal.str();
+    }
+  } catch (const SQLException& sqle) {
+    throw sqle;
+  } catch (const std::exception& ex) {
+    std::string err("Password lookup failure in 'secret-tool' for ");
+    err.append(user).append(" using the attribute:value '").append(attribute)
+        .append("':'").append(value).append("' : ");
+    throw GET_SQLEXCEPTION(SQLState::UNKNOWN_EXCEPTION, err.append(ex.what()));
+  }
+#endif
 }
 
-void Utils::toHexString(const char* bytes, const size_t bytesLen,
-    std::ostream& out) {
-  functor::WriteStream proc = { out };
-  impl::InternalUtils::toHexString(bytes, bytesLen, proc);
-}
-
-void Utils::toHexString(const char* bytes, const size_t bytesLen,
-    std::string& result) {
-  functor::WriteString proc = { result };
-  impl::InternalUtils::toHexString(bytes, bytesLen, proc);
-}
-
-bool Utils::convertUTF8ToUTF16(const char* utf8Chars, const int utf8Len,
-    std::wstring& result) {
-  functor::WriteWString proc = { result };
-  return convertUTF8ToUTF16(utf8Chars, utf8Len, proc);
-}
-
-void Utils::convertUTF16ToUTF8(const wchar_t* utf16Chars, const int utf16Len,
-    std::string& result) {
-  functor::WriteString proc = { result };
-  convertUTF16ToUTF8(utf16Chars, utf16Len, proc);
-}
-
-void Utils::convertUTF16ToUTF8(const wchar_t* utf16Chars, const int utf16Len,
-    std::ostream& out) {
-  functor::WriteStream proc = { out };
-  convertUTF16ToUTF8(utf16Chars, utf16Len, proc);
+bool Utils::convertUTF8ToUTF16(const char* utf8Chars, const int64_t utf8Len,
+    std::function<void(int)> process) {
+  const char* endChars = (utf8Len < 0) ? nullptr : (utf8Chars + utf8Len);
+  bool nonASCII = false;
+  int ch;
+  while ((!endChars || utf8Chars < endChars)
+      && (ch = (*utf8Chars++ & 0xFF)) != 0) {
+    // get next byte unsigned
+    const int k = (ch >> 5);
+    // classify based on the high order 3 bits
+    switch (k) {
+      case 6: {
+        // two byte encoding
+        // 110yyyyy 10xxxxxx
+        // use low order 6 bits
+        const int y = ch & 0x1F;
+        // use low order 6 bits of the next byte
+        // It should have high order bits 10, which we don't check.
+        const int x = *utf8Chars++ & 0x3F;
+        // 00000yyy yyxxxxxx
+        process(y << 6 | x);
+        nonASCII = true;
+        break;
+      }
+      case 7: {
+        // three byte encoding
+        // 1110zzzz 10yyyyyy 10xxxxxx
+        //assert ( b & 0x10 )
+        //     == 0 : "UTF8Decoder does not handle 32-bit characters";
+        // use low order 4 bits
+        const int z = ch & 0x0F;
+        // use low order 6 bits of the next byte
+        // It should have high order bits 10, which we don't check.
+        const int y = *utf8Chars++ & 0x3F;
+        // use low order 6 bits of the next byte
+        // It should have high order bits 10, which we don't check.
+        const int x = *utf8Chars++ & 0x3F;
+        // zzzzyyyy yyxxxxxx
+        process(z << 12 | y << 6 | x);
+        nonASCII = true;
+        break;
+      }
+      default:
+        // one byte encoding
+        // 0xxxxxxx
+        // use just low order 7 bits
+        // 00000000 0xxxxxxx
+        process(ch & 0x7F);
+        break;
+    }
+  }
+  return nonASCII;
 }
 
 
 template<typename TNum>
-class PrecisionPolicy : public boost::spirit::karma::real_policies<TNum> {
+class PrecisionPolicy final : public boost::spirit::karma::real_policies<TNum> {
 private:
   const size_t m_precision2;
   const TNum m_minFixed;
@@ -267,7 +411,7 @@ public:
       return boost::spirit::karma::real_policies<TNum>::fmtflags::fixed;
     }
     const TNum absn = std::abs(n);
-    if (absn >= m_minFixed && absn <= 1e9) {
+    if (absn >= m_minFixed && absn <= static_cast<TNum>(1e9)) {
       return boost::spirit::karma::real_policies<TNum>::fmtflags::fixed;
     } else {
       return boost::spirit::karma::real_policies<TNum>::fmtflags::scientific;
@@ -275,6 +419,7 @@ public:
   }
 
   size_t precision(TNum n) const {
+    SKIP_UNUSED_WARNING(n);
     return m_precision2;
   }
 
@@ -291,11 +436,11 @@ public:
       const size_t actualPrecision = (m_precision2 * 3) / 5;
       TNum d = 1.0;
       while (d <= n) {
-        d *= 10.0;
+        d *= static_cast<TNum>(10.0);
         digits++;
         // if digits exceed actual precision, then reduce n
         if (digits > actualPrecision) {
-          n1 = static_cast<TNum>((n1 + 5.0) / 10.0);
+          n1 = static_cast<TNum>((static_cast<double>(n1) + 5.0) / 10.0);
         }
       }
     }
@@ -327,35 +472,35 @@ void Utils::convertByteToString(const int8_t v, std::string& result) {
   char buffer[4];
   char* pbuf = buffer;
   boost::spirit::karma::generate(pbuf, boost::spirit::byte_, v);
-  result.append(buffer, pbuf - &buffer[0]);
+  result.append(buffer, static_cast<size_t>(pbuf - &buffer[0]));
 }
 
 void Utils::convertShortToString(const int16_t v, std::string& result) {
   char buffer[10];
   char* pbuf = buffer;
   boost::spirit::karma::generate(pbuf, boost::spirit::short_, v);
-  result.append(buffer, pbuf - &buffer[0]);
+  result.append(buffer, static_cast<size_t>(pbuf - &buffer[0]));
 }
 
 void Utils::convertIntToString(const int32_t v, std::string& result) {
   char buffer[20];
   char* pbuf = buffer;
   boost::spirit::karma::generate(pbuf, boost::spirit::int_, v);
-  result.append(buffer, pbuf - &buffer[0]);
+  result.append(buffer, static_cast<size_t>(pbuf - &buffer[0]));
 }
 
 void Utils::convertInt64ToString(const int64_t v, std::string& result) {
   char buffer[40];
   char* pbuf = buffer;
   boost::spirit::karma::generate(pbuf, boost::spirit::long_long, v);
-  result.append(buffer, pbuf - &buffer[0]);
+  result.append(buffer, static_cast<size_t>(pbuf - &buffer[0]));
 }
 
 void Utils::convertUInt64ToString(const uint64_t v, std::string& result) {
   char buffer[40];
   char* pbuf = buffer;
   boost::spirit::karma::generate(pbuf, boost::spirit::ulong_long, v);
-  result.append(buffer, pbuf - &buffer[0]);
+  result.append(buffer, static_cast<size_t>(pbuf - &buffer[0]));
 }
 
 void Utils::convertFloatToString(const float v, std::string& result,
@@ -366,16 +511,16 @@ void Utils::convertFloatToString(const float v, std::string& result,
     boost::spirit::karma::generate(pbuf,
         precision == DEFAULT_REAL_PRECISION ? floatPrecisionDef :
             PrecisionFloatType(PrecisionPolicy<float>(precision)), v);
-    result.append(buffer, pbuf - &buffer[0]);
+    result.append(buffer, static_cast<size_t>(pbuf - &buffer[0]));
   } else {
     // static buffer can overflow so better just use dynamically allocated array
     char* buffer = new char[precision * 2 + 24];
-    DestroyArray<char> cleanBuf(buffer);
+    std::unique_ptr<char[]> cleanBuf(buffer);
     char* pbuf = buffer;
     boost::spirit::karma::generate(pbuf,
         precision == DEFAULT_REAL_PRECISION ? floatPrecisionDef :
             PrecisionFloatType(PrecisionPolicy<float>(precision)), v);
-    result.append(buffer, pbuf - &buffer[0]);
+    result.append(buffer, static_cast<size_t>(pbuf - &buffer[0]));
   }
 }
 
@@ -387,55 +532,38 @@ void Utils::convertDoubleToString(const double v, std::string& result,
     boost::spirit::karma::generate(pbuf,
         precision == DEFAULT_REAL_PRECISION ? doublePrecisionDef :
             PrecisionDoubleType(PrecisionPolicy<double>(precision)), v);
-    result.append(buffer, pbuf - &buffer[0]);
+    result.append(buffer, static_cast<size_t>(pbuf - &buffer[0]));
   } else {
     // static buffer can overflow so better just use dynamically allocated array
     char* buffer = new char[precision * 2 + 24];
-    DestroyArray<char> cleanBuf(buffer);
+    std::unique_ptr<char[]> cleanBuf(buffer);
     char* pbuf = buffer;
     boost::spirit::karma::generate(pbuf,
         precision == DEFAULT_REAL_PRECISION ? doublePrecisionDef :
             PrecisionDoubleType(PrecisionPolicy<double>(precision)), v);
-    result.append(buffer, pbuf - &buffer[0]);
+    result.append(buffer, static_cast<size_t>(pbuf - &buffer[0]));
   }
-}
-
-std::ostream& Utils::toStream(std::ostream& out,
-    const thrift::HostAddress& hostAddr) {
-  thrift::ServerType::type serverType = hostAddr.serverType;
-  bool addServerType = true;
-  if (!hostAddr.__isset.serverType || Utils::isServerTypeDefault(serverType)) {
-    addServerType = false;
-  }
-
-  out << hostAddr.hostName;
-  if (hostAddr.__isset.ipAddress) {
-    out << '/' << hostAddr.ipAddress;
-  }
-  out << '[' << hostAddr.port << ']';
-  if (addServerType) {
-    out << '{' << serverType << '}';
-  }
-  return out;
-}
-
-std::ostream& Utils::toStream(std::ostream& out, const std::exception& stde) {
-  demangleTypeName(typeid(stde).name(), out);
-  const char* reason = stde.what();
-  if (reason != NULL) {
-    out << ": " << reason;
-  }
-  return out;
 }
 
 std::string Utils::toString(const std::exception& stde) {
-  std::string str;
-  demangleTypeName(typeid(stde).name(), str);
-  const char* reason = stde.what();
-  if (reason != NULL) {
-    str.append(": ").append(reason);
+  const thrift::SnappyException* snEx =
+      dynamic_cast<const thrift::SnappyException*>(&stde);
+  if (snEx) {
+    std::ostringstream ostr;
+    snEx->printTo(ostr);
+    return ostr.str();
+  } else {
+    std::string str;
+    // skip names for thrift exceptions which will add to what() if required
+    if (!dynamic_cast<const TException*>(&stde)) {
+      demangleTypeName(typeid(stde).name(), str);
+    }
+    const char* reason = stde.what();
+    if (reason) {
+      str.append(": ").append(reason);
+    }
+    return str;
   }
-  return str;
 }
 
 void Utils::throwDataFormatError(const char* target,
@@ -444,7 +572,7 @@ void Utils::throwDataFormatError(const char* target,
   if (columnIndex > 0) {
     reason << " at column " << columnIndex;
   }
-  if (cause != NULL) {
+  if (cause) {
     reason << ": " << cause;
   }
   throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_FORMAT_EXCEPTION_MSG, target,
@@ -459,7 +587,7 @@ void Utils::throwDataFormatError(const char* target,
   if (columnIndex > 0) {
     reason << " at column " << columnIndex;
   }
-  if (cause != NULL) {
+  if (cause) {
     reason << ": " << cause;
   }
   throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_FORMAT_EXCEPTION_MSG, target,
@@ -483,7 +611,7 @@ void Utils::throwDataOutsideRangeError(const char* target,
   if (columnIndex > 0) {
     reason << " at column " << columnIndex;
   }
-  if (cause != NULL) {
+  if (cause) {
     reason << ": " << cause;
   }
   throw GET_SQLEXCEPTION2(SQLStateMessage::LANG_OUTSIDE_RANGE_FOR_DATATYPE_MSG,
@@ -493,11 +621,12 @@ void Utils::throwDataOutsideRangeError(const char* target,
 #ifdef __GNUC__
 char* Utils::gnuDemangledName(const char* typeName) {
   int status;
-  char* demangledName = abi::__cxa_demangle(typeName, NULL, NULL, &status);
-  if (status == 0 && demangledName != NULL) {
+  char *demangledName = abi::__cxa_demangle(typeName, nullptr, nullptr,
+      &status);
+  if (status == 0 && demangledName) {
     return demangledName;
   } else {
-    return NULL;
+    return nullptr;
   }
 }
 #endif
@@ -505,7 +634,7 @@ char* Utils::gnuDemangledName(const char* typeName) {
 void Utils::demangleTypeName(const char* typeName, std::string& str) {
 #ifdef __GNUC__
   char* demangledName = gnuDemangledName(typeName);
-  if (demangledName != NULL) {
+  if (demangledName) {
     str.append(demangledName);
     ::free(demangledName);
     return;
@@ -517,7 +646,7 @@ void Utils::demangleTypeName(const char* typeName, std::string& str) {
 void Utils::demangleTypeName(const char* typeName, std::ostream& out) {
 #ifdef __GNUC__
   char* demangledName = gnuDemangledName(typeName);
-  if (demangledName != NULL) {
+  if (demangledName) {
     out << demangledName;
     ::free(demangledName);
     return;
@@ -526,51 +655,65 @@ void Utils::demangleTypeName(const char* typeName, std::ostream& out) {
   out << typeName;
 }
 
-void Utils::handleExceptionInDestructor(const char* operation,
-    const SQLException& sqle) {
-  // ignore transport and protocol exceptions due to other side failing
-  const std::string& sqlState = sqle.getSQLState();
-  if (sqlState == SQLState::SNAPPY_NODE_SHUTDOWN.getSQLState()
-      || sqlState == SQLState::DATA_CONTAINER_CLOSED.getSQLState()
-      || sqlState == SQLState::THRIFT_PROTOCOL_ERROR.getSQLState()) {
-    return;
-  }
+void Utils::handleExceptionsInDestructor(const char* operation,
+    std::function<void()> body) noexcept {
   try {
-    LogWriter::error() << "Exception in destructor of " << operation << ": "
-        << stack(sqle);
+    body();
+  } catch (const SQLException& sqle) {
+    // ignore transport and protocol exceptions due to other side failing
+    const std::string& sqlState = sqle.getSQLState();
+    if (sqlState == SQLState::SNAPPY_NODE_SHUTDOWN.getSQLState()
+        || sqlState == SQLState::DATA_CONTAINER_CLOSED.getSQLState()
+        || sqlState == SQLState::THRIFT_PROTOCOL_ERROR.getSQLState()) {
+      return;
+    }
+    try {
+      LogWriter::error() << "Exception in destructor of " << operation << ": "
+          << stack(sqle);
+    } catch (const std::exception& se) {
+      std::cerr << "FAILURE in logging SQLException in destructor of "
+          << operation << ": " << se.what() << std::endl;
+    } catch (...) {
+      std::cerr << "FAILURE in logging SQLException in destructor of "
+          << operation << std::endl;
+    }
+  } catch (const std::exception& se) {
+    // ignore transport and protocol exceptions due to other side failing
+    if (!dynamic_cast<const transport::TTransportException*>(&se)
+        && !dynamic_cast<const protocol::TProtocolException*>(&se)) {
+      try {
+        LogWriter::error() << "Exception in destructor of " << operation << ": "
+            << stack(se);
+      } catch (const std::exception& ex) {
+        std::cerr << "FAILURE in logging std::exception in destructor of "
+            << operation << ": " << ex.what() << std::endl;
+      } catch (...) {
+        std::cerr << "FAILURE in logging std::exception in destructor of "
+            << operation << std::endl;
+      }
+    }
   } catch (...) {
     try {
-      std::cerr << "FAILURE in logging during exception in destructor of "
-          << operation << ": " << stack(sqle);
+      LogWriter::error() << "Unknown exception in destructor of " << operation;
+    } catch (const std::exception& se) {
+      std::cerr << "FAILURE in logging unknown exception in destructor of "
+          << operation << ": " << se.what() << std::endl;
     } catch (...) {
-      std::cerr << "FAILURE in logging an exception in destructor of "
+      std::cerr << "FAILURE in logging unknown exception in destructor of "
           << operation << std::endl;
     }
   }
 }
 
-void Utils::handleExceptionInDestructor(const char* operation,
-    const std::exception& se) {
-  // ignore transport and protocol exceptions due to other side failing
-  if (dynamic_cast<const transport::TTransportException*>(&se) == NULL
-      && dynamic_cast<const protocol::TProtocolException*>(&se) == NULL) {
-    LogWriter::error() << "Exception in destructor of " << operation << ": "
-        << stack(se);
-  }
-}
-
-void Utils::handleExceptionInDestructor(const char* operation) {
-  LogWriter::error() << "Unknown exception in destructor of " << operation;
-}
-
 std::ostream& operator <<(std::ostream& out, const wchar_t* wstr) {
-  Utils::convertUTF16ToUTF8(wstr, -1, out);
+  functor::WriteStream proc = { out };
+  Utils::convertUTF16ToUTF8(wstr, -1, proc);
   return out;
 }
 
 std::ostream& operator <<(std::ostream& out,
     const thrift::ServerType::type& serverType) {
-  return out << Utils::getServerTypeString(serverType);
+  return thrift::operator <<(out, serverType);
 }
 
 std::ostream& operator <<(std::ostream& out, const _SqleHex& hexstr) {

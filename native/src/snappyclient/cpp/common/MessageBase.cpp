@@ -33,8 +33,9 @@
  * LICENSE file.
  */
 
-#include "common/MessageBase.h"
-#include "../impl/MessageRegistry.h"
+#include "impl/pch.h"
+
+#include "impl/MessageRegistry.h"
 
 using namespace io::snappydata;
 
@@ -43,7 +44,7 @@ MessageBase::MessageBase() : m_messageId(), m_messageParts() {
 
 void MessageBase::initialize(const char* messageId) {
   impl::MessageRegistry::instance().removeMessage(*this);
-  if (messageId != NULL) {
+  if (messageId) {
     m_messageId = messageId;
     impl::MessageRegistry::instance().addMessage(*this);
   } else {
@@ -65,14 +66,14 @@ MessageBase::~MessageBase() {
 }
 
 void MessageBase::addMessagePart(const char* messagePart) {
-  m_messageParts.push_back(messagePart);
+  m_messageParts.emplace_back(messagePart);
 }
 
 size_t MessageBase::getNumMessageParts() const noexcept {
   return m_messageParts.size();
 }
 
-const std::string& MessageBase::getMessagePart(int index) const {
+const std::string& MessageBase::getMessagePart(size_t index) const {
   return m_messageParts.at(index);
 }
 

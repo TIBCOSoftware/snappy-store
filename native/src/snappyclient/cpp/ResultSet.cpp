@@ -37,11 +37,12 @@
  * ResultSet.cpp
  */
 
+#include "impl/pch.h"
+
 #include "ResultSet.h"
 
-#include "impl/ClientService.h"
-#include "impl/InternalUtils.h"
 #include "StatementAttributes.h"
+#include "impl/ClientService.h"
 
 using namespace io::snappydata;
 using namespace io::snappydata::client;
@@ -55,7 +56,21 @@ ResultSet::ResultSet(thrift::RowSet* rows,
     bool scrollable, bool isOwner) :
     m_rows(rows), m_service(service), m_attrs(attrs), m_batchSize(batchSize),
     m_updatable(updatable), m_scrollable(scrollable), m_isOwner(isOwner),
-    m_descriptors(NULL), m_columnPositionMap(NULL) {
+    m_descriptors(nullptr), m_columnPositionMap(nullptr) {
+  initRowData(false);
+}
+
+void ResultSet::initRowData(bool clearData) {
+  if (clearData) m_rowData.clear();
+
+  auto &rows = m_rows->rows;
+  auto numRows = rows.size();
+  if (numRows > 0) {
+    m_rowData.reserve(numRows);
+    for (thrift::Row& row : rows) {
+      m_rowData.push_back(std::move(row));
+    }
+  }
 }
 
 bool ResultSet::moveToNextRowSet(int32_t offset) {
@@ -67,7 +82,8 @@ bool ResultSet::moveToNextRowSet(int32_t offset) {
 
   m_service->scrollCursor(*m_rows, m_rows->cursorId, offset, false, false,
       m_batchSize);
-  return (m_rows->rows.size() > 0);
+  initRowData(true);
+  return !m_rowData.empty();
 }
 
 bool ResultSet::moveToRowSet(int32_t offset, int32_t batchSize,
@@ -81,10 +97,11 @@ bool ResultSet::moveToRowSet(int32_t offset, int32_t batchSize,
 
   m_service->scrollCursor(*m_rows, m_rows->cursorId, offset, offsetIsAbsolute,
       false, batchSize);
-  return (m_rows->rows.size() > 0);
+  initRowData(true);
+  return !m_rowData.empty();
 }
 
-struct ClearUpdates {
+struct ClearUpdates final {
 private:
   UpdatableRow* m_row;
 
@@ -98,11 +115,11 @@ public:
 
 void ResultSet::insertRow(UpdatableRow* row, int32_t rowIndex) {
   checkOpen("insertRow");
-  if (row != NULL && row->getChangedColumns() != NULL) {
+  if (row && row->getChangedColumns()) {
     ClearUpdates clearRow(row);
     std::vector<int32_t> changedColumns(
         std::move(row->getChangedColumnsAsVector()));
-    if (changedColumns.size() > 0) {
+    if (!changedColumns.empty()) {
       m_service->executeCursorUpdate(m_rows->cursorId,
           thrift::CursorUpdateOperation::INSERT_OP, *row, changedColumns,
           rowIndex);
@@ -115,11 +132,11 @@ void ResultSet::insertRow(UpdatableRow* row, int32_t rowIndex) {
 
 void ResultSet::updateRow(UpdatableRow* row, int32_t rowIndex) {
   checkOpen("updateRow");
-  if (row != NULL && row->getChangedColumns() != NULL) {
+  if (row && row->getChangedColumns()) {
     ClearUpdates clearRow(row);
     std::vector<int32_t> changedColumns(
         std::move(row->getChangedColumnsAsVector()));
-    if (changedColumns.size() > 0) {
+    if (!changedColumns.empty()) {
       m_service->executeCursorUpdate(m_rows->cursorId,
           thrift::CursorUpdateOperation::UPDATE_OP, *row, changedColumns,
           rowIndex);
@@ -159,33 +176,59 @@ ResultSet::iterator ResultSet::begin(int32_t offset) {
 
 uint32_t ResultSet::getColumnPosition(const std::string& name) const {
   checkOpen("getColumnPosition");
-  if (m_columnPositionMap == NULL) {
+  if (!m_columnPositionMap) {
     // populate the map on first call
     const std::vector<thrift::ColumnDescriptor>* descriptors =
-        m_descriptors != NULL ? &m_rows->metadata : m_descriptors;
-    m_columnPositionMap = new std::map<std::string, uint32_t>();
+        m_descriptors ? &m_rows->metadata : m_descriptors;
+    m_columnPositionMap = new std::unordered_map<std::string, uint32_t>();
+    std::locale currentLocale;
     uint32_t index = 1;
-    for (std::vector<thrift::ColumnDescriptor>::const_iterator iter =
-        descriptors->begin(); iter != descriptors->end(); ++iter) {
-      const thrift::ColumnDescriptor& cd = *iter;
+    for (const auto& cd : *descriptors) {
       if (cd.__isset.name) {
-        m_columnPositionMap->operator [](cd.name) = index;
-        // also push back the fully qualified name
+        m_columnPositionMap->emplace(cd.name, index);
+        // add lower-case if different
+        auto lower = boost::algorithm::to_lower_copy(cd.name, currentLocale);
+        if (cd.name != lower) {
+          m_columnPositionMap->emplace(lower, index);
+        }
+        // allow looking up using name, table.name and schema.table.name
         if (cd.__isset.fullTableName) {
-          m_columnPositionMap->operator [](cd.fullTableName + "." + cd.name) =
-              index;
+          auto dotPos = cd.fullTableName.find('.');
+          if (dotPos != 0) {
+            auto fullName = cd.fullTableName + "." + cd.name;
+            m_columnPositionMap->emplace(fullName, index);
+            // add lower-case if different
+            lower = boost::algorithm::to_lower_copy(fullName, currentLocale);
+            if (fullName != lower) {
+              m_columnPositionMap->emplace(lower, index);
+            }
+          }
+          if (dotPos != std::string::npos) {
+            auto fullName = cd.fullTableName.substr(dotPos + 1) + "." + cd.name;
+            m_columnPositionMap->emplace(fullName, index);
+            // add lower-case if different
+            lower = boost::algorithm::to_lower_copy(fullName, currentLocale);
+            if (fullName != lower) {
+              m_columnPositionMap->emplace(lower, index);
+            }
+          }
         }
       }
       index++;
     }
   }
-  std::map<std::string, uint32_t>::const_iterator findColumn =
-      m_columnPositionMap->find(name);
+  auto findColumn = m_columnPositionMap->find(name);
   if (findColumn != m_columnPositionMap->end()) {
     return findColumn->second;
   } else {
-    throw GET_SQLEXCEPTION2(SQLStateMessage::COLUMN_NOT_FOUND_MSG2,
-        name.c_str());
+    findColumn = m_columnPositionMap->find(
+        boost::algorithm::to_lower_copy(name));
+    if (findColumn != m_columnPositionMap->end()) {
+      return findColumn->second;
+    } else {
+      throw GET_SQLEXCEPTION2(SQLStateMessage::COLUMN_NOT_FOUND_MSG2,
+          name.c_str());
+    }
   }
 }
 
@@ -199,8 +242,8 @@ ColumnDescriptor ResultSet::getColumnDescriptor(
     thrift::ColumnDescriptor& cd = descriptors[columnIndex - 1];
     if (!cd.__isset.fullTableName) {
       // search for the table
-      for (int i = columnIndex - 2; i >= 0; i--) {
-        thrift::ColumnDescriptor& cd2 = descriptors[i];
+      for (uint32_t i = columnIndex - 1; i > 0; i--) {
+        thrift::ColumnDescriptor& cd2 = descriptors[i - 1];
         if (cd2.__isset.fullTableName) {
           cd.__set_fullTableName(cd2.fullTableName);
           break;
@@ -210,8 +253,8 @@ ColumnDescriptor ResultSet::getColumnDescriptor(
     if (cd.type == thrift::SnappyType::JAVA_OBJECT) {
       if (!cd.__isset.udtTypeAndClassName) {
         // search for the UDT typeAndClassName
-        for (int i = columnIndex - 2; i >= 0; i--) {
-          thrift::ColumnDescriptor& cd2 = descriptors[i];
+        for (uint32_t i = columnIndex - 1; i > 0; i--) {
+          thrift::ColumnDescriptor& cd2 = descriptors[i - 1];
           if (cd2.__isset.udtTypeAndClassName) {
             cd.__set_udtTypeAndClassName(cd2.udtTypeAndClassName);
             break;
@@ -222,29 +265,24 @@ ColumnDescriptor ResultSet::getColumnDescriptor(
     return ColumnDescriptor(cd, columnIndex);
   } else {
     throw GET_SQLEXCEPTION2(SQLStateMessage::INVALID_DESCRIPTOR_INDEX_MSG,
-        columnIndex, descriptors.size(), operation);
+        static_cast<int>(columnIndex), descriptors.size(), operation);
   }
 }
 
 ColumnDescriptor ResultSet::getColumnDescriptor(const uint32_t columnIndex) {
   checkOpen("getColumnDescriptor");
-  return getColumnDescriptor(
-      m_descriptors == NULL ? m_rows->metadata : *m_descriptors,
+  return getColumnDescriptor(!m_descriptors ? m_rows->metadata : *m_descriptors,
       columnIndex, "column number in result set");
 }
 
 int32_t ResultSet::getRow() const {
-  if (m_rows != NULL) {
-    return m_rows->offset;
-  } else {
-    return 0;
-  }
+  return m_rows ? m_rows->offset : 0;
 }
 
 std::string ResultSet::getCursorName() const {
   checkOpen("getCursorName");
   const thrift::RowSet* rs = m_rows;
-  return rs != NULL && rs->__isset.cursorName ? rs->cursorName : "";
+  return rs && rs->__isset.cursorName ? rs->cursorName : "";
 }
 
 std::unique_ptr<ResultSet> ResultSet::getNextResults(
@@ -252,15 +290,15 @@ std::unique_ptr<ResultSet> ResultSet::getNextResults(
   checkOpen("getNextResults");
 
   if (m_rows->cursorId != thrift::snappydataConstants::INVALID_ID) {
-    thrift::RowSet* rs = new thrift::RowSet();
-    std::unique_ptr<ResultSet> resultSet(
-        new ResultSet(rs, m_service, m_attrs, m_batchSize, m_updatable,
-            m_scrollable));
-
+    std::unique_ptr<thrift::RowSet> rs(new thrift::RowSet());
     m_service->getNextResultSet(*rs, m_rows->cursorId,
         static_cast<int8_t>(behaviour));
+    std::unique_ptr<ResultSet> resultSet(
+        new ResultSet(rs.get(), m_service, m_attrs, m_batchSize, m_updatable,
+            m_scrollable));
+    rs.release();
     // check for empty ResultSet
-    if (rs->metadata.empty()) {
+    if (resultSet->getColumnCount() == 0) {
       return std::unique_ptr<ResultSet>(nullptr);
     } else {
       return resultSet;
@@ -283,13 +321,14 @@ std::unique_ptr<SQLWarning> ResultSet::getWarnings() const {
 
 std::unique_ptr<ResultSet> ResultSet::clone() const {
   checkOpen("clone");
-  if (m_rows != NULL) {
+  if (m_rows) {
     /* clone the contained object */
-    thrift::RowSet* rs = new thrift::RowSet(*m_rows);
+    std::unique_ptr<thrift::RowSet> rs(new thrift::RowSet(*m_rows));
     std::unique_ptr<ResultSet> resultSet(
-        new ResultSet(rs, m_service, m_attrs, m_batchSize, m_updatable,
+        new ResultSet(rs.get(), m_service, m_attrs, m_batchSize, m_updatable,
             m_scrollable, true /* isOwner */));
-    if (m_descriptors != NULL) {
+    rs.release();
+    if (m_descriptors) {
       resultSet->m_descriptors = new std::vector<thrift::ColumnDescriptor>(
           *m_descriptors);
     }
@@ -300,18 +339,28 @@ std::unique_ptr<ResultSet> ResultSet::clone() const {
 }
 
 void ResultSet::cleanupRS() {
-  if (m_descriptors != NULL) {
+  if (m_descriptors) {
     delete m_descriptors;
-    m_descriptors = NULL;
+    m_descriptors = nullptr;
   }
-  if (m_columnPositionMap != NULL) {
+  if (m_columnPositionMap) {
     delete m_columnPositionMap;
-    m_columnPositionMap = NULL;
+    m_columnPositionMap = nullptr;
   }
 }
 
+void ResultSet::deleteData() noexcept {
+  Utils::handleExceptionsInDestructor("result set (delete data)", [&]() {
+    if (m_isOwner && m_rows) {
+      delete m_rows;
+    }
+    m_rows = nullptr;
+    cleanupRS();
+  });
+}
+
 bool ResultSet::cancelStatement() {
-  if (m_rows != NULL) {
+  if (m_rows) {
     const auto statementId = m_rows->statementId;
     if (statementId != thrift::snappydataConstants::INVALID_ID) {
       m_service->cancelStatement(statementId);
@@ -337,23 +386,14 @@ void ResultSet::close(bool closeStatement) {
       }
     }
   }
-  if (m_isOwner && m_rows) {
-    delete m_rows;
-  }
-  m_rows = NULL;
-  cleanupRS();
+  deleteData();
 }
 
 ResultSet::~ResultSet() {
   // destructor should *never* throw an exception
   // TODO: close from destructor should use bulkClose if valid handle
-  try {
+  Utils::handleExceptionsInDestructor("result set", [&]() {
     close(false);
-  } catch (const SQLException& sqle) {
-    Utils::handleExceptionInDestructor("result set", sqle);
-  } catch (const std::exception& stde) {
-    Utils::handleExceptionInDestructor("result set", stde);
-  } catch (...) {
-    Utils::handleExceptionInDestructor("result set");
-  }
+  });
+  deleteData();
 }

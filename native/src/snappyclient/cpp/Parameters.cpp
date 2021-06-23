@@ -37,6 +37,8 @@
  * Parameters.cpp
  */
 
+#include "impl/pch.h"
+
 #include "Parameters.h"
 #include "PreparedStatement.h"
 
@@ -67,11 +69,45 @@ Parameters& Parameters::setString(uint32_t paramNum, const char* v,
   return *this;
 }
 
+Parameters& Parameters::appendString(uint32_t paramNum, const std::string &v) {
+  checkBounds(--paramNum);
+  thrift::ColumnValue &cv = m_values[paramNum];
+  if (cv.getType() == thrift::SnappyType::VARCHAR) {
+    cv.getString()->append(v);
+  } else {
+    cv.setString(v);
+  }
+  return *this;
+}
+
+Parameters& Parameters::appendString(uint32_t paramNum, const char *v) {
+  checkBounds(--paramNum);
+  thrift::ColumnValue &cv = m_values[paramNum];
+  if (cv.getType() == thrift::SnappyType::VARCHAR) {
+    cv.getString()->append(v);
+  } else {
+    cv.setString(v);
+  }
+  return *this;
+}
+
+Parameters& Parameters::appendString(uint32_t paramNum, const char *v,
+    const size_t len) {
+  checkBounds(--paramNum);
+  thrift::ColumnValue &cv = m_values[paramNum];
+  if (cv.getType() == thrift::SnappyType::VARCHAR) {
+    cv.getString()->append(v, len);
+  } else {
+    cv.setString(v, len);
+  }
+  return *this;
+}
+
 Parameters& Parameters::setDecimal(uint32_t paramNum, const Decimal& v) {
   checkBounds(--paramNum);
-  auto dec = std::shared_ptr<thrift::Decimal>(new thrift::Decimal());
-  v.copyTo(*dec);
-  m_values[paramNum].set(dec);
+  thrift::Decimal dec;
+  v.copyTo(dec);
+  m_values[paramNum].setDecimal(std::move(dec));
   return *this;
 }
 
@@ -79,25 +115,25 @@ Parameters& Parameters::setDecimal(uint32_t paramNum, const int8_t signum,
     const int32_t scale, const int8_t* magnitude, const size_t maglen,
     const bool bigEndian) {
   checkBounds(--paramNum);
-  auto dec = std::shared_ptr<thrift::Decimal>(new thrift::Decimal());
+  thrift::Decimal dec;
 
-  dec->signum = signum;
-  dec->scale = scale;
+  dec.signum = signum;
+  dec.scale = scale;
   if (bigEndian) {
-    dec->magnitude.assign((const char*)magnitude, maglen);
+    dec.magnitude.assign((const char*)magnitude, maglen);
   } else {
     // need to inverse the bytes
     if (maglen > 0) {
-      dec->magnitude.resize(maglen);
+      dec.magnitude.resize(maglen);
       const int8_t* magp = magnitude + maglen - 1;
       for (uint32_t index = 0; index < maglen; index++, magp--) {
-        dec->magnitude[index] = *magp;
+        dec.magnitude[index] = *magp;
       }
     } else {
-      dec->magnitude.clear();
+      dec.magnitude.clear();
     }
   }
-  m_values[paramNum].set(dec);
+  m_values[paramNum].setDecimal(std::move(dec));
   return *this;
 }
 
@@ -135,6 +171,18 @@ Parameters& Parameters::setBinary(uint32_t paramNum, const int8_t* v,
     const size_t len) {
   checkBounds(--paramNum);
   m_values[paramNum].setBinary(std::move(std::string((const char*)v, len)));
+  return *this;
+}
+
+Parameters& Parameters::appendBinary(uint32_t paramNum, const int8_t *v,
+    const size_t len) {
+  checkBounds(--paramNum);
+  thrift::ColumnValue &cv = m_values[paramNum];
+  if (cv.getType() == thrift::SnappyType::VARBINARY) {
+    cv.getPtr<thrift::Binary>()->append((const char*)v, len);
+  } else {
+    cv.setBinary(std::move(std::string((const char*)v, len)));
+  }
   return *this;
 }
 

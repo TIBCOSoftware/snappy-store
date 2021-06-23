@@ -3092,7 +3092,7 @@ public abstract class AbstractRegionEntry extends ExclusiveSharedSynchronizer
   @Override
   @Retained 
   public Object _getValueRetain(RegionEntryContext context, boolean decompress) {
-    if (decompress) {
+    if (context != null && decompress) {
       return decompress(context, _getValue());
     } else {
       return _getValue();

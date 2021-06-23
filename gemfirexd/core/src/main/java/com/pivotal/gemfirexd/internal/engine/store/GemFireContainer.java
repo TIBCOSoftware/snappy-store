@@ -5375,7 +5375,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
         }
         else if (OffHeapRegionEntry.class.isAssignableFrom(rawStoreRowClass)) {
           return createExecRowFromAddress((OffHeapRegionEntry)rawStoreRow,
-              tableInfo, this.getRegion(), faultIn);
+              tableInfo, faultIn);
         }
         else {
           throw new AssertionError("Unexpected raw store data . Object is "
@@ -5545,14 +5545,10 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
 
   public final AbstractCompactExecRow createExecRowFromAddress(
       RegionEntry offHeapEntry, final ExtraTableInfo tableInfo,
-      LocalRegion rgn, boolean faultIn) {
-    if (this.isPartitioned()) {
-      int bucketID = ((RowLocation)offHeapEntry).getBucketID();
-      rgn = RegionEntryUtils.getBucketRegion((PartitionedRegion)rgn, bucketID);
-    }
+      boolean faultIn) {
     AbstractCompactExecRow row = null;
     Object source = RegionEntryUtils.convertOffHeapEntrytoByteSourceRetain(
-        offHeapEntry, rgn, faultIn, false);
+        offHeapEntry, null, this, faultIn, false);
     if (source != null) {
       if (source.getClass() == byte[].class) {
         final byte[] vbytes = (byte[])source;

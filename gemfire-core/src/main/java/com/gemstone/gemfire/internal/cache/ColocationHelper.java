@@ -229,6 +229,11 @@ public class ColocationHelper {
     //We don't need a hostname because the equals method doesn't check it.
     for(PartitionRegionConfig config: colocatedRegions) {
       if(config.isColocationComplete() && !config.containsMember(member)) {
+        if (partitionedRegion.getLogWriterI18n().fineEnabled()) {
+          partitionedRegion.getLogWriterI18n().fine("checkMembersColocation for " +
+              partitionedRegion.getFullPath() + ": colocation not complete for " +
+              config.getFullPath());
+        }
         return false;
       }
     }
@@ -270,6 +275,12 @@ public class ColocationHelper {
 
             if(childRegion == null || !childRegion.isAfterBucketMetadataSetup()) {
               //If the child region is offline, return true
+              if (region.getLogWriterI18n().fineEnabled()) {
+                region.getLogWriterI18n().fine("hasOfflineColocatedChildRegions for " +
+                    region.getFullPath() + ": child " + childName + " is offline " +
+                    (childRegion == null ? "(child region is null)"
+                        : "(child has not finished bucket initialization)"));
+              }
               return true;
             } else {
               //Otherwise, look for offline children of that region.
