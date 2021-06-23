@@ -1100,7 +1100,7 @@ public abstract class FabricServiceImpl implements FabricService {
     public final String getHostName() {
       final String hostName = getHostNameForClients();
       if (hostName != null) {
-        return hostName + '/' + this.inetAddress.getHostAddress();
+        return hostName;
       }
       return "/" + this.inetAddress.getHostAddress();
     }
