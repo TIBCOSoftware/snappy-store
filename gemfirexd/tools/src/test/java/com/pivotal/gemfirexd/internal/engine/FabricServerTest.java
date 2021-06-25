@@ -914,7 +914,7 @@ public class FabricServerTest extends TestUtil implements UnitTest {
       }
       String netStr = rs.getString(3);
       assertTrue("Unexpected network server address " + netStr,
-          netStr.endsWith("/0.0.0.0[" + netPort + ']'));
+          netStr.endsWith("[" + netPort + ']') && !netStr.contains("/0.0.0.0"));
       assertFalse("expected no more than one row from SYS.MEMBERS", rs.next());
     } finally {
       try {

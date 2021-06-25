@@ -879,6 +879,8 @@ public abstract class FabricServiceImpl implements FabricService {
 
     protected InetAddress inetAddress;
 
+    protected volatile String hostNameForClients;
+
     protected volatile String hostName;
 
     protected int port;
@@ -1100,7 +1102,8 @@ public abstract class FabricServiceImpl implements FabricService {
     public final String getHostName() {
       final String hostName = getHostNameForClients();
       if (hostName != null) {
-        return hostName;
+        return this.hostNameForClients != null ? this.hostNameForClients
+            : hostName + '/' + this.inetAddress.getHostAddress();
       }
       return "/" + this.inetAddress.getHostAddress();
     }
@@ -1145,6 +1148,7 @@ public abstract class FabricServiceImpl implements FabricService {
           Attribute.HOSTNAME_FOR_CLIENTS, GfxdConstants.GFXD_PREFIX +
               Attribute.HOSTNAME_FOR_CLIENTS, monitorlite);
       if (host != null) {
+        this.hostNameForClients = host;
         this.hostName = host;
         return host;
       }
@@ -1157,7 +1161,8 @@ public abstract class FabricServiceImpl implements FabricService {
         try {
           final InetAddress localHost = SocketCreator.getLocalHost();
           if (localHost != null && !localHost.isLoopbackAddress()) {
-            return (this.hostName = getHostFromInetAddress(localHost));
+            this.hostNameForClients = getHostFromInetAddress(localHost);
+            return (this.hostName = this.hostNameForClients);
           }
         } catch (UnknownHostException uhe) {
           // ignored
