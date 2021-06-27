@@ -365,7 +365,7 @@ public class GfxdTableMBeanDUnit extends GfxdManagementTestBase {
     
     List<String> definition = bean.getDefinition();
     logInfo("verifyAlterTableMbeans From bean Name=" + definition.size() + " definition = " + definition);
-    assertEquals(definition.size(), 4 );
+    assertEquals(4, definition.size());
     
     //verify that column4 is not present in definition   
     boolean colmn4Validated = false;
@@ -481,7 +481,7 @@ public class GfxdTableMBeanDUnit extends GfxdManagementTestBase {
     //verify table definition and check the presence of columns as the table has 5 columns
     List<String> definition = bean.getDefinition();
     logInfo("From partition bean Name=" + definition.size() + " definition = " + definition);
-    assertEquals(definition.size(), 5 );
+    assertEquals(5, definition.size());
     
     //verify each column now
     boolean colmn1Validated = false;
@@ -611,7 +611,7 @@ public class GfxdTableMBeanDUnit extends GfxdManagementTestBase {
     //verify table definition and check the presence of colmns as the table has 5 columns
     List<String> definition = bean.getDefinition();
     logInfo("From replicated bean Name=" + definition.size() + " definition = " + definition);
-    assertEquals(definition.size(), 5 );
+    assertEquals(5, definition.size());
     
     //verify each column now
     boolean colmn1Validated = false;

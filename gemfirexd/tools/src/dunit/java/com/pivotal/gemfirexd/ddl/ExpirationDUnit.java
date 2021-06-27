@@ -26,7 +26,6 @@ import com.gemstone.gnu.trove.TIntHashSet;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
 
-@SuppressWarnings("serial")
 public class ExpirationDUnit extends DistributedSQLTestBase {
 
   public ExpirationDUnit(String name) {
@@ -128,9 +127,9 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
       throws Exception {
     Statement st1 = conn.createStatement();
     
-    String distributionPolicy = replicate == true ? 
+    String distributionPolicy = replicate ?
         "replicate " : "partition by (col1) ";
-    String expiryPolicy = idletime == true ?
+    String expiryPolicy = idletime ?
         "idletime " : "timetolive ";
     
     String createTableStr = "create table t1 (col1 int constraint " +
@@ -240,18 +239,25 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
     expected.add(2);
 
     // some slow systems may already have exceeded the time in restart
+    boolean canBeEmpty = false;
     long elapsed = System.currentTimeMillis() - start;
     if (elapsed < 2000) {
       Thread.sleep(2000 - elapsed);
     } else if (elapsed >= 3000) {
       expected = null;
+    } else if (elapsed > 2000) {
+      canBeEmpty = true;
     }
 
-    validateResults("EMP.TESTTABLE_ONE", expected);
-    if (System.currentTimeMillis() - start >= 3000) {
+    validateResults("EMP.TESTTABLE_ONE", expected, canBeEmpty);
+    canBeEmpty = false;
+    elapsed = System.currentTimeMillis() - start;
+    if (elapsed >= 3000) {
       expected = null;
+    } else if (elapsed > 2000) {
+      canBeEmpty = true;
     }
-    validateResults("EMP.TESTTABLE_TWO", expected);
+    validateResults("EMP.TESTTABLE_TWO", expected, canBeEmpty);
     Thread.sleep(1500);
     validateResults("EMP.TESTTABLE_ONE", null);
     validateResults("EMP.TESTTABLE_TWO", null);
@@ -309,15 +315,13 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
 
   /**
    * Test that idle expiration time is rest on persistent recovery
-   * 
-   * @throws Exception
    */
   public void testIdleTime() throws Exception {
     // The test is valid only for transaction isolation level NONE. 
     if (isTransactional) {
       return;
     }
-    
+
     startServerVMs(1, 0, null);
     startClientVMs(1, 0, null);
     try {
@@ -373,8 +377,8 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
     serverSQLExecute(1, "drop diskstore teststore");
   }
 
-  protected void validateResults(String tablename, TIntHashSet expected)
-      throws SQLException {
+  protected void validateResults(String tablename, TIntHashSet expected,
+      boolean canBeEmpty) throws SQLException {
     {
       PreparedStatement pstmt = TestUtil.getPreparedStatement("select * from "
           + tablename);
@@ -386,9 +390,15 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
         while (rs.next()) {
           ids.add(rs.getInt("ID"));
         }
-        assertEquals(expected, ids);
+        if (!canBeEmpty || !ids.isEmpty()) {
+          assertEquals(expected, ids);
+        }
       }
     }
   }
-  
- }
+
+  protected void validateResults(String tablename, TIntHashSet expected)
+      throws SQLException {
+    validateResults(tablename, expected, false);
+  }
+}
