@@ -57,10 +57,11 @@ import com.pivotal.gemfirexd.internal.snappy.LeadNodeExecutionContext;
  */
 public class SnappyActivation extends BaseActivation {
 
-  private String sql;
-  private boolean returnRows;
-  private boolean isPrepStmt;
-  private boolean isUpdateOrDeleteOrPut;
+  private final String sql;
+  private final boolean returnRows;
+  private final boolean isPrepStmt;
+  private final boolean isUpdateOrDeleteOrPut;
+  private LeadNodeExecutorMsg executorMsg;
 
   public SnappyActivation(LanguageConnectionContext lcc, ExecPreparedStatement eps, 
       boolean returnRows,  boolean isPrepStmt, boolean isUpdateOrDeleteOrPut) {
@@ -203,7 +204,7 @@ public class SnappyActivation extends BaseActivation {
       throws StandardException {
     boolean enableStreaming = this.lcc.streamingEnabled();
     GfxdResultCollector<Object> rc = getResultCollector(enableStreaming, rs);
-    executeOnLeadNode(rs, rc, enableStreaming, this,
+    this.executorMsg = executeOnLeadNode(rs, rc, enableStreaming, this,
       this.lcc, execObj);
   }
 
@@ -212,6 +213,18 @@ public class SnappyActivation extends BaseActivation {
     GfxdResultCollector<Object> rc = getPrepareResultCollector(rs);
     prepareOnLeadNode(rs, rc, this.sql, this.getConnectionID(), this.statementID, this.lcc
         .getCurrentSchemaName(), this.pvs, this.isUpdateOrDeleteOrPut, this.lcc);
+  }
+
+  @Override
+  protected void closeActivationAction() throws Exception {
+    super.closeActivationAction();
+    final LeadNodeExecutorMsg executorMsg = this.executorMsg;
+    final GfxdResultCollector<Object> collector;
+    if (executorMsg != null &&
+        (collector = executorMsg.getGfxdResultCollector()) != null) {
+      collector.clearResults();
+      this.executorMsg = null;
+    }
   }
 
   private GfxdResultCollector<Object> getResultCollector(final boolean enableStreaming,
@@ -319,7 +332,8 @@ public class SnappyActivation extends BaseActivation {
     this.resultDescription = resultDescription;
   }
 
-  static void executeOnLeadNode(SnappySelectResultSet rs, GfxdResultCollector<Object> rc,
+  static LeadNodeExecutorMsg executeOnLeadNode(SnappySelectResultSet rs,
+      GfxdResultCollector<Object> rc,
       boolean enableStreaming, Activation activation, LanguageConnectionContext lcc,
       LeadNodeExecutionObject execObj)
       throws StandardException {
@@ -346,6 +360,7 @@ public class SnappyActivation extends BaseActivation {
       throw Misc.processFunctionException(
           "SnappyActivation::executeOnLeadNode", e, null, null);
     }
+    return msg;
   }
 
   private static void prepareOnLeadNode(SnappyPrepareResultSet rs, GfxdResultCollector<Object> rc,

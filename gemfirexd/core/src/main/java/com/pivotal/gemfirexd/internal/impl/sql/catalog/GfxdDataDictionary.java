@@ -64,6 +64,7 @@ import com.pivotal.gemfirexd.internal.engine.ddl.callbacks.CallbackProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.catalog.GfxdSystemProcedures;
 import com.pivotal.gemfirexd.internal.engine.ddl.wan.WanProcedures;
 import com.pivotal.gemfirexd.internal.engine.diag.*;
+import com.pivotal.gemfirexd.internal.engine.distributed.StatementCloseExecutorMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.GfxdShutdownAllRequest;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
@@ -247,6 +248,15 @@ public final class GfxdDataDictionary extends DataDictionaryImpl {
      * Skip DataDictionary locks to avoid deadlocks in some cases.
      */
     public boolean skipDDLocks;
+    /**
+     * If true, then statement close distributed message should be deferred
+     * for the IDs stored in {@link #deferredCloseStatementMessage}.
+     */
+    public boolean deferCloseStatement;
+    /**
+     * Deferred statement distributed close message.
+     */
+    public StatementCloseExecutorMessage deferredCloseStatementMessage;
 
     SkipCatalogOperations(boolean skipHiveCatalogCalls, boolean skipDDLocks) {
       this.skipHiveCatalogCalls = skipHiveCatalogCalls;

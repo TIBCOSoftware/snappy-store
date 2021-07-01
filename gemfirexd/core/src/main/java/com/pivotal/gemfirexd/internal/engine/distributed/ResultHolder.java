@@ -145,7 +145,7 @@ public final class ResultHolder extends GfxdDataSerializable {
 
   private RowFormatter rowFormatter;
   
-  public int stream_size;
+  public int streamSize;
 
   // this can be null...
   private DataTypeDescriptor distinctAggUnderlyingType = null;
@@ -264,6 +264,10 @@ public final class ResultHolder extends GfxdDataSerializable {
     }
   }
 
+  public ByteArrayDataInput getByteArrayDataInput() {
+    return dis;
+  }
+
   @Override
   public void fromData(DataInput in) throws IOException,
           ClassNotFoundException {
@@ -309,7 +313,7 @@ public final class ResultHolder extends GfxdDataSerializable {
     Version v = InternalDataSerializer.getVersionForDataStreamOrNull(in);
     this.dis = new ByteArrayDataInput();
     this.dis.initialize(rawData, v);
-    this.stream_size = this.dis.available();
+    this.streamSize = this.dis.available();
   }
 
   /**
@@ -737,7 +741,7 @@ public final class ResultHolder extends GfxdDataSerializable {
         numBytes = hdos.size();
         InternalDataSerializer.writeArrayLength(numBytes, out);
         hdos.sendTo(out);
-        stream_size = numBytes;
+        streamSize = numBytes;
       }
       else {
         InternalDataSerializer.writeArrayLength(numBytes, out);
@@ -795,7 +799,7 @@ public final class ResultHolder extends GfxdDataSerializable {
     if (numRows > 0) {
       sb.append(" numRows=").append(numRows);
     }
-    final int ssize = this.stream_size;
+    final int ssize = this.streamSize;
     if (ssize > 0) {
       sb.append(" numBytes=").append(ssize);
     }
@@ -1744,7 +1748,7 @@ public final class ResultHolder extends GfxdDataSerializable {
           .getLanguageConnection(), ers.getSourceResultSet(), es.getSQLText());
     }
     else {
-      return stream_size;
+      return streamSize;
     }
   }
 

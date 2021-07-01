@@ -224,6 +224,7 @@ public class DistributionStats implements DMStats {
 
   private static final int messagesBeingReceivedId;
   private static final int messageBytesBeingReceivedId;
+  private static final int messageQueueBytesId;
 
   private static final int serialThreadStartsId;
   private static final int viewThreadStartsId;
@@ -566,6 +567,7 @@ public class DistributionStats implements DMStats {
 
         f.createIntGauge("messagesBeingReceived", "Current number of message being received off the network or being processed after reception.", "messages"),
         f.createLongGauge("messageBytesBeingReceived", "Current number of bytes consumed by messages being received or processed.", "bytes"),
+        f.createLongGauge("messageQueueBytes", "The approximate number of bytes consumed by distribution messages currently waiting to be processed.", "bytes"),
 
         f.createLongCounter("serialThreadStarts", "Total number of times a thread has been created for the serial message executor.", "starts", false),
         f.createLongCounter("viewThreadStarts", "Total number of times a thread has been created for the view message executor.", "starts", false),
@@ -776,6 +778,7 @@ public class DistributionStats implements DMStats {
     bufferAcquireTimeId = type.nameToId("bufferAcquireTime");
     messagesBeingReceivedId = type.nameToId("messagesBeingReceived");
     messageBytesBeingReceivedId = type.nameToId("messageBytesBeingReceived");
+    messageQueueBytesId = type.nameToId("messageQueueBytes");
 
     serialThreadStartsId = type.nameToId("serialThreadStarts");
     viewThreadStartsId = type.nameToId("viewThreadStarts");
@@ -1113,6 +1116,7 @@ public class DistributionStats implements DMStats {
   }
   protected void incSerialQueueBytes(int amount) {
     this.stats.incInt(serialQueueBytesId, amount);
+    this.stats.incLong(messageQueueBytesId, amount);
   }
   public int getSerialQueueBytes() {
     return this.stats.getInt(serialQueueBytesId);
@@ -1567,8 +1571,8 @@ public class DistributionStats implements DMStats {
    * stats to the proper distribution stats.
    * @since 3.5
    */
-  public ThrottledQueueStatHelper getOverflowQueueHelper() {
-    return new ThrottledQueueStatHelper() {
+  public ThrottledMemQueueStatHelper getOverflowQueueHelper() {
+    return new ThrottledMemQueueStatHelper() {
         public void incThrottleCount() {
           incOverflowQueueThrottleCount(1);
         }
@@ -1583,6 +1587,12 @@ public class DistributionStats implements DMStats {
         }
         public void remove(int count) {
           incOverflowQueueSize(-count);
+        }
+        public void addMem(int amount) {
+          incMessageQueueBytes(amount);
+        }
+        public void removeMem(int amount) {
+          incMessageQueueBytes(-amount);
         }
       };
   }
@@ -1611,8 +1621,8 @@ public class DistributionStats implements DMStats {
    * stats to the proper distribution stats.
    * @since 3.5
    */
-  public ThrottledQueueStatHelper getHighPriorityQueueHelper() {
-    return new ThrottledQueueStatHelper() {
+  public ThrottledMemQueueStatHelper getHighPriorityQueueHelper() {
+    return new ThrottledMemQueueStatHelper() {
         public void incThrottleCount() {
           incHighPriorityQueueThrottleCount(1);
         }
@@ -1628,6 +1638,12 @@ public class DistributionStats implements DMStats {
         public void remove(int count) {
           incHighPriorityQueueSize(-count);
         }
+        public void addMem(int amount) {
+          incMessageQueueBytes(amount);
+        }
+        public void removeMem(int amount) {
+          incMessageQueueBytes(-amount);
+        }
       };
   }
 
@@ -1636,8 +1652,8 @@ public class DistributionStats implements DMStats {
    * stats to the proper distribution stats.
    * @since 5.0
    */
-  public ThrottledQueueStatHelper getPartitionedRegionQueueHelper() {
-    return new ThrottledQueueStatHelper() {
+  public ThrottledMemQueueStatHelper getPartitionedRegionQueueHelper() {
+    return new ThrottledMemQueueStatHelper() {
         public void incThrottleCount() {
           incPartitionedRegionQueueThrottleCount(1);
         }
@@ -1652,6 +1668,12 @@ public class DistributionStats implements DMStats {
         }
         public void remove(int count) {
           incPartitionedRegionQueueSize(-count);
+        }
+        public void addMem(int amount) {
+          incMessageQueueBytes(amount);
+        }
+        public void removeMem(int amount) {
+          incMessageQueueBytes(-amount);
         }
       };
   }
@@ -1676,8 +1698,8 @@ public class DistributionStats implements DMStats {
    * stats to the proper distribution stats.
    * @since 6.0
    */
-  public ThrottledQueueStatHelper getFunctionExecutionQueueHelper() {
-    return new ThrottledQueueStatHelper() {
+  public ThrottledMemQueueStatHelper getFunctionExecutionQueueHelper() {
+    return new ThrottledMemQueueStatHelper() {
         public void incThrottleCount() {
           incFunctionExecutionQueueThrottleCount(1);
         }
@@ -1692,6 +1714,12 @@ public class DistributionStats implements DMStats {
         }
         public void remove(int count) {
           incFunctionExecutionQueueSize(-count);
+        }
+        public void addMem(int amount) {
+          incMessageQueueBytes(amount);
+        }
+        public void removeMem(int amount) {
+          incMessageQueueBytes(-amount);
         }
       };
   }
@@ -2023,6 +2051,9 @@ public class DistributionStats implements DMStats {
   public void decMessagesBeingReceived(int bytes) {
     stats.incInt(messagesBeingReceivedId, -1);
     stats.incLong(messageBytesBeingReceivedId, -bytes);
+  }
+  public void incMessageQueueBytes(int bytes) {
+    stats.incLong(messageQueueBytesId, bytes);
   }
   public void incSerialThreadStarts() {
     stats.incLong(serialThreadStartsId, 1);

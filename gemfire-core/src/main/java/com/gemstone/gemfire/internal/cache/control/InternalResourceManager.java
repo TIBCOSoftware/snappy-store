@@ -50,7 +50,6 @@ import com.gemstone.gemfire.internal.cache.control.ResourceAdvisor.ResourceManag
 import com.gemstone.gemfire.internal.cache.partitioned.LoadProbe;
 import com.gemstone.gemfire.internal.cache.partitioned.SizedBasedLoadProbe;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
-import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 
 /**
  * Implementation of ResourceManager with additional internal-only methods.
@@ -91,7 +90,8 @@ public class InternalResourceManager implements ResourceManager {
   private boolean closed = true;
   
   private final Map<ResourceType, ResourceMonitor> resourceMonitors;
-  
+  private final HeapMemoryMonitor heapMonitor;
+
   private static ResourceObserver observer = new ResourceObserverAdapter();
   
   private static String PR_LOAD_PROBE_CLASS = System.getProperty(
@@ -167,7 +167,8 @@ public class InternalResourceManager implements ResourceManager {
     
     // Create the monitors
     EnumMap<ResourceType, ResourceMonitor> tempMonitors = new EnumMap<>(ResourceType.class);
-    tempMonitors.put(ResourceType.HEAP_MEMORY, new HeapMemoryMonitor(this, cache, this.stats));
+    this.heapMonitor = new HeapMemoryMonitor(this, cache, this.stats);
+    tempMonitors.put(ResourceType.HEAP_MEMORY, this.heapMonitor);
     tempMonitors.put(ResourceType.OFFHEAP_MEMORY, new OffHeapMemoryMonitor(this, cache, this.stats));
     this.resourceMonitors = Collections.unmodifiableMap(tempMonitors);
     
@@ -268,11 +269,11 @@ public class InternalResourceManager implements ResourceManager {
     
     this.stats.incResourceEventsDelivered();
   }
- 
+
   public HeapMemoryMonitor getHeapMonitor() {
-    return (HeapMemoryMonitor) this.resourceMonitors.get(ResourceType.HEAP_MEMORY);
+    return this.heapMonitor;
   }
-  
+
   public OffHeapMemoryMonitor getOffHeapMonitor() {
     return (OffHeapMemoryMonitor) this.resourceMonitors.get(ResourceType.OFFHEAP_MEMORY);
   }

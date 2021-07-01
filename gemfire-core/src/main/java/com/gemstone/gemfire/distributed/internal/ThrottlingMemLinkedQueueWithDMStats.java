@@ -17,8 +17,11 @@
 
 package com.gemstone.gemfire.distributed.internal;
 
-import com.gemstone.gemfire.distributed.internal.DistributionStats;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
+
+import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
+import com.gemstone.gemfire.internal.cache.control.HeapMemoryMonitor;
 
 /**
  * An instance of ThrottlingMemLinkedQueue allows the instantiator to
@@ -43,11 +46,11 @@ import java.util.*;
 public class ThrottlingMemLinkedQueueWithDMStats extends OverflowQueueWithDMStats {
   private static final long serialVersionUID = 5425180246954573433L;
 
-  /** The maximum size of the queue */
-  private final int maxMemSize;
+  /** The maximum size of data in the queue */
+  private final long maxMemSize;
   
-  /** The size at which to beging throttling */
-  private final int startThrottleMemSize;
+  /** The size at which to begin throttling */
+  private final long startThrottleMemSize;
 
   /** The maximum size of the queue */
   private final int maxSize;
@@ -56,10 +59,10 @@ public class ThrottlingMemLinkedQueueWithDMStats extends OverflowQueueWithDMStat
   private final int startThrottleSize;
 
   /** The current memory footprint of the queue */
-  private volatile int memSize;
-  
+  private final AtomicLong memSize;
+
   /** Creates a new instance of ThrottlingMessageQueue */
-  public ThrottlingMemLinkedQueueWithDMStats(int maxMemSize, int startThrottleMemSize,
+  public ThrottlingMemLinkedQueueWithDMStats(long maxMemSize, long startThrottleMemSize,
                                              int maxSize, int startThrottleSize,
                                           ThrottledMemQueueStatHelper stats) {
     super(maxSize, stats);
@@ -67,6 +70,7 @@ public class ThrottlingMemLinkedQueueWithDMStats extends OverflowQueueWithDMStat
     this.startThrottleMemSize = startThrottleMemSize;
     this.maxSize = maxSize;
     this.startThrottleSize = startThrottleSize;
+    this.memSize = new AtomicLong(0L);
   }
   
   /** Check if the sender needs to be throttled. Returns the time the sender should sleep */
@@ -74,17 +78,20 @@ public class ThrottlingMemLinkedQueueWithDMStats extends OverflowQueueWithDMStat
     return calculateThrottleTime();
   }
   
-  public int getMemSize() {
-    return memSize;
+  public long getMemSize() {
+    return memSize.get();
   }
 
   private int calculateThrottleTime() {
     int sleep;
 
-    int myMemSize = memSize;
+    long myMemSize = memSize.get();
     if (myMemSize > startThrottleMemSize) {
       sleep = (int)(((float)(myMemSize - startThrottleMemSize) / (float)(maxMemSize - startThrottleMemSize)) * 100); 
     } else {
+      if (isCriticalUp()) {
+        return 10; // fixed sleep for CRITICAL_UP
+      }
       int qSize = size();
       if (qSize > startThrottleSize) {
         sleep = (int)(((float)(qSize - startThrottleSize) / (float)(maxSize - startThrottleSize)) * 100);
@@ -100,7 +107,15 @@ public class ThrottlingMemLinkedQueueWithDMStats extends OverflowQueueWithDMStat
     
     return sleep;
   }
-  
+
+  public static boolean isCriticalUp() {
+    final GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
+    final HeapMemoryMonitor hmm;
+    return cache != null &&
+        (hmm = cache.getResourceManager(false).getHeapMonitor()) != null &&
+        hmm.isCriticalUp();
+  }
+
   @Override
   protected void preAdd(Object o) {
     try {
@@ -134,7 +149,7 @@ public class ThrottlingMemLinkedQueueWithDMStats extends OverflowQueueWithDMStat
           ((ThrottledMemQueueStatHelper)this.stats).throttleTime(endTime-startTime);
           startTime = endTime;
         }
-      } while (memSize >= maxMemSize || size() >= maxSize);
+      } while (memSize.get() >= maxMemSize || isCriticalUp() || size() >= maxSize);
       
       ((ThrottledMemQueueStatHelper)this.stats).incThrottleCount();
     }
@@ -142,7 +157,7 @@ public class ThrottlingMemLinkedQueueWithDMStats extends OverflowQueueWithDMStat
     if (o instanceof Sizeable) {
       int mem = ((Sizeable)o).getSize();
       ((ThrottledMemQueueStatHelper)this.stats).addMem(mem);
-      this.memSize += mem;
+      this.memSize.getAndAdd(mem);
     }
   }
   
@@ -150,7 +165,7 @@ public class ThrottlingMemLinkedQueueWithDMStats extends OverflowQueueWithDMStat
   protected void postRemove(Object o) {
     if (o != null && (o instanceof Sizeable)) {
       int mem = ((Sizeable)o).getSize();
-      this.memSize -= mem;
+      this.memSize.getAndAdd(-mem);
       ((ThrottledMemQueueStatHelper)this.stats).removeMem(mem);
     }
   }

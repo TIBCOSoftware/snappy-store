@@ -184,6 +184,10 @@ public class ClientTracker extends SystemTimer.SystemTimerTask {
     if (this.clientSockets.isEmpty()) {
       this.service.clientTrackerMap.remove(this.clientHostId);
       if (this.connectionIds.size() > 0) {
+        if (service.logger.isInfoEnabled()) {
+          service.logger.info("ClientTracker cleaning all connections (count=" +
+              connectionIds.size() + ") for departed client: " + clientHostId);
+        }
         this.connectionIds.forEach(new TLongProcedure() {
           @Override
           public boolean execute(long connId) {

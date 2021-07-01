@@ -563,6 +563,10 @@ final class ConnectionHolder {
   }
 
   void close(final SnappyDataServiceImpl service, boolean forceClose) {
+    if (service.logger.isDebugEnabled()) {
+      service.logger.debug("ConnectionHolder closing connection with ID=" +
+          connId + " (force=" + forceClose + ')');
+    }
     this.sync.lock();
     try {
       for (StatementHolder stmtHolder : this.registeredStatements) {
@@ -574,7 +578,12 @@ final class ConnectionHolder {
               if (stmt instanceof EngineStatement) {
                 // connection is going to be force closed so no need for
                 // any statement cleanup
-                ((EngineStatement)stmt).clearFinalizer();
+                EngineStatement estmt = (EngineStatement)stmt;
+                if (!estmt.isClosed()) {
+                  estmt.cancel();
+                  estmt.resetForReuse();
+                }
+                estmt.clearFinalizer();
               }
             } else {
               stmt.close();
@@ -593,6 +602,10 @@ final class ConnectionHolder {
       if (reusableStatement != null) {
         try {
           if (forceClose) {
+            if (!reusableStatement.isClosed()) {
+              reusableStatement.cancel();
+              reusableStatement.resetForReuse();
+            }
             reusableStatement.clearFinalizer();
           } else {
             reusableStatement.close();

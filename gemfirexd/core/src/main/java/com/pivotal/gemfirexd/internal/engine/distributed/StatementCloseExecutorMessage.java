@@ -31,6 +31,8 @@ import com.pivotal.gemfirexd.internal.engine.distributed.message.MemberExecutorM
 import com.pivotal.gemfirexd.internal.engine.distributed.message.GfxdFunctionMessage;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.iapi.services.sanity.SanityManager;
+import org.eclipse.collections.api.iterator.LongIterator;
+import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
 
 /**
  * This class is used to distribute PreparedStatement ID of PreparedStatement
@@ -51,6 +53,10 @@ public final class StatementCloseExecutorMessage extends
   private long connectionId;
 
   private long statementId;
+
+  private LongArrayList otherStatementIds;
+
+  protected static final short HAS_OTHER_STATEMENT_IDS = UNRESERVED_FLAGS_START;
 
   /** Default constructor for deserialization. Not to be invoked directly. */
   public StatementCloseExecutorMessage() {
@@ -74,6 +80,31 @@ public final class StatementCloseExecutorMessage extends
     this.targetMembers = other.targetMembers;
     this.connectionId = other.connectionId;
     this.statementId = other.statementId;
+    this.otherStatementIds = other.otherStatementIds;
+  }
+
+  public boolean addOtherStatementId(long connId, long stmtId) {
+    if (connId == this.connectionId) {
+      if (this.otherStatementIds == null) {
+        this.otherStatementIds = new LongArrayList();
+      }
+      this.otherStatementIds.add(stmtId);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  public long getConnectionId() {
+    return this.connectionId;
+  }
+
+  public long getStatementId() {
+    return this.statementId;
+  }
+
+  public LongArrayList getOtherStatementIds() {
+    return this.otherStatementIds;
   }
 
   @Override
@@ -86,10 +117,18 @@ public final class StatementCloseExecutorMessage extends
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
           "StatementCloseExecutorMessage: closing statement "
               + "in Connection wrapper for statementId=" + this.statementId
+              + (this.otherStatementIds != null ? " (other IDs = "
+              + this.otherStatementIds + ')' : "")
               + " connectionId=" + connId + " : " + wrapper);
     }
     if (wrapper != null) {
       wrapper.closeStatement(this.statementId);
+      if (this.otherStatementIds != null) {
+        LongIterator iter = this.otherStatementIds.longIterator();
+        while (iter.hasNext()) {
+          wrapper.closeStatement(iter.next());
+        }
+      }
     }
     lastResult(Boolean.TRUE, false, false, true);
   }
@@ -144,6 +183,13 @@ public final class StatementCloseExecutorMessage extends
     super.toData(out);
     GemFireXDUtils.writeCompressedHighLow(out, this.connectionId);
     GemFireXDUtils.writeCompressedHighLow(out, this.statementId);
+    if (this.otherStatementIds != null) {
+      final int numIds = this.otherStatementIds.size();
+      out.writeInt(numIds);
+      for (int i = 0; i < numIds; i++) {
+        GemFireXDUtils.writeCompressedHighLow(out, this.otherStatementIds.get(i));
+      }
+    }
   }
 
   @Override
@@ -152,5 +198,21 @@ public final class StatementCloseExecutorMessage extends
     super.fromData(in);
     this.connectionId = GemFireXDUtils.readCompressedHighLow(in);
     this.statementId = GemFireXDUtils.readCompressedHighLow(in);
+    if ((flags & HAS_OTHER_STATEMENT_IDS) != 0) {
+      final int numIds = in.readInt();
+      this.otherStatementIds = new LongArrayList(numIds);
+      for (int i = 0; i < numIds; i++) {
+        this.otherStatementIds.add(GemFireXDUtils.readCompressedHighLow(in));
+      }
+    }
+  }
+
+  @Override
+  protected short computeCompressedShort(short flags) {
+    flags = super.computeCompressedShort(flags);
+    if (this.otherStatementIds != null) {
+      flags |= HAS_OTHER_STATEMENT_IDS;
+    }
+    return flags;
   }
 }

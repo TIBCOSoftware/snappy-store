@@ -64,6 +64,7 @@ import com.pivotal.gemfirexd.internal.iapi.sql.conn.LanguageConnectionContext;
 import com.pivotal.gemfirexd.internal.iapi.sql.execute.ExecPreparedStatement;
 import com.pivotal.gemfirexd.internal.impl.jdbc.EmbedConnection;
 import com.pivotal.gemfirexd.internal.impl.sql.StatementStats;
+import com.pivotal.gemfirexd.internal.impl.sql.catalog.GfxdDataDictionary;
 import com.pivotal.gemfirexd.internal.shared.common.ResolverUtils;
 
 /**
@@ -732,6 +733,13 @@ public abstract class AbstractGemFireDistributionActivation extends
         || this.connectionID == EmbedConnection.CHILD_NOT_CACHEABLE) {
       return;
     }
+    GfxdDataDictionary.SkipCatalogOperations deferred =
+        GfxdDataDictionary.SKIP_CATALOG_OPS.get();
+    if (deferred.deferredCloseStatementMessage != null &&
+        deferred.deferredCloseStatementMessage.addOtherStatementId(
+            this.connectionID, this.statementID)) {
+      return;
+    }
     try {
       final LocalRegion rgn;
       if (isVTIInvolved) {
@@ -766,6 +774,10 @@ public abstract class AbstractGemFireDistributionActivation extends
       StatementCloseExecutorMessage msg = new StatementCloseExecutorMessage(
           AckResultCollector.INSTANCE, (Set)members, this.connectionID,
           this.statementID);
+      if (deferred.deferCloseStatement) {
+        deferred.deferredCloseStatementMessage = msg;
+        return;
+      }
       final TXStateInterface tx = TXManagerImpl.getCurrentTXState();
       msg.executeFunction(false, false, null, false, tx == null);
       // for transactions wait add to pending RC list so that TX can wait

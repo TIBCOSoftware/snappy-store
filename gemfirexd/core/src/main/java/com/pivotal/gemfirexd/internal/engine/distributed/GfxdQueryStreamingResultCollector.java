@@ -23,20 +23,26 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.GemFireException;
+import com.gemstone.gemfire.cache.LockTimeoutException;
 import com.gemstone.gemfire.cache.execute.Function;
 import com.gemstone.gemfire.cache.execute.FunctionException;
 import com.gemstone.gemfire.cache.execute.ResultCollector;
 import com.gemstone.gemfire.distributed.DistributedMember;
+import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.ReplyException;
 import com.gemstone.gemfire.distributed.internal.ReplyProcessor21;
+import com.gemstone.gemfire.distributed.internal.ThrottlingMemLinkedQueueWithDMStats;
+import com.gemstone.gemfire.internal.ByteArrayDataInput;
 import com.pivotal.gemfirexd.internal.engine.GfxdConstants;
 import com.pivotal.gemfirexd.internal.engine.Misc;
 import com.pivotal.gemfirexd.internal.engine.access.GemFireTransaction;
 import com.pivotal.gemfirexd.internal.engine.distributed.utils.GemFireXDUtils;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
+import com.pivotal.gemfirexd.internal.engine.locks.GfxdLockSet;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireContainer;
 import com.pivotal.gemfirexd.internal.engine.store.GemFireStore;
 import com.pivotal.gemfirexd.internal.iapi.error.StandardException;
@@ -75,7 +81,13 @@ public final class GfxdQueryStreamingResultCollector extends
 
   private volatile boolean endReached;
 
-  private transient boolean getInvoked;
+  private volatile boolean getInvoked;
+
+  private final transient AtomicLong resultDataSize;
+
+  private transient long totalBlockingTime;
+
+  private volatile boolean eofQueued;
 
   private static final String NAME = GfxdQueryStreamingResultCollector.class
       .getSimpleName();
@@ -93,6 +105,8 @@ public final class GfxdQueryStreamingResultCollector extends
 
   private GfxdQueryStreamingResultCollector(GfxdResultCollectorHelper helper) {
     this.helper = helper;
+    this.resultDataSize = new AtomicLong(0L);
+    this.totalBlockingTime = 0L;
   }
 
   public final void setResultMembers(Set<DistributedMember> members) {
@@ -143,23 +157,85 @@ public final class GfxdQueryStreamingResultCollector extends
     if (resultOfSingleExecution == null) {
       return;
     }
-    final boolean addMember;
+    boolean addMember;
     if (resultOfSingleExecution instanceof Throwable) {
       processException((Throwable)resultOfSingleExecution, member);
       // exceptions can be fatal ones like low memory exception, so never
       // add the member as having sent a valid reply (#44762)
       addMember = false;
-    }
-    else {
+    } else if (this.gemfireException != null) {
+      if (GemFireXDUtils.TraceFunctionException | GemFireXDUtils.TraceRSIter) {
+        SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_RSITER, this
+            + "#addResult: dropping result from member [" + member +
+            "] due to a previous failure");
+      }
       addMember = true;
+    } else if (this.eofQueued) {
+      addMember = true;
+    } else {
+      addMember = true;
+      ByteArrayDataInput din = null;
       // apply TX changes for ResultHolder
       if (resultOfSingleExecution instanceof ResultHolder) {
-        ((ResultHolder)resultOfSingleExecution).applyRemoteTXChanges(member);
+        ResultHolder holder = (ResultHolder)resultOfSingleExecution;
+        holder.applyRemoteTXChanges(member);
+        din = holder.getByteArrayDataInput();
+      } else if (resultOfSingleExecution instanceof SnappyResultHolder) {
+        din = ((SnappyResultHolder)resultOfSingleExecution).getByteArrayDataInput();
       }
       offer(resultOfSingleExecution);
+      final byte[] bytes;
+      if (din != null && (bytes = din.array()) != null) {
+        this.resultDataSize.getAndAdd(bytes.length);
+      }
+      String timeoutReason = null;
+      // wait for queue to drain if data size or count of elements is too large
+      final long totalMaxWaitMillis = 10L * GfxdLockSet.MAX_LOCKWAIT_VAL;
+      long loopStartTime = 0L;
+      while (this.resultDataSize.get() > DistributionManager.INCOMING_QUEUE_BYTE_LIMIT ||
+          size() > DistributionManager.INCOMING_QUEUE_LIMIT ||
+          ThrottlingMemLinkedQueueWithDMStats.isCriticalUp()) {
+        long startTime = System.currentTimeMillis();
+        if (loopStartTime == 0L) loopStartTime = startTime;
+        synchronized (this.resultDataSize) {
+          if (this.totalBlockingTime > totalMaxWaitMillis) {
+            timeoutReason = "total blocking time exceeded " +
+                totalMaxWaitMillis + " millis";
+            break;
+          }
+          try {
+            this.resultDataSize.wait(500L);
+          } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            Misc.getGemFireCache().getCancelCriterion().checkCancelInProgress(ie);
+          }
+          long endTime = System.currentTimeMillis();
+          if (endTime - loopStartTime > GfxdLockSet.MAX_LOCKWAIT_VAL) {
+            timeoutReason = "current blocking time exceeded " +
+                GfxdLockSet.MAX_LOCKWAIT_VAL + " millis";
+            break;
+          }
+          if (this.eofQueued) {
+            timeoutReason = "endResults() invoked";
+            break;
+          }
+          this.totalBlockingTime += endTime - startTime;
+        }
+      }
+      if (timeoutReason != null) {
+        processException(new LockTimeoutException(
+            "GfxdQueryStreamingResultCollector.addResult: failed after " +
+                timeoutReason), member);
+      }
     }
     if (addMember) {
       this.helper.addResultMember(member);
+    }
+  }
+
+  private void notifyWaiters() {
+    synchronized (this.resultDataSize) {
+      this.resultDataSize.notifyAll();
     }
   }
 
@@ -199,6 +275,8 @@ public final class GfxdQueryStreamingResultCollector extends
     } finally {
       offer(EOF);
       this.helper.closeContainers(this, true);
+      this.eofQueued = true;
+      notifyWaiters();
     }
   }
 
@@ -239,6 +317,20 @@ public final class GfxdQueryStreamingResultCollector extends
     processException(exception, GemFireStore.getMyId());
   }
 
+  private void handleResultHolderRemoval(final Object removed) {
+    ByteArrayDataInput din = null;
+    if (removed instanceof SnappyResultHolder) {
+      din = ((SnappyResultHolder)removed).getByteArrayDataInput();
+    } else if (removed instanceof ResultHolder) {
+      din = ((ResultHolder)removed).getByteArrayDataInput();
+    }
+    final byte[] bytes;
+    if (din != null && (bytes = din.array()) != null) {
+      this.resultDataSize.getAndAdd(-bytes.length);
+      notifyWaiters();
+    }
+  }
+
   public void clearResults() {
     if (GemFireXDUtils.TraceRSIter) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_RSITER, toString()
@@ -254,14 +346,16 @@ public final class GfxdQueryStreamingResultCollector extends
         try {
           do {
             element = this.poll(5, TimeUnit.SECONDS);
-            if( element == null) {
+            if (element == null) {
               Misc.getGemFireCache().getCancelCriterion()
-                .checkCancelInProgress(null);
+                  .checkCancelInProgress(null);
             }
           } while (element == null);
           if (element == EOF) {
             this.endReached = true;
-          } 
+          } else {
+            handleResultHolderRemoval(element);
+          }
         } catch (InterruptedException ie) {
           Thread.currentThread().interrupt();
           Misc.getGemFireCache().getCancelCriterion().checkCancelInProgress(ie);
@@ -289,6 +383,8 @@ public final class GfxdQueryStreamingResultCollector extends
               }
               if (element == EOF) {
                 break;
+              } else {
+                handleResultHolderRemoval(element);
               }
             } finally {
               if (GemFireXDUtils.isOffHeapEnabled() && element instanceof ResultHolder) {
@@ -301,7 +397,6 @@ public final class GfxdQueryStreamingResultCollector extends
           Misc.getGemFireCache().getCancelCriterion().checkCancelInProgress(ie);
         }
       }
-      super.clear();
     }
   }
 
@@ -317,11 +412,10 @@ public final class GfxdQueryStreamingResultCollector extends
    */
   private boolean processException(Throwable t,
       DistributedMember member) {
-    if (GemFireXDUtils.TraceFunctionException) {
+    if (GemFireXDUtils.TraceFunctionException | GemFireXDUtils.TraceRSIter) {
       SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_RSITER, toString()
           + "#processException: from member [" + member + "] got exception", t);
     }
-    
     synchronized (this) {
       member = StandardException.fixUpRemoteException(t, member);
       if (t instanceof ReplyException) {
@@ -400,6 +494,7 @@ public final class GfxdQueryStreamingResultCollector extends
           Misc.getGemFireCache().getCancelCriterion()
               .checkCancelInProgress(null);
         }
+        handleResultHolderRemoval(this.current);
         // if we got an exception, consume everything and throw back the
         // cumulative exception
         Throwable cause = gemfireException;
@@ -430,6 +525,8 @@ public final class GfxdQueryStreamingResultCollector extends
               if (this.current == null) {
                 Misc.getGemFireCache().getCancelCriterion()
                     .checkCancelInProgress(null);
+              } else {
+                handleResultHolderRemoval(this.current);
               }
             } finally {
               if (GemFireXDUtils.isOffHeapEnabled()

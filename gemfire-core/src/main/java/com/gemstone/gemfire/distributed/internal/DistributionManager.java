@@ -187,10 +187,20 @@ public final class DistributionManager
       Math.max(Runtime.getRuntime().availableProcessors() * 4, 48));
   //    Integer.getInteger("DistributionManager.MAX_THREADS", max(Runtime.getRuntime().availableProcessors()*2, 2)).intValue();
 
+  /** Throttling based on the Queue byte size */
+  public static final double INCOMING_QUEUE_THROTTLE_PERCENT =
+      (double)(Integer.getInteger("DistributionManager.INCOMING_QUEUE_THROTTLE_PERCENT", 75)) / 100.0;
   public static final int INCOMING_QUEUE_LIMIT =
     Integer.getInteger("DistributionManager.INCOMING_QUEUE_LIMIT", 80000).intValue();
   public static final int INCOMING_QUEUE_THROTTLE =
-    Integer.getInteger("DistributionManager.INCOMING_QUEUE_THROTTLE", (int)(INCOMING_QUEUE_LIMIT * 0.75)).intValue();
+      Integer.getInteger("DistributionManager.INCOMING_QUEUE_THROTTLE",
+          (int)(INCOMING_QUEUE_LIMIT * INCOMING_QUEUE_THROTTLE_PERCENT));
+  public static final long INCOMING_QUEUE_BYTE_LIMIT =
+      Long.getLong("DistributionManager.INCOMING_QUEUE_BYTE_LIMIT",
+          Math.min(getMaxHeapMemory() >>> 2, 1024L * 1024L * 1024L));
+  public static final long INCOMING_QUEUE_BYTE_THROTTLE =
+      Long.getLong("DistributionManager.INCOMING_QUEUE_BYTE_THROTTLE",
+          (long)(INCOMING_QUEUE_BYTE_LIMIT * INCOMING_QUEUE_THROTTLE_PERCENT));
 
   /** Throttling based on the Queue byte size */
   public static final double THROTTLE_PERCENT =
@@ -542,6 +552,12 @@ public final class DistributionManager
     }
   };
   //////////////////////  Static Methods  //////////////////////
+
+  public static long getMaxHeapMemory() {
+    long maxMemory = Runtime.getRuntime().maxMemory();
+    return (maxMemory > 0L && maxMemory != Long.MAX_VALUE)
+        ? maxMemory : Runtime.getRuntime().totalMemory();
+  }
 
   /**
    * Sets the distribution manager's type (using an InheritableThreadLocal).
@@ -1004,8 +1020,12 @@ public final class DistributionManager
       BlockingQueue poolQueue;
       if (INCOMING_QUEUE_LIMIT == 0) {
         poolQueue = new OverflowQueueWithDMStats(this.stats.getOverflowQueueHelper());
-      } else {
+      } else if (INCOMING_QUEUE_BYTE_LIMIT <= 0) {
         poolQueue = new OverflowQueueWithDMStats(INCOMING_QUEUE_LIMIT, this.stats.getOverflowQueueHelper());
+      } else {
+        poolQueue = new ThrottlingMemLinkedQueueWithDMStats(INCOMING_QUEUE_BYTE_LIMIT,
+            INCOMING_QUEUE_BYTE_THROTTLE, INCOMING_QUEUE_LIMIT, INCOMING_QUEUE_THROTTLE,
+            this.stats.getOverflowQueueHelper());
       }
       ThreadFactory tf = new ThreadFactory() {
           private int next = 0;
@@ -1041,8 +1061,12 @@ public final class DistributionManager
       BlockingQueue poolQueue;
       if (INCOMING_QUEUE_LIMIT == 0) {
         poolQueue = new OverflowQueueWithDMStats(this.stats.getHighPriorityQueueHelper());
-      } else {
+      } else if (INCOMING_QUEUE_BYTE_LIMIT <= 0) {
         poolQueue = new OverflowQueueWithDMStats(INCOMING_QUEUE_LIMIT, this.stats.getHighPriorityQueueHelper());
+      } else {
+        poolQueue = new ThrottlingMemLinkedQueueWithDMStats(INCOMING_QUEUE_BYTE_LIMIT,
+            INCOMING_QUEUE_BYTE_THROTTLE, INCOMING_QUEUE_LIMIT, INCOMING_QUEUE_THROTTLE,
+            this.stats.getHighPriorityQueueHelper());
       }
       ThreadFactory tf = new ThreadFactory() {
           private int next = 0;
@@ -1114,8 +1138,12 @@ public final class DistributionManager
       BlockingQueue poolQueue;
       if (INCOMING_QUEUE_LIMIT == 0) {
         poolQueue = new OverflowQueueWithDMStats(this.stats.getPartitionedRegionQueueHelper());
-      } else {
+      } else if (INCOMING_QUEUE_BYTE_LIMIT <= 0) {
         poolQueue = new OverflowQueueWithDMStats(INCOMING_QUEUE_LIMIT, this.stats.getPartitionedRegionQueueHelper());
+      } else {
+        poolQueue = new ThrottlingMemLinkedQueueWithDMStats(INCOMING_QUEUE_BYTE_LIMIT,
+            INCOMING_QUEUE_BYTE_THROTTLE, INCOMING_QUEUE_LIMIT, INCOMING_QUEUE_THROTTLE,
+            this.stats.getPartitionedRegionQueueHelper());
       }
       ThreadFactory tf = new ThreadFactory() {
         private int next = 0;
@@ -1157,8 +1185,12 @@ public final class DistributionManager
       BlockingQueue poolQueue;
       if (INCOMING_QUEUE_LIMIT == 0) {
         poolQueue = new OverflowQueueWithDMStats(this.stats.getFunctionExecutionQueueHelper());
-      } else {
+      } else if (INCOMING_QUEUE_BYTE_LIMIT <= 0) {
         poolQueue = new OverflowQueueWithDMStats(INCOMING_QUEUE_LIMIT, this.stats.getFunctionExecutionQueueHelper());
+      } else {
+        poolQueue = new ThrottlingMemLinkedQueueWithDMStats(INCOMING_QUEUE_BYTE_LIMIT,
+            INCOMING_QUEUE_BYTE_THROTTLE, INCOMING_QUEUE_LIMIT, INCOMING_QUEUE_THROTTLE,
+            this.stats.getFunctionExecutionQueueHelper());
       }
       ThreadFactory tf = new ThreadFactory() {
         private int next = 0;

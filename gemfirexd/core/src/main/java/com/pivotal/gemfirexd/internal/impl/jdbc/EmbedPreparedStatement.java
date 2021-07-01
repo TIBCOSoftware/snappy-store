@@ -1787,7 +1787,7 @@ public abstract class EmbedPreparedStatement
 	 */
 	public final ParameterValueSet getParms() {
 
-		return activation.getParameterValueSet();
+		return activation != null ? activation.getParameterValueSet() : null;
 	}
 
 
