@@ -70,7 +70,7 @@ namespace io {
 namespace snappydata {
 namespace client {
 
-  static const uint32_t DEFAULT_REAL_PRECISION = 8;
+  static const uint32_t DEFAULT_REAL_PRECISION = 38;
 
   namespace impl {
     class ClientService;
