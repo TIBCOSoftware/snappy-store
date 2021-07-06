@@ -62,8 +62,8 @@ public class SQLLeadNodeExecutionObject  extends LeadNodeExecutionObject {
     if (isPreparedStatement() && !isPreparedPhase())  {
       getParams();
     }
-    return CallbackFactoryProvider.getClusterCallbacks().getSQLExecute(dfObject,
-      sql, schema, ctx, v, this.isPreparedStatement(), this.isPreparedPhase(), this.pvs);
+    return CallbackFactoryProvider.getClusterCallbacks().getSQLExecute(dfObject, sql, schema,
+        ctx, v, this.isPreparedStatement(), this.isPreparedPhase(), this.pvs, this.pvsTypes);
   }
 
   public boolean isPreparedStatement() {

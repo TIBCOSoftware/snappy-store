@@ -41,8 +41,9 @@ public interface ClusterCallbacks {
 
   void stopExecutor();
 
-  SparkSQLExecute getSQLExecute(Object dfObject, String sql, String schema, LeadNodeExecutionContext ctx,
-      Version v, boolean isPreparedStatement, boolean isPreparedPhase, ParameterValueSet pvs);
+  SparkSQLExecute getSQLExecute(Object dfObject, String sql, String schema,
+      LeadNodeExecutionContext ctx, Version v, boolean isPreparedStatement,
+      boolean isPreparedPhase, ParameterValueSet pvs, int[] pvsTypes);
 
   InterpreterExecute getInterpreterExecution(String sql, Version v, Long connId);
 

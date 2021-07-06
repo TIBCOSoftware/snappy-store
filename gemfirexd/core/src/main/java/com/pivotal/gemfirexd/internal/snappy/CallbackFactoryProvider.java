@@ -56,7 +56,7 @@ public abstract class CallbackFactoryProvider {
     @Override
     public SparkSQLExecute getSQLExecute(Object dfObj, String sql, String schema,
         LeadNodeExecutionContext ctx, Version v, boolean isPreparedStatement,
-        boolean isPreparedPhase, ParameterValueSet pvs) {
+        boolean isPreparedPhase, ParameterValueSet pvs, int[] pvsTypes) {
        return null;
     }
 
