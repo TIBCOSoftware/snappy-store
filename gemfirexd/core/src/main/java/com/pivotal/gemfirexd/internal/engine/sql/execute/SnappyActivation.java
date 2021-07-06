@@ -62,6 +62,7 @@ public class SnappyActivation extends BaseActivation {
   private final boolean isPrepStmt;
   private final boolean isUpdateOrDeleteOrPut;
   private LeadNodeExecutorMsg executorMsg;
+  private int[] pvsTypes;
 
   public SnappyActivation(LanguageConnectionContext lcc, ExecPreparedStatement eps, 
       boolean returnRows,  boolean isPrepStmt, boolean isUpdateOrDeleteOrPut) {
@@ -111,6 +112,7 @@ public class SnappyActivation extends BaseActivation {
         }
         gps.setResultDescription(preparedResult.makeResultDescription(statementType));
       }
+      this.pvsTypes = typeNames;
     }  catch (IOException ioex) {
       throw StandardException.newException(ioex.getMessage(), ioex);
     }
@@ -159,7 +161,7 @@ public class SnappyActivation extends BaseActivation {
       rs.open();
       this.resultSet = rs;
       SQLLeadNodeExecutionObject execObj = new SQLLeadNodeExecutionObject(sql, this.lcc
-        .getCurrentSchemaName(), pvs, this.isPrepStmt,false, isUpdateOrDeleteOrPut);
+        .getCurrentSchemaName(), pvs, pvsTypes, this.isPrepStmt,false, isUpdateOrDeleteOrPut);
       executeWithResultSet(rs, execObj);
       if (GemFireXDUtils.TraceQuery) {
         SanityManager.DEBUG_PRINT(GfxdConstants.TRACE_QUERYDISTRIB,
