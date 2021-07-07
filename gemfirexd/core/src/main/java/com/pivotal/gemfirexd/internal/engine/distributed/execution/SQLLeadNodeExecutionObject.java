@@ -8,13 +8,10 @@ import java.util.Arrays;
 
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.internal.ByteArrayDataInput;
-import com.gemstone.gemfire.internal.DataSerializableFixedID;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
 import com.gemstone.gemfire.internal.InternalDataSerializer;
 import com.gemstone.gemfire.internal.shared.Version;
-import com.pivotal.gemfirexd.internal.engine.GfxdSerializable;
 import com.pivotal.gemfirexd.internal.engine.distributed.DVDIOUtil;
-import com.pivotal.gemfirexd.internal.engine.distributed.GfxdResultCollector;
 import com.pivotal.gemfirexd.internal.engine.distributed.SnappyResultHolder;
 import com.pivotal.gemfirexd.internal.engine.distributed.message.BitSetSet;
 import com.pivotal.gemfirexd.internal.engine.jdbc.GemFireXDRuntimeException;
@@ -28,7 +25,7 @@ import com.pivotal.gemfirexd.internal.snappy.CallbackFactoryProvider;
 import com.pivotal.gemfirexd.internal.snappy.LeadNodeExecutionContext;
 import com.pivotal.gemfirexd.internal.snappy.SparkSQLExecute;
 
-public class SQLLeadNodeExecutionObject  extends LeadNodeExecutionObject {
+public class SQLLeadNodeExecutionObject extends LeadNodeExecutionObject {
   private String sql;
   private String schema;
   // transient members set during deserialization and used in execute
@@ -42,11 +39,19 @@ public class SQLLeadNodeExecutionObject  extends LeadNodeExecutionObject {
   private static final byte IS_UPDATE_OR_DELETE_OR_PUT = 0x4;
 
   public SQLLeadNodeExecutionObject(String sql, String schema,
-    ParameterValueSet inpvs, boolean isPreparedStatement,
+      ParameterValueSet inpvs, boolean isPreparedStatement,
+      boolean isPreparedPhase, Boolean isUpdateOrDeleteOrPut) {
+    this(sql, schema, inpvs, null, isPreparedStatement,
+        isPreparedPhase, isUpdateOrDeleteOrPut);
+  }
+
+  public SQLLeadNodeExecutionObject(String sql, String schema,
+    ParameterValueSet inpvs, int[] pvsTypes, boolean isPreparedStatement,
     boolean isPreparedPhase, Boolean isUpdateOrDeleteOrPut) {
     this.schema = schema;
     this.sql = sql;
     this.pvs = inpvs;
+    this.pvsTypes = pvsTypes;
     if (isPreparedStatement) leadNodeFlags |= IS_PREPARED_STATEMENT;
     if (isPreparedPhase) leadNodeFlags |= IS_PREPARED_PHASE;
     if (isUpdateOrDeleteOrPut) leadNodeFlags |= IS_UPDATE_OR_DELETE_OR_PUT;
@@ -62,8 +67,8 @@ public class SQLLeadNodeExecutionObject  extends LeadNodeExecutionObject {
     if (isPreparedStatement() && !isPreparedPhase())  {
       getParams();
     }
-    return CallbackFactoryProvider.getClusterCallbacks().getSQLExecute(dfObject,
-      sql, schema, ctx, v, this.isPreparedStatement(), this.isPreparedPhase(), this.pvs);
+    return CallbackFactoryProvider.getClusterCallbacks().getSQLExecute(dfObject, sql, schema,
+        ctx, v, this.isPreparedStatement(), this.isPreparedPhase(), this.pvs, this.pvsTypes);
   }
 
   public boolean isPreparedStatement() {
@@ -135,7 +140,6 @@ public class SQLLeadNodeExecutionObject  extends LeadNodeExecutionObject {
       final int numPartialCols = BitSetSet.umod8(paramCount);
       try {
         // Write Types
-        // TODO: See SparkSQLPreapreImpl
         if (this.pvsTypes == null) {
           this.pvsTypes = new int[paramCount * 3 + 1];
           this.pvsTypes[0] = paramCount;
