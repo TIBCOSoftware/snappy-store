@@ -140,7 +140,6 @@ public class SQLLeadNodeExecutionObject extends LeadNodeExecutionObject {
       final int numPartialCols = BitSetSet.umod8(paramCount);
       try {
         // Write Types
-        // TODO: See SparkSQLPreapreImpl
         if (this.pvsTypes == null) {
           this.pvsTypes = new int[paramCount * 3 + 1];
           this.pvsTypes[0] = paramCount;

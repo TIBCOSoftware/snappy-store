@@ -92,9 +92,9 @@ public class SnappyActivation extends BaseActivation {
       int numberOfParameters = typeNames[0];
       DataTypeDescriptor[] types = new DataTypeDescriptor[numberOfParameters];
       for (int i = 0; i < numberOfParameters; i++) {
-        int index = i * 4 + 1;
+        int index = i * 3 + 1;
         SnappyResultHolder.getNewNullDVD(typeNames[index], i, types,
-            typeNames[index + 1], typeNames[index + 2], typeNames[index + 2] == 1);
+            typeNames[index + 1], typeNames[index + 2], true);
       }
 
       pvs = lcc.getLanguageFactory().newParameterValueSet(
