@@ -30,16 +30,12 @@ import java.util.Properties;
 import com.gemstone.gemfire.DataSerializer;
 import com.gemstone.gemfire.cache.*;
 import com.gemstone.gemfire.internal.HeapDataOutputStream;
-import com.gemstone.gemfire.internal.cache.BucketRegion;
-import com.gemstone.gemfire.internal.cache.GemFireCacheImpl;
-import com.gemstone.gemfire.internal.cache.InitialImageOperation;
-import com.gemstone.gemfire.internal.cache.LocalRegion;
-import com.gemstone.gemfire.internal.cache.PartitionedRegion;
-import com.gemstone.gemfire.internal.cache.RegionEntry;
+import com.gemstone.gemfire.internal.cache.*;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.pivotal.gemfirexd.DistributedSQLTestBase;
 import com.pivotal.gemfirexd.TestUtil;
+import com.pivotal.gemfirexd.internal.engine.Misc;
 import io.snappydata.test.dunit.AsyncInvocation;
 import io.snappydata.test.dunit.SerializableCallable;
 import io.snappydata.test.dunit.SerializableRunnable;
@@ -69,6 +65,18 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
     dir.mkdirs();
     return dir;
   }
+  public static void validateNoActiveSnapshotTx() {
+    TXManagerImpl txMgr = Misc.getGemFireCache().getCacheTransactionManager();
+    if (txMgr != null) {
+      Iterator<TXStateProxy> itr = txMgr.getHostedTransactionsInProgress().iterator();
+      while (itr.hasNext()) {
+        TXStateProxy tx = itr.next();
+        if (tx.isSnapshot())
+          assertTrue("tx is not closed.", tx.isClosed());
+      }
+    }
+  }
+
 
   @Override
   public void setUp() throws Exception {
@@ -86,10 +94,12 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
   @Override
   public void tearDown2() throws Exception {
     try {
+      validateNoActiveSnapshotTx();
       System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "false");
       invokeInEveryVM(new SerializableRunnable() {
         @Override
         public void run() {
+          validateNoActiveSnapshotTx();
           System.clearProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST");
           System.clearProperty("snappydata.snapshot.isolation.gii.lock");
           InitialImageOperation.resetAllGIITestHooks();
@@ -162,14 +172,16 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
     r.getCache().getCacheTransactionManager().commit();
   }
 
-  private void putSomeUncommittedValues(int numValues) {
+  private TXId putSomeUncommittedValues(int numValues) {
     final GemFireCacheImpl cache = GemFireCacheImpl.getInstance();
     final Region r = cache.getRegion(regionName);
     r.getCache().getCacheTransactionManager().begin(IsolationLevel.SNAPSHOT, null);
+    TXId txId = TXManagerImpl.getCurrentTXId();
     Map<Integer, Integer> m = new HashMap();
     for (int i = 0; i < numValues; i++) {
       r.put(i, i);
     }
+    return txId;
   }
 
   private void readSomeValues(int numValues) {
@@ -360,10 +372,10 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
     server2.invoke(SnapshotTxGIIDUnit.class, "createPR", new Object[]{regionName, 2, 1});
 
     // Put some values to initialize buckets
-    server2.invoke(new SerializableRunnable() {
+    TXId txId = (TXId)server2.invoke(new SerializableCallable() {
       @Override
-      public void run() {
-        putSomeUncommittedValues(100);
+      public Object call() {
+        return putSomeUncommittedValues(100);
       }
     });
     stopVMNums(-2);
@@ -377,6 +389,16 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
     if(!rvv1.logicallySameAs(rvv2)) {
       fail("RVVS don't match. provider=" + rvv1.fullToString() + ", recipient=" + rvv2.fullToString());
     }
+
+    //commit the uncommitted tx.
+    TXId txId1 = (TXId)server2.invoke(new SerializableCallable() {
+      @Override
+      public Object call() {
+        return putSomeUncommittedValues(100);
+      }
+    });
+    server2.invoke(commitTransactionInVM(txId));
+    server2.invoke(commitTransactionInVM(txId1));
   }
 
   public void testSnapshotGII_noGIIOption() throws Exception {
@@ -495,6 +517,28 @@ public class SnapshotTxGIIDUnit extends DistributedSQLTestBase {
             "put not successful", 500, r.size());
       }
     });
+  }
+
+  private SerializableCallable commitTransactionInVM(final TXId txid) {
+    SerializableCallable callable = new SerializableCallable() {
+      @Override
+      public Object call() {
+        try {
+          Connection conn = TestUtil.getConnection();
+          TXStateProxy txStateProxy = GemFireCacheImpl.getInstance().getCacheTransactionManager()
+              .getHostedTXState(txid);
+          GemFireCacheImpl.getInstance().getCacheTransactionManager().masqueradeAs(txStateProxy);
+
+          GemFireCacheImpl.getInstance().getCacheTransactionManager().commit();
+
+        } catch (Exception ex) {
+          ex.printStackTrace();
+          throw new RuntimeException(ex);
+        }
+        return null;
+      }
+    };
+    return callable;
   }
 
   public void blockGII(int vmNum, InitialImageOperation.GIITestHookType type) throws Exception {

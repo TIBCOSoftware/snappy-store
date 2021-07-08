@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.sql.SQLTransactionRollbackException;
 import java.sql.Statement;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.Properties;
 
 import com.gemstone.gemfire.cache.IsolationLevel;
@@ -37,6 +38,18 @@ public class SnapshotTransactionPersistenTableDUnit extends DistributedSQLTestBa
     return "fine";
   }
 
+  public static void validateNoActiveSnapshotTx() {
+    TXManagerImpl txMgr = Misc.getGemFireCache().getCacheTransactionManager();
+    if (txMgr != null) {
+      Iterator<TXStateProxy> itr = txMgr.getHostedTransactionsInProgress().iterator();
+      while (itr.hasNext()) {
+        TXStateProxy tx = itr.next();
+        if (tx.isSnapshot())
+          assertTrue("tx is not closed.", tx.isClosed());
+      }
+    }
+  }
+
   @Override
   public void setUp() throws Exception {
     System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "true");
@@ -51,10 +64,12 @@ public class SnapshotTransactionPersistenTableDUnit extends DistributedSQLTestBa
 
   @Override
   public void tearDown2() throws Exception {
+    validateNoActiveSnapshotTx();
     System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "false");
     invokeInEveryVM(new SerializableRunnable() {
       @Override
       public void run() {
+        validateNoActiveSnapshotTx();
         System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "false");
       }
     });

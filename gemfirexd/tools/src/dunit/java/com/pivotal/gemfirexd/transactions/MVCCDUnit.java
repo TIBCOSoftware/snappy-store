@@ -51,6 +51,17 @@ public class MVCCDUnit extends DistributedSQLTestBase {
     return "fine";
   }
 
+  public static void validateNoActiveSnapshotTx() {
+    TXManagerImpl txMgr = Misc.getGemFireCache().getCacheTransactionManager();
+    if (txMgr != null) {
+      Iterator<TXStateProxy> itr = txMgr.getHostedTransactionsInProgress().iterator();
+      while (itr.hasNext()) {
+        TXStateProxy tx = itr.next();
+        if (tx.isSnapshot())
+          assertTrue("tx is not closed.", tx.isClosed());
+      }
+    }
+  }
 
   @Override
   public void setUp() throws Exception {
@@ -66,10 +77,13 @@ public class MVCCDUnit extends DistributedSQLTestBase {
 
   @Override
   public void tearDown2() throws Exception {
+    validateNoActiveSnapshotTx();
     System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "false");
     invokeInEveryVM(new SerializableRunnable() {
       @Override
-      public void run() {
+      public void run()
+      {
+        validateNoActiveSnapshotTx();
         System.setProperty("gemfire.cache.ENABLE_DEFAULT_SNAPSHOT_ISOLATION_TEST", "false");
       }
     });
