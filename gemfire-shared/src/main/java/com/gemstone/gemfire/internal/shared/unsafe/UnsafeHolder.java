@@ -174,8 +174,8 @@ public abstract class UnsafeHolder {
     try {
       Wrapper.init();
       v = true;
-    } catch (LinkageError le) {
-      System.out.println(le.getMessage());
+    } catch (Throwable t) {
+      System.out.println(t.getMessage());
       v = false;
     }
     hasUnsafe = v;

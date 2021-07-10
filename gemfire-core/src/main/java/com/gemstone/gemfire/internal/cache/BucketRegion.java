@@ -84,6 +84,7 @@ import com.gemstone.gemfire.internal.cache.wan.parallel.ConcurrentParallelGatewa
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.offheap.StoredObject;
 import com.gemstone.gemfire.internal.offheap.annotations.Unretained;
+import com.gemstone.gemfire.internal.shared.SystemProperties;
 import com.gemstone.gemfire.internal.shared.Version;
 import com.gemstone.gemfire.internal.snappy.CallbackFactoryProvider;
 import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
@@ -101,6 +102,10 @@ import com.gemstone.gemfire.internal.snappy.StoreCallbacks;
  *
  */
 public class BucketRegion extends DistributedRegion implements Bucket {
+
+  public static final boolean ALLOW_COLUMN_STORE_UUID_OVERWRITE_ON_OVERFLOW =
+      SystemProperties.getServerInstance().getBoolean(
+          "columnstore.allow-uuid-overwrite-on-overflow", false);
 
   /**
    * A special value for the bucket size indicating that this bucket
@@ -812,7 +817,7 @@ public class BucketRegion extends DistributedRegion implements Bucket {
         txStarted = true;
       }
       try {
-        long batchId =  partitionedRegion.newUUID(false);
+        long batchId =  partitionedRegion.newUUID(!ALLOW_COLUMN_STORE_UUID_OVERWRITE_ON_OVERFLOW);
         if (getCache().getLoggerI18n().fineEnabled()) {
           getCache().getLoggerI18n().info(LocalizedStrings.DEBUG, "createAndInsertCachedBatch: " +
               "The snapshot after creating cached batch is " + getTXState().getLocalTXState().getCurrentSnapshot() +

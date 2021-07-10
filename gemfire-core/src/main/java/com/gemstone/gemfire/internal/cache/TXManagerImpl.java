@@ -446,6 +446,8 @@ public final class TXManagerImpl implements CacheTransactionManager,
       .of(TransactionFlag.DISABLE_BATCHING);
   public static final EnumSet<TransactionFlag> SYNC_COMMITS = EnumSet
       .of(TransactionFlag.SYNC_COMMITS);
+  public static final EnumSet<TransactionFlag> DISABLE_DELTA_ROLLOVER = EnumSet
+      .of(TransactionFlag.DISABLE_DELTA_ROLLOVER);
 
   /**
    * A flag to allow persistent transactions. public for testing.
@@ -1630,6 +1632,7 @@ public final class TXManagerImpl implements CacheTransactionManager,
       proxy = this.hostedTXStates.get(txId, txStateCreator);
     }
     if (proxy != null) {
+      proxy.setTransientTransactionFlags(msg.getTransientTXFlags());
       msg.startTXProxyRead();
       if (!useTXProxy) {
         // for write operations create a new local TXState if not present

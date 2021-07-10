@@ -587,7 +587,9 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
       else {
         this.enableBatching = (this.lockPolicy != LockingPolicy.SNAPSHOT) && ENABLE_BATCHING;
       }
-      this.syncCommits = (this.lockPolicy == LockingPolicy.SNAPSHOT) || flags.contains(TransactionFlag.SYNC_COMMITS);
+      this.syncCommits = (this.lockPolicy == LockingPolicy.SNAPSHOT) ||
+          flags.contains(TransactionFlag.SYNC_COMMITS);
+      setTransientTransactionFlags(flags);
     }
     this.inconsistentThr = null;
 
@@ -640,6 +642,12 @@ public class TXStateProxy extends NonReentrantReadWriteLock implements
 
   public static final TXStateProxyFactory getFactory() {
     return factory;
+  }
+
+  public void setTransientTransactionFlags(EnumSet<TransactionFlag> flags) {
+    if (flags != null) {
+      this.columnRolloverDisabled = flags.contains(TransactionFlag.DISABLE_DELTA_ROLLOVER);
+    }
   }
 
   private long getViewId(DM dm) {

@@ -21,11 +21,13 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.NotSerializableException;
+import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.gemstone.gemfire.CancelException;
 import com.gemstone.gemfire.SystemFailure;
 import com.gemstone.gemfire.cache.IsolationLevel;
+import com.gemstone.gemfire.cache.TransactionFlag;
 import com.gemstone.gemfire.distributed.internal.DistributionManager;
 import com.gemstone.gemfire.distributed.internal.DistributionMessage;
 import com.gemstone.gemfire.distributed.internal.DistributionStats;
@@ -78,7 +80,12 @@ public abstract class AbstractOperationMessage extends DistributionMessage
    * Indicates that this message is the result of the op number currExecnSeq in
    * the transaction. Used for tracking savepoints
    */
-  protected long currExecSeq;
+  protected int currExecSeq;
+
+  /**
+   * The transient {@link TransactionFlag}s to be sent across.
+   */
+  protected int txTransientFlags;
 
   // Instead of using another flag (short is exhausted for some messages) to
   // indicate a pending TXId we write a byte to indicate whether there is a
@@ -256,6 +263,9 @@ public abstract class AbstractOperationMessage extends DistributionMessage
     this.txState = tx;
     this.txProxy = tx.getProxy();
     this.currExecSeq = tx.getExecutionSequence();
+    if (this.txProxy.isColumnRolloverDisabled()) {
+      this.txTransientFlags |= TransactionFlag.DISABLE_DELTA_ROLLOVER.bitmask();
+    }
   }
 
   /**
@@ -305,6 +315,15 @@ public abstract class AbstractOperationMessage extends DistributionMessage
    */
   protected final void setLockingPolicy(final LockingPolicy lockPolicy) {
     this.lockPolicy = lockPolicy;
+  }
+
+  public final EnumSet<TransactionFlag> getTransientTXFlags() {
+    // only DISABLE_DELTA_ROLLOVER for now
+    if ((this.txTransientFlags & TransactionFlag.DISABLE_DELTA_ROLLOVER.bitmask()) != 0) {
+      return TXManagerImpl.DISABLE_DELTA_ROLLOVER;
+    } else {
+      return null;
+    }
   }
 
   /**
@@ -532,7 +551,8 @@ public abstract class AbstractOperationMessage extends DistributionMessage
       throws IOException {
     if (Version.GFXD_20.compareTo(InternalDataSerializer
         .getVersionForDataStream(out)) <= 0) {
-      InternalDataSerializer.writeSignedVL(this.currExecSeq, out);
+      long seqAndFlags = (((long)this.txTransientFlags) << 32L) | ((long)this.currExecSeq);
+      InternalDataSerializer.writeSignedVL(seqAndFlags, out);
     }
   }
 
@@ -540,7 +560,9 @@ public abstract class AbstractOperationMessage extends DistributionMessage
       throws IOException {
     if (Version.GFXD_20.compareTo(InternalDataSerializer
         .getVersionForDataStream(in)) <= 0) {
-      this.currExecSeq = InternalDataSerializer.readSignedVL(in);
+      long seqAndFlags = InternalDataSerializer.readSignedVL(in);
+      this.currExecSeq = (int)(seqAndFlags & 0xffffffffL);
+      this.txTransientFlags = (int)((seqAndFlags >>> 32L) & 0xffffffffL);
     }
   }
 
