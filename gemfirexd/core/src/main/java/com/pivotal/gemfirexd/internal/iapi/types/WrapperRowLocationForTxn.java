@@ -49,6 +49,29 @@ public final class WrapperRowLocationForTxn extends AbstractRowLocation {
     this.createdForUpdateOperation = forUpdateOp;
   }
 
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj ==  this) {
+      return true;
+    } else if (obj instanceof WrapperRowLocationForTxn && this.actualRowLocation != null
+        && ((WrapperRowLocationForTxn)obj).actualRowLocation != null) {
+      WrapperRowLocationForTxn that = (WrapperRowLocationForTxn) obj;
+      return  this.actualRowLocation.equals(that.actualRowLocation);
+    } else {
+      return false;
+    }
+  }
+
+  @Override
+  public int hashCode() {
+    int h = 17;
+   // h = h * 37 + this.indexContainer.hashCode();
+   // h = h * 37 + this.indexKey.hashCode();
+    h = h * 37 + (this.actualRowLocation != null ? this.actualRowLocation.hashCode() : super.hashCode());
+    return h;
+  }
+
   public boolean wasCreatedForUpdateOp() {
     return this.createdForUpdateOperation;
   }
