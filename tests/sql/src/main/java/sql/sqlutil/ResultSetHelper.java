@@ -437,8 +437,8 @@ public class ResultSetHelper {
     StructTypeImpl gfxdsti = null;
     if (SQLDAPTest.cidByRange || SQLDAPTest.tidByList) gfxdsti = sti; //reuse derby structure to work around #46311 
     else gfxdsti = getStructType(gfxdResultSet);
-    Log.getLogWriter().info("[Sonal]Derby sti is : " + sti.toString());
-    Log.getLogWriter().info("[Sonal]Snappy sti is :" + gfxdsti.toString());
+    //Log.getLogWriter().info("Derby sti is : " + sti.toString());
+    //Log.getLogWriter().info("Snappy sti is :" + gfxdsti.toString());
     List<Struct> GFEList = asList(gfxdResultSet, gfxdsti, false);
     if (GFEList == null && SQLTest.isHATest) {
       //due to #41471 in HA && possible #42443 for offline exception test coverage
@@ -558,7 +558,13 @@ public class ResultSetHelper {
             if (!missingCol.equals(unexpectedCol)) {
               if (missingCol.getClass().getName().contains("BigDecimal") && unexpectedCol
                   .getClass().getName().contains("BigDecimal")) {
-                Double diff = (((BigDecimal)missingCol).subtract((BigDecimal)unexpectedCol)).doubleValue();
+                BigDecimal value1 = (BigDecimal)missingCol;
+                BigDecimal value2 = (BigDecimal)unexpectedCol;
+                Double diff;
+                if(value1.doubleValue() > value2.doubleValue())
+                  diff = value1.subtract(value2).doubleValue();
+                else
+                  diff = value2.subtract(value1).doubleValue();
                 Log.getLogWriter().info("diff is " + diff);
                 if (diff <= 0.01) {
                   isGenuineMismatch = false;
