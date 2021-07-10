@@ -26,7 +26,13 @@ fi
 SNAPPYDATADIR=$1
 shift
 
-export JTESTS=$SNAPPYDATADIR/store/tests/sql/build-artifacts/linux/classes/java/main
+OSTYPE=`uname -a | sed -e 's/ .*//' -e 's/CYG.*/Windows_NT/' -e 's/SunOS/Solaris/'`
+OS=linux
+if [ ${OSTYPE} = "Darwin" ]; then
+  OS="osx"
+fi
+
+export JTESTS=$SNAPPYDATADIR/store/tests/sql/build-artifacts/${OS}/classes/java/main
 export PATH=$JAVA_HOME:$PATH:$JTESTS
 export GEMFIRE=$SNAPPYDATADIR/build-artifacts/scala-2.11/store
 export OUTPUT_DIR=$resultDir
@@ -90,12 +96,11 @@ export snappyTestsJarVersion=`echo "${snappyTestsJarFilename%*.*}"| cut -d'-' -f
 CLASSPATH=$JTESTS:$EXTRA_JTESTS:$JTESTS/../../../libs/snappydata-store-hydra-tests-${releaseVersion}-all.jar:$SNAPPYDATADIR/dtests/build-artifacts/scala-2.11/libs/snappydata-store-scala-tests-${snappyTestsJarVersion}-tests.jar
 LIB=$SNAPPYDATADIR/build-artifacts/scala-2.11/snappy/jars
 for i in $LIB/*.jar; do CLASSPATH=$CLASSPATH:$i; done
-
 export CLASSPATH=$CLASSPATH
-export EXTRA_JTESTS=$SNAPPYDATADIR/store/tests/core/build-artifacts/linux/classes/java/main
+export EXTRA_JTESTS=$SNAPPYDATADIR/store/tests/core/build-artifacts/${OS}/classes/java/main
 #export JTESTS_RESOURCES=$SNAPPYDATADIR/store/tests/core/src/main/java
 
 # This is the command to run the test, make sure the correct release version of jar used or change the jar path to use correctly. Also change the jar name in sql/snappy.local.conf if incorrect
 
 echo $SNAPPYDATADIR/store/tests/core/src/main/java/bin/run-snappy-store-bt.sh --osbuild $GEMFIRE $OUTPUT_DIR -Dproduct=snappystore -DtestJVM=$TEST_JVM/bin/java -DEXTRA_JTESTS=$EXTRA_JTESTS  -Dbt.grepLogs=true -DremovePassedTest=$deleteTestLogs -DnumTimesToRun=$runIters -DlocalConf=$localconfpath ${bts}
-$SNAPPYDATADIR/store/tests/core/src/main/java/bin/run-snappy-store-bt.sh --osbuild $GEMFIRE $OUTPUT_DIR -Dproduct=snappystore -DtestJVM=$TEST_JVM/bin/java -DEXTRA_JTESTS=$EXTRA_JTESTS -Dbt.mergeLogFiles=true -Dbt.grepLogs=true -DremovePassedTest=$deleteTestLogs -DnumTimesToRun=$runIters -DlocalConf=$localconfpath ${bts}
+$SNAPPYDATADIR/store/tests/core/src/main/java/bin/run-snappy-store-bt.sh --osbuild $GEMFIRE $OUTPUT_DIR -Dproduct=snappystore -DtestJVM=$TEST_JVM/bin/java -DEXTRA_JTESTS=$EXTRA_JTESTS -Dbt.mergeLogFiles=true -Dbt.grepLogs=true -DremovePassedTest=$deleteTestLogs -DnumTimesToRun=$runIters -DlocalConf=$localconfpath ${bts} 

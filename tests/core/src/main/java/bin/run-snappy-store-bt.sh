@@ -64,7 +64,11 @@ else
   shift
 fi
 OSTYPE=`uname -a | sed -e 's/ .*//' -e 's/CYG.*/Windows_NT/' -e 's/SunOS/Solaris/'`
-
+OS=linux
+if [ ${OSTYPE} = "Darwin" ]; then
+  OS="osx"
+fi
+ 
 TESTBIN=`dirname $0`
 # provieded osbuild dir
 OSBUILD=${OVERRIDE_OSBUILD}
@@ -73,7 +77,7 @@ SOURCES=$TESTBIN/../../../../../..
 export NO_BUILD_LOG=true
 export JPROBE_HOME=/do/not/use/JPROBE
 options=''
-TESTSPATH=${SOURCES}/tests/sql/build-artifacts/linux/classes/java/main
+TESTSPATH=${SOURCES}/tests/sql/build-artifacts/${OS}/classes/java/main
 export CLASSPATH=${TESTSPATH}:$CLASSPATH
 while [ $# -gt 0 ]; do
 
