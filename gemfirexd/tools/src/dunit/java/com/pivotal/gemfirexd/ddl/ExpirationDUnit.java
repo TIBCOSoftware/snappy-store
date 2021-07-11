@@ -356,18 +356,28 @@ public class ExpirationDUnit extends DistributedSQLTestBase {
     expected.add(2);
 
     // some slow systems may already have exceeded the time in restart
+    boolean canBeEmpty = false;
     long elapsed = System.currentTimeMillis() - start;
     if (elapsed < 2000) {
       Thread.sleep(2000 - elapsed);
     } else if (elapsed > 3000) {
       expected = null;
+    } else if (elapsed > 2000) {
+      canBeEmpty = true;
     }
 
-    validateResults("EMP.TESTTABLE_ONE", expected);
+    validateResults("EMP.TESTTABLE_ONE", expected, canBeEmpty);
+    canBeEmpty = false;
+    elapsed = System.currentTimeMillis() - start;
+    if (elapsed >= 3000) {
+      expected = null;
+    } else if (elapsed > 2000) {
+      canBeEmpty = true;
+    }
     if (expected != null) {
       expected.add(3);
     }
-    validateResults("EMP.TESTTABLE_TWO", expected);
+    validateResults("EMP.TESTTABLE_TWO", expected, canBeEmpty);
     Thread.sleep(1500);
     validateResults("EMP.TESTTABLE_ONE", null);
     validateResults("EMP.TESTTABLE_TWO", null);

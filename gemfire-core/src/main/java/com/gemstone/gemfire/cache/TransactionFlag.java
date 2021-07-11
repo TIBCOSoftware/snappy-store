@@ -24,6 +24,9 @@ import java.util.EnumSet;
  * Flags that can be combined and passed as an {@link EnumSet} to
  * {@link CacheTransactionManager} to define additional properties for the
  * transaction.
+ *
+ * Properties marked as [Transient] will be sent across messages and set on the
+ * remote node transaction.
  * 
  * @author swale
  * @since 7.0
@@ -55,5 +58,24 @@ public enum TransactionFlag {
    * not see committed data for sometime (the thread that initializes the commit
    * will always see committed data)
    */
-  SYNC_COMMITS
+  SYNC_COMMITS,
+
+  /**
+   * [Transient] disable column table delta rollover for the current operation
+   */
+  DISABLE_DELTA_ROLLOVER {
+    @Override
+    public int bitmask() {
+      return 0x1;
+    }
+  },
+
+  ;
+
+  /**
+   * The bitmask to use for transient transaction flags.
+   */
+  public int bitmask() {
+    return 0x0;
+  }
 }

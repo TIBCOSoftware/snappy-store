@@ -1370,6 +1370,7 @@ public final class GemFireContainer extends AbstractGfxdLockable implements
     if (isByteArrayStore()) {
       this.tableInfo.initRowFormatter(this);
     }
+    invalidateHiveMetaData();
   }
 
   /**

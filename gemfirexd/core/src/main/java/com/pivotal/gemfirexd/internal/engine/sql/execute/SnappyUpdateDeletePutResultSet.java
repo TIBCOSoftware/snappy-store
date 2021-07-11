@@ -48,7 +48,7 @@ public final class SnappyUpdateDeletePutResultSet extends SnappySelectResultSet 
         throw GemFireXDRuntimeException.newRuntimeException("Update or Delete or Put on Snappy", ex);
       }
     }
-    Misc.getCacheLogWriter().info("SnappyUpdateDeleteResultSet:::modifiedRowCount" + rowCount);
+    Misc.getCacheLogWriter().fine("SnappyUpdateDeleteResultSet::modifiedRowCount = " + rowCount);
     return rowCount;
   }
 }
