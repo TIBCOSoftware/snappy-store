@@ -701,7 +701,7 @@ public final class FabricDatabase implements ModuleControl,
       boolean removeInconsistentEntries, boolean removeTablesWithData)
       throws StandardException, SQLException {
     final GemFireStore memStore = Misc.getMemStoreBooting();
-    final ExternalCatalog externalCatalog = memStore.getExternalCatalog(false);
+    final ExternalCatalog externalCatalog = memStore.getExternalCatalog(false, 0);
     if (externalCatalog == null) {
       return;
     }

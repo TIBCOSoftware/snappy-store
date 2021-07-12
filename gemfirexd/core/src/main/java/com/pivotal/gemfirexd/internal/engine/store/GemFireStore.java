@@ -2468,9 +2468,9 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     this.externalCatalogInit = init;
   }
 
-  public static boolean handleCatalogInit(Future<?> init) {
+  public static boolean handleCatalogInit(Future<?> init, int waitSeconds) {
     try {
-      init.get(60, TimeUnit.SECONDS);
+      init.get(waitSeconds, TimeUnit.SECONDS);
       return true;
     } catch (java.util.concurrent.TimeoutException e) {
       return false;
@@ -2490,7 +2490,7 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
     ExternalCatalog catalog;
     int cnt = 0;
     // retry catalog get after some sleep
-    while ((catalog = getExternalCatalog()) == null && ++cnt < 500) {
+    while ((catalog = getExternalCatalog(true, 1)) == null && ++cnt < 500) {
       Throwable t = null;
       try {
         Thread.sleep(100);
@@ -2510,18 +2510,18 @@ public final class GemFireStore implements AccessFactory, ModuleControl,
   }
 
   public ExternalCatalog getExternalCatalog() {
-    return getExternalCatalog(true);
+    return getExternalCatalog(true, 60);
   }
 
   /** fullInit = true is to wait for any catalog inconsistencies to be cleared */
-  public ExternalCatalog getExternalCatalog(boolean fullInit) {
+  public ExternalCatalog getExternalCatalog(boolean fullInit, int waitSeconds) {
     final ExternalCatalog externalCatalog;
     if ((externalCatalog = this.externalCatalog) != null &&
         externalCatalog.waitForInitialization()) {
       if (fullInit) {
         final Future<?> init = this.externalCatalogInit;
         if (init != null && !Boolean.TRUE.equals(externalCatalogInitThread.get())
-            && !handleCatalogInit(init)) {
+            && !handleCatalogInit(init, waitSeconds)) {
           return null;
         }
       }
