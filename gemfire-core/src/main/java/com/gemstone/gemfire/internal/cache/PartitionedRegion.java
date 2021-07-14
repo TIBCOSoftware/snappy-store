@@ -8148,7 +8148,8 @@ public class PartitionedRegion extends LocalRegion implements
         throw e;
       }
       if (!this.lockOwned) {
-        throw new LockTimeoutException("Couldn't acquire lock on " + this.lockName);
+        throw new LockTimeoutException("Couldn't acquire lock on " + this.lockName +
+            " after " + timeout + " ms");
       }
     }
 

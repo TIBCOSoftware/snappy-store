@@ -42,7 +42,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -62,6 +61,7 @@ import com.gemstone.gemfire.internal.concurrent.ConcurrentTHashSet;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
 import com.gemstone.gemfire.internal.size.ReflectionSingleObjectSizer;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableReentrantLock;
+import org.eclipse.jetty.util.ConcurrentArrayQueue;
 
 import static com.gemstone.gemfire.internal.shared.SystemProperties.getServerInstance;
 
@@ -149,8 +149,8 @@ public class TombstoneService  implements ResourceListener<MemoryEvent> {
    * two queues, one for replicated regions (including PR buckets) and one for
    * other regions.  They have different timeout intervals.
    */
-  private Queue<Tombstone> replicatedTombstones = new ConcurrentLinkedQueue<Tombstone>();
-  private Queue<Tombstone> nonReplicatedTombstones = new ConcurrentLinkedQueue<Tombstone>();
+  private final Queue<Tombstone> replicatedTombstones = new ConcurrentArrayQueue<>();
+  private final Queue<Tombstone> nonReplicatedTombstones = new ConcurrentArrayQueue<>();
 
   private AtomicLong replicatedTombstoneQueueSize = new AtomicLong();
   private AtomicLong nonReplicatedTombstoneQueueSize = new AtomicLong();

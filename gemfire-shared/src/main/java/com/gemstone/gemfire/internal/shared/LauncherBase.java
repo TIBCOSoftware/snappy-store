@@ -371,6 +371,12 @@ public abstract class LauncherBase {
       vmArgs.add("-D" + EVICT_HIGH_ENTRY_COUNT_BUCKETS_FIRST_PROP + "=false");
       vmArgs.add("-D" + EVICT_HIGH_ENTRY_COUNT_BUCKETS_FIRST_FOR_EVICTOR_PROP + "=true");
     }
+    // reduce default event tracking expiration timeout to 2 minutes
+    vmArgs.add("-Dgemfire.messageTrackingTimeout=120000");
+    // reduce tombstone expiration times and default scan interval
+    vmArgs.add("-Dgemfirexd.tombstone-timeout=240000");
+    vmArgs.add("-Dgemfirexd.non-replicated-tombstone-timeout=180000");
+    vmArgs.add("-Dgemfirexd.tombstone-scan-interval=30000");
   }
 
   /**

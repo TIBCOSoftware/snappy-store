@@ -265,7 +265,7 @@ public interface GfxdConstants {
   final String DDL_LOCK_SERVICE = "gfxd-ddl-lock-service";
 
   /** Default value of {@link #MAX_LOCKWAIT}. */
-  int MAX_LOCKWAIT_DEFAULT = 180000;
+  int MAX_LOCKWAIT_DEFAULT = 300000;
 
   /**
    * An int representing max wait time for distributed lock in milliseconds.
@@ -354,7 +354,7 @@ public interface GfxdConstants {
   /**
    * maximum size of each oplog file used for delta disk stores
    */
-  final int SNAPPY_DELTA_DISKSTORE_SIZEMB = 50;
+  final int SNAPPY_DELTA_DISKSTORE_SIZEMB = 128;
 
   /** Name of meta-region used to store the max identity column value */ 
   final String IDENTITY_REGION_NAME ="__IDENTITYREGION2";

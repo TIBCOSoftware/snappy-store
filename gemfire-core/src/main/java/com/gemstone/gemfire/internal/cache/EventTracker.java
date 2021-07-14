@@ -22,6 +22,7 @@ package com.gemstone.gemfire.internal.cache;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -44,7 +45,9 @@ import com.gemstone.gemfire.internal.cache.ha.ThreadIdentifier;
 import com.gemstone.gemfire.internal.cache.versions.RegionVersionVector;
 import com.gemstone.gemfire.internal.cache.versions.VersionTag;
 import com.gemstone.gemfire.internal.i18n.LocalizedStrings;
+import com.gemstone.gemfire.internal.shared.unsafe.UnsafeHolder;
 import com.gemstone.gemfire.internal.util.concurrent.StoppableCountDownLatch;
+import org.eclipse.collections.impl.map.mutable.primitive.LongObjectHashMap;
 
 /**
  * EventTracker tracks the last sequence number for a particular
@@ -480,7 +483,7 @@ public class EventTracker
     }
     
     synchronized (evh) {
-      return evh.entryVersionTags.get(eventID);
+      return evh.getVersionTag(eventID);
     } // synchronized
   }
 
@@ -686,25 +689,56 @@ public class EventTracker
     /**
      * Whether this object was removed by the cleanup thread.
      */
-    public boolean removed;
+    boolean removed;
+
     /**
-     * public for tests only
+     * package-private for tests only
      */
-    public Map<EventID, VersionTag> entryVersionTags = new HashMap<EventID, VersionTag>();
+    final LongObjectHashMap<VersionTag<?>> entryVersionTags =
+        new LongObjectHashMap<>();
+
+    /**
+     * this is used to calculate the capacity of the map which is,
+     * unfortunately, not exposed
+     */
+    private static final long lohmKeysOffset;
+
     /** millisecond timestamp */
     transient long endOfLifeTimer;
-  
+
+    static {
+      try {
+        Field f = LongObjectHashMap.class.getDeclaredField("keys");
+        f.setAccessible(true);
+        lohmKeysOffset = UnsafeHolder.getUnsafe().objectFieldOffset(f);
+      } catch (Exception e) {
+        throw new ExceptionInInitializerError(e);
+      }
+    }
+
     /**
      * creates a new instance to save status of a putAllOperation 
      */
     PutAllHolder() {
     }
-    
-    public void putVersionTag(EventID eventId, VersionTag versionTag) {
-      entryVersionTags.put(eventId, versionTag);
+
+    public void putVersionTag(EventID eventId, VersionTag<?> versionTag) {
+      final int size;
+      if (entryVersionTags.put(eventId.getSequenceID(), versionTag) == null &&
+          (size = entryVersionTags.size()) > 100) {
+        // if the capacity has grown much larger than size, then compact
+        int capacity = ((long[])UnsafeHolder.getUnsafe().getObject(
+            entryVersionTags, lohmKeysOffset)).length;
+        if ((capacity >>> 1) > size) {
+          entryVersionTags.compact();
+        }
+      }
       this.endOfLifeTimer = 0;
     }
 
+    public VersionTag<?> getVersionTag(EventID eventId) {
+      return entryVersionTags.get(eventId.getSequenceID());
+    }
     
     @Override
     public String toString() {
